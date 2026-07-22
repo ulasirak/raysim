@@ -1,0 +1,31 @@
+rules_version = '2';
+
+// türkray — Firestore güvenlik kuralları (VİTRİN modu)
+// ────────────────────────────────────────────────────────────────
+// Karar: senaryolar HERKESE OKUNUR, yazma/silme KAPALI.
+// Uygulamada giriş/şifre yok → siteye giren herkes anonimdir. Bu yüzden
+// "yalnız sen yazabilirsin" istemcide sağlanamaz; yazma tamamen kapatılır.
+//
+// SENARYO EKLEMEK/GÜNCELLEMEK/SİLMEK İÇİN (yalnız sen, geçici):
+//   1) Aşağıdaki  `allow write: if false;`  satırını  `if true;`  yap,
+//   2) Firebase'e deploy et (veya Console'dan yayınla),
+//   3) yerelde uygulamadan senaryoyu kaydet/sil,
+//   4) satırı tekrar  `if false;`  yapıp deploy et → kilit geri gelir.
+// Alternatif: Firebase Console → Firestore → 'senaryolar' koleksiyonundan
+// belgeleri elle ekle/sil (kurallar okumayı hiç engellemez).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Paylaşılan senaryo vitrini
+    match /senaryolar/{doc} {
+      allow read: if true;      // herkes görüntüler/yükler
+      allow write: if false;    // create + update + delete → kapalı
+    }
+
+    // Tanımlı olmayan her yol tamamen kapalı (varsayılan reddet)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

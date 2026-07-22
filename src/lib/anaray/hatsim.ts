@@ -1,0 +1,453 @@
+// türkray — TAM HAT ÇOK-TREN CANLI SİMÜLASYONU (ring + anklaşman birleşik).
+//
+// Ring hücreleri (durak-arası) zincirlenerek tek bir birleşik hat kurulur.
+// Trenler bu hat üzerinde:
+//   • duraklar arası SABİT BLOK headway ile birbirini bekler (signalling.ts fiziği),
+//   • MAKAS BÖLGELERİNDE gerçek interlocking'e girer: bir tren makas bölgesine
+//     ancak rotayı ELE GEÇİRİRSE girer — tanzim (≤6 s × makas), geçiş (15 km/h),
+//     çıkışta ROUTE RELEASE kilidi (ana hat 5 s / depo 8 s). Bölge o süre boyunca
+//     başka trene KAPALI → arkadaki tren makas giriş sinyalinde (kırmızı) bekler.
+// Tren sayısı arttıkça makas bölgeleri kuyruklanır → gerçek darboğaz ortaya çıkar.
+//
+// Fizik ve blok mantığı signalling.ts ile tek kaynaktan (segAt/allowedSpeed/blockOf).
+// Tüm mesafe/hız/zamanlayıcılar paylaşılan config'e (cfg) bağlıdır.
+
+import type { Line, RollingStock, Station } from "./types";
+import type { SimConfig } from "./config";
+import { BELGE, type DurakArasiRing, type MakasTip, ringToLine } from "./ring";
+import { allowedSpeed, blockOf, makeBlocks, segAt } from "./signalling";
+
+const G = 9.81;
+
+// ————————————————————————————————————————————————
+// Birleşik hat modeli (ring zinciri → tek Line + makas bölgeleri)
+// ————————————————————————————————————————————————
+
+/** Birleşik hat üzerinde bir makas bölgesi = interlocking kaynağı. */
+export interface MakasZon {
+  id: string;
+  ad: string;
+  ringId: string;
+  tip: MakasTip;
+  merkez: number; // birleşik hat koordinatı (m)
+  start: number; // bölge girişi (m)
+  end: number; // bölge çıkışı (m)
+  gecisHizi: number; // m/s (15 km/h)
+  setupSure: number; // s — tanzim (makasSayisi × adım)
+  releaseSure: number; // s — route release kilidi
+}
+
+export interface HatModel {
+  line: Line;
+  zones: MakasZon[];
+  ringBounds: number[]; // kümülatif ring sınırları (m) — UI için
+  kapali: boolean;
+}
+
+/** Ring zincirini birleşik hatta + makas bölgelerine çevirir (nominal mesafeler). */
+export function loopToHat(rings: DurakArasiRing[], kapali = true, cfg: SimConfig = BELGE): HatModel {
+  const W = cfg.kisitGenisligi; // makas kısıt genişliği (m)
+  const segments = [] as Line["segments"];
+  const stations: Station[] = [];
+  const zones: MakasZon[] = [];
+  const ringBounds: number[] = [0];
+
+  let offset = 0;
+  rings.forEach((ring, ri) => {
+    const sub = ringToLine(ring, "nominal", cfg); // segmentler + 2 durak (0 ve L)
+    const L = sub.length;
+    // segmentleri offsetle taşı
+    for (const s of sub.segments) segments.push({ start: s.start + offset, end: s.end + offset, vmax: s.vmax, gradient: s.gradient });
+    // ilk ringin başlangıç durağı bir kez (origin, dwell 0)
+    if (ri === 0) stations.push({ id: ring.fromStationId, name: ring.fromAd, position: 0, dwell: 0 });
+    // her ringin varış durağı (dwell = ring.dwell)
+    stations.push({ id: ring.toStationId, name: ring.toAd, position: offset + L, dwell: ring.dwell });
+    // makas bölgeleri
+    for (const m of ring.makaslar) {
+      const merkez = offset + Math.max(0, Math.min(ring.uzunluk, m.konum));
+      zones.push({
+        id: `${ring.id}:${m.id}`,
+        ad: m.ad || `${ring.ad} makas`,
+        ringId: ring.id,
+        tip: m.tip,
+        merkez,
+        start: Math.max(offset, merkez - W / 2),
+        end: Math.min(offset + L, merkez + W / 2),
+        gecisHizi: m.gecisHizi,
+        setupSure: Math.max(1, m.makasSayisi) * m.makasAdimSuresi,
+        releaseSure: m.routeRelease,
+      });
+    }
+    offset += L;
+    ringBounds.push(offset);
+  });
+
+  const line: Line = { id: "hat_birlesik", name: "Birleşik Hat", length: offset, stations, segments };
+  return { line, zones, ringBounds, kapali };
+}
+
+// ————————————————————————————————————————————————
+// Çok-tren interlocking simülasyonu
+// ————————————————————————————————————————————————
+
+export type ZonFaz = "bos" | "tanzim" | "kilitli" | "release";
+
+interface ZonDurum {
+  z: MakasZon;
+  faz: ZonFaz;
+  sahip: number; // owner tren index (-1 = boş)
+  timer: number;
+  busy: number; // faz != bos geçen toplam süre (s)
+  gecis: number; // kaç tren geçti
+  bekletme: number; // arkada bekletilen toplam tren-saniye (kuyruk yükü)
+}
+
+/** Bir makas bölgesinin zaman içindeki faz değişim çizelgesi (kompakt, UI için). */
+export interface ZonOlay {
+  t: number;
+  faz: ZonFaz;
+  sahip: number;
+}
+
+export interface ZonIstatistik {
+  id: string;
+  ad: string;
+  ringId: string;
+  tip: MakasTip;
+  merkez: number;
+  gecisSayisi: number;
+  mesguliyet: number; // busy / tMax (0..1)
+  dongu: number; // s — teorik min çevrim (tanzim + geçiş + release)
+  toplamBekletme: number; // s — arkada biriken bekleme
+}
+
+export interface HatTren {
+  index: number;
+  points: { t: number; s: number }[];
+  girisT: number;
+  cikisT: number;
+  turSure: number; // cikis - giris (tek hat seyir)
+}
+
+export interface Darbogaz {
+  tur: "makas" | "blok" | "ring";
+  id: string;
+  ad: string;
+  deger: number; // s — çevrim/işgal süresi
+  aciklama: string;
+}
+
+export interface HatSonuc {
+  line: Line;
+  blocks: number[];
+  ringBounds: number[];
+  zones: MakasZon[];
+  trains: HatTren[];
+  zoneTimeline: Record<string, ZonOlay[]>;
+  zoneStats: ZonIstatistik[];
+  baseTime: number; // tek tren tam hat süresi (s)
+  tMax: number;
+  throughput: number; // tren/saat (çıkan, bu koşum)
+  achievedHeadway: number; // gerçekleşen ort. aralık (s, bu koşum)
+  requestedHeadway: number;
+  kapasiteHeadway: number; // s — sürdürülebilir min headway (doygunluk probe'u)
+  darbogaz: Darbogaz | null;
+  maxEszamanliGecis: number; // aynı anda en fazla kaç makas işgal (mutual-excl kanıtı ≤ makas sayısı)
+}
+
+interface TrenDurum {
+  k: number;
+  s: number;
+  v: number;
+  started: boolean;
+  done: boolean;
+  ns: number; // next station index
+  dwellUntil: number;
+  points: { t: number; s: number }[];
+  girisT: number;
+  cikisT: number;
+}
+
+/**
+ * Tam hat çok-tren interlocking simülasyonu (tek yön, hat başından dispatch).
+ * Trenler headway aralığıyla 0'dan girer, tüm hattı geçip L'de çıkar.
+ */
+export function simuleHat(
+  model: HatModel,
+  stock: RollingStock,
+  opts: { headway: number; count: number; maxBlockLen?: number; dt?: number; captureFrames?: boolean }
+): HatSonuc {
+  const { line, zones, ringBounds } = model;
+  const dt = opts.dt ?? 0.5;
+  const maxBlockLen = opts.maxBlockLen ?? 500;
+  const bounds = makeBlocks(line, maxBlockLen);
+  const count = Math.max(1, opts.count);
+  const headway = opts.headway;
+
+  const baseTime = coreRun(line, zones, bounds, stock, 1e9, 1, dt, null).trains[0]?.turSure ?? 0;
+
+  const res = coreRun(line, zones, bounds, stock, headway, count, dt, opts.captureFrames ? {} : null);
+
+  // metrikler — headway ÇIKIŞ noktasında ölçülür (servis hızı)
+  const tMax = Math.max(dt, ...res.trains.map((t) => t.cikisT || 0));
+  const cikisT = res.trains.filter((t) => t.cikisT > 0).map((t) => t.cikisT).sort((a, b) => a - b);
+  const achievedHeadway = cikisT.length > 1 ? (cikisT[cikisT.length - 1] - cikisT[0]) / (cikisT.length - 1) : baseTime;
+  const throughput = achievedHeadway > 0 ? 3600 / achievedHeadway : 0;
+
+  // KAPASİTE PROBE'u: çok sıkı talep + çok tren → sürdürülebilir min headway (darboğaz)
+  const probe = coreRun(line, zones, bounds, stock, 10, Math.max(14, count), dt, null);
+  const pCikis = probe.trains.filter((t) => t.cikisT > 0).map((t) => t.cikisT).sort((a, b) => a - b);
+  const kapasiteHeadway = pCikis.length > 1 ? (pCikis[pCikis.length - 1] - pCikis[0]) / (pCikis.length - 1) : baseTime;
+
+  // zon istatistik + timeline
+  const zoneStats: ZonIstatistik[] = res.zoneDurum.map((zd) => ({
+    id: zd.z.id,
+    ad: zd.z.ad,
+    ringId: zd.z.ringId,
+    tip: zd.z.tip,
+    merkez: zd.z.merkez,
+    gecisSayisi: zd.gecis,
+    mesguliyet: tMax > 0 ? zd.busy / tMax : 0,
+    dongu: zd.z.setupSure + (zd.z.end - zd.z.start) / zd.z.gecisHizi + zd.z.releaseSure,
+    toplamBekletme: zd.bekletme,
+  }));
+
+  // darboğaz: gerçek kapasite headway'i (probe) makas interlocking çevrimiyle
+  // karşılaştır — makas mı yoksa blok/durak aralığı mı bağlayıcı?
+  const makasFloor = zoneStats.length > 0 ? zoneStats.reduce((a, b) => (b.dongu > a.dongu ? b : a)) : null;
+  let darbogaz: Darbogaz | null = null;
+  if (makasFloor && kapasiteHeadway <= makasFloor.dongu * 1.2) {
+    darbogaz = {
+      tur: "makas",
+      id: makasFloor.id,
+      ad: makasFloor.ad,
+      deger: kapasiteHeadway,
+      aciklama: `Makas interlocking çevrimi ${makasFloor.dongu.toFixed(0)} s bağlayıcı → min sürdürülebilir headway ≈ ${kapasiteHeadway.toFixed(0)} s`,
+    };
+  } else {
+    darbogaz = {
+      tur: "blok",
+      id: "blok-durak",
+      ad: "Blok + durak aralığı",
+      deger: kapasiteHeadway,
+      aciklama: `Sabit blok + durak dwell bağlayıcı (makas çevrimi ${makasFloor ? makasFloor.dongu.toFixed(0) + " s" : "yok"} altında) → min sürdürülebilir headway ≈ ${kapasiteHeadway.toFixed(0)} s`,
+    };
+  }
+
+  return {
+    line,
+    blocks: bounds,
+    ringBounds,
+    zones,
+    trains: res.trains,
+    zoneTimeline: res.timeline,
+    zoneStats,
+    baseTime,
+    tMax,
+    throughput,
+    achievedHeadway,
+    requestedHeadway: headway,
+    kapasiteHeadway,
+    darbogaz,
+    maxEszamanliGecis: res.maxEsGecis,
+  };
+}
+
+interface CoreOut {
+  trains: HatTren[];
+  zoneDurum: ZonDurum[];
+  timeline: Record<string, ZonOlay[]>;
+  maxEsGecis: number;
+}
+
+function coreRun(
+  line: Line,
+  zones: MakasZon[],
+  bounds: number[],
+  stock: RollingStock,
+  headway: number,
+  count: number,
+  dt: number,
+  capture: Record<string, never> | null
+): CoreOut {
+  const meff = stock.mass * (1 + stock.rotatingMassFactor);
+  const b = stock.maxBraking;
+  const EPS = 1;
+  const nb = bounds.length - 1;
+  const L = line.length;
+  const stops = line.stations.map((s) => ({ pos: s.position, dwell: s.dwell }));
+  const firstStop = (() => {
+    const i = stops.findIndex((s) => s.pos > 1e-6);
+    return i < 0 ? stops.length : i;
+  })();
+  const brakeDist = (stock.maxSpeed * stock.maxSpeed) / (2 * b);
+
+  const trains: TrenDurum[] = Array.from({ length: count }, (_, k) => ({
+    k, s: 0, v: 0, started: false, done: false, ns: firstStop, dwellUntil: -1, points: [], girisT: -1, cikisT: 0,
+  }));
+
+  const zd: ZonDurum[] = zones.map((z) => ({ z, faz: "bos", sahip: -1, timer: 0, busy: 0, gecis: 0, bekletme: 0 }));
+  const timeline: Record<string, ZonOlay[]> = {};
+  for (const z of zones) timeline[z.id] = [{ t: 0, faz: "bos", sahip: -1 }];
+  const logFaz = (i: number, t: number) => {
+    if (!capture) return;
+    const tl = timeline[zd[i].z.id];
+    const last = tl[tl.length - 1];
+    if (last.faz !== zd[i].faz || last.sahip !== zd[i].sahip) tl.push({ t, faz: zd[i].faz, sahip: zd[i].sahip });
+  };
+
+  let t = 0;
+  let maxEsGecis = 0;
+  const maxT = 1e9; // güvenli üst sınır coreRun içinde bitiş koşuluyla
+  const hardT = Math.max(3600, count * Math.max(1, headway) + 4000);
+
+  while (trains.some((tr) => !tr.done) && t < Math.min(maxT, hardT)) {
+    // 1) Zon fazlarını ilerlet
+    let esGecis = 0;
+    zd.forEach((z, i) => {
+      if (z.faz === "tanzim") {
+        z.timer += dt;
+        if (z.timer >= z.z.setupSure) { z.faz = "kilitli"; z.timer = 0; }
+      } else if (z.faz === "release") {
+        z.timer += dt;
+        if (z.timer >= z.z.releaseSure) { z.faz = "bos"; z.sahip = -1; z.timer = 0; }
+      }
+      if (z.faz !== "bos") z.busy += dt;
+      if (z.faz === "kilitli") esGecis++;
+      logFaz(i, t);
+    });
+    if (esGecis > maxEsGecis) maxEsGecis = esGecis;
+
+    // 2) Blok işgali
+    const occ = new Array<number>(nb).fill(-1);
+    for (const tr of trains) if (tr.started && !tr.done) occ[blockOf(bounds, tr.s)] = tr.k;
+
+    // 3) Trenler
+    for (const tr of trains) {
+      if (tr.done) continue;
+
+      if (!tr.started) {
+        const ready = t + 1e-9 >= tr.k * headway;
+        if (ready && (occ[0] === -1 || occ[0] === tr.k)) {
+          tr.started = true;
+          tr.girisT = t;
+          tr.points.push({ t, s: 0 });
+        } else {
+          if (ready) tr.points.push({ t, s: 0 });
+          continue;
+        }
+      }
+
+      if (tr.dwellUntil > t + 1e-9) {
+        tr.points.push({ t: t + dt, s: tr.s });
+        continue;
+      }
+
+      // 3a) blok hareket yetkisi (önümüzdeki ilk dolu blok)
+      const cur = blockOf(bounds, tr.s);
+      let MA = L;
+      for (let j = cur + 1; j < nb; j++) {
+        if (occ[j] !== -1 && occ[j] !== tr.k) { MA = bounds[j]; break; }
+      }
+
+      // 3b) makas bölgesi kapısı: önümüzdeki ilk bölge (start > s)
+      let zoneGate = L + 1;
+      let zi = -1;
+      for (let i = 0; i < zd.length; i++) {
+        if (zd[i].z.start > tr.s + 1e-6 && zd[i].z.start < zoneGate) { zoneGate = zd[i].z.start; zi = i; }
+      }
+      if (zi >= 0) {
+        const z = zd[zi];
+        const uzaklik = z.z.start - tr.s;
+        // yaklaşınca ve boşsa rotayı ele geçir (tanzim başlasın; iyi durumda tren varmadan biter)
+        const yaklas = brakeDist + z.z.setupSure * stock.maxSpeed + 30;
+        if (z.faz === "bos" && uzaklik <= yaklas) { z.faz = "tanzim"; z.sahip = tr.k; z.timer = 0; logFaz(zi, t); }
+        // sahip biz + kilitli → geç; aksi halde giriş sınırında bekle
+        const gecebilir = z.sahip === tr.k && z.faz === "kilitli";
+        if (!gecebilir) {
+          if (z.sahip !== tr.k || z.faz !== "kilitli") {
+            if (uzaklik < 1e-6 + EPS) z.bekletme += dt; // girişte bekliyor → kuyruk yükü
+          }
+        } else {
+          zoneGate = L + 1; // geçiş serbest
+        }
+      }
+
+      const blockTarget = Math.min(MA, zoneGate);
+      const nsPos = tr.ns < stops.length ? stops[tr.ns].pos : L;
+      const redStop = blockTarget < nsPos - 1e-6;
+      const target = Math.min(blockTarget, nsPos);
+
+      const vAllowed = allowedSpeed(line, stock, tr.s, target, b);
+      let vNew: number;
+      if (tr.v > vAllowed + 0.05) {
+        vNew = Math.max(0, tr.v - b * dt);
+      } else if (tr.v < vAllowed - 0.05) {
+        const seg = segAt(line, tr.s);
+        const Ftr = Math.min(stock.startingTractiveEffort, stock.power / Math.max(tr.v, 0.5));
+        const R = stock.davisA + stock.davisB * tr.v + stock.davisC * tr.v * tr.v;
+        const Fg = stock.mass * G * (seg.gradient / 1000);
+        const a = (Ftr - R - Fg) / meff;
+        vNew = Math.max(0, Math.min(tr.v + a * dt, vAllowed));
+      } else {
+        vNew = vAllowed;
+      }
+
+      let sNew = tr.s + ((tr.v + vNew) / 2) * dt;
+
+      // istasyona varış
+      if (!redStop && sNew >= nsPos - 1e-6) {
+        sNew = nsPos;
+        tr.s = sNew;
+        tr.v = 0;
+        tr.points.push({ t: t + dt, s: sNew });
+        if (nsPos >= L - 1e-6) {
+          tr.done = true;
+          tr.cikisT = t + dt;
+        } else {
+          tr.dwellUntil = t + dt + stops[tr.ns].dwell;
+          tr.ns++;
+        }
+        continue;
+      }
+
+      // kırmızı/makas kapısında durma
+      if (redStop && sNew >= blockTarget - EPS) {
+        sNew = Math.max(tr.s, blockTarget - EPS);
+        vNew = 0;
+      }
+
+      tr.s = sNew;
+      tr.v = vNew;
+      tr.points.push({ t: t + dt, s: sNew });
+    }
+
+    // 4) Makas işgal/çıkış kontrolü (sahip bölgeyi geçti mi?)
+    zd.forEach((z, i) => {
+      if (z.faz === "kilitli" && z.sahip >= 0) {
+        const owner = trains[z.sahip];
+        if (owner.done || owner.s >= z.z.end - 1e-6) {
+          z.faz = "release";
+          z.timer = 0;
+          z.gecis += 1;
+          logFaz(i, t);
+        }
+      }
+    });
+
+    t += dt;
+  }
+
+  return {
+    trains: trains.map((tr) => ({
+      index: tr.k,
+      points: tr.points,
+      girisT: tr.girisT,
+      cikisT: tr.cikisT,
+      turSure: (tr.cikisT || t) - (tr.girisT < 0 ? 0 : tr.girisT),
+    })),
+    zoneDurum: zd,
+    timeline,
+    maxEsGecis,
+  };
+}
