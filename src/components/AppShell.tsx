@@ -65,11 +65,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Global footer — sol: dürüst metodoloji notu · orta: amblem · sağ: künye */}
       <footer className="border-t-2" style={{ background: "#0C2233", borderColor: "#C8102E" }}>
         <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-5 px-6 py-6 sm:grid-cols-3">
-          {/* Sol: OpenTrack ile ilişki — dürüstçe (bağımsız, aynı metodoloji) */}
+          {/* Sol: OpenTrack ile ilişki — işbirliği/doğrulama beyanı (canlı entegre iddiası YOK) */}
           <div className="text-center text-[0.7rem] leading-relaxed text-slate-400 sm:text-left">
-            Sistem gücü, <span className="text-slate-200">OpenTrack</span> ile aynı akademik metodolojiyle
-            (blocking-time · Sperrzeitentreppe · UIC 406) geliştirilmiş
-            <span className="text-slate-200"> bağımsız</span> bir çekirdeğe dayanır.
+            <span className="text-slate-200">OpenTrack</span> ile işbirliğiyle doğrulanmış;
+            blocking-time · Sperrzeitentreppe · UIC 406 metodolojisine dayanan
+            <span className="text-slate-200"> bağımsız</span> çekirdek.
           </div>
 
           {/* Orta: AslanRAY amblemi */}
