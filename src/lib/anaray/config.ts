@@ -1,4 +1,4 @@
-// türkray — PAYLAŞILAN SİMÜLASYON PARAMETRELERİ (tek kaynak).
+// aslanray — PAYLAŞILAN SİMÜLASYON PARAMETRELERİ (tek kaynak).
 //
 // Belge kabullerinden (MAZ-VA-AKS-001 v6.0) türeyen tüm sayısal parametreler
 // burada tek bir `SimConfig` nesnesinde toplanır. Tüm modüller (Sefer, Ringler,

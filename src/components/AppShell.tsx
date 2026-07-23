@@ -1,6 +1,6 @@
 "use client";
 
-// türkray — ortak uygulama kabuğu (tek sistem navigasyonu).
+// aslanray — ortak uygulama kabuğu (tek sistem navigasyonu).
 // Tüm modüller (Sefer / Ringler / Anklaşman / Kural Kitabı) aynı Masthead + nav
 // altında mantıksal olarak bağlıdır. Aktif modül yola (pathname) göre belirlenir;
 // Masthead künyesi ve rota buradan beslenir. Sayfalar yalnız içeriklerini döner.
@@ -43,7 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Modül navigasyonu — sistemin mantıksal iş akışı (soldan sağa boru hattı) */}
       <nav className="sticky top-0 z-20 border-b" style={{ background: "#0E2739", borderColor: "#1E3A50" }}>
-        <div className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 py-2">
+        <div className="mx-auto flex max-w-6xl flex-wrap gap-1 px-4 py-2">
           {MODULLER.map((m, i) => {
             const on = m.href === aktif.href;
             return (

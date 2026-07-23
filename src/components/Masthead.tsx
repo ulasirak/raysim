@@ -1,4 +1,4 @@
-// türkray — resmî künye başlığı (masthead).
+// aslanray — resmî künye başlığı (masthead).
 // Koyu mürekkep zemin + amblem (ray rozeti) + Spectral marka + resmî belge künyesi.
 
 export function Masthead({ belgeKodu, rota }: { belgeKodu: string; rota: string }) {

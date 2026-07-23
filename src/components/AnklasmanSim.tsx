@@ -1,6 +1,6 @@
 "use client";
 
-// türkray — MAKAS BÖLGESİ ANKLAŞMAN görselleştiricisi.
+// aslanray — MAKAS BÖLGESİ ANKLAŞMAN görselleştiricisi.
 // Belgedeki bölge senaryolarını canlı çalıştırır: rota talepleri gönderilir,
 // motor çakışma matriksi + kilit + zamanlayıcılarla işletir; sinyal aspektleri
 // (Yeşil/Sarı/Kırmızı/Sönük), makas durumları ve blok doluluğu zaman içinde

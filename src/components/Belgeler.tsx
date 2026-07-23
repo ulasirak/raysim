@@ -1,6 +1,6 @@
 "use client";
 
-// türkray — TEKNİK BELGELER modülü.
+// aslanray — TEKNİK BELGELER modülü.
 // Karşı taraf proje künyesini girer; mevcut hat (ringler) + parametrelerden
 // profesyonel Word (.docx) Tasarım El Kitabı ve Excel (.xlsx) çalışma kitabı
 // üretir. İçerik tamamen girilen projeden türer (Konya'ya bağlı değil).
@@ -40,7 +40,7 @@ export function Belgeler() {
     };
   }, [rings, stock, cfg]);
 
-  const dosyaAdi = (ext: string) => `${meta.dokumanNo || "türkray"}_${(meta.hatAdi || "hat").replace(/\s+/g, "_")}.${ext}`;
+  const dosyaAdi = (ext: string) => `${meta.dokumanNo || "aslanray"}_${(meta.hatAdi || "hat").replace(/\s+/g, "_")}.${ext}`;
 
   const wordIndir = async () => {
     setMesgul("word"); setDurum(null);

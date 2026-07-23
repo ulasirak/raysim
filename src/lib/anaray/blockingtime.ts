@@ -1,4 +1,4 @@
-// türkray — BLOCKING-TIME (Sperrzeitentreppe) + UIC 406 KAPASİTE.
+// aslanray — BLOCKING-TIME (Sperrzeitentreppe) + UIC 406 KAPASİTE.
 //
 // Her sinyal bloğu, bir tren için bir "blocking time" süresi boyunca rezerve
 // edilir. Klasik demiryolu kapasite teorisinde (Pachl; UIC 406) bu süre 6

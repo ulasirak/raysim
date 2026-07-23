@@ -1,4 +1,4 @@
-// türkray — enerji & güç analizi (Faz 2).
+// aslanray — enerji & güç analizi (Faz 2).
 //
 // Enerji dengesi (adım adım): çekiş işi − fren işi = ΔKinetik + direnç işi + eğim işi.
 //   rhs = ΔKE + W_direnç + W_eğim

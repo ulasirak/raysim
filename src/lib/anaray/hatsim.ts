@@ -1,4 +1,4 @@
-// türkray — TAM HAT ÇOK-TREN CANLI SİMÜLASYONU (ring + anklaşman birleşik).
+// aslanray — TAM HAT ÇOK-TREN CANLI SİMÜLASYONU (ring + anklaşman birleşik).
 //
 // Ring hücreleri (durak-arası) zincirlenerek tek bir birleşik hat kurulur.
 // Trenler bu hat üzerinde:

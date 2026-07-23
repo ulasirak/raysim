@@ -1,4 +1,4 @@
-// türkray — TEKNİK BELGE ÜRETİCİ (Word .docx + Excel .xlsx).
+// aslanray — TEKNİK BELGE ÜRETİCİ (Word .docx + Excel .xlsx).
 //
 // Amaç: herhangi bir karşı taraf hattını (ring dizisi + parametre + künye)
 // girer; bu modül mevcut motor çıktılarından PROFESYONEL, teknik olarak tutarlı

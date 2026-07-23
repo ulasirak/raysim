@@ -1,7 +1,7 @@
 // anaray — örnek şebeke senaryosu.
 // Ana hat (Merkez → Terminal) + B durağından ayrılan bir depo hattı (spur).
 // Trenimiz ana hattı izler; depo hattı grafın gerçekten bir "ağ" olduğunu gösterir.
-// Faz 5'te Konya Tramvay gerçek verisiyle değişecek.
+// Bu örnek veridir; gerçek proje hattı Ringler editöründen girilir.
 
 import type { RailNetwork, Route } from "./types";
 import { flattenRoute } from "./network";

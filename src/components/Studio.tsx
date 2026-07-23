@@ -1,6 +1,6 @@
 "use client";
 
-// türkray — interaktif çalışma alanı (Faz 1 editörü + Firebase senaryolar).
+// aslanray — interaktif çalışma alanı (Faz 1 editörü + Firebase senaryolar).
 // Ağ + araç düzenlenir; her değişiklikte flattenRoute→simulate→paneller anında güncellenir.
 // Senaryolar Firestore'a kaydedilir/yüklenir. İstasyon ekle/sil grafı düzenler.
 
@@ -583,7 +583,7 @@ function SenaryoPaneli({
         <div className="flex flex-col gap-3">
           {yazabilir && (
             <div className="flex flex-wrap items-center gap-2">
-              <input value={ad} onChange={(e) => setAd(e.target.value)} placeholder="Senaryo adı (ör. Konya 3 dk arayla)"
+              <input value={ad} onChange={(e) => setAd(e.target.value)} placeholder="Senaryo adı (ör. 3 dk arayla)"
                 className="min-w-0 flex-1 rounded border px-2 py-1.5 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
               <button onClick={kaydet} disabled={mesgul}
                 className="rounded-md px-4 py-1.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: brand.ink }}>

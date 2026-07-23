@@ -1,6 +1,6 @@
 "use client";
 
-// türkray — TAM HAT ÇOK-TREN CANLI SİMÜLASYONU (ring + anklaşman birleşik).
+// aslanray — TAM HAT ÇOK-TREN CANLI SİMÜLASYONU (ring + anklaşman birleşik).
 // Ring hücreleri tek koridora zincirlenir; trenler sabit-blok headway ile akar,
 // makas bölgelerinde gerçek interlocking'e girer (tanzim→yeşil→işgal→release kilidi).
 // Headway sıkışınca makas/blok kuyruklanması → gerçek darboğaz canlı görünür.
@@ -127,7 +127,7 @@ export function HatSim() {
     <div className="mx-auto max-w-6xl px-6 py-8">
       <div className="mb-6 border-b pb-4" style={{ borderColor: brand.border }}>
         <div className="field-label">Tam Hat Çok-Tren Canlı Simülasyonu — Ring + Anklaşman Birleşik</div>
-        <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>Konya 2. Etap · Tam Hat İşletme</h1>
+        <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>Tam Hat İşletme</h1>
         <p className="mt-1 text-sm" style={{ color: brand.muted }}>
           Durak-arası ring hücreleri tek koridora zincirlendi. Trenler sabit-blok headway ile akar; makas bölgelerinde
           gerçek interlocking&apos;e girer (tanzim → yeşil → işgal → release kilidi). Tren sayısını/aralığını artırdıkça makas

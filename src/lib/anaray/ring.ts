@@ -1,4 +1,4 @@
-// türkray — DURAK ARASI RİNG modeli (gerçek-hayat işletim hücreleri).
+// aslanray — DURAK ARASI RİNG modeli (gerçek-hayat işletim hücreleri).
 //
 // Kavram: iki durak arasındaki her kesim bağımsız bir "ring hücresi"dir.
 // Her hücre kendi ZORUNLU şartlarını taşır — mesafe, makas bölgeleri (konum,
@@ -524,10 +524,10 @@ export function yeniRing(fromAd: string, toAd: string): DurakArasiRing {
 }
 
 // ————————————————————————————————————————————————
-// Konya seed (el kitabındaki adlandırılmış bölgelerden — düzenlenebilir)
+// Örnek seed (jenerik — karşı taraf kendi hattını editörden girer)
 // ————————————————————————————————————————————————
-// Not: Konumlar el kitabının bölge tipleri + kritik hat notlarına dayanır;
-// nihai saha ölçüleri gelince editörden güncellenir.
+// Not: Aşağıdaki hat SADECE ÖRNEK/başlangıç verisidir; gerçek proje değildir.
+// İstasyon adları, mesafeler, makas/geçit konumları Ringler editöründen değiştirilir.
 
 function seedRing(
   fromAd: string,
@@ -549,41 +549,40 @@ function seedRing(
   };
 }
 
-/** Konya 2. Etap koridoru — el kitabı bölgeleriyle örnek loop (düzenlenebilir). */
-export function konyaSeed(): { rings: DurakArasiRing[]; loop: Loop } {
+/** Örnek koridor — jenerik başlangıç loop'u (tamamen düzenlenebilir örnek veri). */
+export function ornekSeed(): { rings: DurakArasiRing[]; loop: Loop } {
   _sayac = 0; // deterministik id'ler
   const rings: DurakArasiRing[] = [
-    // Hükümet → Alaaddin: el kitabı notu — bu aralık 15 sn'de aşılıyor (çok kısa);
-    // sonunda 1. Makas Bölgesi (karşılaşmalı, A-D/A-B/C-D).
-    seedRing("Hükümet Durağı", "Alaaddin", 250, {
+    // Merkez → İstasyon A: kısa aralık; sonunda 1. Makas Bölgesi (karşılaşmalı, A-D/A-B/C-D).
+    seedRing("Merkez", "İstasyon A", 250, {
       worstUzunluk: 600,
       bestUzunluk: 200,
-      makaslar: [{ ...yeniMakas("karsilasmali", 220), ad: "1. Makas (Alaaddin/S)" }],
+      makaslar: [{ ...yeniMakas("karsilasmali", 220), ad: "1. Makas Bölgesi (karşılaşmalı)" }],
     }),
-    // Alaaddin → Mevlana: karma trafik (yaya/karayolu); 2. Makas headway + DB U-dönüş.
-    seedRing("Alaaddin", "Mevlana", 800, {
+    // İstasyon A → İstasyon B: karma trafik (yaya/karayolu); 2. Makas headway + U-dönüş.
+    seedRing("İstasyon A", "İstasyon B", 800, {
       hemzeminler: [
-        { ...yeniHemzemin("karayolu", 300), ad: "Alaaddin kavşağı" },
-        { ...yeniHemzemin("yaya", 620), ad: "Mevlana yaya" },
+        { ...yeniHemzemin("karayolu", 300), ad: "Karayolu geçidi 1" },
+        { ...yeniHemzemin("yaya", 620), ad: "Yaya geçidi 1" },
       ],
-      makaslar: [{ ...yeniMakas("headway", 780), ad: "2. Makas (headway)" }],
+      makaslar: [{ ...yeniMakas("headway", 780), ad: "2. Makas Bölgesi (headway)" }],
     }),
-    // Mevlana → Mevlana Kültür Merkezi: karma trafik + keskin kurp (acil frenleme).
-    seedRing("Mevlana", "Mevlana Kültür Merkezi", 900, {
-      hemzeminler: [{ ...yeniHemzemin("karayolu", 450), ad: "Mevlana kavşağı" }],
+    // İstasyon B → İstasyon C: karma trafik + keskin kurp (acil frenleme).
+    seedRing("İstasyon B", "İstasyon C", 900, {
+      hemzeminler: [{ ...yeniHemzemin("karayolu", 450), ad: "Karayolu geçidi 2" }],
       tehlikeNoktalari: [{ ...yeniTehlike(680), ad: "Keskin kurp — acil frenleme" }],
     }),
-    // Mevlana Kültür Merkezi → Adliye: 3. Makas S-makas U-dönüş (izole).
-    seedRing("Mevlana Kültür Merkezi", "Adliye", 1100, {
+    // İstasyon C → İstasyon D: 3. Makas S-makas U-dönüş (izole).
+    seedRing("İstasyon C", "İstasyon D", 1100, {
       worstUzunluk: 1500,
-      makaslar: [{ ...yeniMakas("udonus", 1050), ad: "3. Makas (S / U-dönüş)" }],
+      makaslar: [{ ...yeniMakas("udonus", 1050), ad: "3. Makas Bölgesi (U-dönüş)" }],
     }),
-    // Adliye → Kışla: 4. Makas Adliye S-makas U-dönüş (izole, karma trafiksiz).
-    seedRing("Adliye", "Kışla", 1200, {
+    // İstasyon D → Terminal: 4. Makas S-makas U-dönüş (izole, karma trafiksiz).
+    seedRing("İstasyon D", "Terminal", 1200, {
       worstUzunluk: 1500,
-      makaslar: [{ ...yeniMakas("udonus", 1140), ad: "4. Makas (Adliye S)" }],
+      makaslar: [{ ...yeniMakas("udonus", 1140), ad: "4. Makas Bölgesi (U-dönüş)" }],
     }),
   ];
-  const loop: Loop = { id: "loop_konya", ad: "Konya 2. Etap — Ring Hattı", ringIds: rings.map((r) => r.id), kapali: true };
+  const loop: Loop = { id: "loop_ornek", ad: "Örnek Ring Hattı", ringIds: rings.map((r) => r.id), kapali: true };
   return { rings, loop };
 }

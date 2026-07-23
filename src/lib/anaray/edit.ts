@@ -1,4 +1,4 @@
-// türkray — graf düzenleme (istasyon ekle/sil).
+// aslanray — graf düzenleme (istasyon ekle/sil).
 //
 // Değişmez (invariant): editör tabanı ana hat (anaHat) TÜM kenarları ileri yönde
 // gezer (train edge.from'dan girer). Ekle/sil bu ileri-yönlülüğü korur:

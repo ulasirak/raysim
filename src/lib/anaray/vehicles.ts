@@ -1,4 +1,4 @@
-// türkray — çeken araç veritabanı (hazır tipler).
+// aslanray — çeken araç veritabanı (hazır tipler).
 // Kalkış çekiş kuvveti ~ etkin kütle × ~1.0 m/s² (gerçekçi kalkış ivmesi).
 
 import type { RollingStock } from "./types";

@@ -1,6 +1,6 @@
 "use client";
 
-// türkray — DURAK ARASI RİNG editörü.
+// aslanray — DURAK ARASI RİNG editörü.
 // Her durak-arası hücrenin ZORUNLU şartları girilir/düzenlenir (mesafe, makas
 // bölgeleri, hemzemin, tehlike noktaları). Her değişiklikte worst/best köşeleri,
 // headway (240 s) uygunluğu, durak-çiftleri arası denge ve tren-sayısı

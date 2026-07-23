@@ -1,9 +1,9 @@
 "use client";
 
-// türkray — SİSTEM MERKEZİ.
+// aslanray — SİSTEM MERKEZİ.
 // (1) Paylaşılan simülasyon parametreleri — buradan değiştir, tüm modüllere canlı
 //     yansır (localStorage'da kalıcı). (2) Canlı sistem durumu — mevcut config +
-//     Konya seed'iyle ring loop + anklaşman bölgeleri anlık çözülür. (3) Bilgi /
+//     örnek seed'le ring loop + anklaşman bölgeleri anlık çözülür. (3) Bilgi /
 //     challenge referansı — sistemin karşıladığı gerçek-hayat durumları.
 
 import { useMemo } from "react";
@@ -66,7 +66,7 @@ export function SistemMerkezi() {
       </div>
 
       {/* Canlı sistem durumu — hero */}
-      <Panel baslik="Canlı Sistem Durumu" aciklama="Aşağıdaki parametrelerle Konya seed'i (ring loop + makas bölgeleri) anlık çözülür. Parametreyi değiştir → tüm sistem canlı güncellenir.">
+      <Panel baslik="Canlı Sistem Durumu" aciklama="Aşağıdaki parametrelerle örnek hat (ring loop + makas bölgeleri) anlık çözülür. Parametreyi değiştir → tüm sistem canlı güncellenir.">
         {uyarilar.length > 0 ? (
           <div className="mb-4 flex flex-col gap-1.5">
             {uyarilar.map((u, i) => (

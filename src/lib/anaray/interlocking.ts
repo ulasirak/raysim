@@ -1,4 +1,4 @@
-// türkray — MAKAS BÖLGESİ ANKLAŞMAN MOTORU (dağıtık interlocking).
+// aslanray — MAKAS BÖLGESİ ANKLAŞMAN MOTORU (dağıtık interlocking).
 //
 // Belge: Tasarım El Kitabı MAZ-VA-AKS-001 v6.0 (bölge senaryoları s.19–44).
 // Her makas bölgesi bağımsız bir SIL4 anklaşman birimidir (dağıtık; merkezi ana
@@ -316,7 +316,7 @@ export function bolge1(): MakasBolgeTopolojisi {
     id, nereden, nereye, sinyal, bloklar: ["BS1", "BS2"], makaslar: [{ id: "PM1", konum }], headwayGerekli: false, tccGerekli: true,
   });
   return {
-    id: "1", ad: "1. Makas Bölgesi (Alaaddin/S — karşılaşmalı)", tip: "karsilasmali",
+    id: "1", ad: "1. Makas Bölgesi (karşılaşmalı)", tip: "karsilasmali",
     bloklar: ["BS1", "BS2"], makaslar: ["PM1"], sinyaller: ["SG_A", "SG_C", "SG_D", "SG_B"], uzunluk: 90,
     rotalar: [
       R("LOC1_AD", "A", "D", "SG_A", "AD"),
@@ -331,7 +331,7 @@ export function bolge1(): MakasBolgeTopolojisi {
 /** 2. Makas Bölgesi (s.21): AB & CD paralel düz; BE, DB sapaklar. */
 export function bolge2(): MakasBolgeTopolojisi {
   return {
-    id: "2", ad: "2. Makas Bölgesi (Mevlana/Alaaddin — headway + U-dönüş)", tip: "headway",
+    id: "2", ad: "2. Makas Bölgesi (headway + U-dönüş)", tip: "headway",
     bloklar: ["BS4", "BS5", "BS6", "BS8"], makaslar: ["PM2", "PM3"], sinyaller: ["SG_A", "SG_C", "SG_B", "SG_D"], uzunluk: 120,
     rotalar: [
       { id: "LOC2_AB", nereden: "A", nereye: "B", sinyal: "SG_A", bloklar: ["BS5"], makaslar: [{ id: "PM2", konum: "AB" }], headwayGerekli: true, tccGerekli: false },
