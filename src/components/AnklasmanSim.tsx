@@ -254,7 +254,7 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
       </div>
 
       <footer className="mt-10 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
-        türkray · Dağıtık anklaşman — TCC yalnız istek gönderir, son söz saha SIL4 PLC&apos;sindedir · makas adımı {cfg.makasAdimMax} s · route release {topo.tip === "depo" ? cfg.routeReleaseDepo : cfg.routeReleaseAnahat} s · fail-safe = yalnız bu bölge söner (canlı parametreler: Sistem Merkezi)
+        AslanRAY · Dağıtık anklaşman — TCC yalnız istek gönderir, son söz saha SIL4 PLC&apos;sindedir · makas adımı {cfg.makasAdimMax} s · route release {topo.tip === "depo" ? cfg.routeReleaseDepo : cfg.routeReleaseAnahat} s · fail-safe = yalnız bu bölge söner (canlı parametreler: Sistem Merkezi)
       </footer>
     </div>
   );

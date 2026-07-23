@@ -124,7 +124,7 @@ export const varsayilanMeta: ProjeMeta = {
   idare: "İdare / İşveren",
   yuklenici: "Yüklenici Firma",
   musavir: "Müşavir Firma",
-  sinyalizasyonFirmasi: "türkray",
+  sinyalizasyonFirmasi: "AslanRAY",
   dokumanNo: "TR-VA-AKS-001",
   revizyon: "v1.0",
   tarih: "",

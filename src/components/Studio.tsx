@@ -469,7 +469,7 @@ export function Studio() {
 
       <footer className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
         <span className="flex items-center gap-3">
-          <span>türkray · Demiryolu Ağı Simülasyon Sistemi</span>
+          <span>AslanRAY · Demiryolu Ağı Simülasyon Sistemi</span>
           <VeritabaniDurumu />
         </span>
         <span className="font-mono">Sürüm 0.2 · tam simülatör</span>
