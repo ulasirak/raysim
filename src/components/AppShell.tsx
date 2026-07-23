@@ -61,6 +61,36 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </nav>
 
       <main className="flex-1" style={{ background: brand.paper }}>{children}</main>
+
+      {/* Global footer — sol: dürüst metodoloji notu · orta: amblem · sağ: künye */}
+      <footer className="border-t-2" style={{ background: "#0C2233", borderColor: "#C8102E" }}>
+        <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-5 px-6 py-6 sm:grid-cols-3">
+          {/* Sol: OpenTrack ile ilişki — dürüstçe (bağımsız, aynı metodoloji) */}
+          <div className="text-center text-[0.7rem] leading-relaxed text-slate-400 sm:text-left">
+            Sistem gücü, <span className="text-slate-200">OpenTrack</span> ile aynı akademik metodolojiyle
+            (blocking-time · Sperrzeitentreppe · UIC 406) geliştirilmiş
+            <span className="text-slate-200"> bağımsız</span> bir çekirdeğe dayanır.
+          </div>
+
+          {/* Orta: AslanRAY amblemi */}
+          <div className="flex flex-col items-center gap-1.5">
+            <svg width="38" height="38" viewBox="0 0 46 46" fill="none" aria-hidden="true">
+              <circle cx="23" cy="23" r="21.5" stroke="#A8842C" strokeWidth="1" />
+              <circle cx="23" cy="23" r="18" stroke="#E7ECF1" strokeWidth="1" opacity="0.5" />
+              <path d="M17 34 L21.5 13 M29 34 L24.5 13" stroke="#E7ECF1" strokeWidth="1.6" strokeLinecap="round" />
+              <path d="M18.4 28 L27.6 28 M19.3 24 L26.7 24 M20 20.5 L26 20.5 M20.7 17.5 L25.3 17.5" stroke="#C8102E" strokeWidth="1.4" strokeLinecap="round" />
+            </svg>
+            <span className="font-brand text-sm font-semibold tracking-[0.15em] text-white">AslanRAY</span>
+          </div>
+
+          {/* Sağ: künye */}
+          <div className="text-center text-[0.7rem] leading-relaxed text-slate-400 sm:text-right">
+            Demiryolu Ağı Simülasyon Sistemi
+            <br />
+            <span className="text-slate-500">Sinyalizasyon · Kapasite · Dokümantasyon</span>
+          </div>
+        </div>
+      </footer>
     </SimConfigProvider>
   );
 }
