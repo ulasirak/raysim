@@ -16,7 +16,8 @@ import { araclar } from "@/lib/anaray/vehicles";
 import { ornekSebeke, anaHat, ornekTramvay, ornekHat } from "@/lib/anaray/scenario";
 import { kmh, km, sure, saat } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
-import { isFirebaseConfigured } from "@/lib/firebase";
+import { isFirebaseConfigured, getAuthInstance } from "@/lib/firebase";
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from "firebase/auth";
 import { saveScenario, listScenarios, loadScenario, deleteScenario, type ScenarioMeta } from "@/lib/scenarios";
 import { useSimConfig } from "@/components/SimConfigProvider";
 import { LiveNetwork } from "@/components/LiveNetwork";
@@ -492,6 +493,35 @@ function SenaryoPaneli({
   const [liste, setListe] = useState<ScenarioMeta[]>([]);
   const [mesaj, setMesaj] = useState<{ tip: "ok" | "err" | "info"; metin: string } | null>(null);
   const [mesgul, setMesgul] = useState(false);
+  // Yönetici girişi: vitrin modunda yalnız giriş yapan yönetici yazabilir/silebilir.
+  const [user, setUser] = useState<User | null>(null);
+  const [girisAcik, setGirisAcik] = useState(false);
+  const [eposta, setEposta] = useState("");
+  const [sifre, setSifre] = useState("");
+  const yazabilir = !vitrin || !!user; // yerelde (vitrin kapalı) hep; canlıda yalnız giriş yapınca
+
+  useEffect(() => {
+    const auth = getAuthInstance();
+    if (!auth) return;
+    return onAuthStateChanged(auth, (u) => setUser(u));
+  }, []);
+
+  const girisYap = async () => {
+    const auth = getAuthInstance();
+    if (!auth) return;
+    setMesgul(true); setMesaj(null);
+    try {
+      await signInWithEmailAndPassword(auth, eposta.trim(), sifre);
+      setGirisAcik(false); setSifre("");
+      setMesaj({ tip: "ok", metin: "Yönetici girişi yapıldı — kaydet/sil açık." });
+    } catch (e) {
+      setMesaj({ tip: "err", metin: hataMetni(e) });
+    } finally { setMesgul(false); }
+  };
+  const cikisYap = async () => {
+    const auth = getAuthInstance();
+    if (auth) await signOut(auth);
+  };
 
   const yenile = async () => {
     try {
@@ -551,7 +581,7 @@ function SenaryoPaneli({
         </p>
       ) : (
         <div className="flex flex-col gap-3">
-          {!vitrin && (
+          {yazabilir && (
             <div className="flex flex-wrap items-center gap-2">
               <input value={ad} onChange={(e) => setAd(e.target.value)} placeholder="Senaryo adı (ör. Konya 3 dk arayla)"
                 className="min-w-0 flex-1 rounded border px-2 py-1.5 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
@@ -568,7 +598,7 @@ function SenaryoPaneli({
                 <li key={s.id} className="flex items-center gap-2 px-3 py-2 text-sm" style={{ borderColor: brand.border }}>
                   <span className="min-w-0 flex-1 truncate" style={{ color: brand.ink }}>{s.name}</span>
                   <button onClick={() => yukle(s.id, s.name)} disabled={mesgul} className="rounded px-2 py-1 text-xs font-medium transition hover:opacity-90 disabled:opacity-50" style={{ background: "#EDF0F3", color: brand.inkSoft }}>Yükle</button>
-                  {!vitrin && (
+                  {yazabilir && (
                     <button onClick={() => sil(s.id)} disabled={mesgul} title="Sil" className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
                   )}
                 </li>
@@ -587,6 +617,35 @@ function SenaryoPaneli({
                 <span style={{ color: brand.muted }}> — Firestore Database etkin mi ve kurallar okuma/yazmaya izin veriyor mu?</span>
               )}
             </p>
+          )}
+
+          {/* Yönetici girişi — yalnız vitrin modunda anlamlı (yerelde zaten tam yetki) */}
+          {vitrin && (
+            <div className="mt-1 border-t pt-2" style={{ borderColor: brand.border }}>
+              {user ? (
+                <div className="flex items-center justify-between text-xs" style={{ color: brand.muted }}>
+                  <span>Yönetici: <span className="font-medium" style={{ color: brand.ink }}>{user.email}</span> — kaydet/sil açık</span>
+                  <button onClick={cikisYap} className="rounded px-2 py-1 font-medium transition hover:bg-slate-50" style={{ color: brand.inkSoft }}>Çıkış</button>
+                </div>
+              ) : girisAcik ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <input type="email" value={eposta} onChange={(e) => setEposta(e.target.value)} placeholder="E-posta"
+                    className="min-w-0 flex-1 rounded border px-2 py-1.5 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+                  <input type="password" value={sifre} onChange={(e) => setSifre(e.target.value)} placeholder="Şifre"
+                    onKeyDown={(e) => { if (e.key === "Enter") girisYap(); }}
+                    className="min-w-0 flex-1 rounded border px-2 py-1.5 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+                  <button onClick={girisYap} disabled={mesgul}
+                    className="rounded-md px-3 py-1.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: brand.ink }}>
+                    {mesgul ? "…" : "Giriş"}
+                  </button>
+                  <button onClick={() => setGirisAcik(false)} className="rounded px-2 py-1.5 text-xs transition hover:bg-slate-50" style={{ color: brand.muted }}>Vazgeç</button>
+                </div>
+              ) : (
+                <button onClick={() => setGirisAcik(true)} className="text-xs font-medium transition hover:underline" style={{ color: brand.muted }}>
+                  🔑 Yönetici girişi (senaryo yayınlamak için)
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}

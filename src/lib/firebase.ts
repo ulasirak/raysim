@@ -7,6 +7,7 @@
 
 import { initializeApp, getApps, getApp, type FirebaseApp, type FirebaseOptions } from "firebase/app";
 import { getFirestore, type Firestore } from "firebase/firestore";
+import { getAuth, type Auth } from "firebase/auth";
 
 const config: FirebaseOptions = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -38,4 +39,14 @@ export function getDb(): Firestore | null {
   if (!a) return null;
   if (!dbInstance) dbInstance = getFirestore(a);
   return dbInstance;
+}
+
+let authInstance: Auth | null = null;
+
+/** Auth örneği; yapılandırma yoksa null. Yönetici girişi (senaryo yazma yetkisi) için. */
+export function getAuthInstance(): Auth | null {
+  const a = getFirebaseApp();
+  if (!a) return null;
+  if (!authInstance) authInstance = getAuth(a);
+  return authInstance;
 }

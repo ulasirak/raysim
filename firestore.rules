@@ -1,26 +1,25 @@
 rules_version = '2';
 
-// türkray — Firestore güvenlik kuralları (VİTRİN modu)
+// türkray — Firestore güvenlik kuralları (VİTRİN + YÖNETİCİ GİRİŞİ)
 // ────────────────────────────────────────────────────────────────
-// Karar: senaryolar HERKESE OKUNUR, yazma/silme KAPALI.
-// Uygulamada giriş/şifre yok → siteye giren herkes anonimdir. Bu yüzden
-// "yalnız sen yazabilirsin" istemcide sağlanamaz; yazma tamamen kapatılır.
+// Senaryolar HERKESE OKUNUR. Yazma/silme yalnız GİRİŞ YAPMIŞ YÖNETİCİYE açık.
+// Yönetici = aşağıdaki e-postayla Email/Password ile giriş yapan kullanıcı.
+// Ziyaretçi (anonim) veya başka bir hesap YAZAMAZ/SİLEMEZ.
 //
-// SENARYO EKLEMEK/GÜNCELLEMEK/SİLMEK İÇİN (yalnız sen, geçici):
-//   1) Aşağıdaki  `allow write: if false;`  satırını  `if true;`  yap,
-//   2) Firebase'e deploy et (veya Console'dan yayınla),
-//   3) yerelde uygulamadan senaryoyu kaydet/sil,
-//   4) satırı tekrar  `if false;`  yapıp deploy et → kilit geri gelir.
-// Alternatif: Firebase Console → Firestore → 'senaryolar' koleksiyonundan
-// belgeleri elle ekle/sil (kurallar okumayı hiç engellemez).
+// Kurulum (bir kez):
+//   1) Firebase Console → Authentication → Sign-in method → Email/Password'ü ETKİNLEŞTİR.
+//   2) Authentication → Users → Add user → e-posta = YONETICI_EPOSTA (aşağıdaki), şifre = seç.
+//   3) Uygulamada Senaryolar panelinde "🔑 Yönetici girişi" ile o e-posta/şifreyle gir → Kaydet/Sil açılır.
+// E-postayı değiştirmek istersen yalnız aşağıdaki satırı düzenle + `firebase deploy --only firestore:rules`.
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
     // Paylaşılan senaryo vitrini
     match /senaryolar/{doc} {
-      allow read: if true;      // herkes görüntüler/yükler
-      allow write: if false;    // create + update + delete → kapalı
+      allow read: if true;                                                   // herkes görüntüler/yükler
+      allow write: if request.auth != null
+                   && request.auth.token.email == "ulasirak073@gmail.com";   // yalnız yönetici yazar/siler
     }
 
     // Tanımlı olmayan her yol tamamen kapalı (varsayılan reddet)
