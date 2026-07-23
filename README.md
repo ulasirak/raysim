@@ -4,7 +4,9 @@ Mikroskobik tren hareketi, sinyalizasyon/anklaşman ve kapasite analizi için we
 demiryolu simülasyon platformu. Blocking-time (Sperrzeitentreppe) ve UIC 406 metodolojisine
 dayanan bağımsız çekirdek.
 
-**Canlı:** https://aslanray.vercel.app
+**Canlı:** https://turkray-eight.vercel.app
+
+📖 **Teknik dokümantasyon:** [`docs/README.md`](docs/README.md) — mimari, fizik motoru, sinyalizasyon, kapasite yöntemleri, veri modeli, dağıtım.
 
 ## Modüller
 
