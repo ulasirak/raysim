@@ -8,6 +8,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loopToHat, simuleHat, type ZonFaz } from "@/lib/anaray/hatsim";
+import { blockingTimeRing } from "@/lib/anaray/blockingtime";
 import { useSimConfig, useProje } from "@/components/SimConfigProvider";
 import { varsayilanArac } from "@/lib/anaray/vehicles";
 import { saat, sure } from "@/lib/anaray/format";
@@ -54,6 +55,7 @@ export function HatSim() {
   const { rings } = useProje();
   const [headway, setHeadway] = useState(120);
   const [count, setCount] = useState(8);
+  const [movingBlock, setMovingBlock] = useState(false);
   const [t, setT] = useState(0);
   const [oynat, setOynat] = useState(false);
   const [hiz, setHiz] = useState(15);
@@ -63,16 +65,18 @@ export function HatSim() {
 
   const model = useMemo(() => loopToHat(rings, true, cfg), [rings, cfg]);
   const sonuc = useMemo(
-    () => simuleHat(model, varsayilanArac, { headway, count, maxBlockLen: cfg.blokMaxUzunluk, captureFrames: true }),
-    [model, headway, count, cfg.blokMaxUzunluk]
+    () => simuleHat(model, varsayilanArac, { headway, count, maxBlockLen: cfg.blokMaxUzunluk, captureFrames: true, movingBlock }),
+    [model, headway, count, cfg.blokMaxUzunluk, movingBlock]
   );
+  // Analitik kapasite (blocking-time teorisi) — simülasyonla mutabakat için
+  const bt = useMemo(() => blockingTimeRing(rings, varsayilanArac, cfg), [rings, cfg]);
 
   const L = model.line.length;
   const T = sonuc.tMax || 1;
 
   // headway/tren değişince zamanı sıfırla (render sırasında, effect değil)
   const [sonAnahtar, setSonAnahtar] = useState("");
-  const anahtar = `${headway}|${count}|${cfg.blokMaxUzunluk}`;
+  const anahtar = `${headway}|${count}|${cfg.blokMaxUzunluk}|${movingBlock}`;
   if (anahtar !== sonAnahtar) {
     setSonAnahtar(anahtar);
     if (t !== 0) setT(0);
@@ -206,6 +210,26 @@ export function HatSim() {
         <span className="font-mono text-xs" style={{ color: brand.muted }}>{saat(t)} / {saat(T)}</span>
       </div>
 
+      {/* Sinyal sistemi modu */}
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="field-label">Sinyal sistemi</span>
+        <div className="inline-flex overflow-hidden rounded-md border" style={{ borderColor: brand.borderStrong }}>
+          <button onClick={() => setMovingBlock(false)} className="px-3 py-1.5 text-sm font-medium transition"
+            style={!movingBlock ? { background: brand.ink, color: "#fff" } : { background: "#fff", color: brand.inkSoft }}>
+            Sabit blok
+          </button>
+          <button onClick={() => setMovingBlock(true)} className="px-3 py-1.5 text-sm font-medium transition"
+            style={movingBlock ? { background: brand.ink, color: "#fff" } : { background: "#fff", color: brand.inkSoft }}>
+            Hareketli blok (CBTC)
+          </button>
+        </div>
+        <span className="text-xs" style={{ color: brand.muted }}>
+          {movingBlock
+            ? "Trenler öndekinin fiziksel kuyruğuna kadar sürekli yaklaşır (blok granülü yok) → daha sık headway."
+            : "Trenler sabit sinyal bloklarıyla ayrılır; dolu bloğa giremez."}
+        </span>
+      </div>
+
       {/* Sefer parametreleri */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm" style={{ color: brand.inkSoft }}>
@@ -240,6 +264,57 @@ export function HatSim() {
           )}
         </div>
       )}
+
+      {/* Kapasite Mutabakatı — analitik vs simüle vs gerçekleşen */}
+      {(() => {
+        const analitik = bt.minHeadway;
+        const simSabit = sonuc.kapasiteFixed;
+        const simHareketli = sonuc.kapasiteMoving;
+        const gerc = sonuc.achievedHeadway;
+        // Doğru tutarlılık ölçütü = SIRALAMA invaryantı, eşitlik DEĞİL:
+        //   analitik (ihtiyatlı/seri rezervasyon) ≥ sim sabit blok (örtüşmeli) ≥ sim hareketli blok.
+        // Simülasyon teorik ihtiyatlı sınırı aşarsa (sim > analitik) → GERÇEK tutarsızlık.
+        const TOL = 1.08;
+        const siraOk = simSabit <= analitik * TOL && simHareketli <= simSabit * TOL;
+        const ortusmePct = analitik > 0 ? ((analitik - simSabit) / analitik) * 100 : 0; // teori→sim örtüşme kazancı
+        const kazanPct = simSabit > 0 ? ((simSabit - simHareketli) / simSabit) * 100 : 0; // sabit→hareketli kazanç
+        const enUzun = Math.max(analitik, simSabit, simHareketli, gerc, 1);
+        const satirlar: [string, number, string][] = [
+          ["Analitik · blocking-time (ihtiyatlı)", analitik, brand.gold],
+          ["Simüle · sabit blok", simSabit, "#0C6DB8"],
+          ["Simüle · hareketli blok (CBTC)", simHareketli, "#0E7C57"],
+          ["Gerçekleşen (bu koşum)", gerc, brand.ink],
+        ];
+        return (
+          <div className="rounded-md border p-4" style={{ borderColor: brand.border, background: brand.surface }}>
+            <div className="mb-1 flex items-baseline justify-between">
+              <div className="field-label">Kapasite Mutabakatı — min sürdürülebilir headway</div>
+              <span className="rounded-full px-2 py-0.5 text-[0.65rem] font-medium"
+                style={siraOk ? { background: "#E6F4EC", color: "#0E7C57" } : { background: "#FBE9EC", color: brand.red }}>
+                {siraOk ? "✓ Tutarlı (teori ≥ sabit ≥ hareketli)" : "⚠ Sıralama bozuk — incele"}
+              </span>
+            </div>
+            <p className="mb-3 text-xs" style={{ color: brand.muted }}>
+              Doğru ölçüt eşitlik değil <span className="font-medium" style={{ color: brand.ink }}>sıralamadır</span>:
+              analitik blocking-time <span className="font-medium">ihtiyatlı</span> (blok, yaklaşma+sighting boyunca da rezerve),
+              simülasyon setup&apos;ı yaklaşmayla <span className="font-medium">örtüştürür</span> (%{ortusmePct.toFixed(0)} kazanç),
+              hareketli blok granülü kaldırır (sabit bloğa göre ek <span className="font-medium" style={{ color: "#0E7C57" }}>%{kazanPct.toFixed(0)}</span>).
+              Teori simülasyonu üstten sınırladığı sürece sistemler mutabıktır.
+            </p>
+            <div className="flex flex-col gap-1.5">
+              {satirlar.map(([ad, v, c]) => (
+                <div key={ad} className="flex items-center gap-2">
+                  <span className="w-52 shrink-0 text-xs" style={{ color: brand.inkSoft }}>{ad}</span>
+                  <div className="h-4 flex-1 overflow-hidden rounded" style={{ background: "#EDF0F3" }}>
+                    <div className="h-full rounded" style={{ width: `${(v / enUzun) * 100}%`, background: c }} />
+                  </div>
+                  <span className="w-12 shrink-0 text-right font-mono text-xs" style={{ color: brand.ink }}>{stat(v)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Makas bölgesi tablosu */}
       <div className="overflow-x-auto">

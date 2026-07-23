@@ -48,6 +48,17 @@ export function blockOf(bounds: number[], s: number): number {
   return bounds.length - 2;
 }
 
+/**
+ * Trenin işgal ettiği blok aralığı [kuyruk, baş] (dahil). Tren bir NOKTA değil,
+ * boyu kadar yer kaplar → kuyruğu (s − boy) bir bloğu terk edene dek o blok
+ * doludur. Bu, kapasitenin blocking-time teorisiyle (t_clearing) tutarlı çıkmasını
+ * sağlar; noktasal model kapasiteyi olduğundan yüksek gösterirdi.
+ */
+export function occupiedBlocks(bounds: number[], sHead: number, length: number): [number, number] {
+  const tail = Math.max(0, sHead - length);
+  return [blockOf(bounds, tail), blockOf(bounds, sHead)];
+}
+
 export interface SignalTrain {
   index: number;
   points: { t: number; s: number }[];
@@ -98,9 +109,12 @@ function runTrains(
   const maxT = baseTime * 3 + count * headway + 1200;
 
   while (trains.some((tr) => !tr.done) && t < maxT) {
-    // blok işgali (adım başı anlık görüntü)
+    // blok işgali (adım başı anlık görüntü) — tren boyu kadar (kuyruk→baş)
     const occ = new Array<number>(nb).fill(-1);
-    for (const tr of trains) if (tr.started && !tr.done) occ[blockOf(bounds, tr.s)] = tr.k;
+    for (const tr of trains) if (tr.started && !tr.done) {
+      const [a, c] = occupiedBlocks(bounds, tr.s, stock.length);
+      for (let j = a; j <= c; j++) occ[j] = tr.k;
+    }
 
     for (const tr of trains) {
       if (tr.done) continue;

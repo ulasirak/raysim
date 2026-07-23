@@ -15,9 +15,10 @@
 import type { Line, RollingStock, Station } from "./types";
 import type { SimConfig } from "./config";
 import { BELGE, type DurakArasiRing, type MakasTip, ringToLine } from "./ring";
-import { allowedSpeed, blockOf, makeBlocks, segAt } from "./signalling";
+import { allowedSpeed, blockOf, makeBlocks, occupiedBlocks, segAt } from "./signalling";
 
 const G = 9.81;
+const MB_MARGIN = 20; // m — hareketli blok emniyet payı (lider kuyruğunun gerisinde)
 
 // ————————————————————————————————————————————————
 // Birleşik hat modeli (ring zinciri → tek Line + makas bölgeleri)
@@ -150,7 +151,10 @@ export interface HatSonuc {
   throughput: number; // tren/saat (çıkan, bu koşum)
   achievedHeadway: number; // gerçekleşen ort. aralık (s, bu koşum)
   requestedHeadway: number;
-  kapasiteHeadway: number; // s — sürdürülebilir min headway (doygunluk probe'u)
+  kapasiteHeadway: number; // s — sürdürülebilir min headway (seçili moda göre doygunluk probe'u)
+  kapasiteFixed: number; // s — SABİT BLOK doygunluk headway'i (karşılaştırma)
+  kapasiteMoving: number; // s — HAREKETLİ BLOK (CBTC) doygunluk headway'i (karşılaştırma)
+  movingBlock: boolean; // animasyon/metrikler hangi modda koştu
   darbogaz: Darbogaz | null;
   maxEszamanliGecis: number; // aynı anda en fazla kaç makas işgal (mutual-excl kanıtı ≤ makas sayısı)
 }
@@ -175,7 +179,7 @@ interface TrenDurum {
 export function simuleHat(
   model: HatModel,
   stock: RollingStock,
-  opts: { headway: number; count: number; maxBlockLen?: number; dt?: number; captureFrames?: boolean }
+  opts: { headway: number; count: number; maxBlockLen?: number; dt?: number; captureFrames?: boolean; movingBlock?: boolean }
 ): HatSonuc {
   const { line, zones, ringBounds } = model;
   const dt = opts.dt ?? 0.5;
@@ -183,10 +187,12 @@ export function simuleHat(
   const bounds = makeBlocks(line, maxBlockLen);
   const count = Math.max(1, opts.count);
   const headway = opts.headway;
+  const movingBlock = !!opts.movingBlock;
 
-  const baseTime = coreRun(line, zones, bounds, stock, 1e9, 1, dt, null).trains[0]?.turSure ?? 0;
+  const baseTime = coreRun(line, zones, bounds, stock, 1e9, 1, dt, null, false).trains[0]?.turSure ?? 0;
 
-  const res = coreRun(line, zones, bounds, stock, headway, count, dt, opts.captureFrames ? {} : null);
+  // Animasyon/metrikler SEÇİLİ modda koşar
+  const res = coreRun(line, zones, bounds, stock, headway, count, dt, opts.captureFrames ? {} : null, movingBlock);
 
   // metrikler — headway ÇIKIŞ noktasında ölçülür (servis hızı)
   const tMax = Math.max(dt, ...res.trains.map((t) => t.cikisT || 0));
@@ -194,10 +200,15 @@ export function simuleHat(
   const achievedHeadway = cikisT.length > 1 ? (cikisT[cikisT.length - 1] - cikisT[0]) / (cikisT.length - 1) : baseTime;
   const throughput = achievedHeadway > 0 ? 3600 / achievedHeadway : 0;
 
-  // KAPASİTE PROBE'u: çok sıkı talep + çok tren → sürdürülebilir min headway (darboğaz)
-  const probe = coreRun(line, zones, bounds, stock, 10, Math.max(14, count), dt, null);
-  const pCikis = probe.trains.filter((t) => t.cikisT > 0).map((t) => t.cikisT).sort((a, b) => a - b);
-  const kapasiteHeadway = pCikis.length > 1 ? (pCikis[pCikis.length - 1] - pCikis[0]) / (pCikis.length - 1) : baseTime;
+  // KAPASİTE PROBE'u (her iki mod): çok sıkı talep + çok tren → sürdürülebilir min headway
+  const probeHeadway = (mb: boolean) => {
+    const probe = coreRun(line, zones, bounds, stock, 10, Math.max(14, count), dt, null, mb);
+    const pc = probe.trains.filter((t) => t.cikisT > 0).map((t) => t.cikisT).sort((a, b) => a - b);
+    return pc.length > 1 ? (pc[pc.length - 1] - pc[0]) / (pc.length - 1) : baseTime;
+  };
+  const kapasiteFixed = probeHeadway(false);
+  const kapasiteMoving = probeHeadway(true);
+  const kapasiteHeadway = movingBlock ? kapasiteMoving : kapasiteFixed;
 
   // zon istatistik + timeline
   const zoneStats: ZonIstatistik[] = res.zoneDurum.map((zd) => ({
@@ -248,6 +259,9 @@ export function simuleHat(
     achievedHeadway,
     requestedHeadway: headway,
     kapasiteHeadway,
+    kapasiteFixed,
+    kapasiteMoving,
+    movingBlock,
     darbogaz,
     maxEszamanliGecis: res.maxEsGecis,
   };
@@ -268,7 +282,8 @@ function coreRun(
   headway: number,
   count: number,
   dt: number,
-  capture: Record<string, never> | null
+  capture: Record<string, never> | null,
+  movingBlock: boolean
 ): CoreOut {
   const meff = stock.mass * (1 + stock.rotatingMassFactor);
   const b = stock.maxBraking;
@@ -318,9 +333,12 @@ function coreRun(
     });
     if (esGecis > maxEsGecis) maxEsGecis = esGecis;
 
-    // 2) Blok işgali
+    // 2) Blok işgali — tren boyu kadar (kuyruk→baş)
     const occ = new Array<number>(nb).fill(-1);
-    for (const tr of trains) if (tr.started && !tr.done) occ[blockOf(bounds, tr.s)] = tr.k;
+    for (const tr of trains) if (tr.started && !tr.done) {
+      const [a, c] = occupiedBlocks(bounds, tr.s, stock.length);
+      for (let j = a; j <= c; j++) occ[j] = tr.k;
+    }
 
     // 3) Trenler
     for (const tr of trains) {
@@ -343,11 +361,22 @@ function coreRun(
         continue;
       }
 
-      // 3a) blok hareket yetkisi (önümüzdeki ilk dolu blok)
-      const cur = blockOf(bounds, tr.s);
+      // 3a) hareket yetkisi (MA)
       let MA = L;
-      for (let j = cur + 1; j < nb; j++) {
-        if (occ[j] !== -1 && occ[j] !== tr.k) { MA = bounds[j]; break; }
+      if (movingBlock) {
+        // HAREKETLİ BLOK: MA = önümüzdeki en yakın trenin KUYRUĞU − emniyet payı.
+        // Blok granülü yok; tren, öndekinin fiziksel kuyruğuna kadar sürekli yaklaşır.
+        for (const o of trains) {
+          if (o.k === tr.k || !o.started || o.done) continue;
+          if (o.s > tr.s + 1e-6) MA = Math.min(MA, Math.max(0, o.s - stock.length) - MB_MARGIN);
+        }
+        MA = Math.max(tr.s, MA);
+      } else {
+        // SABİT BLOK: MA = önümüzdeki ilk dolu bloğun giriş sınırı
+        const cur = blockOf(bounds, tr.s);
+        for (let j = cur + 1; j < nb; j++) {
+          if (occ[j] !== -1 && occ[j] !== tr.k) { MA = bounds[j]; break; }
+        }
       }
 
       // 3b) makas bölgesi kapısı: önümüzdeki ilk bölge (start > s)

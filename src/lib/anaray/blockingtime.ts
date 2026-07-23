@@ -49,6 +49,7 @@ export interface BlockingSonuc {
   hedefUygun: boolean; // hedef headway ≥ minHeadway ?
   tTren: number; // s — tek tren tam hat süresi
   toplamUzunluk: number; // m
+  yorunge: { t: number; s: number }[]; // tek tren yörüngesi (Sperrzeitentreppe çizimi için)
 }
 
 /** Bir trajektoriden verilen konuma ilk ulaşma zamanı (s). */
@@ -124,6 +125,7 @@ export function blockingTimeHesap(model: HatModel, stock: RollingStock, cfg: Sim
     hedefUygun: cfg.headway >= minHeadway,
     tTren: res.totalTime,
     toplamUzunluk: line.length,
+    yorunge: pts.map((p) => ({ t: p.t, s: p.s })),
   };
 }
 

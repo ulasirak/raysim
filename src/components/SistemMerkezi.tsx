@@ -15,6 +15,7 @@ import { varsayilanArac } from "@/lib/anaray/vehicles";
 import { loopDenge, olceklenme, ringSenaryo } from "@/lib/anaray/ring";
 import { bolgeSeed, simuleEtAnklasman } from "@/lib/anaray/interlocking";
 import { blockingTimeRing } from "@/lib/anaray/blockingtime";
+import { BlockingStairChart } from "@/components/BlockingStairChart";
 
 const OK = "#0E7C57";
 const MODUL_RENK: Record<ParamModul, string> = { sefer: "#0C6DB8", ringler: "#0E7C57", anklasman: "#A8842C" };
@@ -116,9 +117,22 @@ export function SistemMerkezi() {
           <MiniStat etiket="Hedef headway" deger={bt.hedefUygun ? "UYGUN" : "İHLAL"} vurgu={bt.hedefUygun ? OK : brand.red} />
         </div>
 
-        {/* Sperrzeitentreppe — blok başına blocking-time merdiveni */}
+        {/* Sperrzeitentreppe — GERÇEK zaman-mesafe merdiveni (kanonik) */}
         <div className="mt-4">
-          <div className="field-label mb-2">Sperrzeitentreppe — blok başına blocking-time (bileşen yığını)</div>
+          <div className="field-label mb-2">Sperrzeitentreppe — zaman-mesafe merdiveni (iki ardışık tren)</div>
+          <div className="rounded border p-2" style={{ borderColor: brand.border }}>
+            <BlockingStairChart bloklar={bt.bloklar} L={bt.toplamUzunluk} minHeadway={bt.minHeadway} kritikBlok={bt.kritikBlok} yorunge={bt.yorunge} />
+          </div>
+          <p className="mt-1.5 text-xs" style={{ color: brand.muted }}>
+            Her dikdörtgen bir sinyal bloğunun rezerve süresi (blocking-time); dikey = blok uzunluğu, yatay = süre.
+            İki merdiven <span style={{ color: brand.red }}>kritik blokta</span> tam değer → o an sürdürülebilir min headway.
+            <span style={{ color: "#0C6DB8" }}> ■</span> düz blok · <span style={{ color: "#A8842C" }}>■</span> makas bloğu.
+          </p>
+        </div>
+
+        {/* Blok başına bileşen dökümü (yardımcı görünüm) */}
+        <div className="mt-4">
+          <div className="field-label mb-2">Blok başına blocking-time bileşenleri (6 parça yığını)</div>
           <div className="flex h-40 items-end gap-1">
             {bt.bloklar.map((b) => {
               const mx = Math.max(1, ...bt.bloklar.map((x) => x.toplam));
