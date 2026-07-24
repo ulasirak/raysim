@@ -47,17 +47,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Modül navigasyonu — sistemin mantıksal iş akışı (soldan sağa boru hattı) */}
       <nav className="sticky top-0 z-20 border-b" style={{ background: "#0E2739", borderColor: "#1E3A50" }}>
-        <div className="mx-auto flex max-w-6xl flex-wrap gap-1 px-4 py-2">
+        {/* Butonlar sayfanın yatayına eşit yayılır: dar ekranda 2, orta ekranda 4, geniş ekranda 7 sütun */}
+        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-1 px-4 py-2 sm:grid-cols-4 lg:grid-cols-7">
           {MODULLER.map((m, i) => {
             const on = m.href === aktif.href;
             return (
               <Link key={m.href} href={m.href}
-                className="flex shrink-0 flex-col rounded-md px-3 py-1.5 leading-tight transition"
+                className="flex min-w-0 flex-col rounded-md px-2.5 py-1.5 leading-tight transition"
                 style={{ background: on ? brand.red : "transparent" }}>
-                <span className="text-sm font-medium" style={{ color: on ? "#fff" : "#C7D2DC" }}>
+                <span className="text-[0.8rem] font-medium" style={{ color: on ? "#fff" : "#C7D2DC" }}>
                   {i + 1}. {m.ad}
                 </span>
-                <span className="text-[0.65rem]" style={{ color: on ? "#ffffffb0" : "#6E8091" }}>{m.rol}</span>
+                <span className="text-[0.62rem]" style={{ color: on ? "#ffffffb0" : "#6E8091" }}>{m.rol}</span>
               </Link>
             );
           })}
