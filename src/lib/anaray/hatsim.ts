@@ -340,6 +340,24 @@ function coreRun(
       for (let j = a; j <= c; j++) occ[j] = tr.k;
     }
 
+    // 2b) Makas bölgesi rota tahsisi — bölgeye EN YAKIN (en önde) tren kazanır.
+    // Eskiden tahsis 3) döngüsünde "önce talep eden kazanır" idi. Bu, öndeki tren
+    // bölge girişine yakın bir durakta dwell yaparken (dwell'de talep edemez) ARKADAKİ
+    // trenin rotayı kapmasına yol açıyordu: öndeki tren giremez, arkadaki de öndekini
+    // geçemez → kalıcı deadlock. Gerçek TCC de rotayı yaklaşan ilk trene verir.
+    zd.forEach((z, i) => {
+      if (z.faz !== "bos") return;
+      const yaklas = brakeDist + z.z.setupSure * stock.maxSpeed + 30;
+      let aday: TrenDurum | null = null;
+      for (const tr of trains) {
+        if (!tr.started || tr.done) continue;
+        const uzaklik = z.z.start - tr.s;
+        if (uzaklik < -1e-6 || uzaklik > yaklas) continue; // geçmiş ya da henüz uzak
+        if (!aday || tr.s > aday.s) aday = tr; // en önde olan kazanır
+      }
+      if (aday) { z.faz = "tanzim"; z.sahip = aday.k; z.timer = 0; logFaz(i, t); }
+    });
+
     // 3) Trenler
     for (const tr of trains) {
       if (tr.done) continue;
@@ -377,6 +395,15 @@ function coreRun(
         for (let j = cur + 1; j < nb; j++) {
           if (occ[j] !== -1 && occ[j] !== tr.k) { MA = bounds[j]; break; }
         }
+        // Fiziksel emniyet: trenin BULUNDUĞU blok yukarıdaki taramaya dahil değil ve
+        // occ[] blok başına tek tren tutar (son yazan kazanır) → aynı bloğa düşen iki
+        // trende öndeki görünmez olur ve trenler birbirinin İÇİNDEN geçerdi. Öndeki
+        // trenin kuyruğu her hâlükârda aşılamaz. Normalde blok sınırı daha kısıtlayıcı
+        // olduğu için sabit blok davranışı değişmez; bu yalnız ihlali engeller.
+        for (const o of trains) {
+          if (o.k === tr.k || !o.started || o.done) continue;
+          if (o.s > tr.s + 1e-6) MA = Math.min(MA, Math.max(tr.s, o.s - stock.length - MB_MARGIN));
+        }
       }
 
       // 3b) makas bölgesi kapısı: önümüzdeki ilk bölge (start > s)
@@ -388,9 +415,8 @@ function coreRun(
       if (zi >= 0) {
         const z = zd[zi];
         const uzaklik = z.z.start - tr.s;
-        // yaklaşınca ve boşsa rotayı ele geçir (tanzim başlasın; iyi durumda tren varmadan biter)
-        const yaklas = brakeDist + z.z.setupSure * stock.maxSpeed + 30;
-        if (z.faz === "bos" && uzaklik <= yaklas) { z.faz = "tanzim"; z.sahip = tr.k; z.timer = 0; logFaz(zi, t); }
+        // Rota tahsisi 2b'de yapıldı (bölgeye en yakın tren kazanır) — burada yalnız
+        // geçiş hakkı sorgulanır.
         // sahip biz + kilitli → geç; aksi halde giriş sınırında bekle
         const gecebilir = z.sahip === tr.k && z.faz === "kilitli";
         if (!gecebilir) {
