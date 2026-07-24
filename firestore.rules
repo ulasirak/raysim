@@ -57,6 +57,32 @@ service cloud.firestore {
                    && request.auth.token.email == "ulasirak073@gmail.com";
     }
 
+    // ── ÜCRETLENDİRME (kredi cüzdanı) ─────────────────────────────────────
+    // KRİTİK: Para bağlı hiçbir alan İSTEMCİDEN yazılamaz. Bakiye ve hareket
+    // kayıtlarını YALNIZCA sunucu (Firebase Admin SDK, güvenlik kurallarını
+    // baypas eder) yazar; ödeme webhook'u doğrulandıktan veya rapor/proje
+    // kredisi düşüldükten sonra. İstemci yalnız KENDİ bakiyesini/hareketini
+    // OKUR. Böylece kullanıcı "bakiyem sınırsız" veya "0 TL" diyemez.
+
+    // cuzdan/{uid} = { bakiye:int, guncelleme } — doküman kimliği = uid.
+    match /cuzdan/{uid} {
+      allow read: if girisli() && request.auth.uid == uid;
+      allow write: if false; // yalnız Admin SDK
+    }
+
+    // krediHareket/{id} = { uid, tur, miktar, bakiyeSonra, ref, olusturma }
+    // Denetim izi: her satın alma / rapor / proje-yükleme hareketi.
+    match /krediHareket/{id} {
+      allow read: if girisli() && request.auth.uid == resource.data.uid;
+      allow write: if false; // yalnız Admin SDK
+    }
+
+    // odemeOlay/{id} = ham ödeme webhook olayı (idempotency + denetim).
+    // İstemci ne okur ne yazar; tamamen sunucuya ait.
+    match /odemeOlay/{id} {
+      allow read, write: if false; // yalnız Admin SDK
+    }
+
     // Tanımlı olmayan her yol tamamen kapalı (varsayılan reddet)
     match /{document=**} {
       allow read, write: if false;
