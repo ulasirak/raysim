@@ -12,6 +12,7 @@
 import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { useHesap } from "@/components/SimConfigProvider";
+import { useCuzdan } from "@/components/CuzdanProvider";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 
@@ -23,6 +24,7 @@ export function HesapCubugu() {
     projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle, paylasimDegistir,
   } = useHesap();
 
+  const { bakiye } = useCuzdan();
   const [yeniAcik, setYeniAcik] = useState(false);
   const [yeniAd, setYeniAd] = useState("");
   const [adTaslak, setAdTaslak] = useState<string | null>(null);
@@ -120,8 +122,15 @@ export function HesapCubugu() {
           {durum === "hata" && `⚠ ${hataMetni ?? "kayıt hatası"}`}
         </span>
 
-        {/* Sağ blok: ⋮ menüsü + çıkış */}
+        {/* Sağ blok: kredi bakiyesi + ⋮ menüsü + çıkış */}
         <div className="relative ml-auto flex items-center gap-2">
+          {/* Kredi bakiyesi — ücretli rapor/proje yükleme bu krediden düşer */}
+          <span title="Kredi bakiyeniz — rapor ve proje yükleme bundan düşer"
+            className="rounded-full border px-2.5 py-1 font-medium"
+            style={{ borderColor: brand.border, color: bakiye === 0 ? brand.red : brand.inkSoft }}>
+            {bakiye === null ? "◌ kredi" : `◈ ${bakiye} kredi`}
+          </span>
+
           <button onClick={() => setMenuAcik((a) => !a)} title="Bu hat için diğer işlemler"
             className="rounded border px-2 py-1 font-medium transition hover:bg-slate-50"
             style={{ borderColor: brand.border, color: brand.inkSoft }}>⋮</button>

@@ -11,6 +11,7 @@ import { Masthead } from "@/components/Masthead";
 import { SimConfigProvider } from "@/components/SimConfigProvider";
 import { AuthProvider } from "@/components/AuthProvider";
 import { HesapCubugu } from "@/components/HesapCubugu";
+import { CuzdanProvider } from "@/components/CuzdanProvider";
 import { Kapi, useErisim } from "@/components/Kapi";
 import { BOLUM_SLUG, type BolumSlug } from "@/components/TekSayfa";
 import { brand } from "@/lib/anaray/brand";
@@ -100,7 +101,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
       <SimConfigProvider>
-        <Govde>{children}</Govde>
+        <CuzdanProvider>
+          <Govde>{children}</Govde>
+        </CuzdanProvider>
       </SimConfigProvider>
     </AuthProvider>
   );
