@@ -4,7 +4,7 @@
 
 import type { Line } from "@/lib/anaray/types";
 import { saat, km } from "@/lib/anaray/format";
-import { brand } from "@/lib/anaray/brand";
+import { CK } from "@/lib/anaray/chartkit";
 
 // Hem sinyal (SignalTrain) hem tek-hat (STTrain) trenleri için ortak, gevşek tip.
 interface TrainLine {
@@ -16,8 +16,6 @@ interface TrainLine {
 const VBW = 820;
 const VBH = 440;
 const PAD = { top: 24, right: 24, bottom: 40, left: 96 };
-
-const DONUS = "#0C6DB8"; // dönüş yönü mavi
 
 export function TrainGraphChart({
   line, blocks, gidis, donus, tMax,
@@ -45,40 +43,43 @@ export function TrainGraphChart({
       const delayed = (tr.delay ?? 0) > 2;
       return (
         <polyline key={`${on}-${tr.index}`} points={pts} fill="none"
-          stroke={delayed ? brand.red : on} strokeWidth={delayed ? 2.6 : 1.8}
-          opacity={delayed ? 1 : 0.85} strokeLinejoin="round" strokeLinecap="round" />
+          stroke={on} strokeWidth={1.9} opacity={0.9} strokeLinejoin="round" strokeLinecap="round"
+          strokeDasharray={delayed ? "4 3" : undefined} />
       );
     });
 
   return (
-    <svg viewBox={`0 0 ${VBW} ${VBH}`} className="w-full h-auto" role="img" aria-label="Sefer sıklığı diyagramı">
+    <svg viewBox={`0 0 ${VBW} ${VBH}`} className="w-full h-auto" role="img" aria-label="Sefer sıklığı diyagramı" style={{ fontFamily: CK.sans }}>
       {/* Sinyal blok sınırları (ince) */}
       {blocks.map((s, i) => (
-        <line key={`b${i}`} x1={PAD.left} y1={yFor(s)} x2={PAD.left + plotW} y2={yFor(s)} stroke={brand.grid} strokeWidth={1} />
+        <line key={`b${i}`} x1={PAD.left} y1={yFor(s)} x2={PAD.left + plotW} y2={yFor(s)} stroke={CK.grid} strokeWidth={1} opacity={0.6} />
       ))}
 
       {/* Zaman ızgarası */}
       {ticks.map((t) => (
         <g key={t}>
-          <line x1={xFor(t)} y1={PAD.top} x2={xFor(t)} y2={PAD.top + plotH} stroke={brand.grid} strokeWidth={1} />
-          <text x={xFor(t)} y={PAD.top + plotH + 20} fill={brand.muted} fontSize={12} textAnchor="middle">{saat(t)}</text>
+          <line x1={xFor(t)} y1={PAD.top} x2={xFor(t)} y2={PAD.top + plotH} stroke={CK.grid} strokeWidth={1} />
+          <text x={xFor(t)} y={PAD.top + plotH + 20} fill={CK.muted} fontSize={11} textAnchor="middle" style={{ fontVariantNumeric: "tabular-nums" }}>{saat(t)}</text>
         </g>
       ))}
 
       {/* İstasyonlar (blok çizgilerinden belirgin) */}
       {line.stations.map((st) => (
         <g key={st.id}>
-          <line x1={PAD.left} y1={yFor(st.position)} x2={PAD.left + plotW} y2={yFor(st.position)} stroke={brand.borderStrong} strokeWidth={1} strokeDasharray="2 4" />
-          <text x={PAD.left - 10} y={yFor(st.position) + 4} fill={brand.muted} fontSize={11} textAnchor="end">{st.name}</text>
-          <text x={PAD.left - 10} y={yFor(st.position) + 17} fill={brand.faint} fontSize={9} textAnchor="end">{km(st.position)} km</text>
+          <line x1={PAD.left} y1={yFor(st.position)} x2={PAD.left + plotW} y2={yFor(st.position)} stroke={CK.baseline} strokeWidth={1} strokeDasharray="2 4" />
+          <text x={PAD.left - 10} y={yFor(st.position) + 4} fill={CK.ink2} fontSize={11} textAnchor="end" fontWeight={600}>{st.name}</text>
+          <text x={PAD.left - 10} y={yFor(st.position) + 17} fill={CK.faint} fontSize={9} textAnchor="end" style={{ fontVariantNumeric: "tabular-nums" }}>{km(st.position)} km</text>
         </g>
       ))}
 
       {/* Trenler */}
-      {poly(gidis, (s) => s, brand.route)}
-      {donus && poly(donus, (s) => line.length - s, DONUS)}
+      {poly(gidis, (s) => s, CK.blue)}
+      {donus && poly(donus, (s) => line.length - s, CK.orange)}
 
-      <text x={PAD.left + plotW / 2} y={VBH - 4} fill={brand.muted} fontSize={11} textAnchor="middle">Zaman (dk:sn)</text>
+      <text x={PAD.left + plotW / 2} y={VBH - 4} fill={CK.muted} fontSize={10} textAnchor="middle">Zaman (dk:sn)</text>
+      <text x={PAD.left + plotW} y={PAD.top - 8} fill={CK.muted} fontSize={9} textAnchor="end">
+        <tspan fill={CK.blue}>▬ gidiş</tspan>{donus ? <><tspan>  </tspan><tspan fill={CK.orange}>▬ dönüş</tspan></> : null}<tspan>  </tspan><tspan fill={CK.muted}>╌ gecikmeli</tspan>
+      </text>
     </svg>
   );
 }
