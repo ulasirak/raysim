@@ -290,6 +290,37 @@ export function tahminEtEgim(rings: DurakArasiRing[], stops: GeoStop[]): { ayarl
   return { ayarlanan: n, maxEgim: Math.round(maxAbs * 10) / 10 };
 }
 
+/**
+ * Durak yüksekliklerini shape'in her noktasına (kümülatif mesafeye göre) enterpole eder.
+ * Coğrafi haritada renk-kodlu eğim için. Yükseklik yoksa null.
+ */
+export function shapeElevations(stops: GeoStop[], shapes: GeoShape[]): number[] | null {
+  if (!stops.some((s) => s.ele != null)) return null;
+  const sh = shapes.length ? shapes.reduce((a, b) => (b.points.length > a.points.length ? b : a)) : null;
+  if (!sh || sh.points.length < 2) return null;
+  const pts = sh.points;
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + haversine(pts[i - 1], pts[i]));
+  const stopCum = stopCumulative(stops, shapes);
+  const bp: { c: number; e: number }[] = [];
+  stops.forEach((s, i) => { if (s.ele != null && stopCum[i] != null) bp.push({ c: stopCum[i] as number, e: s.ele }); });
+  bp.sort((a, b) => a.c - b.c);
+  if (bp.length < 2) return null;
+  return pts.map((_, i) => {
+    const c = cum[i];
+    if (c <= bp[0].c) return bp[0].e;
+    if (c >= bp[bp.length - 1].c) return bp[bp.length - 1].e;
+    for (let k = 1; k < bp.length; k++) {
+      if (c <= bp[k].c) {
+        const p0 = bp[k - 1], p1 = bp[k];
+        const f = (c - p0.c) / ((p1.c - p0.c) || 1);
+        return p0.e + (p1.e - p0.e) * f;
+      }
+    }
+    return bp[bp.length - 1].e;
+  });
+}
+
 // ————————————————————————————————————————————————
 // GTFS → Ring modeli (simülasyona bağla)
 // ————————————————————————————————————————————————

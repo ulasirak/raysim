@@ -227,6 +227,39 @@ function sperrzeitSvg(bt: ReturnType<typeof blockingTimeRing>, L: number): strin
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${yTicks}${rects.join("")}${traj(0, INK)}${traj(h, "#7A6224")}${hMark}<text x="${padL}" y="${H - 8}" font-size="8.5" fill="#6B7A8A">zaman (s) →</text><text x="8" y="${padT + 8}" font-size="8.5" fill="#6B7A8A">m</text></svg>`;
 }
 
+// Boy kesit (gömülü SVG): yükseklik profili (gradient'ten kümülatif) + eğim şeridi.
+function gradeProfileSvg(line: Line, lbl: { climb: string; descent: string; grade: string; noElev: string; m: string }): string {
+  if (line.length <= 0 || !line.segments.length) return "";
+  const L = line.length;
+  const W = 760, H = 190, padL = 46, padR = 12, padT = 14, padB = 30;
+  const pw = W - padL - padR, ph = H - padT - padB;
+  const hasGrade = line.segments.some((s) => Math.abs(s.gradient) > 0.01);
+  const segs = [...line.segments].sort((a, b) => a.start - b.start);
+  let e = 0; const pts = [{ s: 0, e: 0 }];
+  for (const sg of segs) { e += (sg.gradient / 1000) * (sg.end - sg.start); pts.push({ s: sg.end, e }); }
+  const eMin = Math.min(...pts.map((p) => p.e)), eMax = Math.max(...pts.map((p) => p.e));
+  const span = Math.max(1, eMax - eMin);
+  const xOf = (s: number) => padL + (s / L) * pw;
+  const eph = ph * 0.6;
+  const yE = (ev: number) => padT + eph - ((ev - eMin) / span) * eph;
+  const stripH = 12, stripY = padT + ph - stripH;
+  const gmax = Math.max(1, ...line.segments.map((s) => Math.abs(s.gradient)));
+  const lp = pts.map((p) => `${xOf(p.s).toFixed(1)},${yE(p.e).toFixed(1)}`).join(" ");
+  const area = `<polygon points="${xOf(0).toFixed(1)},${(padT + eph).toFixed(1)} ${lp} ${xOf(L).toFixed(1)},${(padT + eph).toFixed(1)}" fill="#0C6DB814"/>`;
+  const eline = `<polyline points="${lp}" fill="none" stroke="${INK}" stroke-width="1.6"/>`;
+  const strip = line.segments.map((sg) => {
+    const x1 = xOf(sg.start), x2 = xOf(sg.end), g = sg.gradient;
+    const col = g > 0.3 ? RED : g < -0.3 ? "#0C6DB8" : "#B9C4CE";
+    const h = (Math.abs(g) / gmax) * stripH;
+    return `<rect x="${x1.toFixed(1)}" y="${(stripY + stripH - h).toFixed(1)}" width="${Math.max(0.6, x2 - x1).toFixed(1)}" height="${Math.max(0.6, h).toFixed(1)}" fill="${col}"/>`;
+  }).join("");
+  const st = line.stations.map((s) => `<line x1="${xOf(s.position).toFixed(1)}" y1="${padT}" x2="${xOf(s.position).toFixed(1)}" y2="${(padT + eph).toFixed(1)}" stroke="#DCE1E7" stroke-dasharray="2 3"/>`).join("");
+  const yLab = `<text x="8" y="${padT + 8}" font-size="9" fill="#6B7A8A">${esc(lbl.m)}</text><text x="${padL - 6}" y="${(yE(eMax) + 3).toFixed(1)}" text-anchor="end" font-size="8" fill="#6B7A8A">+${(eMax - eMin).toFixed(0)}</text><text x="${padL - 6}" y="${(padT + eph + 3).toFixed(1)}" text-anchor="end" font-size="8" fill="#6B7A8A">0</text>`;
+  const stripLab = `<text x="${padL}" y="${stripY - 3}" font-size="8" fill="#6B7A8A">${esc(lbl.grade)}: <tspan fill="${RED}">■</tspan> ${esc(lbl.climb)} <tspan fill="#0C6DB8">■</tspan> ${esc(lbl.descent)} (max ${gmax.toFixed(0)}‰)</text>`;
+  const note = hasGrade ? "" : `<text x="${W / 2}" y="${padT + eph / 2}" text-anchor="middle" font-size="9" fill="#9AA7B4">${esc(lbl.noElev)}</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${st}${area}${eline}${strip}${yLab}${stripLab}${note}</svg>`;
+}
+
 export type RaporDil = "tr" | "en";
 
 function rDil(lang: RaporDil) {
@@ -245,7 +278,9 @@ function rDil(lang: RaporDil) {
     s2: "Durak Arası İşletim Hücreleri", s2i: (n: number, h: number) => `Hat, ${n} durak-arası hücreye (ring) bölünmüştür. Her hücre kendi mesafe, makas, hemzemin ve tehlike (acil frenleme) şartlarını taşır; worst-case senaryo en uzun mesafe + tüm kısıtlarla, hedef headway ${h} s ile değerlendirilir.`,
     fig1: "Şekil 1 — Hat şeması: istasyon zinciri, makas (⑂) ve hemzemin geçit dağılımı.",
     fig2: "Şekil 2 — Hız-mesafe profili (worst-case tek tren): kırmızı kesikli = hız limiti zarfı, mürekkep = fiili hız, ⌒ = kurp/hız kısıtı bölgeleri (km/h).",
-    fig3: (c: number, h: number) => `Şekil 3 — Zaman-mesafe diyagramı (Bildfahrplan), ÇİFT YÖN: gidiş (mürekkep) + dönüş (mavi), ${c}+${c} tren, ${h}s aralık. Ters eğimli çizgilerin kesişimi = kruvasman/karşılaşma; kırmızı = gecikmeli sefer.`,
+    figGrade: "Şekil 3 — Boy kesit: yükseklik profili (mürekkep) + eğim şeridi (kırmızı tırmanış, mavi iniş).",
+    gClimb: "tırmanış", gDescent: "iniş", gGrade: "eğim", gNoElev: "Yükseklik verisi girilmedi — düz profil varsayıldı", mUnit: "m",
+    fig3: (c: number, h: number) => `Şekil 4 — Zaman-mesafe diyagramı (Bildfahrplan), ÇİFT YÖN: gidiş (mürekkep) + dönüş (mavi), ${c}+${c} tren, ${h}s aralık. Ters eğimli çizgilerin kesişimi = kruvasman/karşılaşma; kırmızı = gecikmeli sefer.`,
     thRing: ["No", "Durak Arası", "Mesafe (m)", "Worst (m)", "Makas", "Hemzemin", "Tehlike", "Worst Toplam", "Headway"],
     s21: "2.1 Ring Bazında Kısıt ve Risk (Challenge) Analizi",
     thKisit: ["Kısıt", "Konum (m)", "Detay"], noKisit: "Kısıt yok — kesintisiz seyir.",
@@ -257,8 +292,8 @@ function rDil(lang: RaporDil) {
     thGost: ["Gösterge", "Değer"],
     kapTur: "Tur süresi (worst-case)", kapHedef: "Hedef headway", kapSigan: "Headway'de sığan tren", kapDarbogaz: "Darboğaz hücre", kapDenge: "Denge (eşit şartlar)", kapDengeli: "Dengeli", kapSapma: (p: string) => `%${p} sapma`, kapMin: "Minimum headway (kritik blok)", kapTeorik: "Teorik kapasite", kapUIC: "UIC 406 doluluk (hedef headway'de)", tphSuffix: "tren/saat",
     s41: "4.1 Blocking-Time (Sperrzeitentreppe)",
-    fig4: (h: number) => `Şekil 4 — Sperrzeitentreppe: iki ardışık trenin blok işgal (blocking-time) pencereleri; kritik blokta ikinci trenin başlangıcı birincinin bitişine değer = min headway ${h}s.`,
-    fig5: "Şekil 5 — Blok başına blocking-time bileşen dağılımı (kritik blok kırmızı etiketli).",
+    fig4: (h: number) => `Şekil 5 — Sperrzeitentreppe: iki ardışık trenin blok işgal (blocking-time) pencereleri; kritik blokta ikinci trenin başlangıcı birincinin bitişine değer = min headway ${h}s.`,
+    fig5: "Şekil 6 — Blok başına blocking-time bileşen dağılımı (kritik blok kırmızı etiketli).",
     thBt: ["Blok", "Setup", "Görme", "Yaklaşma", "Seyir", "Temizleme", "Release", "Toplam (s)"],
     s5: "Onay", thImza: ["Hazırlayan", "Onaylayan"], imzaTarih: "İmza / Tarih",
   };
@@ -277,7 +312,9 @@ function rDil(lang: RaporDil) {
     s2: "Inter-station Operating Cells", s2i: (n, h) => `The line is divided into ${n} inter-station cells (rings). Each cell carries its own distance, switch, level-crossing and hazard (emergency braking) conditions; the worst case is evaluated at the longest distance with all constraints against the ${h}s target headway.`,
     fig1: "Figure 1 — Line schematic: station chain, switch (⑂) and level-crossing distribution.",
     fig2: "Figure 2 — Speed-distance profile (worst-case single train): red dashed = speed-limit envelope, ink = actual speed, ⌒ = curve/speed-restriction zones (km/h).",
-    fig3: (c, h) => `Figure 3 — Time-distance diagram (Bildfahrplan), BOTH DIRECTIONS: outbound (ink) + return (blue), ${c}+${c} trains, ${h}s headway. Crossing of opposing lines = meeting/passing point; red = delayed service.`,
+    figGrade: "Figure 3 — Longitudinal section: elevation profile (ink) + grade strip (red climb, blue descent).",
+    gClimb: "climb", gDescent: "descent", gGrade: "grade", gNoElev: "No elevation data — level profile assumed", mUnit: "m",
+    fig3: (c, h) => `Figure 4 — Time-distance diagram (Bildfahrplan), BOTH DIRECTIONS: outbound (ink) + return (blue), ${c}+${c} trains, ${h}s headway. Crossing of opposing lines = meeting/passing point; red = delayed service.`,
     thRing: ["No", "Section", "Distance (m)", "Worst (m)", "Switches", "Level xing", "Hazards", "Worst Total", "Headway"],
     s21: "2.1 Per-cell Constraint & Risk (Challenge) Analysis",
     thKisit: ["Constraint", "Position (m)", "Detail"], noKisit: "No constraints — uninterrupted run.",
@@ -289,8 +326,8 @@ function rDil(lang: RaporDil) {
     thGost: ["Indicator", "Value"],
     kapTur: "Cycle time (worst-case)", kapHedef: "Target headway", kapSigan: "Trains within headway", kapDarbogaz: "Bottleneck cell", kapDenge: "Balance (equal conditions)", kapDengeli: "Balanced", kapSapma: (p) => `${p}% deviation`, kapMin: "Minimum headway (critical block)", kapTeorik: "Theoretical capacity", kapUIC: "UIC 406 occupancy (at target headway)", tphSuffix: "trains/hour",
     s41: "4.1 Blocking-Time (Sperrzeitentreppe)",
-    fig4: (h) => `Figure 4 — Sperrzeitentreppe: block occupation (blocking-time) windows of two consecutive trains; at the critical block the second train's start touches the first's end = min headway ${h}s.`,
-    fig5: "Figure 5 — Per-block blocking-time component breakdown (critical block labelled red).",
+    fig4: (h) => `Figure 5 — Sperrzeitentreppe: block occupation (blocking-time) windows of two consecutive trains; at the critical block the second train's start touches the first's end = min headway ${h}s.`,
+    fig5: "Figure 6 — Per-block blocking-time component breakdown (critical block labelled red).",
     thBt: ["Block", "Setup", "Sighting", "Approach", "Running", "Clearing", "Release", "Total (s)"],
     s5: "Approval", thImza: ["Prepared by", "Approved by"], imzaTarih: "Signature / Date",
   };
@@ -316,6 +353,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const line: Line | null = rings.length ? loopToHat(rings, true, cfg).line : null;
   const bfCount = Math.max(3, Math.min(6, olcek.maxTrenHedefHeadway || 4));
   const hizFig = line ? `<div class="fig">${speedProfileSvg(line, stock)}<div class="cap">${L.fig2}</div></div>` : "";
+  const gradeFig = line ? `<div class="fig">${gradeProfileSvg(line, { climb: L.gClimb, descent: L.gDescent, grade: L.gGrade, noElev: L.gNoElev, m: L.mUnit })}<div class="cap">${L.figGrade}</div></div>` : "";
   const bfFig = line ? `<div class="fig">${bildfahrplanSvg(line, stock, cfg, bfCount)}<div class="cap">${L.fig3(bfCount, cfg.headway)}</div></div>` : "";
 
   // ---- Kapak künye ----
@@ -508,6 +546,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <p>${L.s2i(rings.length, cfg.headway)}</p>
   <div class="fig">${ringSemaSvg(rings)}<div class="cap">${L.fig1}</div></div>
   ${hizFig}
+  ${gradeFig}
   ${tbl(L.thRing, ringRows, { first: true })}
   <h3 class="sub">${L.s21}</h3>
   ${ringDetay}

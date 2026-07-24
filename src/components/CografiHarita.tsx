@@ -10,7 +10,7 @@ import Link from "next/link";
 import { brand } from "@/lib/anaray/brand";
 import { useProje } from "@/components/SimConfigProvider";
 import {
-  parseStops, parseShapes, makeProjector, polylineLength, gtfsToRings, tahminEtKisitlar, tahminEtHiz, tahminEtEgim,
+  parseStops, parseShapes, makeProjector, polylineLength, gtfsToRings, tahminEtKisitlar, tahminEtHiz, tahminEtEgim, shapeElevations,
   ornekGtfsStops, ornekGtfsShapes, type GeoStop, type GeoShape,
 } from "@/lib/anaray/gtfs";
 
@@ -50,6 +50,8 @@ export function CografiHarita() {
     [stops, shapes]
   );
   const proj = useMemo(() => makeProjector(tumNoktalar, VBW, VBH, PAD), [tumNoktalar]);
+  const mainShape = useMemo(() => (shapes.length ? shapes.reduce((a, b) => (b.points.length > a.points.length ? b : a)) : null), [shapes]);
+  const shapeEle = useMemo(() => shapeElevations(stops, shapes), [stops, shapes]);
 
   const uzunluk = useMemo(() => {
     if (shapes.length) return shapes.reduce((m, sh) => m + polylineLength(sh.points), 0);
@@ -167,11 +169,22 @@ export function CografiHarita() {
               </g>
             ))}
 
-            {/* shape polyline(ler) */}
-            {shapes.map((sh, si) => (
-              <polyline key={`sh${si}`} fill="none" stroke={DOWN} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round"
-                points={sh.points.map((p) => { const q = proj.project(p.lat, p.lon); return `${q.x.toFixed(1)},${q.y.toFixed(1)}`; }).join(" ")} />
-            ))}
+            {/* shape polyline(ler) — yükseklik varsa ana shape eğime göre renkli */}
+            {shapes.map((sh, si) => {
+              if (sh === mainShape && shapeEle) {
+                return sh.points.slice(1).map((p, k) => {
+                  const a = proj.project(sh.points[k].lat, sh.points[k].lon);
+                  const b = proj.project(p.lat, p.lon);
+                  const de = shapeEle[k + 1] - shapeEle[k];
+                  const col = de > 0.03 ? brand.red : de < -0.03 ? DOWN : "#9AA7B4";
+                  return <line key={`gs${si}-${k}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={col} strokeWidth={3.5} strokeLinecap="round" />;
+                });
+              }
+              return (
+                <polyline key={`sh${si}`} fill="none" stroke={DOWN} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round"
+                  points={sh.points.map((p) => { const q = proj.project(p.lat, p.lon); return `${q.x.toFixed(1)},${q.y.toFixed(1)}`; }).join(" ")} />
+              );
+            })}
             {/* shape yoksa durakları bağla */}
             {!shapes.length && stops.length > 1 && (
               <polyline fill="none" stroke={DOWN} strokeWidth={2} strokeDasharray="5 4"
@@ -211,7 +224,12 @@ export function CografiHarita() {
           <div className="p-10 text-center text-sm" style={{ color: brand.muted }}>Koordinat verisi yok — bir stops.txt yükle veya demo güzergahı seç.</div>
         )}
         <p className="mt-2 text-xs" style={{ color: brand.muted }}>
-          <span style={{ color: DOWN }}>▬</span> güzergah (shape) · <span style={{ color: brand.ink }}>●</span> durak.
+          {shapeEle ? (
+            <><span style={{ color: brand.red }}>▬</span> tırmanış · <span style={{ color: DOWN }}>▬</span> iniş · <span style={{ color: "#9AA7B4" }}>▬</span> düz (yükseklikten eğim) · </>
+          ) : (
+            <><span style={{ color: DOWN }}>▬</span> güzergah (shape) · </>
+          )}
+          <span style={{ color: brand.ink }}>●</span> durak.
           Eş-dikdörtgen projeksiyon (boylam enlemle sıkıştırılır); ölçek çubuğu haritadan ölçülür. Koordinat verisi girildiği gibi kullanılır.
         </p>
       </div>
