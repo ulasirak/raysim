@@ -10,6 +10,7 @@
 
 import qrcode from "qrcode-generator";
 import { emblemSvg } from "@/lib/emblem";
+import { CK, num, lab, areaGrad, smoothPath, egimRenk } from "./chartkit";
 import type { SimConfig, ProjeMeta } from "./config";
 import { PARAM_META, paramGoster, birim } from "./config";
 import type { RollingStock } from "./types";
@@ -60,55 +61,46 @@ function tbl(headers: string[], rows: (string | number)[][], opts: { first?: boo
 function ringSemaSvg(rings: DurakArasiRing[]): string {
   const n = rings.length;
   if (n === 0) return "";
-  const W = 760, pad = 46, y = 78;
+  const W = 760, pad = 56, y = 74;
   const step = (W - 2 * pad) / Math.max(1, n);
-  const dots: string[] = [];
-  const labels: string[] = [];
-  const marks: string[] = [];
   const px = (i: number) => pad + i * step;
-  // istasyonlar: from(0) → her toAd
   const adlar = [rings[0].fromAd, ...rings.map((r) => r.toAd)];
-  adlar.forEach((ad, i) => {
-    const x = px(i);
-    dots.push(`<circle cx="${x.toFixed(1)}" cy="${y}" r="5" fill="#fff" stroke="${INK}" stroke-width="2"/>`);
-    labels.push(`<text x="${x.toFixed(1)}" y="${y - 14}" text-anchor="middle" font-size="10" fill="${INK}">${esc(ad)}</text>`);
-  });
-  // hat çizgisi
-  const line = `<line x1="${px(0)}" y1="${y}" x2="${px(n)}" y2="${y}" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>`;
-  // makas + hemzemin işaretleri (segment altında)
-  rings.forEach((r, i) => {
-    const xm = (px(i) + px(i + 1)) / 2;
-    if (r.makaslar.length) marks.push(`<text x="${xm.toFixed(1)}" y="${y + 22}" text-anchor="middle" font-size="12" fill="${RED}">⑂ ${r.makaslar.length}</text>`);
-    if (r.hemzeminler.length) marks.push(`<text x="${xm.toFixed(1)}" y="${y + 38}" text-anchor="middle" font-size="10" fill="${GOLD}">⊟ ${r.hemzeminler.length} hemzemin</text>`);
-  });
-  return `<svg viewBox="0 0 ${W} 120" width="100%" style="max-width:${W}px">${line}${marks.join("")}${dots.join("")}${labels.join("")}</svg>`;
+  const line = `<line x1="${px(0).toFixed(1)}" y1="${y}" x2="${px(n).toFixed(1)}" y2="${y}" stroke="${CK.ink}" stroke-width="3.5" stroke-linecap="round"/>`;
+  const dots = adlar.map((_, i) => `<circle cx="${px(i).toFixed(1)}" cy="${y}" r="5.5" fill="${CK.surface}" stroke="${CK.ink}" stroke-width="2.2"/>`).join("");
+  const labels = adlar.map((ad, i) => lab(px(i), i % 2 === 0 ? y - 16 : y - 30, esc(ad), { anchor: "middle", size: 8.5, color: CK.ink2, weight: 600 })).join("");
+  const marks = rings.map((r, i) => {
+    const xm = (px(i) + px(i + 1)) / 2; let s = "";
+    if (r.makaslar.length) s += lab(xm, y + 21, `⑂ ${r.makaslar.length}`, { anchor: "middle", size: 11, color: CK.red, weight: 700 });
+    if (r.hemzeminler.length) s += lab(xm, y + 35, `⊟ ${r.hemzeminler.length}`, { anchor: "middle", size: 9, color: CK.gold });
+    return s;
+  }).join("");
+  return `<svg viewBox="0 0 ${W} 116" width="100%" style="max-width:${W}px">${line}${marks}${dots}${labels}</svg>`;
 }
 
-// Blocking-time bileşen barları (gömülü SVG): her blok için yığılı süre.
+// Blocking-time bileşen barları (gömülü SVG): her blok için yığılı süre (ordinal mavi rampa).
 function blockingBarSvg(bloklar: { i: number; makasBlok?: boolean; tSetup: number; tSighting: number; tApproach: number; tRunning: number; tClearing: number; tRelease: number; toplam: number }[], kritik: number): string {
   if (!bloklar.length) return "";
   const parts = [
-    { k: "tSetup", c: "#0C2233", ad: "Setup" }, { k: "tSighting", c: "#2E5A7A", ad: "Görme" },
-    { k: "tApproach", c: "#0C6DB8", ad: "Yaklaşma" }, { k: "tRunning", c: "#0E7C57", ad: "Seyir" },
-    { k: "tClearing", c: "#A8842C", ad: "Temizleme" }, { k: "tRelease", c: "#C8102E", ad: "Release" },
+    { k: "tSetup", c: "#9ec5f4", ad: "Setup" }, { k: "tSighting", c: "#6da7ec", ad: "Görme" },
+    { k: "tApproach", c: "#3987e5", ad: "Yaklaşma" }, { k: "tRunning", c: "#256abf", ad: "Seyir" },
+    { k: "tClearing", c: "#184f95", ad: "Temizleme" }, { k: "tRelease", c: "#0d366b", ad: "Release" },
   ] as const;
   const max = Math.max(...bloklar.map((b) => b.toplam)) || 1;
-  const rowH = 22, W = 760, labelW = 70, barW = W - labelW - 60;
+  const rowH = 20, W = 760, labelW = 64, barW = W - labelW - 64, barH = 12;
   const rows = bloklar.map((b, idx) => {
     let x = labelW;
     const yy = idx * rowH + 6;
     const segs = parts.map((p) => {
-      const v = b[p.k] as number;
-      const w = (v / max) * barW;
-      const rect = `<rect x="${x.toFixed(1)}" y="${yy}" width="${Math.max(0, w).toFixed(1)}" height="14" fill="${p.c}"/>`;
+      const w = (b[p.k] / max) * barW;
+      const rect = `<rect x="${x.toFixed(1)}" y="${yy}" width="${Math.max(0, w - 1.5).toFixed(1)}" height="${barH}" rx="1" fill="${p.c}"/>`;
       x += w;
       return rect;
     }).join("");
     const kr = b.i === kritik;
-    return `<text x="0" y="${yy + 11}" font-size="10" fill="${kr ? RED : INK}" font-weight="${kr ? 700 : 400}">#${b.i}${b.makasBlok ? " ⑂" : ""}</text>${segs}<text x="${(x + 5).toFixed(1)}" y="${yy + 11}" font-size="10" fill="${INK}">${b.toplam.toFixed(0)}s</text>`;
+    return `${lab(0, yy + barH - 2.5, `#${b.i}${b.makasBlok ? " ⑂" : ""}`, { size: 9, weight: kr ? 700 : 400, color: kr ? CK.red : CK.ink })}${segs}${num(x + 6, yy + barH - 2.5, `${b.toplam.toFixed(0)}s`, { size: 9, color: CK.ink })}`;
   }).join("");
-  const legend = parts.map((p, i) => `<rect x="${labelW + i * 118}" y="${bloklar.length * rowH + 14}" width="10" height="10" fill="${p.c}"/><text x="${labelW + i * 118 + 14}" y="${bloklar.length * rowH + 23}" font-size="9" fill="${INK}">${p.ad}</text>`).join("");
-  const H = bloklar.length * rowH + 40;
+  const legend = parts.map((p, i) => `<rect x="${labelW + i * 118}" y="${bloklar.length * rowH + 12}" width="10" height="10" rx="1.5" fill="${p.c}"/>${lab(labelW + i * 118 + 14, bloklar.length * rowH + 21, p.ad, { size: 8.5, color: CK.ink2 })}`).join("");
+  const H = bloklar.length * rowH + 38;
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${rows}${legend}</svg>`;
 }
 
@@ -125,16 +117,17 @@ function combinedProfileSvg(line: Line, stock: RollingStock, lbl: { climb: strin
   const topTop = padT, elevTop = topTop + topH + gap, stripTop = elevTop + elevH + stripGap;
   const fullBottom = stripTop + stripH, H = fullBottom + 24;
   const xOf = (s: number) => padL + (s / L) * pw;
-  const st = line.stations.map((s) => `<line x1="${xOf(s.position).toFixed(1)}" y1="${topTop}" x2="${xOf(s.position).toFixed(1)}" y2="${fullBottom}" stroke="#EDF0F3"/>`).join("");
+  const st = line.stations.map((s) => `<line x1="${xOf(s.position).toFixed(1)}" y1="${topTop}" x2="${xOf(s.position).toFixed(1)}" y2="${fullBottom}" stroke="${CK.grid}"/>`).join("");
 
   // ---- Üst: hız ----
   const vmax = Math.max(...line.segments.map((s) => s.vmax), ...res.points.map((p) => p.v * 3.6), 10);
   const vAxis = Math.ceil(vmax / 10) * 10;
   const yV = (vk: number) => topTop + topH - (vk / vAxis) * topH;
-  const vTicks = [0, vAxis / 2, vAxis].map((v) => `<line x1="${padL}" y1="${yV(v).toFixed(1)}" x2="${W - padR}" y2="${yV(v).toFixed(1)}" stroke="#E6E9ED"/><text x="${padL - 6}" y="${(yV(v) + 3).toFixed(1)}" text-anchor="end" font-size="8" fill="#6B7A8A">${v.toFixed(0)}</text>`).join("");
-  const env = line.segments.map((s) => `<line x1="${xOf(s.start).toFixed(1)}" y1="${yV(s.vmax * 3.6).toFixed(1)}" x2="${xOf(s.end).toFixed(1)}" y2="${yV(s.vmax * 3.6).toFixed(1)}" stroke="${RED}" stroke-width="1.3" stroke-dasharray="5 4" opacity="0.85"/>`).join("");
-  const spd = res.points.map((p) => `${xOf(p.s).toFixed(1)},${yV(p.v * 3.6).toFixed(1)}`).join(" ");
-  const speed = `<polyline points="${spd}" fill="none" stroke="${INK}" stroke-width="1.6"/>`;
+  const vTicks = [0, vAxis / 2, vAxis].map((v) => `<line x1="${padL}" y1="${yV(v).toFixed(1)}" x2="${W - padR}" y2="${yV(v).toFixed(1)}" stroke="${CK.grid}"/>${num(padL - 7, yV(v) + 3, v.toFixed(0), { anchor: "end", size: 8 })}`).join("");
+  const env = line.segments.map((s) => `<line x1="${xOf(s.start).toFixed(1)}" y1="${yV(s.vmax * 3.6).toFixed(1)}" x2="${xOf(s.end).toFixed(1)}" y2="${yV(s.vmax * 3.6).toFixed(1)}" stroke="${CK.red}" stroke-width="1.3" stroke-dasharray="4 3" stroke-linecap="round" opacity="0.75"/>`).join("");
+  const spdPts = res.points.map((p) => `${xOf(p.s).toFixed(1)},${yV(p.v * 3.6).toFixed(1)}`).join(" ");
+  const spdArea = `<polygon points="${xOf(0).toFixed(1)},${yV(0).toFixed(1)} ${spdPts} ${xOf(L).toFixed(1)},${yV(0).toFixed(1)}" fill="url(#g-spd)"/>`;
+  const speed = `<polyline points="${spdPts}" fill="none" stroke="${CK.blue}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
   const maxVm = Math.max(...line.segments.map((s) => s.vmax));
   type Zon = { start: number; end: number; vk: number };
   const zones: Zon[] = []; let cur: Zon | null = null;
@@ -145,8 +138,8 @@ function combinedProfileSvg(line: Line, stock: RollingStock, lbl: { climb: strin
   }
   if (cur) zones.push(cur);
   const marks = zones.slice(0, 10).map((z) => { const mx = xOf((z.start + z.end) / 2), my = yV(z.vk);
-    return `<polygon points="${(mx - 4).toFixed(1)},${(my - 9).toFixed(1)} ${(mx + 4).toFixed(1)},${(my - 9).toFixed(1)} ${mx.toFixed(1)},${(my - 2).toFixed(1)}" fill="${GOLD}"/><text x="${mx.toFixed(1)}" y="${(my - 11).toFixed(1)}" text-anchor="middle" font-size="8" font-weight="700" fill="${GOLD}">⌒${z.vk}</text>`; }).join("");
-  const speedLbl = `<text x="8" y="${topTop + 8}" font-size="9" fill="#6B7A8A">km/h</text><text x="${W - padR}" y="${topTop + 9}" text-anchor="end" font-size="8" fill="#6B7A8A"><tspan fill="${RED}">– – limit</tspan> · <tspan fill="${INK}">— fiili</tspan> · <tspan fill="${GOLD}">▼ kurp</tspan></text>`;
+    return `<polygon points="${(mx - 4).toFixed(1)},${(my - 10).toFixed(1)} ${(mx + 4).toFixed(1)},${(my - 10).toFixed(1)} ${mx.toFixed(1)},${(my - 3).toFixed(1)}" fill="${CK.gold}"/>${lab(mx, my - 12, `⌒${z.vk}`, { anchor: "middle", size: 8, weight: 700, color: CK.gold })}`; }).join("");
+  const speedLbl = `${lab(8, topTop + 8, "km/h", { size: 8 })}<text x="${W - padR}" y="${topTop + 8}" text-anchor="end" font-family="${CK.sans}" font-size="8" fill="${CK.muted}"><tspan fill="${CK.red}">╌ limit</tspan>  <tspan fill="${CK.blue}">▬ fiili</tspan>  <tspan fill="${CK.gold}">▾ kurp</tspan></text>`;
 
   // ---- Alt: yükseklik + eğim ----
   const hasGrade = line.segments.some((s) => Math.abs(s.gradient) > 0.01);
@@ -155,18 +148,20 @@ function combinedProfileSvg(line: Line, stock: RollingStock, lbl: { climb: strin
   for (const sg of segs) { e += (sg.gradient / 1000) * (sg.end - sg.start); ep.push({ s: sg.end, e }); }
   const eMin = Math.min(...ep.map((p) => p.e)), eMax = Math.max(...ep.map((p) => p.e)), span = Math.max(1, eMax - eMin);
   const yE = (ev: number) => elevTop + elevH - ((ev - eMin) / span) * elevH;
-  const lp = ep.map((p) => `${xOf(p.s).toFixed(1)},${yE(p.e).toFixed(1)}`).join(" ");
-  const area = `<polygon points="${xOf(0).toFixed(1)},${(elevTop + elevH).toFixed(1)} ${lp} ${xOf(L).toFixed(1)},${(elevTop + elevH).toFixed(1)}" fill="#0C6DB814"/>`;
-  const eline = `<polyline points="${lp}" fill="none" stroke="${INK}" stroke-width="1.4"/>`;
+  const epXY = ep.map((p) => ({ x: xOf(p.s), y: yE(p.e) }));
+  const ePath = smoothPath(epXY);
+  const area = `<path d="${ePath} L ${xOf(L).toFixed(1)},${(elevTop + elevH).toFixed(1)} L ${xOf(0).toFixed(1)},${(elevTop + elevH).toFixed(1)} Z" fill="url(#g-elev)"/>`;
+  const eline = `<path d="${ePath}" fill="none" stroke="${CK.ink}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>`;
   const gmax = Math.max(1, ...line.segments.map((s) => Math.abs(s.gradient)));
   const strip = line.segments.map((sg) => { const x1 = xOf(sg.start), x2 = xOf(sg.end), g = sg.gradient;
-    const col = g > 0.3 ? RED : g < -0.3 ? "#0C6DB8" : "#B9C4CE"; const h = (Math.abs(g) / gmax) * stripH;
-    return `<rect x="${x1.toFixed(1)}" y="${(stripTop + stripH - h).toFixed(1)}" width="${Math.max(0.6, x2 - x1).toFixed(1)}" height="${Math.max(0.6, h).toFixed(1)}" fill="${col}"/>`; }).join("");
-  const elevLbl = `<text x="8" y="${elevTop + 8}" font-size="9" fill="#6B7A8A">${esc(lbl.m)}</text><text x="${padL - 6}" y="${(yE(eMax) + 3).toFixed(1)}" text-anchor="end" font-size="8" fill="#6B7A8A">+${(eMax - eMin).toFixed(0)}</text>`;
-  const gLbl = `<text x="${padL}" y="${fullBottom + 16}" font-size="8" fill="#6B7A8A">${esc(lbl.grade)}: <tspan fill="${RED}">■</tspan> ${esc(lbl.climb)} <tspan fill="#0C6DB8">■</tspan> ${esc(lbl.descent)} (max ${gmax.toFixed(0)}‰)</text><text x="${W - padR}" y="${fullBottom + 16}" text-anchor="end" font-size="8" fill="#6B7A8A">mesafe (m) →</text>`;
-  const note = hasGrade ? "" : `<text x="${W / 2}" y="${elevTop + elevH / 2}" text-anchor="middle" font-size="9" fill="#9AA7B4">${esc(lbl.noElev)}</text>`;
+    const h = (Math.abs(g) / gmax) * stripH;
+    return `<rect x="${(x1 + 0.5).toFixed(1)}" y="${(stripTop + stripH - h).toFixed(1)}" width="${Math.max(0.6, x2 - x1 - 1).toFixed(1)}" height="${Math.max(0.6, h).toFixed(1)}" rx="0.8" fill="${egimRenk(g)}"/>`; }).join("");
+  const elevLbl = `${lab(8, elevTop + 8, esc(lbl.m), { size: 8 })}${num(padL - 7, yE(eMax) + 3, "+" + (eMax - eMin).toFixed(0), { anchor: "end", size: 8 })}`;
+  const gLbl = `<text x="${padL}" y="${fullBottom + 16}" font-family="${CK.sans}" font-size="8" fill="${CK.muted}">${esc(lbl.grade)}: <tspan fill="${CK.red}">■</tspan> ${esc(lbl.climb)}  <tspan fill="${CK.blue}">■</tspan> ${esc(lbl.descent)} (max ${gmax.toFixed(0)}‰)</text>${lab(W - padR, fullBottom + 16, "mesafe (m) →", { anchor: "end", size: 8 })}`;
+  const note = hasGrade ? "" : lab(W / 2, elevTop + elevH / 2, esc(lbl.noElev), { anchor: "middle", size: 9, color: CK.faint });
+  const base = `<line x1="${padL}" y1="${(topTop + topH).toFixed(1)}" x2="${W - padR}" y2="${(topTop + topH).toFixed(1)}" stroke="${CK.baseline}"/>`;
 
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${st}${vTicks}${env}${speed}${marks}${speedLbl}${area}${eline}${strip}${elevLbl}${gLbl}${note}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px"><defs>${areaGrad("g-spd", CK.blue, 0.18)}${areaGrad("g-elev", CK.ink, 0.14)}</defs>${st}${vTicks}${base}${spdArea}${env}${speed}${marks}${speedLbl}${area}${eline}${strip}${elevLbl}${gLbl}${note}</svg>`;
 }
 
 // Bir Line'ı ters çevir (dönüş yönü): konum aynala + eğim işaretini çevir.
@@ -192,23 +187,17 @@ function bildfahrplanSvg(line: Line, stock: RollingStock, cfg: SimConfig, count:
   const xOf = (t: number) => padL + (t / tMax) * pw;
   const yOf = (s: number) => padT + (s / L) * ph; // s=0 üstte, s=L altta
   const st = line.stations.map((s) =>
-    `<line x1="${padL}" y1="${yOf(s.position).toFixed(1)}" x2="${W - padR}" y2="${yOf(s.position).toFixed(1)}" stroke="#E6E9ED"/><text x="${padL - 6}" y="${(yOf(s.position) + 3).toFixed(1)}" text-anchor="end" font-size="8" fill="#6B7A8A">${esc(s.name)}</text>`).join("");
+    `<line x1="${padL}" y1="${yOf(s.position).toFixed(1)}" x2="${W - padR}" y2="${yOf(s.position).toFixed(1)}" stroke="${CK.grid}"/>${lab(padL - 7, yOf(s.position) + 3, esc(s.name), { anchor: "end", size: 8 })}`).join("");
   const tg = Array.from({ length: 7 }).map((_, i) => {
     const t = (tMax * i) / 6, x = xOf(t);
-    return `<line x1="${x.toFixed(1)}" y1="${padT}" x2="${x.toFixed(1)}" y2="${padT + ph}" stroke="#EEF1F4"/><text x="${x.toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="8" fill="#6B7A8A">${Math.round(t / 60)}′</text>`;
+    return `<line x1="${x.toFixed(1)}" y1="${padT}" x2="${x.toFixed(1)}" y2="${padT + ph}" stroke="${CK.grid}" opacity="0.6"/>${num(x, H - 8, `${Math.round(t / 60)}′`, { anchor: "middle", size: 8 })}`;
   }).join("");
-  const upLines = up.trains.map((tr) => {
-    const col = tr.delay > 2 ? RED : INK;
-    const pts = tr.points.map((p) => `${xOf(p.t).toFixed(1)},${yOf(p.s).toFixed(1)}`).join(" ");
-    return `<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.4" opacity="0.9"/>`;
-  }).join("");
-  const dnLines = dn.trains.map((tr) => {
-    const col = tr.delay > 2 ? RED : "#0C6DB8";
-    const pts = tr.points.map((p) => `${xOf(p.t).toFixed(1)},${yOf(L - p.s).toFixed(1)}`).join(" ");
-    return `<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.4" opacity="0.9" stroke-dasharray="1 0"/>`;
-  }).join("");
-  const leg = `<text x="${W - padR}" y="${padT + 10}" text-anchor="end" font-size="8.5"><tspan fill="${INK}">— gidiş</tspan>  <tspan fill="#0C6DB8">— dönüş</tspan>  <tspan fill="${RED}">— gecikmeli</tspan></text>`;
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${st}${tg}${upLines}${dnLines}${leg}</svg>`;
+  const trainLine = (pts: string, col: string, delayed: boolean) =>
+    `<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" opacity="0.92"${delayed ? ' stroke-dasharray="4 3"' : ""}/>`;
+  const upLines = up.trains.map((tr) => trainLine(tr.points.map((p) => `${xOf(p.t).toFixed(1)},${yOf(p.s).toFixed(1)}`).join(" "), CK.blue, tr.delay > 2)).join("");
+  const dnLines = dn.trains.map((tr) => trainLine(tr.points.map((p) => `${xOf(p.t).toFixed(1)},${yOf(L - p.s).toFixed(1)}`).join(" "), CK.orange, tr.delay > 2)).join("");
+  const leg = `<text x="${W - padR}" y="${padT + 9}" text-anchor="end" font-family="${CK.sans}" font-size="8.5"><tspan fill="${CK.blue}">▬ gidiş</tspan>  <tspan fill="${CK.orange}">▬ dönüş</tspan>  <tspan fill="${CK.muted}">╌ gecikmeli</tspan></text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${tg}${st}${upLines}${dnLines}${leg}</svg>`;
 }
 
 // Gerçek Sperrzeitentreppe (gömülü SVG): iki ardışık tren + her bloğun blocking-time
@@ -221,27 +210,26 @@ function sperrzeitSvg(bt: ReturnType<typeof blockingTimeRing>, L: number): strin
     t1: b.cikisT + b.tClearing + b.tRelease,
   });
   const tMax = Math.max(...bt.bloklar.map((b) => pencere(b).t1)) + h;
-  const W = 760, H = 250, padL = 44, padR = 12, padT = 12, padB = 26;
+  const W = 760, H = 250, padL = 44, padR = 12, padT = 16, padB = 26;
   const pw = W - padL - padR, ph = H - padT - padB;
   const xOf = (t: number) => padL + (t / (tMax || 1)) * pw;
   const yOf = (s: number) => padT + (s / L) * ph;
   const rects: string[] = [];
   [0, h].forEach((off, k) => {
+    const col = k === 0 ? CK.blue : CK.orange;
     bt.bloklar.forEach((b) => {
       const w = pencere(b);
       const x = xOf(w.t0 + off), y = yOf(b.start);
       const ww = Math.max(0.6, xOf(w.t1 + off) - x), hh = Math.max(0.6, yOf(b.end) - y);
       const kritik = b.i === bt.kritikBlok;
-      const fill = k === 0 ? "rgba(12,109,184,0.16)" : "rgba(168,132,44,0.16)";
-      rects.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${ww.toFixed(1)}" height="${hh.toFixed(1)}" fill="${fill}" stroke="${kritik ? RED : "#B9C4CE"}" stroke-width="${kritik ? 1.4 : 0.6}"/>`);
+      rects.push(`<rect x="${(x + 0.4).toFixed(1)}" y="${(y + 0.4).toFixed(1)}" width="${Math.max(0.6, ww - 0.8).toFixed(1)}" height="${Math.max(0.6, hh - 0.8).toFixed(1)}" rx="1" fill="${col}" fill-opacity="0.14" stroke="${kritik ? CK.red : col}" stroke-width="${kritik ? 1.5 : 0.7}" stroke-opacity="${kritik ? 1 : 0.5}"/>`);
     });
   });
-  // istasyon çizgileri (yorunge üstünden değil; blok sınırlarından kaba)
   const traj = (off: number, col: string) =>
-    `<polyline points="${bt.yorunge.map((p) => `${xOf(p.t + off).toFixed(1)},${yOf(p.s).toFixed(1)}`).join(" ")}" fill="none" stroke="${col}" stroke-width="1.6"/>`;
-  const yTicks = [0, L / 2, L].map((s) => `<text x="${padL - 6}" y="${(yOf(s) + 3).toFixed(1)}" text-anchor="end" font-size="8" fill="#6B7A8A">${Math.round(s)}</text>`).join("");
-  const hMark = `<text x="${xOf(h / 2).toFixed(1)}" y="${padT + 12}" font-size="9" fill="${RED}">↔ min headway ${Math.round(h)}s</text>`;
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${yTicks}${rects.join("")}${traj(0, INK)}${traj(h, "#7A6224")}${hMark}<text x="${padL}" y="${H - 8}" font-size="8.5" fill="#6B7A8A">zaman (s) →</text><text x="8" y="${padT + 8}" font-size="8.5" fill="#6B7A8A">m</text></svg>`;
+    `<polyline points="${bt.yorunge.map((p) => `${xOf(p.t + off).toFixed(1)},${yOf(p.s).toFixed(1)}`).join(" ")}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  const yTicks = [0, L / 2, L].map((s) => num(padL - 7, yOf(s) + 3, `${Math.round(s)}`, { anchor: "end", size: 8 })).join("");
+  const hMark = `<line x1="${xOf(0).toFixed(1)}" y1="${padT - 6}" x2="${xOf(h).toFixed(1)}" y2="${padT - 6}" stroke="${CK.red}" stroke-width="1.4"/>${lab(xOf(h) + 6, padT - 3, `min headway ${Math.round(h)} s`, { size: 8.5, color: CK.red, weight: 600 })}`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${yTicks}${rects.join("")}${traj(0, CK.blue)}${traj(h, CK.orange)}${hMark}${lab(padL, H - 8, "zaman (s) →", { size: 8.5 })}${lab(8, padT + 4, "m", { size: 8.5 })}</svg>`;
 }
 
 // Enerji–eğim (gömülü SVG): kümülatif çekiş enerjisi (kWh) vs mesafe + eğim şeridi.
@@ -273,17 +261,18 @@ function energyGradeSvg(line: Line, stock: RollingStock, lbl: { climb: string; d
   const xOf = (s: number) => padL + (s / L) * pw;
   const Emax = Math.max(0.1, ...cp.map((p) => p.E));
   const yE = (E: number) => topTop + topH - (E / Emax) * topH;
-  const st = line.stations.map((s) => `<line x1="${xOf(s.position).toFixed(1)}" y1="${topTop}" x2="${xOf(s.position).toFixed(1)}" y2="${stripTop + stripH}" stroke="#EDF0F3"/>`).join("");
-  const eline = cp.map((p) => `${xOf(p.s).toFixed(1)},${yE(p.E).toFixed(1)}`).join(" ");
-  const eArea = `<polygon points="${xOf(0).toFixed(1)},${(topTop + topH).toFixed(1)} ${eline} ${xOf(L).toFixed(1)},${(topTop + topH).toFixed(1)}" fill="#C8102E11"/>`;
-  const ePoly = `<polyline points="${eline}" fill="none" stroke="${INK}" stroke-width="1.6"/>`;
-  const yTicks = [0, Emax / 2, Emax].map((v) => `<line x1="${padL}" y1="${yE(v).toFixed(1)}" x2="${W - padR}" y2="${yE(v).toFixed(1)}" stroke="#E6E9ED"/><text x="${padL - 6}" y="${(yE(v) + 3).toFixed(1)}" text-anchor="end" font-size="8" fill="#6B7A8A">${v.toFixed(1)}</text>`).join("");
+  const st = line.stations.map((s) => `<line x1="${xOf(s.position).toFixed(1)}" y1="${topTop}" x2="${xOf(s.position).toFixed(1)}" y2="${stripTop + stripH}" stroke="${CK.grid}"/>`).join("");
+  const ePts = cp.map((p) => `${xOf(p.s).toFixed(1)},${yE(p.E).toFixed(1)}`).join(" ");
+  const eArea = `<polygon points="${xOf(0).toFixed(1)},${(topTop + topH).toFixed(1)} ${ePts} ${xOf(L).toFixed(1)},${(topTop + topH).toFixed(1)}" fill="url(#g-en)"/>`;
+  const ePoly = `<polyline points="${ePts}" fill="none" stroke="${CK.orange}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  const yTicks = [0, Emax / 2, Emax].map((v) => `<line x1="${padL}" y1="${yE(v).toFixed(1)}" x2="${W - padR}" y2="${yE(v).toFixed(1)}" stroke="${CK.grid}"/>${num(padL - 7, yE(v) + 3, v.toFixed(1), { anchor: "end", size: 8 })}`).join("");
+  const base = `<line x1="${padL}" y1="${(topTop + topH).toFixed(1)}" x2="${W - padR}" y2="${(topTop + topH).toFixed(1)}" stroke="${CK.baseline}"/>`;
   const gmax = Math.max(1, ...line.segments.map((s) => Math.abs(s.gradient)));
   const strip = line.segments.map((sg) => { const x1 = xOf(sg.start), x2 = xOf(sg.end), g = sg.gradient;
-    const col = g > 0.3 ? RED : g < -0.3 ? "#0C6DB8" : "#B9C4CE"; const h = (Math.abs(g) / gmax) * stripH;
-    return `<rect x="${x1.toFixed(1)}" y="${(stripTop + stripH - h).toFixed(1)}" width="${Math.max(0.6, x2 - x1).toFixed(1)}" height="${Math.max(0.6, h).toFixed(1)}" fill="${col}"/>`; }).join("");
-  const lblSvg = `<text x="8" y="${topTop + 8}" font-size="9" fill="#6B7A8A">kWh</text><text x="${padL}" y="${stripTop + stripH + 16}" font-size="8" fill="#6B7A8A">${esc(lbl.grade)}: <tspan fill="${RED}">■</tspan> ${esc(lbl.climb)} <tspan fill="#0C6DB8">■</tspan> ${esc(lbl.descent)}</text><text x="${W - padR}" y="${stripTop + stripH + 16}" text-anchor="end" font-size="8" fill="#6B7A8A">mesafe (m) →</text>`;
-  const svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${st}${yTicks}${eArea}${ePoly}${strip}${lblSvg}</svg>`;
+    const h = (Math.abs(g) / gmax) * stripH;
+    return `<rect x="${(x1 + 0.5).toFixed(1)}" y="${(stripTop + stripH - h).toFixed(1)}" width="${Math.max(0.6, x2 - x1 - 1).toFixed(1)}" height="${Math.max(0.6, h).toFixed(1)}" rx="0.8" fill="${egimRenk(g)}"/>`; }).join("");
+  const lblSvg = `${lab(8, topTop + 8, "kWh", { size: 8 })}<text x="${padL}" y="${stripTop + stripH + 16}" font-family="${CK.sans}" font-size="8" fill="${CK.muted}">${esc(lbl.grade)}: <tspan fill="${CK.red}">■</tspan> ${esc(lbl.climb)}  <tspan fill="${CK.blue}">■</tspan> ${esc(lbl.descent)}</text>${lab(W - padR, stripTop + stripH + 16, "mesafe (m) →", { anchor: "end", size: 8 })}`;
+  const svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px"><defs>${areaGrad("g-en", CK.orange, 0.2)}</defs>${st}${yTicks}${base}${eArea}${ePoly}${strip}${lblSvg}</svg>`;
   return { svg, net: en.netKWh, perKm: en.perKm };
 }
 
@@ -307,7 +296,7 @@ function rDil(lang: RaporDil) {
     fig2: "Şekil 2 — Hız + boy kesit (aynı mesafe ekseni): ÜST = hız-mesafe (– – limit, — fiili, ⌒ kurp kısıtı), ALT = yükseklik profili + eğim şeridi (kırmızı tırmanış, mavi iniş). Kurpların tırmanışa denk gelişi dikey hizada okunur.",
     figEnergy: (net: number, perKm: number) => `Şekil 3 — Enerji-mesafe: kümülatif çekiş enerjisi (mürekkep alan) + eğim şeridi; tırmanışta dik artış, inişte düzleşme. Net ${net.toFixed(1)} kWh · ${perKm.toFixed(2)} kWh/km.`,
     gClimb: "tırmanış", gDescent: "iniş", gGrade: "eğim", gNoElev: "Yükseklik verisi girilmedi — düz profil varsayıldı", mUnit: "m",
-    fig3: (c: number, h: number) => `Şekil 4 — Zaman-mesafe diyagramı (Bildfahrplan), ÇİFT YÖN: gidiş (mürekkep) + dönüş (mavi), ${c}+${c} tren, ${h}s aralık. Ters eğimli çizgilerin kesişimi = kruvasman/karşılaşma; kırmızı = gecikmeli sefer.`,
+    fig3: (c: number, h: number) => `Şekil 4 — Zaman-mesafe diyagramı (Bildfahrplan), ÇİFT YÖN: gidiş (mürekkep) + dönüş (mavi), ${c}+${c} tren, ${h}s aralık. Ters eğimli çizgilerin kesişimi = kruvasman/karşılaşma; kesikli çizgi = gecikmeli sefer.`,
     thRing: ["No", "Durak Arası", "Mesafe (m)", "Worst (m)", "Makas", "Hemzemin", "Tehlike", "Worst Toplam", "Headway"],
     s21: "2.1 Ring Bazında Kısıt ve Risk (Challenge) Analizi",
     thKisit: ["Kısıt", "Konum (m)", "Detay"], noKisit: "Kısıt yok — kesintisiz seyir.",
@@ -341,7 +330,7 @@ function rDil(lang: RaporDil) {
     fig2: "Figure 2 — Speed + longitudinal section (same distance axis): TOP = speed-distance (– – limit, — actual, ⌒ curve restriction), BOTTOM = elevation profile + grade strip (red climb, blue descent). Curve/climb coincidence reads off vertically aligned.",
     figEnergy: (net, perKm) => `Figure 3 — Energy-distance: cumulative traction energy (ink area) + grade strip; steep rise on climbs, flattening on descents. Net ${net.toFixed(1)} kWh · ${perKm.toFixed(2)} kWh/km.`,
     gClimb: "climb", gDescent: "descent", gGrade: "grade", gNoElev: "No elevation data — level profile assumed", mUnit: "m",
-    fig3: (c, h) => `Figure 4 — Time-distance diagram (Bildfahrplan), BOTH DIRECTIONS: outbound (ink) + return (blue), ${c}+${c} trains, ${h}s headway. Crossing of opposing lines = meeting/passing point; red = delayed service.`,
+    fig3: (c, h) => `Figure 4 — Time-distance diagram (Bildfahrplan), BOTH DIRECTIONS: outbound (ink) + return (blue), ${c}+${c} trains, ${h}s headway. Crossing of opposing lines = meeting/passing point; dashed line = delayed service.`,
     thRing: ["No", "Section", "Distance (m)", "Worst (m)", "Switches", "Level xing", "Hazards", "Worst Total", "Headway"],
     s21: "2.1 Per-cell Constraint & Risk (Challenge) Analysis",
     thKisit: ["Constraint", "Position (m)", "Detail"], noKisit: "No constraints — uninterrupted run.",
