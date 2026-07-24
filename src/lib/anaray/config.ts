@@ -1,4 +1,4 @@
-// aslanray — PAYLAŞILAN SİMÜLASYON PARAMETRELERİ (tek kaynak).
+// raysim — PAYLAŞILAN SİMÜLASYON PARAMETRELERİ (tek kaynak).
 //
 // Belge kabullerinden (MAZ-VA-AKS-001 v6.0) türeyen tüm sayısal parametreler
 // burada tek bir `SimConfig` nesnesinde toplanır. Tüm modüller (Sefer, Ringler,
@@ -124,7 +124,7 @@ export const varsayilanMeta: ProjeMeta = {
   idare: "İdare / İşveren",
   yuklenici: "Yüklenici Firma",
   musavir: "Müşavir Firma",
-  sinyalizasyonFirmasi: "AslanRAY",
+  sinyalizasyonFirmasi: "RaySim",
   dokumanNo: "TR-VA-AKS-001",
   revizyon: "v1.0",
   tarih: "",

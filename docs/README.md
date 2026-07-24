@@ -1,4 +1,4 @@
-# AslanRAY — Sistem Dokümantasyonu
+# RaySim — Sistem Dokümantasyonu
 
 Demiryolu ağı simülasyon, sinyalizasyon/anklaşman ve kapasite analizi platformu.
 Blocking-time (Sperrzeitentreppe) ve UIC 406 metodolojisine dayanan bağımsız çekirdek.
@@ -30,7 +30,7 @@ Blocking-time (Sperrzeitentreppe) ve UIC 406 metodolojisine dayanan bağımsız 
 
 ## 1. Genel Bakış
 
-**AslanRAY**, tramvay/metro gibi kentsel raylı sistemler için mikroskobik (saniye-adımlı)
+**RaySim**, tramvay/metro gibi kentsel raylı sistemler için mikroskobik (saniye-adımlı)
 demiryolu simülasyonu yapan bir web uygulamasıdır. Amaç: hat planlama (kapasite/tarife),
 sinyalizasyon tasarımının doğrulanması ve teknik dokümantasyon üretimi.
 
@@ -73,7 +73,7 @@ paylaşılan durumu tutar:
 - **`meta` (ProjeMeta)** — proje künyesi (kapak/belge için)
 
 Bir modülde parametre değişince (ör. Sistem Merkezi'nde headway) **tüm modüller** anında
-yeniden hesaplar. Durum `localStorage`'a yazılır (anahtarlar `aslanray_*`), oturumlar arası
+yeniden hesaplar. Durum `localStorage`'a yazılır (anahtarlar `raysim_*`), oturumlar arası
 kalıcıdır.
 
 ### Veri akışı
@@ -397,7 +397,7 @@ zamanlı gösterir (requestAnimationFrame). SSR hidrasyon tuzağı `mounted` gua
 
 ### localStorage
 
-`SimConfigProvider` cfg/rings/meta'yı `aslanray_*` anahtarlarıyla saklar. Anahtar öneki
+`SimConfigProvider` cfg/rings/meta'yı `raysim_*` anahtarlarıyla saklar. Anahtar öneki
 değiştiğinde eski kayıtlar yok sayılır (versiyon/temizlik mekanizması).
 
 ### Firebase — Firestore (senaryolar)
@@ -432,7 +432,7 @@ salt-okunur; yalnız giriş yapan yönetici Kaydet/Sil görür (`yazabilir = !vi
 
 ## 15. Dağıtım ve Altyapı
 
-- **Platform:** Vercel (proje `aslanray`, kapsam `ulasiraks-projects`).
+- **Platform:** Vercel (proje `raysim`, kapsam `ulasiraks-projects`).
 - **Otomatik deploy:** GitHub `master`'a her push → Vercel otomatik prod deploy
   (repo: `github.com/ulasirak/turkray`). Elle: `vercel deploy --prod`.
 - **Env değişkenleri (Production):** 7× `NEXT_PUBLIC_FIREBASE_*`, `NEXT_PUBLIC_VITRIN`,
@@ -468,7 +468,7 @@ npm run lint
 - **Pachl, J.** — *Railway Operation and Control* (blocking-time teorisi, interlocking).
 - **Hansen & Pachl** — *Railway Timetabling & Operations*.
 - **UIC 406** — kapasite (sıkıştırılmış işgal / doluluk) metodolojisi.
-- **OpenTrack** — referans mikroskobik demiryolu simülasyonu (ETH Zürih); AslanRAY aynı akademik
+- **OpenTrack** — referans mikroskobik demiryolu simülasyonu (ETH Zürih); RaySim aynı akademik
   metodolojiyle geliştirilmiş **bağımsız** çekirdektir.
 
 | Terim | Anlam |
@@ -483,4 +483,4 @@ npm run lint
 
 ---
 
-*AslanRAY · Demiryolu Ağı Simülasyon Sistemi — teknik dokümantasyon.*
+*RaySim · Demiryolu Ağı Simülasyon Sistemi — teknik dokümantasyon.*

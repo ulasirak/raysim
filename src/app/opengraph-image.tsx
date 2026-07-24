@@ -1,9 +1,9 @@
-// aslanray — KARE paylaşım görseli (WhatsApp/Twitter/OG link önizlemesi).
-// 1200×1200 mühür kompozisyonu: amblem + AslanRAY kelime markası + alt başlık.
+// raysim — KARE paylaşım görseli (WhatsApp/Twitter/OG link önizlemesi).
+// 1200×1200 mühür kompozisyonu: amblem + RaySim kelime markası + alt başlık.
 import { ImageResponse } from "next/og";
 import { emblemDataUri } from "@/lib/emblem";
 
-export const alt = "AslanRAY — Demiryolu Ağı Simülasyon Sistemi";
+export const alt = "RaySim — Demiryolu Ağı Simülasyon Sistemi";
 export const size = { width: 1200, height: 1200 };
 export const contentType = "image/png";
 
@@ -30,7 +30,7 @@ export default function OpengraphImage() {
 
         {/* kelime markası */}
         <div style={{ fontSize: 180, color: "#FFFFFF", fontWeight: 600, letterSpacing: 6, display: "flex" }}>
-          AslanRAY
+          RaySim
         </div>
 
         {/* alt başlık */}

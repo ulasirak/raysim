@@ -1,6 +1,6 @@
 "use client";
 
-// aslanray — ortak uygulama kabuğu (tek sistem navigasyonu).
+// raysim — ortak uygulama kabuğu (tek sistem navigasyonu).
 // Tüm modüller (Sefer / Ringler / Anklaşman / Kural Kitabı) aynı Masthead + nav
 // altında mantıksal olarak bağlıdır. Aktif modül yola (pathname) göre belirlenir;
 // Masthead künyesi ve rota buradan beslenir. Sayfalar yalnız içeriklerini döner.
@@ -72,7 +72,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="text-slate-200"> bağımsız</span> çekirdek.
           </div>
 
-          {/* Orta: AslanRAY amblemi */}
+          {/* Orta: RaySim amblemi */}
           <div className="flex flex-col items-center gap-1.5">
             <svg width="38" height="38" viewBox="0 0 46 46" fill="none" aria-hidden="true">
               <circle cx="23" cy="23" r="21.5" stroke="#A8842C" strokeWidth="1" />
@@ -80,7 +80,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <path d="M17 34 L21.5 13 M29 34 L24.5 13" stroke="#E7ECF1" strokeWidth="1.6" strokeLinecap="round" />
               <path d="M18.4 28 L27.6 28 M19.3 24 L26.7 24 M20 20.5 L26 20.5 M20.7 17.5 L25.3 17.5" stroke="#C8102E" strokeWidth="1.4" strokeLinecap="round" />
             </svg>
-            <span className="font-brand text-sm font-semibold tracking-[0.15em] text-white">AslanRAY</span>
+            <span className="font-brand text-sm font-semibold tracking-[0.15em] text-white">RaySim</span>
           </div>
 
           {/* Sağ: künye */}

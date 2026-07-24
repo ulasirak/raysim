@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// aslanray — Firestore güvenlik kuralları (VİTRİN + YÖNETİCİ GİRİŞİ)
+// raysim — Firestore güvenlik kuralları (VİTRİN + YÖNETİCİ GİRİŞİ)
 // ────────────────────────────────────────────────────────────────
 // Senaryolar HERKESE OKUNUR. Yazma/silme yalnız GİRİŞ YAPMIŞ YÖNETİCİYE açık.
 // Yönetici = aşağıdaki e-postayla Email/Password ile giriş yapan kullanıcı.

@@ -1,4 +1,4 @@
-// aslanray — mikroskobik çok-tren SABİT BLOK sinyal simülasyonu + çift yön + filo.
+// raysim — mikroskobik çok-tren SABİT BLOK sinyal simülasyonu + çift yön + filo.
 //
 // Hat, sinyallerle bloklara bölünür (istasyonlar + ara sinyaller). Bir tren,
 // önündeki ilk BAŞKA trenle dolu bloğa giremez → o bloğun giriş sinyalinde

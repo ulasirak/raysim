@@ -26,25 +26,25 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "AslanRAY — Demiryolu Ağı Simülasyon Sistemi",
-    template: "%s · AslanRAY",
+    default: "RaySim — Demiryolu Ağı Simülasyon Sistemi",
+    template: "%s · RaySim",
   },
   description:
     "Demiryolu ağı simülasyon, sinyalizasyon, sefer ve kapasite analizi sistemi — mikroskobik tren hareketi, sabit blok/anklaşman ve UIC 406 kapasite.",
-  applicationName: "AslanRAY",
-  keywords: ["demiryolu", "simülasyon", "sinyalizasyon", "anklaşman", "kapasite", "tramvay", "AslanRAY"],
-  authors: [{ name: "AslanRAY" }],
+  applicationName: "RaySim",
+  keywords: ["demiryolu", "simülasyon", "sinyalizasyon", "anklaşman", "kapasite", "tramvay", "RaySim"],
+  authors: [{ name: "RaySim" }],
   openGraph: {
     type: "website",
     locale: "tr_TR",
-    siteName: "AslanRAY",
-    title: "AslanRAY — Demiryolu Ağı Simülasyon Sistemi",
+    siteName: "RaySim",
+    title: "RaySim — Demiryolu Ağı Simülasyon Sistemi",
     description: "Demiryolu ağı simülasyon, sinyalizasyon, sefer ve kapasite analizi sistemi.",
     url: siteUrl,
   },
   twitter: {
     card: "summary_large_image",
-    title: "AslanRAY — Demiryolu Ağı Simülasyon Sistemi",
+    title: "RaySim — Demiryolu Ağı Simülasyon Sistemi",
     description: "Demiryolu ağı simülasyon, sinyalizasyon, sefer ve kapasite analizi sistemi.",
   },
 };

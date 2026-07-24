@@ -1,4 +1,4 @@
-// aslanray — resmî künye başlığı (masthead).
+// raysim — resmî künye başlığı (masthead).
 // Koyu mürekkep zemin + amblem (ray rozeti) + Spectral marka + resmî belge künyesi.
 
 export function Masthead({ belgeKodu, rota }: { belgeKodu: string; rota: string }) {
@@ -21,7 +21,7 @@ export function Masthead({ belgeKodu, rota }: { belgeKodu: string; rota: string 
         {/* Marka + alt başlık */}
         <div className="min-w-0 flex-1">
           <div className="font-brand text-2xl font-semibold leading-none tracking-[0.15em] text-white">
-            AslanRAY
+            RaySim
           </div>
           <div className="mt-1.5 text-[0.7rem] uppercase tracking-[0.22em] text-slate-300">
             Demiryolu Ağı Simülasyon Sistemi

@@ -1,6 +1,6 @@
 "use client";
 
-// aslanray — paylaşılan PROJE DURUMU context'i.
+// raysim — paylaşılan PROJE DURUMU context'i.
 // Tüm modüller aynı kaynaktan okur: `useSimConfig()` → sayısal parametreler,
 // `useProje()` → hat (ring dizisi) + proje künyesi. Değişiklikler localStorage'a
 // yazılır (oturumlar arası kalıcı) ve tüm modüllere + belge üreticiye anında
@@ -10,11 +10,11 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { varsayilanConfig, varsayilanMeta, type SimConfig, type ProjeMeta } from "@/lib/anaray/config";
 import { ornekSeed, type DurakArasiRing } from "@/lib/anaray/ring";
 
-const CFG_ANAHTAR = "aslanray_simconfig_v1";
+const CFG_ANAHTAR = "raysim_simconfig_v1";
 // v2: eski "Konya 2. Etap" örnek verisi jenerik seed'le değiştirildi → v1 kayıtları
 // yok sayılır ki tarayıcıda kalan eski test verisi otomatik temizlensin.
-const RING_ANAHTAR = "aslanray_rings_v2";
-const META_ANAHTAR = "aslanray_projemeta_v1";
+const RING_ANAHTAR = "raysim_rings_v2";
+const META_ANAHTAR = "raysim_projemeta_v1";
 
 interface Ctx {
   cfg: SimConfig;

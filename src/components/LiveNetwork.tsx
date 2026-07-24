@@ -1,6 +1,6 @@
 "use client";
 
-// aslanray — CANLI AĞ SİMÜLASYONU ("sim videosu").
+// raysim — CANLI AĞ SİMÜLASYONU ("sim videosu").
 // Tüm trenler (gidiş + dönüş) aynı anda hat üzerinde hareket eder; blok işgali
 // canlı kırmızıya döner; saat + oynat/duraklat + hız + zaman çubuğu.
 // Trenler önceden hesaplanmış yörüngelerden (t→konum) arc-length ile konumlanır.

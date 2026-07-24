@@ -1,4 +1,4 @@
-// aslanray — DURAK ARASI RİNG modeli (gerçek-hayat işletim hücreleri).
+// raysim — DURAK ARASI RİNG modeli (gerçek-hayat işletim hücreleri).
 //
 // Kavram: iki durak arasındaki her kesim bağımsız bir "ring hücresi"dir.
 // Her hücre kendi ZORUNLU şartlarını taşır — mesafe, makas bölgeleri (konum,

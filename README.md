@@ -1,4 +1,4 @@
-# AslanRAY — Demiryolu Ağı Simülasyon Sistemi
+# RaySim — Demiryolu Ağı Simülasyon Sistemi
 
 Mikroskobik tren hareketi, sinyalizasyon/anklaşman ve kapasite analizi için web tabanlı
 demiryolu simülasyon platformu. Blocking-time (Sperrzeitentreppe) ve UIC 406 metodolojisine

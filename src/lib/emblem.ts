@@ -1,4 +1,4 @@
-// aslanray — kurumsal amblem (ray mührü): iki rayın ufka birleşmesi + traversler.
+// raysim — kurumsal amblem (ray mührü): iki rayın ufka birleşmesi + traversler.
 // Tek kaynak SVG; paylaşım görselleri (og/twitter) ve favicon buradan üretilir.
 // Renkler marka jetonlarıyla uyumlu: gold cetvel, açık raylar, resmî kırmızı traversler.
 

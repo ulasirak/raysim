@@ -1,6 +1,6 @@
 "use client";
 
-// aslanray — SİSTEM MERKEZİ.
+// raysim — SİSTEM MERKEZİ.
 // (1) Paylaşılan simülasyon parametreleri — buradan değiştir, tüm modüllere canlı
 //     yansır (localStorage'da kalıcı). (2) Canlı sistem durumu — mevcut config +
 //     örnek seed'le ring loop + anklaşman bölgeleri anlık çözülür. (3) Bilgi /
@@ -58,7 +58,7 @@ export function SistemMerkezi() {
       <div className="mb-6 flex items-end justify-between border-b pb-4" style={{ borderColor: brand.border }}>
         <div>
           <div className="field-label">Sistem Merkezi — Canlı Simülasyon Parametreleri & Durum</div>
-          <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>AslanRAY Parametre & Bilgi Merkezi</h1>
+          <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>RaySim Parametre & Bilgi Merkezi</h1>
         </div>
         <button onClick={sifirla} className="rounded-md border px-3 py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
           ↺ Belge varsayılanlarına dön
@@ -215,7 +215,7 @@ export function SistemMerkezi() {
       </Panel>
 
       <footer className="mt-10 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
-        AslanRAY · Sistem Merkezi — parametreler tek kaynaktır; Sefer / Ringler / Anklaşman modülleri buradan okur. Değerler tarayıcıda saklanır (localStorage). Referans hızlar: {kmh(cfg.vAnahat).toFixed(0)}/{kmh(cfg.vSahasal).toFixed(0)}/{kmh(cfg.vMakas).toFixed(0)}/{kmh(cfg.vHemzemin).toFixed(0)} km/h.
+        RaySim · Sistem Merkezi — parametreler tek kaynaktır; Sefer / Ringler / Anklaşman modülleri buradan okur. Değerler tarayıcıda saklanır (localStorage). Referans hızlar: {kmh(cfg.vAnahat).toFixed(0)}/{kmh(cfg.vSahasal).toFixed(0)}/{kmh(cfg.vMakas).toFixed(0)}/{kmh(cfg.vHemzemin).toFixed(0)} km/h.
       </footer>
     </div>
   );

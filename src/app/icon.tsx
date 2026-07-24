@@ -1,4 +1,4 @@
-// aslanray — favicon / uygulama ikonu: kare amblem mührü (koyu mürekkep zemin).
+// raysim — favicon / uygulama ikonu: kare amblem mührü (koyu mürekkep zemin).
 import { ImageResponse } from "next/og";
 import { emblemDataUri } from "@/lib/emblem";
 

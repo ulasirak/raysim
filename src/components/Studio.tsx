@@ -1,6 +1,6 @@
 "use client";
 
-// aslanray — interaktif çalışma alanı (Faz 1 editörü + Firebase senaryolar).
+// raysim — interaktif çalışma alanı (Faz 1 editörü + Firebase senaryolar).
 // Ağ + araç düzenlenir; her değişiklikte flattenRoute→simulate→paneller anında güncellenir.
 // Senaryolar Firestore'a kaydedilir/yüklenir. İstasyon ekle/sil grafı düzenler.
 
@@ -469,7 +469,7 @@ export function Studio() {
 
       <footer className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
         <span className="flex items-center gap-3">
-          <span>AslanRAY · Demiryolu Ağı Simülasyon Sistemi</span>
+          <span>RaySim · Demiryolu Ağı Simülasyon Sistemi</span>
           <VeritabaniDurumu />
         </span>
         <span className="font-mono">Sürüm 0.2 · tam simülatör</span>

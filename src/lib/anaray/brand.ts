@@ -1,4 +1,4 @@
-// aslanray — kurumsal marka jetonları (tek kaynak).
+// raysim — kurumsal marka jetonları (tek kaynak).
 // Açık "resmî belge" teması: koyu mürekkep-lacivert + resmî Türk kırmızısı + nötr kağıt.
 // Tüm bileşenler (kartlar, SVG grafikler) renkleri buradan alır → tek tutarlı sistem.
 

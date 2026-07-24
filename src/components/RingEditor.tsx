@@ -1,6 +1,6 @@
 "use client";
 
-// aslanray — DURAK ARASI RİNG editörü.
+// raysim — DURAK ARASI RİNG editörü.
 // Her durak-arası hücrenin ZORUNLU şartları girilir/düzenlenir (mesafe, makas
 // bölgeleri, hemzemin, tehlike noktaları). Her değişiklikte worst/best köşeleri,
 // headway (240 s) uygunluğu, durak-çiftleri arası denge ve tren-sayısı
@@ -213,7 +213,7 @@ export function RingEditor() {
       </button>
 
       <footer className="mt-10 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
-        AslanRAY · Ring editörü — canlı parametreler (Sistem Merkezi&apos;nden): sahasal {kmh(cfg.vSahasal).toFixed(0)} · makas {kmh(cfg.vMakas).toFixed(0)} · hemzemin {kmh(cfg.vHemzemin).toFixed(0)} km/h · a={cfg.ivme} b={cfg.yavaslama} m/s² · headway {cfg.headway} s
+        RaySim · Ring editörü — canlı parametreler (Sistem Merkezi&apos;nden): sahasal {kmh(cfg.vSahasal).toFixed(0)} · makas {kmh(cfg.vMakas).toFixed(0)} · hemzemin {kmh(cfg.vHemzemin).toFixed(0)} km/h · a={cfg.ivme} b={cfg.yavaslama} m/s² · headway {cfg.headway} s
       </footer>
     </div>
   );

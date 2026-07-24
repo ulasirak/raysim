@@ -1,6 +1,6 @@
 "use client";
 
-// aslanray — TAM HAT ÇOK-TREN CANLI SİMÜLASYONU (ring + anklaşman birleşik).
+// raysim — TAM HAT ÇOK-TREN CANLI SİMÜLASYONU (ring + anklaşman birleşik).
 // Ring hücreleri tek koridora zincirlenir; trenler sabit-blok headway ile akar,
 // makas bölgelerinde gerçek interlocking'e girer (tanzim→yeşil→işgal→release kilidi).
 // Headway sıkışınca makas/blok kuyruklanması → gerçek darboğaz canlı görünür.

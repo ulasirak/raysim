@@ -1,4 +1,4 @@
-// aslanray — Firebase bağlantısı.
+// raysim — Firebase bağlantısı.
 // Yapılandırma .env.local'den NEXT_PUBLIC_FIREBASE_* değişkenleriyle okunur.
 // Değerler girilmemişse uygulama ÇÖKMEZ; getDb() null döner (güvenli düşüş).
 //

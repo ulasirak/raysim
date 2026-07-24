@@ -1,4 +1,4 @@
-// aslanray — GERÇEK Sperrzeitentreppe (blocking-time merdiveni).
+// raysim — GERÇEK Sperrzeitentreppe (blocking-time merdiveni).
 //
 // Kanonik demiryolu kapasite diyagramı: yatay = ZAMAN, dikey = MESAFE (hat boyunca).
 // Her sinyal bloğu, bir tren için bir DİKDÖRTGEN boyunca rezervedir:

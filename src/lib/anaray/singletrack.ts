@@ -1,4 +1,4 @@
-// aslanray — TEK HAT işletmesi: karşılaşma/geçiş (kruvasman) noktaları.
+// raysim — TEK HAT işletmesi: karşılaşma/geçiş (kruvasman) noktaları.
 //
 // Tek ray iki yönde paylaşılır. Kruvasman (geçiş) istasyonları arası "kesim"
 // bir karşılıklı-dışlama kaynağıdır: aynı anda tek tren (herhangi yön) girer.

@@ -1,4 +1,4 @@
-// aslanray — TEKNİK BELGE ÜRETİCİ (Word .docx + Excel .xlsx).
+// raysim — TEKNİK BELGE ÜRETİCİ (Word .docx + Excel .xlsx).
 //
 // Amaç: herhangi bir karşı taraf hattını (ring dizisi + parametre + künye)
 // girer; bu modül mevcut motor çıktılarından PROFESYONEL, teknik olarak tutarlı
@@ -115,7 +115,7 @@ export async function wordUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakAras
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 80 }, children: [new TextRun({ text: meta.projeAdi, bold: true, size: 28, color: INK })] }),
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 600 }, children: [new TextRun({ text: meta.hatAdi, size: 24, color: "6B7A8A" })] }),
     wordTablo(["", ""], kunye),
-    new Paragraph({ spacing: { after: 200 }, children: [new TextRun({ text: "AslanRAY Sinyalizasyon Tasarım & Dokümantasyon Sistemi tarafından üretilmiştir.", italics: true, size: 16, color: "9AA7B4" })] }),
+    new Paragraph({ spacing: { after: 200 }, children: [new TextRun({ text: "RaySim Sinyalizasyon Tasarım & Dokümantasyon Sistemi tarafından üretilmiştir.", italics: true, size: 16, color: "9AA7B4" })] }),
 
     // 1. Tasarım kriterleri
     h1("1. Tasarım Kriterleri"),
@@ -186,7 +186,7 @@ export async function wordUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakAras
   cocuklar.push(wordTablo(["Hazırlayan", "Onaylayan"], [[meta.hazirlayan, meta.onaylayan], ["İmza / Tarih", "İmza / Tarih"]]));
 
   const doc = new Document({
-    creator: "AslanRAY", title: `${meta.dokumanNo} — ${meta.projeAdi}`,
+    creator: "RaySim", title: `${meta.dokumanNo} — ${meta.projeAdi}`,
     styles: { default: { document: { run: { font: "Calibri" } } } },
     sections: [{ properties: {}, children: cocuklar }],
   });
@@ -206,7 +206,7 @@ function baslikSatiri(ws: ExcelJS.Worksheet, r: number) {
 
 export async function excelUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock): Promise<Blob> {
   const wb = new ExcelJS.Workbook();
-  wb.creator = "AslanRAY";
+  wb.creator = "RaySim";
   const rs = ringSatirlari(rings, stock, cfg);
   const zones = bolgeSeed();
   const olcek = olceklenme(rings, stock, true, cfg);

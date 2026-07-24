@@ -1,6 +1,6 @@
 "use client";
 
-// aslanray — TEKNİK BELGELER modülü.
+// raysim — TEKNİK BELGELER modülü.
 // Karşı taraf proje künyesini girer; mevcut hat (ringler) + parametrelerden
 // profesyonel Word (.docx) Tasarım El Kitabı ve Excel (.xlsx) çalışma kitabı
 // üretir. İçerik tamamen girilen projeden türer (Konya'ya bağlı değil).
@@ -40,7 +40,7 @@ export function Belgeler() {
     };
   }, [rings, stock, cfg]);
 
-  const dosyaAdi = (ext: string) => `${meta.dokumanNo || "aslanray"}_${(meta.hatAdi || "hat").replace(/\s+/g, "_")}.${ext}`;
+  const dosyaAdi = (ext: string) => `${meta.dokumanNo || "raysim"}_${(meta.hatAdi || "hat").replace(/\s+/g, "_")}.${ext}`;
 
   const wordIndir = async () => {
     setMesgul("word"); setDurum(null);
@@ -118,7 +118,7 @@ export function Belgeler() {
       </Panel>
 
       <footer className="mt-10 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
-        AslanRAY · Belge üretici — hat verisi Ringler modülünden, parametreler Sistem Merkezi&apos;nden gelir; belgeler bu tek kaynaktan üretilir.
+        RaySim · Belge üretici — hat verisi Ringler modülünden, parametreler Sistem Merkezi&apos;nden gelir; belgeler bu tek kaynaktan üretilir.
       </footer>
     </div>
   );

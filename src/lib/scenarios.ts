@@ -1,4 +1,4 @@
-// aslanray — senaryoları Firestore'da sakla/yükle.
+// raysim — senaryoları Firestore'da sakla/yükle.
 // Bir senaryo = { network, stock, route } (JSON olarak saklanır → Firestore
 // iç içe dizi kısıtlarından etkilenmez). getDb() null ise (config yok) net hata.
 

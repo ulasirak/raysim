@@ -1,4 +1,4 @@
-// aslanray — MAKAS BÖLGESİ ANKLAŞMAN MOTORU (dağıtık interlocking).
+// raysim — MAKAS BÖLGESİ ANKLAŞMAN MOTORU (dağıtık interlocking).
 //
 // Belge: Tasarım El Kitabı MAZ-VA-AKS-001 v6.0 (bölge senaryoları s.19–44).
 // Her makas bölgesi bağımsız bir SIL4 anklaşman birimidir (dağıtık; merkezi ana
