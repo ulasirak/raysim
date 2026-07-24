@@ -40,18 +40,29 @@ export function TekSayfa() {
   return (
     <SaltOkunurKalkan>
       <div>
-        {BOLUMLER.map((b, i) => (
-          <section
-            key={b.slug}
-            id={b.slug}
-            // scroll-mt: sticky nav + hesap çubuğu yüksekliği kadar tepe payı,
-            // ankora kayınca bölüm başlığı navigasyonun altında kalmasın.
-            className={`scroll-mt-28 ${i > 0 ? "border-t" : ""}`}
-            style={i > 0 ? { borderColor: brand.border } : undefined}
-          >
-            {b.el}
-          </section>
-        ))}
+        {BOLUMLER.map((b, i) => {
+          // İlk bölüm hep görünür (üstte) — olduğu gibi çizilir.
+          // Diğerleri: ekran dışındayken tarayıcı ÇİZİM/YERLEŞİMİ atlar
+          // (content-visibility). Yedi ağır canlı modül aynı anda mount olduğunda
+          // ana iş parçacığının kilitlenmesini önler; yetenek eksilmez, bölüm
+          // görününce tam çizilir. contain-intrinsic-size: kaydırma çubuğu
+          // zıplamasın diye tahmini yükseklik (bir kez ölçülünce "auto" hatırlar).
+          const disariAtla: React.CSSProperties = i > 0
+            ? { contentVisibility: "auto", containIntrinsicSize: "auto 1200px", borderTop: `1px solid ${brand.border}` }
+            : {};
+          return (
+            <section
+              key={b.slug}
+              id={b.slug}
+              // scroll-mt: sticky nav yüksekliği kadar tepe payı, ankora kayınca
+              // bölüm başlığı navigasyonun altında kalmasın.
+              className="scroll-mt-28"
+              style={disariAtla}
+            >
+              {b.el}
+            </section>
+          );
+        })}
       </div>
     </SaltOkunurKalkan>
   );
