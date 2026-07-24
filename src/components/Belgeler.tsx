@@ -19,7 +19,7 @@ import { raporHTML, yazdirRapor, type RaporDil } from "@/lib/anaray/rapor";
 
 export function Belgeler() {
   const { cfg } = useSimConfig();
-  const { rings, meta, patchMeta } = useProje();
+  const { rings, meta, patchMeta, yazilabilir } = useProje();
   const stock = varsayilanArac;
   const [durum, setDurum] = useState<{ tip: "ok" | "err" | "info"; metin: string } | null>(null);
   const [mesgul, setMesgul] = useState<"" | "word" | "excel" | "rapor" | "html">("");
@@ -173,16 +173,22 @@ export function Belgeler() {
       </Panel>
 
       {/* Proje künyesi */}
-      <Panel baslik="Proje Künyesi" aciklama="Belgelerin kapağında ve künyesinde görünür. Tarayıcıda kalıcıdır.">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {PROJE_META_ALANLAR.map((a) => (
-            <label key={a.key} className={a.genis ? "sm:col-span-2" : ""}>
-              <span className="field-label">{a.ad}</span>
-              <input value={meta[a.key]} onChange={(e) => patchMeta({ [a.key]: e.target.value })}
-                className="mt-1 w-full rounded border px-2 py-1.5 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
-            </label>
-          ))}
-        </div>
+      <Panel baslik="Proje Künyesi" aciklama={yazilabilir
+        ? "Belgelerin kapağında ve künyesinde görünür. Hesabınıza otomatik kaydedilir."
+        : "Belgelerin kapağında ve künyesinde görünür. Demo/paylaşım görünümünde düzenlenemez."}>
+        {/* Künye proje verisidir → salt-okunur modda kapalı; belge üretimi AÇIK kalır
+            (ziyaretçi demo hattının belgesini indirip kaliteyi görebilsin). */}
+        <fieldset disabled={!yazilabilir} className="contents">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {PROJE_META_ALANLAR.map((a) => (
+              <label key={a.key} className={a.genis ? "sm:col-span-2" : ""}>
+                <span className="field-label">{a.ad}</span>
+                <input value={meta[a.key]} onChange={(e) => patchMeta({ [a.key]: e.target.value })}
+                  className="mt-1 w-full rounded border px-2 py-1.5 text-sm disabled:opacity-60" style={{ borderColor: brand.border, color: brand.ink }} />
+              </label>
+            ))}
+          </div>
+        </fieldset>
       </Panel>
 
       <footer className="mt-10 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>

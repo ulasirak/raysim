@@ -31,7 +31,7 @@ export function CografiHarita() {
   const [hata, setHata] = useState<string>("");
   const [uretildi, setUretildi] = useState<{ rings: number; makas: number; hemzemin: number; hiz: number; minVmax: number | null; egim: number; maxEgim: number } | null>(null);
   const [tahmin, setTahmin] = useState(true);
-  const { setRings } = useProje();
+  const { setRings, yazilabilir } = useProje();
 
   const yukseklikVar = useMemo(() => stops.some((s) => s.ele != null), [stops]);
 
@@ -117,9 +117,17 @@ export function CografiHarita() {
         <button onClick={ornekYukle} className="rounded-md px-4 py-2 text-sm font-medium text-white" style={{ background: brand.ink }}>
           Demo güzergahı yükle
         </button>
-        <button onClick={hatUret} className="rounded-md px-4 py-2 text-sm font-semibold text-white" style={{ background: brand.red }}>
+        {/* Aktif projenin hattını DEĞİŞTİRİR → yalnız kendi hattında çalışan kullanıcıya açık */}
+        <button onClick={hatUret} disabled={!yazilabilir}
+          title={yazilabilir ? "Bu güzergahtan durak-arası hücreleri üret ve aktif hatta yaz" : "Kendi hattınıza yazmak için giriş yapın"}
+          className="rounded-md px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" style={{ background: brand.red }}>
           ⇥ Bu güzergahtan hat üret
         </button>
+        {!yazilabilir && (
+          <span className="text-xs" style={{ color: brand.muted }}>
+            (üretim için <Link href="/giris" className="underline" style={{ color: brand.red }}>giriş</Link> gerekir)
+          </span>
+        )}
         <label className="flex items-center gap-1.5 text-sm" style={{ color: brand.inkSoft }}>
           <input type="checkbox" checked={tahmin} onChange={(e) => setTahmin(e.target.checked)} />
           Makas/geçit/hız tahmin et

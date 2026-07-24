@@ -1,25 +1,60 @@
 rules_version = '2';
 
-// raysim — Firestore güvenlik kuralları (VİTRİN + YÖNETİCİ GİRİŞİ)
+// raysim — Firestore güvenlik kuralları (ÇOK KİRACILI)
 // ────────────────────────────────────────────────────────────────
-// Senaryolar HERKESE OKUNUR. Yazma/silme yalnız GİRİŞ YAPMIŞ YÖNETİCİYE açık.
-// Yönetici = aşağıdaki e-postayla Email/Password ile giriş yapan kullanıcı.
-// Ziyaretçi (anonim) veya başka bir hesap YAZAMAZ/SİLEMEZ.
+// KRİTİK: Kiracı izolasyonunu YALNIZCA bu kurallar sağlar. İstemci sorgusu
+// filtreliyor olsa bile yetkisiz okuma/yazma sunucuda reddedilir. Yeni bir
+// koleksiyon eklerken buraya da kural yazılmalı (aksi halde varsayılan RED).
 //
-// Kurulum (bir kez):
-//   1) Firebase Console → Authentication → Sign-in method → Email/Password'ü ETKİNLEŞTİR.
-//   2) Authentication → Users → Add user → e-posta = YONETICI_EPOSTA (aşağıdaki), şifre = seç.
-//   3) Uygulamada Senaryolar panelinde "🔑 Yönetici girişi" ile o e-posta/şifreyle gir → Kaydet/Sil açılır.
-// E-postayı değiştirmek istersen yalnız aşağıdaki satırı düzenle + `firebase deploy --only firestore:rules`.
+// Model:
+//   projeler/{id} = { sahipUid, ad, veri(JSON), paylasim:{acik}, olusturma, guncelleme }
+//   • Sahibi okur/yazar/siler.
+//   • paylasim.acik == true ise link'i bilen HERKES yalnız OKUR (salt-okunur
+//     sunum linki). Yazma asla açılmaz. Sahip kapatınca erişim anında kesilir.
+//   • sahipUid oluşturulduktan sonra DEĞİŞTİRİLEMEZ (proje çalınamaz).
+//
+// Kurulum: Firebase Console → Authentication → Sign-in method → Email/Password
+// ETKİN olmalı (self-servis kayıt bunu kullanır).
+// Yayınlama: firebase deploy --only firestore:rules
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Paylaşılan senaryo vitrini
+    function girisli() {
+      return request.auth != null;
+    }
+    function sahip() {
+      return girisli() && resource.data.sahipUid == request.auth.uid;
+    }
+    function paylasimaAcik() {
+      return 'paylasim' in resource.data
+             && 'acik' in resource.data.paylasim
+             && resource.data.paylasim.acik == true;
+    }
+
+    // Kullanıcı projeleri (çok kiracılı)
+    match /projeler/{id} {
+      allow read: if sahip() || paylasimaAcik();
+
+      allow create: if girisli()
+                    && request.resource.data.sahipUid == request.auth.uid
+                    && request.resource.data.ad is string
+                    && request.resource.data.veri is string
+                    && request.resource.data.veri.size() < 900000; // doküman sınırı payı
+
+      allow update: if sahip()
+                    && request.resource.data.sahipUid == resource.data.sahipUid // sahiplik sabit
+                    && request.resource.data.veri is string
+                    && request.resource.data.veri.size() < 900000;
+
+      allow delete: if sahip();
+    }
+
+    // Eski paylaşılan senaryo vitrini (Sefer modülü anlık görüntüleri)
     match /senaryolar/{doc} {
-      allow read: if true;                                                   // herkes görüntüler/yükler
-      allow write: if request.auth != null
-                   && request.auth.token.email == "ulasirak073@gmail.com";   // yalnız yönetici yazar/siler
+      allow read: if true;
+      allow write: if girisli()
+                   && request.auth.token.email == "ulasirak073@gmail.com";
     }
 
     // Tanımlı olmayan her yol tamamen kapalı (varsayılan reddet)

@@ -9,6 +9,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Masthead } from "@/components/Masthead";
 import { SimConfigProvider } from "@/components/SimConfigProvider";
+import { AuthProvider } from "@/components/AuthProvider";
+import { HesapCubugu } from "@/components/HesapCubugu";
 import { brand } from "@/lib/anaray/brand";
 
 interface Modul {
@@ -39,6 +41,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const aktif = aktifModul(pathname);
 
   return (
+    <AuthProvider>
     <SimConfigProvider>
       <Masthead belgeKodu={aktif.kod} rota={aktif.rota} />
 
@@ -60,6 +63,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </div>
       </nav>
+
+      {/* Hesap & aktif hat şeridi — hangi kiracının hangi hattı işlendiğini gösterir */}
+      <HesapCubugu />
 
       <main className="flex-1" style={{ background: brand.paper }}>{children}</main>
 
@@ -93,5 +99,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </footer>
     </SimConfigProvider>
+    </AuthProvider>
   );
 }
