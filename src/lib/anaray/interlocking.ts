@@ -316,7 +316,7 @@ export function bolge1(): MakasBolgeTopolojisi {
     id, nereden, nereye, sinyal, bloklar: ["BS1", "BS2"], makaslar: [{ id: "PM1", konum }], headwayGerekli: false, tccGerekli: true,
   });
   return {
-    id: "1", ad: "1. Makas Bölgesi (karşılaşmalı)", tip: "karsilasmali",
+    id: "1", ad: "1. Makas Bölgesi — Alaaddin (karşılaşmalı, TCC)", tip: "karsilasmali",
     bloklar: ["BS1", "BS2"], makaslar: ["PM1"], sinyaller: ["SG_A", "SG_C", "SG_D", "SG_B"], uzunluk: 90,
     rotalar: [
       R("LOC1_AD", "A", "D", "SG_A", "AD"),
@@ -331,7 +331,7 @@ export function bolge1(): MakasBolgeTopolojisi {
 /** 2. Makas Bölgesi (s.21): AB & CD paralel düz; BE, DB sapaklar. */
 export function bolge2(): MakasBolgeTopolojisi {
   return {
-    id: "2", ad: "2. Makas Bölgesi (headway + U-dönüş)", tip: "headway",
+    id: "2", ad: "2. Makas Bölgesi — Mevlana (headway + U-dönüş)", tip: "headway",
     bloklar: ["BS4", "BS5", "BS6", "BS8"], makaslar: ["PM2", "PM3"], sinyaller: ["SG_A", "SG_C", "SG_B", "SG_D"], uzunluk: 120,
     rotalar: [
       { id: "LOC2_AB", nereden: "A", nereye: "B", sinyal: "SG_A", bloklar: ["BS5"], makaslar: [{ id: "PM2", konum: "AB" }], headwayGerekli: true, tccGerekli: false },
@@ -350,7 +350,7 @@ export function bolge51(): MakasBolgeTopolojisi {
     id, nereden: ned, nereye: ney, sinyal: sg, bloklar, makaslar: [{ id: "PM5", konum }], headwayGerekli: false, tccGerekli: true,
   });
   return {
-    id: "5.1", ad: "5.1 Barınma Bölgesi (karşılaşmalı — her geçiş TCC)", tip: "barinma",
+    id: "5.1", ad: "5.1 Barınma / S-Makas Bölgesi — Adliye (izole, her geçiş TCC)", tip: "barinma",
     bloklar: ["BS29", "BS30", "BS31", "BS21", "BS22", "BS23", "BS24"], makaslar: ["PM5", "PM6"], sinyaller: ["SG_A", "SG_B", "SG_D", "SG_E"], uzunluk: 100,
     rotalar: [
       mk("LOC5.1_AB", "A", "B", "SG_A", ["BS29", "BS30"], "AB"),
