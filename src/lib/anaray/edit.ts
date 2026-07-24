@@ -1,7 +1,7 @@
 // raysim — graf düzenleme (istasyon ekle/sil).
 //
-// Değişmez (invariant): editör tabanı ana hat (anaHat) TÜM kenarları ileri yönde
-// gezer (train edge.from'dan girer). Ekle/sil bu ileri-yönlülüğü korur:
+// Değişmez (invariant): editör tabanı proje hattı (ringlerdenSebeke) TÜM kenarları
+// ileri yönde gezer (tren edge.from'dan girer). Ekle/sil bu ileri-yönlülüğü korur:
 //  - ekle: kenarı [from→yeni, yeni→to] olarak böler (ikisi de ileri)
 //  - sil: e1.to===node && e2.from===node olan ardışık iki kenarı birleştirir
 // Böylece yön/eğim işareti karmaşası olmadan doğru kalır.

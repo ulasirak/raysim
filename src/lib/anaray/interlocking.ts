@@ -381,9 +381,17 @@ export function bolgeIdIcin(tip: BolgeTip): string {
   switch (tip) {
     case "karsilasmali": return "1"; // yüz yüze — tek tren, tümü çakışır
     case "headway": return "2"; // paralel düz + sapak (AB+CD X)
-    case "udonus": return "2"; // U-dönüş (DB) 2. bölgede modellenir
+    // İzole S-makas U-dönüş bölgesi 5.1 ile aynı rejimdedir (izole, her geçiş TCC).
+    // Önceden "2"ye düşüyordu → U-dönüş bölgeleri yanlışlıkla headway modelini
+    // açıyor, 5.1 modeline ise hiçbir bölgeden bağlantı kalmıyordu.
+    case "udonus": return "5.1";
     case "barinma": return "5.1"; // barınma — çapraz bağımsız kollar
     case "depo": return "5.1"; // her geçiş TCC, benzer kilit rejimi
     default: return "1";
   }
+}
+
+/** Bir makas bölgesinin bağlı olduğu anklaşman modeli: açık bağ > tipten türetme. */
+export function makasBolgeId(m: { tip: BolgeTip; bolgeId?: string }): string {
+  return m.bolgeId ?? bolgeIdIcin(m.tip);
 }

@@ -9,10 +9,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { brand } from "@/lib/anaray/brand";
 import { sure } from "@/lib/anaray/format";
-import { useSimConfig } from "@/components/SimConfigProvider";
+import Link from "next/link";
+import { useSimConfig, useProje } from "@/components/SimConfigProvider";
 import {
   bolgeSeed,
   cakismaMatriksi,
+  makasBolgeId,
   simuleEtAnklasman,
   type RotaTalebi,
   type SinyalAspekt,
@@ -29,6 +31,14 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
     initialBolgeId && bolgeler.some((b) => b.id === initialBolgeId) ? initialBolgeId : bolgeler[0].id
   );
   const topo = useMemo(() => bolgeler.find((b) => b.id === bolgeId)!, [bolgeler, bolgeId]);
+
+  // Bu soyut model hattın HANGİ fiziksel bölgelerinde kullanılıyor? (ters bağ:
+  // Ringler → Anklaşman derin bağlantısının karşılığı; model artık havada değil.)
+  const { rings } = useProje();
+  const kullananlar = useMemo(
+    () => rings.flatMap((r) => r.makaslar.filter((m) => makasBolgeId(m) === bolgeId).map((m) => ({ ad: m.ad || r.ad, ringAd: r.ad }))),
+    [rings, bolgeId]
+  );
 
   const [trenSayisi, setTrenSayisi] = useState(4);
   const [headwaySn, setHeadwaySn] = useState(20);
@@ -83,6 +93,17 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
         <select value={bolgeId} onChange={(e) => setBolgeId(e.target.value)} className="rounded border px-2 py-1.5 text-sm" style={{ borderColor: brand.borderStrong, color: brand.ink }}>
           {bolgeler.map((b) => (<option key={b.id} value={b.id}>{b.ad}</option>))}
         </select>
+      </div>
+
+      {/* Model ↔ hat bağı */}
+      <div className="mb-4 rounded-md border-l-4 px-4 py-2 text-xs" style={{ background: brand.surface, borderColor: kullananlar.length ? CK.good : CK.amber, color: brand.inkSoft }}>
+        {kullananlar.length > 0 ? (
+          <>Bu model <b>proje hattında {kullananlar.length} bölgede</b> kullanılıyor:{" "}
+            {kullananlar.map((k) => k.ad).join(" · ")}. Hücreleri{" "}
+            <Link href="/ringler" className="underline" style={{ color: brand.red }}>Ringler</Link> modülünden düzenleyin.</>
+        ) : (
+          <>▲ Bu model şu an proje hattındaki hiçbir makas bölgesine bağlı değil — referans topoloji olarak inceleniyor.</>
+        )}
       </div>
 
       {/* Kontrol */}

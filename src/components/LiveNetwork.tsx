@@ -14,7 +14,11 @@ import { brand } from "@/lib/anaray/brand";
 import { CK, ASPEKT } from "@/lib/anaray/chartkit";
 
 const VBW = 860;
-const VBH = 300;
+// Yükseklik İÇERİĞE göre: depo/spur gibi alt kollar varsa (düğüm y'si büyük) alan
+// açılır, düz koridorda (proje hattı) açılmaz — aksi halde şeritlerin altında
+// kocaman boş bir bant kalıyordu.
+const VBH_MIN = 190;
+const vbhHesap = (nodeY: number[]) => Math.max(VBH_MIN, Math.max(70, ...nodeY) + 120);
 const HIZLAR = [1, 5, 15, 30, 60];
 // Yön kodlaması TÜM modüllerde aynı (Bildfahrplan/TrainGraphChart ile birebir):
 // gidiş = mavi · dönüş = turuncu (chartkit'te valide edilmiş çift).
@@ -95,6 +99,8 @@ export function LiveNetwork({
     [line, nodeById]
   );
 
+  const VBH = useMemo(() => vbhHesap(network.nodes.map((n) => n.y)), [network]);
+
   // Kavşak noktalarında pürüzsüz şerit için köşe (vertex) normalleri
   const vertexN = useMemo(() => {
     const n = basePts.length;
@@ -116,7 +122,8 @@ export function LiveNetwork({
   }, [basePts]);
 
   if (!mounted) {
-    return <div className="h-[280px] w-full animate-pulse rounded-md" style={{ background: CK.track }} aria-hidden />;
+    // Yer tutucu SVG ile aynı en-boy oranında olsun → mount'ta sıçrama olmaz.
+    return <div className="w-full animate-pulse rounded-md" style={{ background: CK.track, aspectRatio: `${VBW} / ${VBH}` }} aria-hidden />;
   }
 
   // fp → merkez hattı noktası + segment normali + açı
@@ -287,15 +294,21 @@ export function LiveNetwork({
         })}
 
         {/* İstasyonlar (peron = iki şeridi kesen dik marka) */}
-        {line.stations.map((st) => {
+        {line.stations.map((st, i) => {
           const c = segAt(st.position);
           const u = laneAt(st.position, UP_SIDE);
           const d = laneAt(st.position, DOWN_SIDE);
+          // Gerçek durak adları uzundur ("Mevlana Kültür Merkezi") → komşu etiketler
+          // çakışmasın diye iki kademeye şaşırtmalı yerleştirilir.
+          const dy = i % 2 === 0 ? -10 : -23;
           return (
             <g key={st.id}>
               <line x1={u.x} y1={u.y} x2={d.x} y2={d.y} stroke={brand.ink} strokeWidth={2.5} strokeLinecap="round" />
               <circle cx={c.x} cy={c.y} r={4} fill={brand.surface} stroke={brand.ink} strokeWidth={2} />
-              <text x={u.x} y={u.y - 10} fill={brand.muted} fontSize={10} textAnchor="middle">{st.name}</text>
+              {i % 2 !== 0 && (
+                <line x1={u.x} y1={u.y - 6} x2={u.x} y2={u.y - 17} stroke={CK.faint} strokeWidth={0.8} />
+              )}
+              <text x={u.x} y={u.y + dy} fill={brand.muted} fontSize={9.5} textAnchor="middle">{st.name}</text>
             </g>
           );
         })}

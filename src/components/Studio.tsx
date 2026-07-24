@@ -5,22 +5,22 @@
 // Senaryolar Firestore'a kaydedilir/yüklenir. İstasyon ekle/sil grafı düzenler.
 
 import { useEffect, useMemo, useState } from "react";
-import type { RailNetwork, RollingStock, RailEdge } from "@/lib/anaray/types";
-import { flattenRoute } from "@/lib/anaray/network";
+import Link from "next/link";
+import type { RailNetwork, RollingStock, RailEdge, Route } from "@/lib/anaray/types";
+import { flattenRoute, ringlerdenSebeke } from "@/lib/anaray/network";
 import { addStationOnEdge, removeStation } from "@/lib/anaray/edit";
 import { simulate } from "@/lib/anaray/sim";
 import { simulateSignalled, reverseRoute, fleetSize, monteCarlo, type MonteCarloResult } from "@/lib/anaray/signalling";
 import { simulateSingleTrack } from "@/lib/anaray/singletrack";
 import { computeEnergy } from "@/lib/anaray/energy";
-import { araclar } from "@/lib/anaray/vehicles";
-import { ornekSebeke, anaHat, ornekTramvay, ornekHat } from "@/lib/anaray/scenario";
+import { araclar, varsayilanArac } from "@/lib/anaray/vehicles";
 import { kmh, km, sure, saat } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { isFirebaseConfigured, getAuthInstance } from "@/lib/firebase";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from "firebase/auth";
 import { saveScenario, listScenarios, loadScenario, deleteScenario, type ScenarioMeta } from "@/lib/scenarios";
-import { useSimConfig } from "@/components/SimConfigProvider";
+import { useSimConfig, useProje } from "@/components/SimConfigProvider";
 import { LiveNetwork } from "@/components/LiveNetwork";
 import { NetworkDiagram } from "@/components/NetworkDiagram";
 import { TimeDistanceChart } from "@/components/TimeDistanceChart";
@@ -30,11 +30,45 @@ import { TrainGraphChart } from "@/components/TrainGraphChart";
 
 const KMH = 1 / 3.6;
 
+// Proje hattı boşsa (kullanıcı Ringler'de tüm hücreleri sildiyse) motorlar çökmesin
+// diye geçerli ama boş bir iskelet; ekranda uyarı gösterilir.
+const BOS_SEBEKE: RailNetwork = {
+  id: "sebeke_bos",
+  name: "Hat tanımlı değil",
+  nodes: [
+    { id: "bos_a", name: "—", type: "istasyon", x: 60, y: 70, dwell: 0 },
+    { id: "bos_b", name: "—", type: "istasyon", x: 760, y: 70, dwell: 0 },
+  ],
+  edges: [{ id: "bos_e", from: "bos_a", to: "bos_b", length: 1000, segments: [{ start: 0, end: 1000, vmax: 40 * KMH, gradient: 0 }] }],
+};
+const BOS_ROTA: Route = { id: "rota_bos", name: "—", edgeIds: ["bos_e"], startNodeId: "bos_a" };
+
 export function Studio() {
   const { cfg } = useSimConfig();
-  const [network, setNetwork] = useState<RailNetwork>(ornekSebeke);
-  const [stock, setStock] = useState<RollingStock>(ornekTramvay);
-  const [route, setRoute] = useState(anaHat);
+  const { rings, meta } = useProje();
+
+  // Sefer modülünün hattı = PAYLAŞILAN proje hattı (Ringler/Tam Hat/Belgeler ile
+  // aynı kaynak). Ring zinciri graf şebekesine çevrilir; ayrı örnek şebeke yok.
+  const proje = useMemo(
+    () => ringlerdenSebeke(rings, cfg, meta.hatAdi || "Proje Hattı"),
+    [rings, cfg, meta.hatAdi]
+  );
+
+  const [network, setNetwork] = useState<RailNetwork>(() => proje?.network ?? BOS_SEBEKE);
+  const [stock, setStock] = useState<RollingStock>(varsayilanArac);
+  const [route, setRoute] = useState<Route>(() => proje?.route ?? BOS_ROTA);
+  // Yerel düzenleme yapıldıysa proje hattı değişince üzerine yazma (senaryo denemesi
+  // korunur); yapılmadıysa yeni hat otomatik yansısın.
+  const [duzenlendi, setDuzenlendi] = useState(false);
+  const [sonProje, setSonProje] = useState(proje);
+  if (proje !== sonProje) {
+    // React'in "render sırasında durum ayarla" deseni (effect'te set-state yerine).
+    setSonProje(proje);
+    if (!duzenlendi && proje) {
+      setNetwork(proje.network);
+      setRoute(proje.route);
+    }
+  }
   const [selEdge, setSelEdge] = useState<string>("");
   const [headwayDk, setHeadwayDk] = useState(() => Math.round((cfg.headway / 60) * 2) / 2);
   const [seferSayisi, setSeferSayisi] = useState(6);
@@ -46,9 +80,8 @@ export function Studio() {
   const [meanDwell, setMeanDwell] = useState(5);
   const [mc, setMc] = useState<MonteCarloResult | null>(null);
   const [mcRunning, setMcRunning] = useState(false);
-  const [passingIds, setPassingIds] = useState<string[]>(() =>
-    ornekHat.stations.filter((_, i) => i > 0 && i < ornekHat.stations.length - 1).map((s) => s.id)
-  );
+  // null = varsayılan (tüm ara istasyonlar kruvasman); hat değişince kendini uyarlar.
+  const [passingIds, setPassingIds] = useState<string[] | null>(null);
 
   const { line, result } = useMemo(() => {
     const l = flattenRoute(network, route);
@@ -73,12 +106,17 @@ export function Studio() {
     [gidisSim.baseTime, donusSim.baseTime, turnaroundDk, headwayDk]
   );
 
+  const passingEff = useMemo(
+    () => passingIds ?? line.stations.slice(1, -1).map((s) => s.id),
+    [passingIds, line]
+  );
+
   const stSim = useMemo(() => {
-    const passing = line.stations.filter((s) => passingIds.includes(s.id)).map((s) => s.position);
+    const passing = line.stations.filter((s) => passingEff.includes(s.id)).map((s) => s.position);
     return simulateSingleTrack(line, reverseLine, stock, {
       headway: headwayDk * 60, upCount: seferSayisi, downCount: seferSayisi, passing,
     });
-  }, [line, reverseLine, stock, headwayDk, seferSayisi, passingIds]);
+  }, [line, reverseLine, stock, headwayDk, seferSayisi, passingEff]);
 
   const monteCarloCalistir = () => {
     setMcRunning(true);
@@ -95,30 +133,43 @@ export function Studio() {
   };
 
   // — güncelleyiciler —
-  const patchStock = (p: Partial<RollingStock>) => setStock((s) => ({ ...s, ...p }));
-  const patchNode = (id: string, p: Partial<{ name: string; dwell: number }>) =>
+  // Hattı yerel olarak değiştiren her işlem "senaryo denemesi" sayılır: proje hattı
+  // sonradan değişse bile üzerine yazılmaz (kullanıcı ↺ ile geri döner).
+  const patchStock = (p: Partial<RollingStock>) => { setDuzenlendi(true); setStock((s) => ({ ...s, ...p })); };
+  const patchNode = (id: string, p: Partial<{ name: string; dwell: number }>) => {
+    setDuzenlendi(true);
     setNetwork((n) => ({ ...n, nodes: n.nodes.map((nd) => (nd.id === id ? { ...nd, ...p } : nd)) }));
-  const patchSegment = (edgeId: string, i: number, p: Partial<{ vmax: number; gradient: number }>) =>
+  };
+  const patchSegment = (edgeId: string, i: number, p: Partial<{ vmax: number; gradient: number }>) => {
+    setDuzenlendi(true);
     setNetwork((n) => ({
       ...n,
       edges: n.edges.map((e) =>
         e.id === edgeId ? { ...e, segments: e.segments.map((s, j) => (j === i ? { ...s, ...p } : s)) } : e
       ),
     }));
+  };
   const istasyonEkle = (edgeId: string) => {
     const r = addStationOnEdge(network, route, edgeId, "Yeni İstasyon");
+    setDuzenlendi(true);
     setNetwork(r.network);
     setRoute(r.route);
   };
   const istasyonSil = (nodeId: string) => {
     const r = removeStation(network, route, nodeId);
+    setDuzenlendi(true);
     setNetwork(r.network);
     setRoute(r.route);
   };
+  /** Yerel denemeyi bırak, paylaşılan proje hattına dön. */
   const sifirla = () => {
-    setNetwork(ornekSebeke);
-    setStock(ornekTramvay);
-    setRoute(anaHat);
+    setDuzenlendi(false);
+    setStock(varsayilanArac);
+    setPassingIds(null);
+    if (proje) {
+      setNetwork(proje.network);
+      setRoute(proje.route);
+    }
   };
 
   const nodeById = Object.fromEntries(network.nodes.map((n) => [n.id, n]));
@@ -140,11 +191,25 @@ export function Studio() {
         <div>
           <div className="field-label">Sefer Simülasyon Raporu</div>
           <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>{network.name}</h1>
+          <div className="mt-1 text-xs" style={{ color: brand.muted }}>
+            {duzenlendi
+              ? <span style={{ color: CK.amber }}>▲ Yerel senaryo denemesi — proje hattından ayrıldı.</span>
+              : <>Kaynak: <b>paylaşılan proje hattı</b> ({line.stations.length} durak · {km(line.length)} km) — <Link href="/ringler" className="underline">Ringler</Link> modülünden düzenlenir.</>}
+          </div>
         </div>
-        <button onClick={sifirla} className="rounded-md border px-3 py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
-          ↺ Örnek senaryoya dön
-        </button>
+        {duzenlendi && (
+          <button onClick={sifirla} className="rounded-md border px-3 py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
+            ↺ Proje hattına dön
+          </button>
+        )}
       </div>
+
+      {!proje && (
+        <div className="mb-6 rounded-md border-l-4 px-4 py-3 text-sm" style={{ background: CK.badBgSoft, borderColor: brand.red, color: brand.ink }}>
+          ⚠ Proje hattı boş — <Link href="/ringler" className="underline" style={{ color: brand.red }}>Ringler</Link> modülünden durak-arası hücre ekleyin.
+          Aşağıdaki değerler yer tutucudur.
+        </div>
+      )}
 
       {/* Canlı ağ simülasyonu (kahraman) */}
       <Panel baslik="Canlı Ağ Simülasyonu" aciklama="Tüm trenler (gidiş + dönüş) aynı anda hat üzerinde hareket eder; işgal edilen bloklar canlı kırmızıya döner. Dispatcher: gidiş şeridindeki bir sinyale tıkla → o blok arızalanır, trenler arkasında kuyruklanır. Oynat ▶">
@@ -162,7 +227,7 @@ export function Studio() {
       {/* Senaryolar (Firebase) */}
       <div className="mt-6" />
       <SenaryoPaneli network={network} stock={stock} route={route}
-        onLoad={(d) => { setNetwork(d.network); setStock(d.stock); setRoute(d.route); }} />
+        onLoad={(d) => { setDuzenlendi(true); setNetwork(d.network); setStock(d.stock); setRoute(d.route); }} />
 
       {/* EDİTÖR */}
       <div className="mt-6">
@@ -274,7 +339,7 @@ export function Studio() {
 
       {/* Hat şeması */}
       <div className="mt-6">
-        <Panel baslik="Hat Şeması" aciklama="Seçili rota (kalın) + depo bağlantısı; istasyon adları üstte, kilometre altta.">
+        <Panel baslik="Hat Şeması" aciklama="Seçili rota (kalın); istasyon adları üstte, kilometre altta. Rota dışı kollar (varsa) soluk çizilir.">
           <NetworkDiagram network={network} route={route} line={line} />
         </Panel>
       </div>
@@ -379,10 +444,10 @@ export function Studio() {
             <div className="field-label mb-2">Kruvasman (geçiş) istasyonları — uçlar daima geçiş</div>
             <div className="flex flex-wrap gap-2">
               {line.stations.slice(1, -1).map((st) => {
-                const on = passingIds.includes(st.id);
+                const on = passingEff.includes(st.id);
                 return (
                   <button key={st.id}
-                    onClick={() => setPassingIds(on ? passingIds.filter((x) => x !== st.id) : [...passingIds, st.id])}
+                    onClick={() => setPassingIds(on ? passingEff.filter((x) => x !== st.id) : [...passingEff, st.id])}
                     className="rounded-full px-3 py-1 text-xs font-medium transition"
                     style={on ? { background: brand.ink, color: "#fff" } : { background: CK.track, color: brand.inkSoft }}>
                     {on ? "⊕ " : ""}{st.name}
@@ -492,8 +557,8 @@ export function Studio() {
 function SenaryoPaneli({
   network, stock, route, onLoad,
 }: {
-  network: RailNetwork; stock: RollingStock; route: typeof anaHat;
-  onLoad: (d: { network: RailNetwork; stock: RollingStock; route: typeof anaHat }) => void;
+  network: RailNetwork; stock: RollingStock; route: Route;
+  onLoad: (d: { network: RailNetwork; stock: RollingStock; route: Route }) => void;
 }) {
   const configured = isFirebaseConfigured();
   // Vitrin (salt-okunur) modu: canlıda kural yazmayı engellediği için Kaydet/Sil
@@ -582,6 +647,20 @@ function SenaryoPaneli({
       setMesaj({ tip: "err", metin: hataMetni(e) });
     } finally { setMesgul(false); }
   };
+
+  // Vitrinde yayınlanmış senaryo yoksa ve yönetici oturumu da yoksa panelin ziyaretçi
+  // için hiçbir anlamı kalmaz ("boş liste + giriş kutusu") → yalnız iğneucu bir
+  // yönetici girişi bırakılır, tıklanınca tam panel açılır.
+  const bosVitrin = configured && vitrin && liste.length === 0 && !user;
+  if (bosVitrin && !girisAcik) {
+    return (
+      <div className="mt-6 flex justify-end">
+        <button onClick={() => setGirisAcik(true)} className="text-xs transition hover:opacity-70" style={{ color: brand.faint }}>
+          🔑 Yönetici girişi
+        </button>
+      </div>
+    );
+  }
 
   return (
     <Panel baslik="Senaryolar" aciklama={vitrin ? "Kayıtlı senaryoları yükle (vitrin — salt okunur)." : "Mevcut hattı Firebase'e kaydet, kayıtlıları yükle."}>

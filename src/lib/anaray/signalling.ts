@@ -225,7 +225,14 @@ export function simulateSignalled(
 
 /** Rotayı ters çevirir (dönüş yönü). flatten bunu diğer uçtan gezer, eğim işareti döner. */
 export function reverseRoute(route: Route): Route {
-  return { ...route, id: route.id + "-donus", name: route.name + " (dönüş)", edgeIds: [...route.edgeIds].reverse() };
+  // startNodeId TAŞINMAZ: ileri rotanın başlangıç düğümü dönüşün başlangıcı değildir
+  // (ters listenin ilk kenarı o düğüme bağlı olmadığı için flattenRoute "Rota kopuk"
+  // hatası verirdi). Düşürülünce flatten diğer uçtan gezer.
+  return {
+    id: route.id + "-donus",
+    name: route.name + " (dönüş)",
+    edgeIds: [...route.edgeIds].reverse(),
+  };
 }
 
 /** Filo (araç) ihtiyacı = tur süresi / sefer aralığı (yukarı yuvarlanır). */

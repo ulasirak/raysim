@@ -9,7 +9,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { RollingStock } from "@/lib/anaray/types";
-import { bolgeIdIcin } from "@/lib/anaray/interlocking";
+import { makasBolgeId } from "@/lib/anaray/interlocking";
 import { useSimConfig, useProje } from "@/components/SimConfigProvider";
 import type { SimConfig } from "@/lib/anaray/config";
 import { araclar, varsayilanArac } from "@/lib/anaray/vehicles";
@@ -384,7 +384,7 @@ function RingKart(p: KartProps) {
                         </select>
                         <input value={m.ad} placeholder="ad (ör. 1. Makas)" onChange={(e) => p.onMakasPatch(m.id, { ad: e.target.value })}
                           className="min-w-0 flex-1 rounded border px-1.5 py-1 text-xs" style={{ borderColor: brand.border, color: brand.ink }} />
-                        <Link href={`/anklasman?bolge=${bolgeIdIcin(m.tip)}`} title="Bu makasın anklaşman modelini aç"
+                        <Link href={`/anklasman?bolge=${makasBolgeId(m)}`} title="Bu makasın anklaşman modelini aç"
                           className="rounded px-2 py-1 text-[0.65rem] font-medium transition hover:opacity-80" style={{ background: CK.track, color: brand.ink }}>
                           anklaşman →
                         </Link>

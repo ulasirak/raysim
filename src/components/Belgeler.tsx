@@ -12,7 +12,7 @@ import { sure } from "@/lib/anaray/format";
 import { useSimConfig, useProje } from "@/components/SimConfigProvider";
 import { PROJE_META_ALANLAR } from "@/lib/anaray/config";
 import { varsayilanArac } from "@/lib/anaray/vehicles";
-import { loopDenge, olceklenme, ringChallenge } from "@/lib/anaray/ring";
+import { loopDenge, olceklenme, ringChallenge, ringDogrula, loopTamMi } from "@/lib/anaray/ring";
 import { bolgeSeed } from "@/lib/anaray/interlocking";
 import { wordUret, excelUret, indir } from "@/lib/anaray/dokuman";
 import { raporHTML, yazdirRapor, type RaporDil } from "@/lib/anaray/rapor";
@@ -42,6 +42,14 @@ export function Belgeler() {
       chSayi, kritik,
     };
   }, [rings, stock, cfg]);
+
+  // Belge geçerlilik kapısı: zorunlu şartları eksik bir hattan RESMÎ tasarım belgesi
+  // üretmek yanıltıcı olur (karşı taraf onu doğru sanır). Eksikler açıkça listelenir.
+  const hatTam = useMemo(() => loopTamMi(rings), [rings]);
+  const eksikler = useMemo(
+    () => rings.flatMap((r) => ringDogrula(r).map((e) => e.mesaj)),
+    [rings]
+  );
 
   const dosyaAdi = (ext: string) => `${meta.dokumanNo || "raysim"}_${(meta.hatAdi || "hat").replace(/\s+/g, "_")}.${ext}`;
 
@@ -113,20 +121,35 @@ export function Belgeler() {
           </div>
           <span className="text-xs" style={{ color: brand.muted }}>PDF/HTML rapor bu dilde üretilir (yapısal metinler; proje verisi/adlar kaynak dilde kalır).</span>
         </div>
+        {!hatTam && (
+          <div className="mb-3 rounded-md border-l-4 px-4 py-3 text-sm" style={{ background: CK.badBgSoft, borderColor: brand.red, color: brand.ink }}>
+            <div className="font-medium" style={{ color: brand.red }}>
+              ⚠ Hat eksik — resmî belge üretimi kapalı ({eksikler.length} zorunlu şart)
+            </div>
+            <ul className="ml-4 mt-1 list-disc text-xs" style={{ color: brand.inkSoft }}>
+              {eksikler.slice(0, 6).map((m, i) => (<li key={i}>{m}</li>))}
+              {eksikler.length > 6 && <li>… ve {eksikler.length - 6} tane daha</li>}
+            </ul>
+            <div className="mt-1 text-xs" style={{ color: brand.muted }}>
+              Eksikleri <b>Ringler</b> modülünden tamamlayın; belge ancak tam hattan üretilir.
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center gap-3">
-          <button onClick={raporUret} disabled={!!mesgul}
+          <button onClick={raporUret} disabled={!!mesgul || !hatTam}
             className="rounded-md px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: brand.red }}>
             {mesgul === "rapor" ? "Açılıyor…" : "🖨 Şık PDF Rapor"}
           </button>
-          <button onClick={raporHTMLIndir} disabled={!!mesgul}
+          <button onClick={raporHTMLIndir} disabled={!!mesgul || !hatTam}
             className="rounded-md border px-4 py-2 text-sm font-medium transition hover:bg-slate-50 disabled:opacity-50" style={{ borderColor: brand.borderStrong, color: brand.ink }}>
             {mesgul === "html" ? "İndiriliyor…" : "⭳ HTML indir (tek tık)"}
           </button>
-          <button onClick={wordIndir} disabled={!!mesgul}
+          <button onClick={wordIndir} disabled={!!mesgul || !hatTam}
             className="rounded-md px-5 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: brand.ink }}>
             {mesgul === "word" ? "Üretiliyor…" : "📄 Word (.docx) indir"}
           </button>
-          <button onClick={excelIndir} disabled={!!mesgul}
+          <button onClick={excelIndir} disabled={!!mesgul || !hatTam}
             className="rounded-md px-5 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: CK.good }}>
             {mesgul === "excel" ? "Üretiliyor…" : "📊 Excel (.xlsx) indir"}
           </button>
