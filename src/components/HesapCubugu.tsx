@@ -4,6 +4,10 @@
 // Navigasyonun hemen altında durur; o an hangi hesabın hangi hattının aktif
 // olduğunu ve kaydetme durumunu gösterir. Yedi modülün tamamı bu çubuğun
 // gösterdiği tek hatta hizmet eder.
+//
+// SADE DÜZEN (kullanıcı isteği): çubukta yalnız günlük kullanılan üç şey durur —
+// hat seçici · ＋ Yeni hat · kayıt durumu. Seyrek kullanılanlar (ad değiştirme,
+// paylaşım linki, hattı silme) tek bir "⋮" menüsünün altındadır.
 
 import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
@@ -22,6 +26,7 @@ export function HesapCubugu() {
   const [yeniAd, setYeniAd] = useState("");
   const [adTaslak, setAdTaslak] = useState<string | null>(null);
   const [kopyalandi, setKopyalandi] = useState(false);
+  const [menuAcik, setMenuAcik] = useState(false);
   const [isBasi, setIsBasi] = useState<string | null>(null);
 
   if (!yapilandirildi) return null; // Firebase yoksa çubuk anlamsız (yerel geliştirme)
@@ -53,38 +58,39 @@ export function HesapCubugu() {
 
   // — Girişli: proje yönetimi —
   const paylasimLinki = aktifId ? `${typeof window !== "undefined" ? window.location.origin : ""}/?proje=${aktifId}` : "";
+  const silinebilir = projeler.length > 1 && Boolean(aktifId);
+
+  const menuKapat = () => setMenuAcik(false);
 
   return (
     <div className="border-b" style={{ background: brand.surface, borderColor: brand.border }}>
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-6 py-2 text-xs">
-        <span className="field-label" style={{ color: brand.faint }} title="Şu an üzerinde çalıştığınız hat — yedi modülün tamamı bu hattı kullanır">AKTİF HAT</span>
+        <span className="field-label" style={{ color: brand.faint }}>AKTİF HAT</span>
 
-        {/* Proje seçici */}
-        <select
-          value={aktifId ?? ""}
-          onChange={(e) => projeSec(e.target.value)}
-          title="Bu hesaptaki hatlar. Seçtiğiniz hat anında yüklenir ve Sefer/Ringler/Anklaşman/Tam Hat/Sistem/Belgeler/Coğrafi modüllerinin tamamı o hatta çalışır."
-          className="rounded border px-2 py-1 text-xs"
-          style={{ borderColor: brand.border, color: brand.ink, maxWidth: 260 }}
-        >
-          {projeler.map((p) => (<option key={p.id} value={p.id}>{p.ad}</option>))}
-        </select>
-
-        {/* Ad düzenleme */}
+        {/* Hat seçici — seçilen hat yedi modülün tamamında aktif olur */}
         {adTaslak === null ? (
-          <button onClick={() => setAdTaslak(aktifAd)} title="Aktif hattın adını değiştir (yalnız ad — veriler aynı kalır)"
-            className="rounded px-1.5 py-1 transition hover:opacity-70" style={{ color: brand.faint }}>✎</button>
+          <select
+            value={aktifId ?? ""}
+            onChange={(e) => projeSec(e.target.value)}
+            title="Üzerinde çalıştığınız proje. Seçtiğiniz hat tüm modüllerde aktif olur."
+            className="rounded border px-2 py-1 text-xs"
+            style={{ borderColor: brand.border, color: brand.ink, maxWidth: 260 }}
+          >
+            {projeler.map((p) => (<option key={p.id} value={p.id}>{p.ad}</option>))}
+          </select>
         ) : (
+          /* Ad değiştirme — menüden açılır, seçicinin yerinde düzenlenir */
           <>
             <input value={adTaslak} onChange={(e) => setAdTaslak(e.target.value)} autoFocus
               onKeyDown={(e) => { if (e.key === "Enter") { sar(projeAdiGuncelle(adTaslak.trim() || aktifAd), "ad"); setAdTaslak(null); } if (e.key === "Escape") setAdTaslak(null); }}
               className="rounded border px-2 py-1 text-xs" style={{ borderColor: brand.borderStrong, color: brand.ink }} />
             <button onClick={() => { sar(projeAdiGuncelle(adTaslak.trim() || aktifAd), "ad"); setAdTaslak(null); }}
               className="rounded px-2 py-1 font-medium" style={{ background: brand.ink, color: "#fff" }}>Kaydet</button>
+            <button onClick={() => setAdTaslak(null)} className="rounded px-2 py-1" style={{ color: brand.muted }}>Vazgeç</button>
           </>
         )}
 
-        {/* Yeni proje */}
+        {/* Yeni hat */}
         {yeniAcik ? (
           <>
             <input value={yeniAd} onChange={(e) => setYeniAd(e.target.value)} placeholder="Yeni hat adı" autoFocus
@@ -92,51 +98,82 @@ export function HesapCubugu() {
               className="rounded border px-2 py-1 text-xs" style={{ borderColor: brand.borderStrong, color: brand.ink }} />
             <button onClick={() => { sar(projeYeni(yeniAd.trim()), "yeni"); setYeniAd(""); setYeniAcik(false); }} disabled={isBasi === "yeni"}
               className="rounded px-2 py-1 font-medium disabled:opacity-50" style={{ background: brand.ink, color: "#fff" }}>Oluştur</button>
+            <button onClick={() => setYeniAcik(false)} className="rounded px-2 py-1" style={{ color: brand.muted }}>Vazgeç</button>
           </>
         ) : (
-          <button onClick={() => setYeniAcik(true)} title="Sıfırdan BOŞ yeni bir hat açar (mevcut hat kopyalanmaz); listeye eklenir ve aktif olur"
+          <button onClick={() => setYeniAcik(true)} title="Sıfırdan boş yeni bir proje açar"
             className="rounded border px-2 py-1 font-medium transition hover:bg-slate-50"
             style={{ borderColor: brand.border, color: brand.inkSoft }}>＋ Yeni hat</button>
         )}
 
-        {projeler.length > 1 && aktifId && (
-          <button
-            onClick={() => { if (confirm(`“${aktifAd}” kalıcı olarak silinsin mi?`)) sar(projeSilmeIstegi(aktifId), "sil"); }}
-            title="Aktif hattı kalıcı olarak siler (geri alınamaz). Son hat silinemez." className="rounded px-1.5 py-1 transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
-        )}
-
-        {/* Kaydetme durumu */}
-        <span className="ml-1" title="Otomatik kayıt: yaptığınız her değişiklik 1,2 saniye sonra hesabınıza kaydedilir — ayrıca kaydet düğmesi yoktur"
+        {/* Kaydetme durumu — ayrı bir "Kaydet" düğmesi yoktur, otomatik kaydedilir */}
+        <span className="ml-1" title="Değişiklikleriniz otomatik kaydedilir"
           style={{ color: durum === "hata" ? brand.red : brand.faint }}>
           {durum === "yukleniyor" && "⟳ yükleniyor…"}
           {durum === "kaydediliyor" && "⟳ kaydediliyor…"}
           {durum === "kaydedildi" && <span style={{ color: CK.good }}>✓ kaydedildi</span>}
-          {durum === "hazir" && "✓ eşitlendi"}
+          {durum === "hazir" && "✓ kaydedildi"}
           {durum === "hata" && `⚠ ${hataMetni ?? "kayıt hatası"}`}
         </span>
 
-        {/* Sağ blok: paylaşım + hesap */}
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-1.5" title="Açıkken bu hattın linkini bilen herkes (giriş yapmadan) hattı YALNIZ GÖRÜNTÜLER — değiştiremez. Kapatınca erişim anında kesilir.">
-            <input type="checkbox" checked={paylasimAcik} onChange={(e) => sar(paylasimDegistir(e.target.checked), "paylasim")} />
-            <span style={{ color: brand.inkSoft }}>Paylaşım linki</span>
-          </label>
-          {paylasimAcik && (
-            <button
-              onClick={() => { navigator.clipboard?.writeText(paylasimLinki); setKopyalandi(true); setTimeout(() => setKopyalandi(false), 2000); }}
-              title="Salt-okunur görüntüleme linkini panoya kopyalar (müşteriye/idareye göstermek için)"
-              className="rounded border px-2 py-1 font-medium" style={{ borderColor: brand.border, color: brand.ink }}>
-              {kopyalandi ? "✓ kopyalandı" : "🔗 linki kopyala"}
-            </button>
-          )}
-          <span style={{ color: brand.faint }}>|</span>
-          <span style={{ color: brand.muted }} title="Bu hatların sahibi olan hesap">{user?.email}</span>
-          <button onClick={() => cikisYap()} title="Oturumu kapatır; hatlarınız hesabınızda kayıtlı kalır"
+        {/* Sağ blok: ⋮ menüsü + çıkış */}
+        <div className="relative ml-auto flex items-center gap-2">
+          <button onClick={() => setMenuAcik((a) => !a)} title="Bu hat için diğer işlemler"
+            className="rounded border px-2 py-1 font-medium transition hover:bg-slate-50"
+            style={{ borderColor: brand.border, color: brand.inkSoft }}>⋮</button>
+
+          <button onClick={() => cikisYap()} title="Oturumu kapatır; hatlarınız hesabınızda kalır"
             className="rounded border px-2 py-1 font-medium transition hover:bg-slate-50"
             style={{ borderColor: brand.border, color: brand.inkSoft }}>Çıkış</button>
+
+          {menuAcik && (
+            <>
+              {/* Dışarı tıklayınca kapanır */}
+              <div className="fixed inset-0 z-30" onClick={menuKapat} />
+              <div className="absolute right-0 top-full z-40 mt-1 w-72 rounded-md border py-1 shadow-lg"
+                style={{ background: brand.surface, borderColor: brand.border }}>
+                <div className="border-b px-3 py-2" style={{ borderColor: brand.border }}>
+                  <div className="field-label" style={{ color: brand.faint }}>HESAP</div>
+                  <div style={{ color: brand.ink }}>{user.email}</div>
+                </div>
+
+                <MenuOge onClick={() => { setAdTaslak(aktifAd); menuKapat(); }}
+                  ad="Adı değiştir" alt="Bu projenin adını düzenle" />
+
+                <MenuOge onClick={() => { sar(paylasimDegistir(!paylasimAcik), "paylasim"); }}
+                  ad={paylasimAcik ? "Paylaşımı kapat" : "Paylaşım linki oluştur"}
+                  alt={paylasimAcik
+                    ? "Link şu an açık — kapatınca erişim anında kesilir"
+                    : "Linki verdiğiniz kişi projeyi sadece görüntüler, değiştiremez"} />
+
+                {paylasimAcik && (
+                  <MenuOge
+                    onClick={() => { navigator.clipboard?.writeText(paylasimLinki); setKopyalandi(true); setTimeout(() => setKopyalandi(false), 2000); }}
+                    ad={kopyalandi ? "✓ Kopyalandı" : "🔗 Linki kopyala"}
+                    alt="Salt-okunur görüntüleme linkini panoya kopyalar" />
+                )}
+
+                {silinebilir && (
+                  <MenuOge tehlike
+                    onClick={() => { if (confirm(`“${aktifAd}” kalıcı olarak silinsin mi?`)) { sar(projeSilmeIstegi(aktifId!), "sil"); menuKapat(); } }}
+                    ad="Hattı sil" alt="Bu projeyi kalıcı olarak siler (geri alınamaz)" />
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
+  );
+}
+
+/** Menü satırı — üstte eylem adı, altında tek cümlelik açıklama. */
+function MenuOge({ ad, alt, onClick, tehlike = false }: { ad: string; alt: string; onClick: () => void; tehlike?: boolean }) {
+  return (
+    <button onClick={onClick} className="block w-full px-3 py-2 text-left transition hover:bg-slate-50">
+      <span className="font-medium" style={{ color: tehlike ? brand.red : brand.ink }}>{ad}</span>
+      <span className="mt-0.5 block text-[0.7rem] leading-snug" style={{ color: brand.muted }}>{alt}</span>
+    </button>
   );
 }
 
