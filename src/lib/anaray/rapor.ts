@@ -21,6 +21,7 @@ import { bolgeSeed, cakismaMatriksi } from "./interlocking";
 import { blockingTimeRing } from "./blockingtime";
 import { loopToHat } from "./hatsim";
 import { simulate } from "./sim";
+import { computeEnergy } from "./energy";
 import { simulateSignalled } from "./signalling";
 import type { Line } from "./types";
 
@@ -111,45 +112,61 @@ function blockingBarSvg(bloklar: { i: number; makasBlok?: boolean; tSetup: numbe
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${rows}${legend}</svg>`;
 }
 
-// Hız-mesafe profili (gömülü SVG): worst-case tek tren, vmax zarfı + fiili hız.
-function speedProfileSvg(line: Line, stock: RollingStock): string {
+// BİRLEŞİK hız + boy kesit (gömülü SVG): üst panel hız-mesafe (vmax zarfı + fiili
+// hız + kurp işareti), alt panel yükseklik profili + eğim şeridi. AYNI mesafe
+// ekseni + paylaşılan istasyon çizgileri → kurpların tırmanışa denk gelişi hizalı.
+function combinedProfileSvg(line: Line, stock: RollingStock, lbl: { climb: string; descent: string; grade: string; noElev: string; m: string }): string {
   if (line.length <= 0) return "";
   const res = simulate(line, stock, 0.5);
   if (!res.points.length) return "";
   const L = line.length;
-  const W = 760, H = 210, padL = 44, padR = 12, padT = 14, padB = 30;
-  const pw = W - padL - padR, ph = H - padT - padB;
+  const W = 760, padL = 46, padR = 12, padT = 14, pw = 760 - 46 - 12;
+  const topH = 128, gap = 22, elevH = 62, stripH = 12, stripGap = 4;
+  const topTop = padT, elevTop = topTop + topH + gap, stripTop = elevTop + elevH + stripGap;
+  const fullBottom = stripTop + stripH, H = fullBottom + 24;
+  const xOf = (s: number) => padL + (s / L) * pw;
+  const st = line.stations.map((s) => `<line x1="${xOf(s.position).toFixed(1)}" y1="${topTop}" x2="${xOf(s.position).toFixed(1)}" y2="${fullBottom}" stroke="#EDF0F3"/>`).join("");
+
+  // ---- Üst: hız ----
   const vmax = Math.max(...line.segments.map((s) => s.vmax), ...res.points.map((p) => p.v * 3.6), 10);
   const vAxis = Math.ceil(vmax / 10) * 10;
-  const xOf = (s: number) => padL + (s / L) * pw;
-  const yOf = (vk: number) => padT + ph - (vk / vAxis) * ph;
-  const yTicks = [0, vAxis / 2, vAxis].map((v) =>
-    `<line x1="${padL}" y1="${yOf(v).toFixed(1)}" x2="${W - padR}" y2="${yOf(v).toFixed(1)}" stroke="#E6E9ED"/><text x="${padL - 6}" y="${(yOf(v) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="#6B7A8A">${v.toFixed(0)}</text>`).join("");
-  const st = line.stations.map((s) =>
-    `<line x1="${xOf(s.position).toFixed(1)}" y1="${padT}" x2="${xOf(s.position).toFixed(1)}" y2="${padT + ph}" stroke="#DCE1E7" stroke-dasharray="2 3"/>`).join("");
-  const env = line.segments.map((s) =>
-    `<line x1="${xOf(s.start).toFixed(1)}" y1="${yOf(s.vmax).toFixed(1)}" x2="${xOf(s.end).toFixed(1)}" y2="${yOf(s.vmax).toFixed(1)}" stroke="${RED}" stroke-width="1.4" stroke-dasharray="5 4" opacity="0.85"/>`).join("");
-  const spd = res.points.map((p) => `${xOf(p.s).toFixed(1)},${yOf(p.v * 3.6).toFixed(1)}`).join(" ");
-  const speed = `<polyline points="${spd}" fill="none" stroke="${INK}" stroke-width="1.8"/>`;
-  // Kısıt bölgeleri: azami vmax'ın altındaki bitişik segmentleri birleştir → kurp/kısıt işareti
-  const maxV = Math.max(...line.segments.map((s) => s.vmax));
+  const yV = (vk: number) => topTop + topH - (vk / vAxis) * topH;
+  const vTicks = [0, vAxis / 2, vAxis].map((v) => `<line x1="${padL}" y1="${yV(v).toFixed(1)}" x2="${W - padR}" y2="${yV(v).toFixed(1)}" stroke="#E6E9ED"/><text x="${padL - 6}" y="${(yV(v) + 3).toFixed(1)}" text-anchor="end" font-size="8" fill="#6B7A8A">${v.toFixed(0)}</text>`).join("");
+  const env = line.segments.map((s) => `<line x1="${xOf(s.start).toFixed(1)}" y1="${yV(s.vmax * 3.6).toFixed(1)}" x2="${xOf(s.end).toFixed(1)}" y2="${yV(s.vmax * 3.6).toFixed(1)}" stroke="${RED}" stroke-width="1.3" stroke-dasharray="5 4" opacity="0.85"/>`).join("");
+  const spd = res.points.map((p) => `${xOf(p.s).toFixed(1)},${yV(p.v * 3.6).toFixed(1)}`).join(" ");
+  const speed = `<polyline points="${spd}" fill="none" stroke="${INK}" stroke-width="1.6"/>`;
+  const maxVm = Math.max(...line.segments.map((s) => s.vmax));
   type Zon = { start: number; end: number; vk: number };
-  const zones: Zon[] = [];
-  let cur: Zon | null = null;
+  const zones: Zon[] = []; let cur: Zon | null = null;
   for (const s of line.segments) {
     const vk = Math.round(s.vmax * 3.6);
-    if (s.vmax < maxV - 0.1) {
-      if (cur && Math.abs(cur.vk - vk) < 0.5) cur.end = s.end;
-      else { if (cur) zones.push(cur); cur = { start: s.start, end: s.end, vk }; }
-    } else if (cur) { zones.push(cur); cur = null; }
+    if (s.vmax < maxVm - 0.1) { if (cur && Math.abs(cur.vk - vk) < 0.5) cur.end = s.end; else { if (cur) zones.push(cur); cur = { start: s.start, end: s.end, vk }; } }
+    else if (cur) { zones.push(cur); cur = null; }
   }
   if (cur) zones.push(cur);
-  const marks = zones.slice(0, 10).map((z) => {
-    const mx = xOf((z.start + z.end) / 2), my = yOf(z.vk);
-    return `<polygon points="${(mx - 4).toFixed(1)},${(my - 9).toFixed(1)} ${(mx + 4).toFixed(1)},${(my - 9).toFixed(1)} ${mx.toFixed(1)},${(my - 2).toFixed(1)}" fill="${GOLD}"/><text x="${mx.toFixed(1)}" y="${(my - 11).toFixed(1)}" text-anchor="middle" font-size="8" font-weight="700" fill="${GOLD}">⌒${z.vk}</text>`;
-  }).join("");
-  const axis = `<text x="${padL}" y="${H - 8}" font-size="9" fill="#6B7A8A">mesafe (m) →</text><text x="8" y="${padT + 8}" font-size="9" fill="#6B7A8A">km/h</text><text x="${W - padR}" y="${padT + 10}" text-anchor="end" font-size="8.5" fill="#6B7A8A"><tspan fill="${RED}">– – limit</tspan> · <tspan fill="${INK}">— fiili</tspan> · <tspan fill="${GOLD}">▼ kurp/kısıt</tspan></text>`;
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${yTicks}${st}${env}${speed}${marks}${axis}</svg>`;
+  const marks = zones.slice(0, 10).map((z) => { const mx = xOf((z.start + z.end) / 2), my = yV(z.vk);
+    return `<polygon points="${(mx - 4).toFixed(1)},${(my - 9).toFixed(1)} ${(mx + 4).toFixed(1)},${(my - 9).toFixed(1)} ${mx.toFixed(1)},${(my - 2).toFixed(1)}" fill="${GOLD}"/><text x="${mx.toFixed(1)}" y="${(my - 11).toFixed(1)}" text-anchor="middle" font-size="8" font-weight="700" fill="${GOLD}">⌒${z.vk}</text>`; }).join("");
+  const speedLbl = `<text x="8" y="${topTop + 8}" font-size="9" fill="#6B7A8A">km/h</text><text x="${W - padR}" y="${topTop + 9}" text-anchor="end" font-size="8" fill="#6B7A8A"><tspan fill="${RED}">– – limit</tspan> · <tspan fill="${INK}">— fiili</tspan> · <tspan fill="${GOLD}">▼ kurp</tspan></text>`;
+
+  // ---- Alt: yükseklik + eğim ----
+  const hasGrade = line.segments.some((s) => Math.abs(s.gradient) > 0.01);
+  const segs = [...line.segments].sort((a, b) => a.start - b.start);
+  let e = 0; const ep = [{ s: 0, e: 0 }];
+  for (const sg of segs) { e += (sg.gradient / 1000) * (sg.end - sg.start); ep.push({ s: sg.end, e }); }
+  const eMin = Math.min(...ep.map((p) => p.e)), eMax = Math.max(...ep.map((p) => p.e)), span = Math.max(1, eMax - eMin);
+  const yE = (ev: number) => elevTop + elevH - ((ev - eMin) / span) * elevH;
+  const lp = ep.map((p) => `${xOf(p.s).toFixed(1)},${yE(p.e).toFixed(1)}`).join(" ");
+  const area = `<polygon points="${xOf(0).toFixed(1)},${(elevTop + elevH).toFixed(1)} ${lp} ${xOf(L).toFixed(1)},${(elevTop + elevH).toFixed(1)}" fill="#0C6DB814"/>`;
+  const eline = `<polyline points="${lp}" fill="none" stroke="${INK}" stroke-width="1.4"/>`;
+  const gmax = Math.max(1, ...line.segments.map((s) => Math.abs(s.gradient)));
+  const strip = line.segments.map((sg) => { const x1 = xOf(sg.start), x2 = xOf(sg.end), g = sg.gradient;
+    const col = g > 0.3 ? RED : g < -0.3 ? "#0C6DB8" : "#B9C4CE"; const h = (Math.abs(g) / gmax) * stripH;
+    return `<rect x="${x1.toFixed(1)}" y="${(stripTop + stripH - h).toFixed(1)}" width="${Math.max(0.6, x2 - x1).toFixed(1)}" height="${Math.max(0.6, h).toFixed(1)}" fill="${col}"/>`; }).join("");
+  const elevLbl = `<text x="8" y="${elevTop + 8}" font-size="9" fill="#6B7A8A">${esc(lbl.m)}</text><text x="${padL - 6}" y="${(yE(eMax) + 3).toFixed(1)}" text-anchor="end" font-size="8" fill="#6B7A8A">+${(eMax - eMin).toFixed(0)}</text>`;
+  const gLbl = `<text x="${padL}" y="${fullBottom + 16}" font-size="8" fill="#6B7A8A">${esc(lbl.grade)}: <tspan fill="${RED}">■</tspan> ${esc(lbl.climb)} <tspan fill="#0C6DB8">■</tspan> ${esc(lbl.descent)} (max ${gmax.toFixed(0)}‰)</text><text x="${W - padR}" y="${fullBottom + 16}" text-anchor="end" font-size="8" fill="#6B7A8A">mesafe (m) →</text>`;
+  const note = hasGrade ? "" : `<text x="${W / 2}" y="${elevTop + elevH / 2}" text-anchor="middle" font-size="9" fill="#9AA7B4">${esc(lbl.noElev)}</text>`;
+
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${st}${vTicks}${env}${speed}${marks}${speedLbl}${area}${eline}${strip}${elevLbl}${gLbl}${note}</svg>`;
 }
 
 // Bir Line'ı ters çevir (dönüş yönü): konum aynala + eğim işaretini çevir.
@@ -227,37 +244,47 @@ function sperrzeitSvg(bt: ReturnType<typeof blockingTimeRing>, L: number): strin
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${yTicks}${rects.join("")}${traj(0, INK)}${traj(h, "#7A6224")}${hMark}<text x="${padL}" y="${H - 8}" font-size="8.5" fill="#6B7A8A">zaman (s) →</text><text x="8" y="${padT + 8}" font-size="8.5" fill="#6B7A8A">m</text></svg>`;
 }
 
-// Boy kesit (gömülü SVG): yükseklik profili (gradient'ten kümülatif) + eğim şeridi.
-function gradeProfileSvg(line: Line, lbl: { climb: string; descent: string; grade: string; noElev: string; m: string }): string {
-  if (line.length <= 0 || !line.segments.length) return "";
+// Enerji–eğim (gömülü SVG): kümülatif çekiş enerjisi (kWh) vs mesafe + eğim şeridi.
+// Tırmanışta dik artış, inişte düzleşme → enerji-eğim ilişkisi görünür.
+function energyGradeSvg(line: Line, stock: RollingStock, lbl: { climb: string; descent: string; grade: string }): { svg: string; net: number; perKm: number } {
+  if (line.length <= 0) return { svg: "", net: 0, perKm: 0 };
+  const res = simulate(line, stock, 0.5);
+  if (!res.points.length) return { svg: "", net: 0, perKm: 0 };
+  const en = computeEnergy(line, stock, res);
   const L = line.length;
-  const W = 760, H = 190, padL = 46, padR = 12, padT = 14, padB = 30;
-  const pw = W - padL - padR, ph = H - padT - padB;
-  const hasGrade = line.segments.some((s) => Math.abs(s.gradient) > 0.01);
-  const segs = [...line.segments].sort((a, b) => a.start - b.start);
-  let e = 0; const pts = [{ s: 0, e: 0 }];
-  for (const sg of segs) { e += (sg.gradient / 1000) * (sg.end - sg.start); pts.push({ s: sg.end, e }); }
-  const eMin = Math.min(...pts.map((p) => p.e)), eMax = Math.max(...pts.map((p) => p.e));
-  const span = Math.max(1, eMax - eMin);
+  const meff = stock.mass * (1 + stock.rotatingMassFactor);
+  const Gg = 9.81, EFF = 0.85, J = 3.6e6;
+  const segAtL = (s: number) => { for (const sg of line.segments) if (s >= sg.start && s < sg.end) return sg; return line.segments[line.segments.length - 1]; };
+  const pts = res.points; let Wtr = 0; const cp = [{ s: 0, E: 0 }];
+  for (let i = 1; i < pts.length; i++) {
+    const p0 = pts[i - 1], p1 = pts[i], ds = p1.s - p0.s;
+    if (ds <= 1e-6) continue;
+    const vmid = (p0.v + p1.v) / 2, seg = segAtL(p0.s);
+    const dKE = 0.5 * meff * (p1.v * p1.v - p0.v * p0.v);
+    const Wres = (stock.davisA + stock.davisB * vmid + stock.davisC * vmid * vmid) * ds;
+    const Wg = stock.mass * Gg * (seg.gradient / 1000) * ds;
+    const rhs = dKE + Wres + Wg;
+    if (rhs > 0) Wtr += rhs;
+    cp.push({ s: p1.s, E: Wtr / EFF / J });
+  }
+  const W = 760, padL = 46, padR = 12, padT = 14, pw = 760 - 46 - 12;
+  const topH = 108, gap = 6, stripH = 12;
+  const topTop = padT, stripTop = topTop + topH + gap, H = stripTop + stripH + 24;
   const xOf = (s: number) => padL + (s / L) * pw;
-  const eph = ph * 0.6;
-  const yE = (ev: number) => padT + eph - ((ev - eMin) / span) * eph;
-  const stripH = 12, stripY = padT + ph - stripH;
+  const Emax = Math.max(0.1, ...cp.map((p) => p.E));
+  const yE = (E: number) => topTop + topH - (E / Emax) * topH;
+  const st = line.stations.map((s) => `<line x1="${xOf(s.position).toFixed(1)}" y1="${topTop}" x2="${xOf(s.position).toFixed(1)}" y2="${stripTop + stripH}" stroke="#EDF0F3"/>`).join("");
+  const eline = cp.map((p) => `${xOf(p.s).toFixed(1)},${yE(p.E).toFixed(1)}`).join(" ");
+  const eArea = `<polygon points="${xOf(0).toFixed(1)},${(topTop + topH).toFixed(1)} ${eline} ${xOf(L).toFixed(1)},${(topTop + topH).toFixed(1)}" fill="#C8102E11"/>`;
+  const ePoly = `<polyline points="${eline}" fill="none" stroke="${INK}" stroke-width="1.6"/>`;
+  const yTicks = [0, Emax / 2, Emax].map((v) => `<line x1="${padL}" y1="${yE(v).toFixed(1)}" x2="${W - padR}" y2="${yE(v).toFixed(1)}" stroke="#E6E9ED"/><text x="${padL - 6}" y="${(yE(v) + 3).toFixed(1)}" text-anchor="end" font-size="8" fill="#6B7A8A">${v.toFixed(1)}</text>`).join("");
   const gmax = Math.max(1, ...line.segments.map((s) => Math.abs(s.gradient)));
-  const lp = pts.map((p) => `${xOf(p.s).toFixed(1)},${yE(p.e).toFixed(1)}`).join(" ");
-  const area = `<polygon points="${xOf(0).toFixed(1)},${(padT + eph).toFixed(1)} ${lp} ${xOf(L).toFixed(1)},${(padT + eph).toFixed(1)}" fill="#0C6DB814"/>`;
-  const eline = `<polyline points="${lp}" fill="none" stroke="${INK}" stroke-width="1.6"/>`;
-  const strip = line.segments.map((sg) => {
-    const x1 = xOf(sg.start), x2 = xOf(sg.end), g = sg.gradient;
-    const col = g > 0.3 ? RED : g < -0.3 ? "#0C6DB8" : "#B9C4CE";
-    const h = (Math.abs(g) / gmax) * stripH;
-    return `<rect x="${x1.toFixed(1)}" y="${(stripY + stripH - h).toFixed(1)}" width="${Math.max(0.6, x2 - x1).toFixed(1)}" height="${Math.max(0.6, h).toFixed(1)}" fill="${col}"/>`;
-  }).join("");
-  const st = line.stations.map((s) => `<line x1="${xOf(s.position).toFixed(1)}" y1="${padT}" x2="${xOf(s.position).toFixed(1)}" y2="${(padT + eph).toFixed(1)}" stroke="#DCE1E7" stroke-dasharray="2 3"/>`).join("");
-  const yLab = `<text x="8" y="${padT + 8}" font-size="9" fill="#6B7A8A">${esc(lbl.m)}</text><text x="${padL - 6}" y="${(yE(eMax) + 3).toFixed(1)}" text-anchor="end" font-size="8" fill="#6B7A8A">+${(eMax - eMin).toFixed(0)}</text><text x="${padL - 6}" y="${(padT + eph + 3).toFixed(1)}" text-anchor="end" font-size="8" fill="#6B7A8A">0</text>`;
-  const stripLab = `<text x="${padL}" y="${stripY - 3}" font-size="8" fill="#6B7A8A">${esc(lbl.grade)}: <tspan fill="${RED}">■</tspan> ${esc(lbl.climb)} <tspan fill="#0C6DB8">■</tspan> ${esc(lbl.descent)} (max ${gmax.toFixed(0)}‰)</text>`;
-  const note = hasGrade ? "" : `<text x="${W / 2}" y="${padT + eph / 2}" text-anchor="middle" font-size="9" fill="#9AA7B4">${esc(lbl.noElev)}</text>`;
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${st}${area}${eline}${strip}${yLab}${stripLab}${note}</svg>`;
+  const strip = line.segments.map((sg) => { const x1 = xOf(sg.start), x2 = xOf(sg.end), g = sg.gradient;
+    const col = g > 0.3 ? RED : g < -0.3 ? "#0C6DB8" : "#B9C4CE"; const h = (Math.abs(g) / gmax) * stripH;
+    return `<rect x="${x1.toFixed(1)}" y="${(stripTop + stripH - h).toFixed(1)}" width="${Math.max(0.6, x2 - x1).toFixed(1)}" height="${Math.max(0.6, h).toFixed(1)}" fill="${col}"/>`; }).join("");
+  const lblSvg = `<text x="8" y="${topTop + 8}" font-size="9" fill="#6B7A8A">kWh</text><text x="${padL}" y="${stripTop + stripH + 16}" font-size="8" fill="#6B7A8A">${esc(lbl.grade)}: <tspan fill="${RED}">■</tspan> ${esc(lbl.climb)} <tspan fill="#0C6DB8">■</tspan> ${esc(lbl.descent)}</text><text x="${W - padR}" y="${stripTop + stripH + 16}" text-anchor="end" font-size="8" fill="#6B7A8A">mesafe (m) →</text>`;
+  const svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${st}${yTicks}${eArea}${ePoly}${strip}${lblSvg}</svg>`;
+  return { svg, net: en.netKWh, perKm: en.perKm };
 }
 
 export type RaporDil = "tr" | "en";
@@ -277,8 +304,8 @@ function rDil(lang: RaporDil) {
     thParam: ["Parametre", "Değer", "Etkisi"],
     s2: "Durak Arası İşletim Hücreleri", s2i: (n: number, h: number) => `Hat, ${n} durak-arası hücreye (ring) bölünmüştür. Her hücre kendi mesafe, makas, hemzemin ve tehlike (acil frenleme) şartlarını taşır; worst-case senaryo en uzun mesafe + tüm kısıtlarla, hedef headway ${h} s ile değerlendirilir.`,
     fig1: "Şekil 1 — Hat şeması: istasyon zinciri, makas (⑂) ve hemzemin geçit dağılımı.",
-    fig2: "Şekil 2 — Hız-mesafe profili (worst-case tek tren): kırmızı kesikli = hız limiti zarfı, mürekkep = fiili hız, ⌒ = kurp/hız kısıtı bölgeleri (km/h).",
-    figGrade: "Şekil 3 — Boy kesit: yükseklik profili (mürekkep) + eğim şeridi (kırmızı tırmanış, mavi iniş).",
+    fig2: "Şekil 2 — Hız + boy kesit (aynı mesafe ekseni): ÜST = hız-mesafe (– – limit, — fiili, ⌒ kurp kısıtı), ALT = yükseklik profili + eğim şeridi (kırmızı tırmanış, mavi iniş). Kurpların tırmanışa denk gelişi dikey hizada okunur.",
+    figEnergy: (net: number, perKm: number) => `Şekil 3 — Enerji-mesafe: kümülatif çekiş enerjisi (mürekkep alan) + eğim şeridi; tırmanışta dik artış, inişte düzleşme. Net ${net.toFixed(1)} kWh · ${perKm.toFixed(2)} kWh/km.`,
     gClimb: "tırmanış", gDescent: "iniş", gGrade: "eğim", gNoElev: "Yükseklik verisi girilmedi — düz profil varsayıldı", mUnit: "m",
     fig3: (c: number, h: number) => `Şekil 4 — Zaman-mesafe diyagramı (Bildfahrplan), ÇİFT YÖN: gidiş (mürekkep) + dönüş (mavi), ${c}+${c} tren, ${h}s aralık. Ters eğimli çizgilerin kesişimi = kruvasman/karşılaşma; kırmızı = gecikmeli sefer.`,
     thRing: ["No", "Durak Arası", "Mesafe (m)", "Worst (m)", "Makas", "Hemzemin", "Tehlike", "Worst Toplam", "Headway"],
@@ -311,8 +338,8 @@ function rDil(lang: RaporDil) {
     thParam: ["Parameter", "Value", "Effect"],
     s2: "Inter-station Operating Cells", s2i: (n, h) => `The line is divided into ${n} inter-station cells (rings). Each cell carries its own distance, switch, level-crossing and hazard (emergency braking) conditions; the worst case is evaluated at the longest distance with all constraints against the ${h}s target headway.`,
     fig1: "Figure 1 — Line schematic: station chain, switch (⑂) and level-crossing distribution.",
-    fig2: "Figure 2 — Speed-distance profile (worst-case single train): red dashed = speed-limit envelope, ink = actual speed, ⌒ = curve/speed-restriction zones (km/h).",
-    figGrade: "Figure 3 — Longitudinal section: elevation profile (ink) + grade strip (red climb, blue descent).",
+    fig2: "Figure 2 — Speed + longitudinal section (same distance axis): TOP = speed-distance (– – limit, — actual, ⌒ curve restriction), BOTTOM = elevation profile + grade strip (red climb, blue descent). Curve/climb coincidence reads off vertically aligned.",
+    figEnergy: (net, perKm) => `Figure 3 — Energy-distance: cumulative traction energy (ink area) + grade strip; steep rise on climbs, flattening on descents. Net ${net.toFixed(1)} kWh · ${perKm.toFixed(2)} kWh/km.`,
     gClimb: "climb", gDescent: "descent", gGrade: "grade", gNoElev: "No elevation data — level profile assumed", mUnit: "m",
     fig3: (c, h) => `Figure 4 — Time-distance diagram (Bildfahrplan), BOTH DIRECTIONS: outbound (ink) + return (blue), ${c}+${c} trains, ${h}s headway. Crossing of opposing lines = meeting/passing point; red = delayed service.`,
     thRing: ["No", "Section", "Distance (m)", "Worst (m)", "Switches", "Level xing", "Hazards", "Worst Total", "Headway"],
@@ -352,8 +379,9 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   // Birleşik hat (loop → tek Line) → hız profili + Bildfahrplan grafikleri
   const line: Line | null = rings.length ? loopToHat(rings, true, cfg).line : null;
   const bfCount = Math.max(3, Math.min(6, olcek.maxTrenHedefHeadway || 4));
-  const hizFig = line ? `<div class="fig">${speedProfileSvg(line, stock)}<div class="cap">${L.fig2}</div></div>` : "";
-  const gradeFig = line ? `<div class="fig">${gradeProfileSvg(line, { climb: L.gClimb, descent: L.gDescent, grade: L.gGrade, noElev: L.gNoElev, m: L.mUnit })}<div class="cap">${L.figGrade}</div></div>` : "";
+  const combinedFig = line ? `<div class="fig">${combinedProfileSvg(line, stock, { climb: L.gClimb, descent: L.gDescent, grade: L.gGrade, noElev: L.gNoElev, m: L.mUnit })}<div class="cap">${L.fig2}</div></div>` : "";
+  const eg = line ? energyGradeSvg(line, stock, { climb: L.gClimb, descent: L.gDescent, grade: L.gGrade }) : null;
+  const energyFig = eg && eg.svg ? `<div class="fig">${eg.svg}<div class="cap">${L.figEnergy(eg.net, eg.perKm)}</div></div>` : "";
   const bfFig = line ? `<div class="fig">${bildfahrplanSvg(line, stock, cfg, bfCount)}<div class="cap">${L.fig3(bfCount, cfg.headway)}</div></div>` : "";
 
   // ---- Kapak künye ----
@@ -545,8 +573,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <div class="banner"><span class="no">2</span>${L.s2}</div>
   <p>${L.s2i(rings.length, cfg.headway)}</p>
   <div class="fig">${ringSemaSvg(rings)}<div class="cap">${L.fig1}</div></div>
-  ${hizFig}
-  ${gradeFig}
+  ${combinedFig}
+  ${energyFig}
   ${tbl(L.thRing, ringRows, { first: true })}
   <h3 class="sub">${L.s21}</h3>
   ${ringDetay}
