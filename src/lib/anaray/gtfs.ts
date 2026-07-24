@@ -5,6 +5,8 @@
 // Şebeke/sim modeliyle birebir bağlanmaz; amaç güzergahı gerçek koordinatlarda
 // göstermek (inandırıcılık + veri devralma). Tarayıcıda ve SSR'de saf çalışır.
 
+import { yeniRing, BELGE, type DurakArasiRing } from "./ring";
+
 export interface GeoStop { id: string; name: string; lat: number; lon: number; }
 export interface GeoShape { id: string; points: { lat: number; lon: number; seq: number }[]; }
 
@@ -119,6 +121,51 @@ export function polylineLength(pts: { lat: number; lon: number }[]): number {
   let d = 0;
   for (let i = 1; i < pts.length; i++) d += haversine(pts[i - 1], pts[i]);
   return d;
+}
+
+// ————————————————————————————————————————————————
+// GTFS → Ring modeli (simülasyona bağla)
+// ————————————————————————————————————————————————
+
+/** Sıralı durakların shape üzerindeki kümülatif konumu (m). shape yoksa null. */
+function stopCumulative(stops: GeoStop[], shapes: GeoShape[]): (number | null)[] {
+  if (!shapes.length) return stops.map(() => null);
+  const sh = shapes.reduce((a, b) => (b.points.length > a.points.length ? b : a)); // en uzun shape
+  const pts = sh.points;
+  if (pts.length < 2) return stops.map(() => null);
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + haversine(pts[i - 1], pts[i]));
+  return stops.map((s) => {
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < pts.length; i++) { const d = haversine(s, pts[i]); if (d < bd) { bd = d; bi = i; } }
+    return cum[bi];
+  });
+}
+
+/**
+ * GTFS güzergahını (sıralı duraklar + opsiyonel shape) ring zincirine çevirir.
+ * Durak-arası mesafe shape varsa shape boyunca, yoksa büyük-çember (haversine) ile.
+ * makas/hemzemin/tehlike GTFS'te olmadığından BOŞ gelir → Ringler editöründen eklenir.
+ */
+export function gtfsToRings(stops: GeoStop[], shapes: GeoShape[]): DurakArasiRing[] {
+  if (stops.length < 2) return [];
+  const cum = stopCumulative(stops, shapes);
+  const rings: DurakArasiRing[] = [];
+  for (let i = 0; i < stops.length - 1; i++) {
+    const a = stops[i], b = stops[i + 1];
+    const ci = cum[i], cj = cum[i + 1];
+    let d = ci != null && cj != null ? Math.abs(cj - ci) : haversine(a, b);
+    d = Math.max(50, Math.round(d));
+    const r = yeniRing(a.name, b.name);
+    rings.push({
+      ...r,
+      uzunluk: d,
+      worstUzunluk: Math.max(d, Math.round(d * 1.1)),
+      bestUzunluk: Math.max(50, Math.round(d * 0.9)),
+      vmax: BELGE.vSahasal,
+    });
+  }
+  return rings;
 }
 
 // ————————————————————————————————————————————————

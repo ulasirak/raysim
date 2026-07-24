@@ -6,9 +6,11 @@
 // Karşı taraf gerçek hat verisini yükleyip görselleştirebilir.
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { brand } from "@/lib/anaray/brand";
+import { useProje } from "@/components/SimConfigProvider";
 import {
-  parseStops, parseShapes, makeProjector, polylineLength,
+  parseStops, parseShapes, makeProjector, polylineLength, gtfsToRings,
   ornekGtfsStops, ornekGtfsShapes, type GeoStop, type GeoShape,
 } from "@/lib/anaray/gtfs";
 
@@ -26,6 +28,16 @@ export function CografiHarita() {
   const [shapes, setShapes] = useState<GeoShape[]>(() => parseShapes(ornekGtfsShapes));
   const [kaynak, setKaynak] = useState<string>("Demo güzergah (yaklaşık Konya koordinatları)");
   const [hata, setHata] = useState<string>("");
+  const [uretildi, setUretildi] = useState<number | null>(null);
+  const { setRings } = useProje();
+
+  const hatUret = () => {
+    const r = gtfsToRings(stops, shapes);
+    if (r.length < 1) { setHata("Hat üretilemedi — en az 2 durak gerekli."); return; }
+    setRings(r);
+    setUretildi(r.length);
+    setHata("");
+  };
 
   const tumNoktalar = useMemo(
     () => [...stops.map((s) => ({ lat: s.lat, lon: s.lon })), ...shapes.flatMap((sh) => sh.points)],
@@ -96,9 +108,22 @@ export function CografiHarita() {
         <button onClick={ornekYukle} className="rounded-md px-4 py-2 text-sm font-medium text-white" style={{ background: brand.ink }}>
           Demo güzergahı yükle
         </button>
+        <button onClick={hatUret} className="rounded-md px-4 py-2 text-sm font-semibold text-white" style={{ background: brand.red }}>
+          ⇥ Bu güzergahtan hat üret
+        </button>
       </div>
 
       {hata && <div className="mb-4 rounded-md border-l-4 px-4 py-2 text-sm" style={{ background: "#FBE9EC", borderColor: brand.red, color: brand.red }}>⚠ {hata}</div>}
+
+      {uretildi != null && (
+        <div className="mb-4 rounded-md border-l-4 px-4 py-3 text-sm" style={{ background: "#E6F4EC", borderColor: "#0E7C57", color: brand.ink }}>
+          ✓ <b>{uretildi} durak-arası hücre</b> gerçek koordinatlardan üretildi ve paylaşılan hatta yazıldı. Makas/hemzemin GTFS&apos;te olmadığından boş geldi — 2. etap verisiyle ya da{" "}
+          <Link href="/ringler" className="underline" style={{ color: brand.red }}>Ringler</Link> editöründen eklenir. Artık{" "}
+          <Link href="/ringler" className="underline" style={{ color: brand.red }}>Ringler</Link>,{" "}
+          <Link href="/hat" className="underline" style={{ color: brand.red }}>Tam Hat</Link> ve{" "}
+          <Link href="/belgeler" className="underline" style={{ color: brand.red }}>Belgeler</Link> bu hattı kullanır.
+        </div>
+      )}
 
       {/* İstatistik */}
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
