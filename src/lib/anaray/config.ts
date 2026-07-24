@@ -120,15 +120,15 @@ export interface ProjeMeta {
 }
 
 export const varsayilanMeta: ProjeMeta = {
-  projeAdi: "Kentsel Raylı Sistem Sinyalizasyon Projesi",
+  projeAdi: "Konya Tramvay 2. Etap Sinyalizasyon Projesi",
   idare: "İdare / İşveren",
   yuklenici: "Yüklenici Firma",
   musavir: "Müşavir Firma",
   sinyalizasyonFirmasi: "RaySim",
   dokumanNo: "TR-VA-AKS-001",
-  revizyon: "v1.0",
+  revizyon: "v1.0 (TASLAK)",
   tarih: "",
-  hatAdi: "Ana Hat",
+  hatAdi: "Alaaddin – Adliye (TASLAK)",
   hazirlayan: "Tasarım Mühendisi",
   onaylayan: "Firma Yetkilisi",
 };

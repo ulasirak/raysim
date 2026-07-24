@@ -586,3 +586,33 @@ export function ornekSeed(): { rings: DurakArasiRing[]; loop: Loop } {
   const loop: Loop = { id: "loop_ornek", ad: "Örnek Ring Hattı", ringIds: rings.map((r) => r.id), kapali: true };
   return { rings, loop };
 }
+
+// ————————————————————————————————————————————————
+// Konya Tramvay 2. Etap — Alaaddin ↔ Adliye kesimi (TASLAK)
+// ————————————————————————————————————————————————
+// ⚠️ TASLAK/BAŞLANGIÇ verisi: durak dizisi, mesafeler ve makas/kavşak konumları
+// YAKLAŞIKTIR; saha/idare verisiyle doğrulanacaktır. Kesin değer gelince buradaki
+// sayılar Ringler editöründen ya da gerçek veri içe-aktarımıyla düzeltilir.
+export function konya2EtapSeed(): { rings: DurakArasiRing[]; loop: Loop } {
+  _sayac = 0;
+  const rings: DurakArasiRing[] = [
+    // Alaaddin: hattın merkez kavşağı — makas bölgesi (loop/karşılaşmalı)
+    seedRing("Alaaddin", "Zafer", 700, {
+      worstUzunluk: 850,
+      makaslar: [{ ...yeniMakas("karsilasmali", 45), ad: "Alaaddin Kavşağı — makas bölgesi (TASLAK)" }],
+      hemzeminler: [{ ...yeniHemzemin("karayolu", 350), ad: "Alaaddin kavşak geçidi (TASLAK)" }],
+    }),
+    seedRing("Zafer", "Rampalı Çarşı", 600, {
+      makaslar: [{ ...yeniMakas("headway", 560), ad: "Zafer makas bölgesi — headway (TASLAK)" }],
+      hemzeminler: [{ ...yeniHemzemin("yaya", 300), ad: "Zafer yaya geçidi (TASLAK)" }],
+    }),
+    // Adliye: kesim sonu — U-dönüş makas bölgesi
+    seedRing("Rampalı Çarşı", "Adliye", 650, {
+      worstUzunluk: 800,
+      makaslar: [{ ...yeniMakas("udonus", 605), ad: "Adliye U-dönüş makas bölgesi (TASLAK)" }],
+      hemzeminler: [{ ...yeniHemzemin("karayolu", 320), ad: "Adliye kavşak geçidi (TASLAK)" }],
+    }),
+  ];
+  const loop: Loop = { id: "loop_konya2", ad: "Konya 2. Etap — Alaaddin ↔ Adliye (TASLAK)", ringIds: rings.map((r) => r.id), kapali: false };
+  return { rings, loop };
+}

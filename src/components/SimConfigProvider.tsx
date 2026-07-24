@@ -8,13 +8,14 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { varsayilanConfig, varsayilanMeta, type SimConfig, type ProjeMeta } from "@/lib/anaray/config";
-import { ornekSeed, type DurakArasiRing } from "@/lib/anaray/ring";
+import { konya2EtapSeed, type DurakArasiRing } from "@/lib/anaray/ring";
 
 const CFG_ANAHTAR = "raysim_simconfig_v1";
-// v2: eski "Konya 2. Etap" örnek verisi jenerik seed'le değiştirildi → v1 kayıtları
-// yok sayılır ki tarayıcıda kalan eski test verisi otomatik temizlensin.
-const RING_ANAHTAR = "raysim_rings_v2";
-const META_ANAHTAR = "raysim_projemeta_v1";
+// v3: aktif hat = Konya 2. Etap Alaaddin↔Adliye TASLAĞI (durak+makas+kavşak).
+// Anahtar bump'ı → tarayıcıda kalan eski (jenerik) ring verisi otomatik yok sayılır,
+// Konya taslağı yüklenir. Kesin saha verisi gelince Ringler'den/import'la düzeltilir.
+const RING_ANAHTAR = "raysim_rings_v3";
+const META_ANAHTAR = "raysim_projemeta_v2";
 
 interface Ctx {
   cfg: SimConfig;
@@ -30,7 +31,7 @@ interface Ctx {
 const SimConfigCtx = createContext<Ctx | null>(null);
 
 function seedRings(): DurakArasiRing[] {
-  return ornekSeed().rings;
+  return konya2EtapSeed().rings;
 }
 
 export function SimConfigProvider({ children }: { children: React.ReactNode }) {
