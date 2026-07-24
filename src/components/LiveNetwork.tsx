@@ -20,25 +20,26 @@ const GAP = 9; // şeritlerin merkez hattından dik ofseti (px)
 const UP_SIDE = -1; // gidiş üst şerit (SVG'de -y yukarı)
 const DOWN_SIDE = 1; // dönüş alt şerit
 
-function sampleS(points: { t: number; s: number }[], t: number): { s: number; active: boolean } {
-  if (points.length === 0) return { s: 0, active: false };
+function sampleS(points: { t: number; s: number }[], t: number): { s: number; active: boolean; v: number } {
+  if (points.length === 0) return { s: 0, active: false, v: 0 };
   const first = points[0];
   const last = points[points.length - 1];
-  if (t < first.t - 1e-6) return { s: first.s, active: false };
-  if (t > last.t + 1e-6) return { s: last.s, active: false };
+  if (t < first.t - 1e-6) return { s: first.s, active: false, v: 0 };
+  if (t > last.t + 1e-6) return { s: last.s, active: false, v: 0 };
   for (let i = 1; i < points.length; i++) {
     if (points[i].t >= t) {
       const p0 = points[i - 1];
       const p1 = points[i];
-      const f = (t - p0.t) / ((p1.t - p0.t) || 1);
-      return { s: p0.s + (p1.s - p0.s) * f, active: true };
+      const dtt = (p1.t - p0.t) || 1;
+      const f = (t - p0.t) / dtt;
+      return { s: p0.s + (p1.s - p0.s) * f, active: true, v: (p1.s - p0.s) / dtt };
     }
   }
-  return { s: last.s, active: true };
+  return { s: last.s, active: true, v: 0 };
 }
 
 export function LiveNetwork({
-  network, route, line, blocks, up, down, tMax,
+  network, route, line, blocks, up, down, tMax, trainLen = 40, faultBlocks = [], onBlockClick,
 }: {
   network: RailNetwork;
   route: Route;
@@ -47,6 +48,9 @@ export function LiveNetwork({
   up: SignalTrain[];
   down: SignalTrain[];
   tMax: number;
+  trainLen?: number;
+  faultBlocks?: number[];
+  onBlockClick?: (i: number) => void;
 }) {
   const [t, setT] = useState(0);
   const [oynat, setOynat] = useState(false);
@@ -145,8 +149,8 @@ export function LiveNetwork({
     basePts.map((p, i) => `${(p.x + side * GAP * vertexN[i].nx).toFixed(1)},${(p.y + side * GAP * vertexN[i].ny).toFixed(1)}`).join(" ");
 
   // Anlık tren konumları (ileri koordinat fp)
-  const upNow = up.map((tr) => { const r = sampleS(tr.points, t); return { tr, active: r.active, fp: r.s, up: true }; }).filter((x) => x.active);
-  const downNow = down.map((tr) => { const r = sampleS(tr.points, t); return { tr, active: r.active, fp: L - r.s, up: false }; }).filter((x) => x.active);
+  const upNow = up.map((tr) => { const r = sampleS(tr.points, t); return { tr, active: r.active, fp: r.s, up: true, v: r.v }; }).filter((x) => x.active);
+  const downNow = down.map((tr) => { const r = sampleS(tr.points, t); return { tr, active: r.active, fp: L - r.s, up: false, v: r.v }; }).filter((x) => x.active);
   const aktifSayi = upNow.length + downNow.length;
 
   // Blok işgali — her şerit ayrı
@@ -182,20 +186,30 @@ export function LiveNetwork({
       return <line key={`${key}${i}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={brand.red} strokeWidth={4.5} strokeLinecap="round" />;
     });
 
-  const wagon = (x: { tr: SignalTrain; fp: number; up: boolean }, i: number) => {
+  const CAR_PX = 7;
+  const cars = Math.max(2, Math.min(6, Math.round(trainLen / 20))); // ~20 m/vagon
+  const wagon = (x: { tr: SignalTrain; fp: number; up: boolean; v: number }, i: number) => {
     const side = x.up ? UP_SIDE : DOWN_SIDE;
     const pos = laneAt(x.fp, side);
     const col = x.up ? brand.ink : DOWN;
     // yön: gidiş +tangent, dönüş -tangent
     const deg = (pos.ang * 180) / Math.PI + (x.up ? 0 : 180);
     const no = `${x.tr.index + 1}`;
+    const wpx = cars * CAR_PX, half = wpx / 2;
+    const kmh = Math.round(x.v * 3.6);
+    const lbl = offsetAt(x.fp, GAP + 13, side); // hız etiketi şerit dışına
     return (
       <g key={`tr${i}`}>
         <g transform={`translate(${pos.x},${pos.y}) rotate(${deg})`}>
-          <rect x={-11} y={-5} width={22} height={10} rx={3} fill={col} stroke="#fff" strokeWidth={1.3} />
-          <polygon points="11,-5 16,0 11,5" fill={col} />
+          <rect x={-half} y={-4.5} width={wpx} height={9} rx={2.5} fill={col} stroke="#fff" strokeWidth={1.2} />
+          {Array.from({ length: cars - 1 }).map((_, c) => {
+            const sx = -half + (c + 1) * CAR_PX;
+            return <line key={c} x1={sx} y1={-4.5} x2={sx} y2={4.5} stroke="#fff" strokeWidth={0.7} opacity={0.55} />;
+          })}
+          <polygon points={`${half},-4.5 ${half + 5},0 ${half},4.5`} fill={col} />
         </g>
-        <text x={pos.x} y={pos.y + 3.2} fill="#fff" fontSize={8.5} fontWeight={700} textAnchor="middle">{no}</text>
+        <text x={pos.x} y={pos.y + 3} fill="#fff" fontSize={7.5} fontWeight={700} textAnchor="middle">{no}</text>
+        {kmh > 1 && <text x={lbl.x} y={lbl.y} fill={col} fontSize={7.5} fontWeight={600} textAnchor="middle">{kmh}</text>}
       </g>
     );
   };
@@ -236,15 +250,36 @@ export function LiveNetwork({
           );
         })}
 
+        {/* Arızalı bloklar (dispatcher) — gidiş şeridinde kırmızı taralı + ✕ */}
+        {faultBlocks.filter((i) => i >= 0 && i < nb).map((i) => {
+          const a = laneAt(blocks[i], UP_SIDE);
+          const b = laneAt(blocks[i + 1], UP_SIDE);
+          const m = offsetAt((blocks[i] + blocks[i + 1]) / 2, GAP + 12, UP_SIDE);
+          return (
+            <g key={`fa${i}`}>
+              <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={brand.red} strokeWidth={5} strokeDasharray="4 3" strokeLinecap="round" />
+              <text x={m.x} y={m.y + 3} fill={brand.red} fontSize={11} fontWeight={700} textAnchor="middle">✕</text>
+            </g>
+          );
+        })}
+
         {/* Sinyal fenerleri (3 aspekt) — gidiş şeridi üstte, dönüş şeridi altta */}
         {Array.from({ length: nb }).map((_, i) => {
           const p = offsetAt(blocks[i], GAP + 6, UP_SIDE);
-          return <circle key={`su${i}`} cx={p.x} cy={p.y} r={3.1} fill={asp(occUp, i, i + 1)} stroke="#fff" strokeWidth={1} />;
+          const arizali = faultBlocks.includes(i);
+          return (
+            <circle key={`su${i}`} cx={p.x} cy={p.y} r={onBlockClick ? 3.6 : 3.1}
+              fill={arizali ? "#7A0A1C" : asp(occUp, i, i + 1)} stroke="#fff" strokeWidth={1}
+              style={{ transition: "fill 0.35s ease", cursor: onBlockClick ? "pointer" : "default" }}
+              onClick={onBlockClick ? () => onBlockClick(i) : undefined}>
+              {onBlockClick && <title>{`Blok ${i} — tıkla: arıza aç/kapat`}</title>}
+            </circle>
+          );
         })}
         {Array.from({ length: nb }).map((_, k) => {
           const i = k + 1;
           const p = offsetAt(blocks[i], GAP + 6, DOWN_SIDE);
-          return <circle key={`sd${i}`} cx={p.x} cy={p.y} r={3.1} fill={asp(occDown, i - 1, i - 2)} stroke="#fff" strokeWidth={1} />;
+          return <circle key={`sd${i}`} cx={p.x} cy={p.y} r={3.1} fill={asp(occDown, i - 1, i - 2)} stroke="#fff" strokeWidth={1} style={{ transition: "fill 0.35s ease" }} />;
         })}
 
         {/* İstasyonlar (peron = iki şeridi kesen dik marka) */}

@@ -120,12 +120,25 @@ function speedProfileSvg(line: Line, stock: RollingStock): string {
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${yTicks}${st}${env}${speed}${axis}</svg>`;
 }
 
-// Zaman-mesafe diyagramı / Bildfahrplan (gömülü SVG): çok tren, headway merdiveni.
+// Bir Line'ı ters çevir (dönüş yönü): konum aynala + eğim işaretini çevir.
+function reverseLineOf(line: Line): Line {
+  const L = line.length;
+  return {
+    ...line, id: line.id + "-rev", name: line.name + " (dönüş)",
+    stations: line.stations.map((s) => ({ ...s, position: L - s.position })).reverse(),
+    segments: line.segments.map((s) => ({ start: L - s.end, end: L - s.start, vmax: s.vmax, gradient: -s.gradient })).reverse(),
+  };
+}
+
+// Zaman-mesafe diyagramı / Bildfahrplan (gömülü SVG): ÇİFT YÖN — gidiş + dönüş.
+// Ters eğimli çizgiler kesişince = kruvasman / karşılaşma noktası.
 function bildfahrplanSvg(line: Line, stock: RollingStock, cfg: SimConfig, count: number): string {
   if (line.length <= 0) return "";
-  const sig = simulateSignalled(line, stock, { headway: cfg.headway, count, maxBlockLen: cfg.blokMaxUzunluk });
-  const L = line.length, tMax = Math.max(1, sig.tMax);
-  const W = 760, H = 240, padL = 78, padR = 12, padT = 12, padB = 26;
+  const rev = reverseLineOf(line);
+  const up = simulateSignalled(line, stock, { headway: cfg.headway, count, maxBlockLen: cfg.blokMaxUzunluk });
+  const dn = simulateSignalled(rev, stock, { headway: cfg.headway, count, maxBlockLen: cfg.blokMaxUzunluk });
+  const L = line.length, tMax = Math.max(1, up.tMax, dn.tMax);
+  const W = 760, H = 250, padL = 78, padR = 12, padT = 12, padB = 26;
   const pw = W - padL - padR, ph = H - padT - padB;
   const xOf = (t: number) => padL + (t / tMax) * pw;
   const yOf = (s: number) => padT + (s / L) * ph; // s=0 üstte, s=L altta
@@ -135,12 +148,51 @@ function bildfahrplanSvg(line: Line, stock: RollingStock, cfg: SimConfig, count:
     const t = (tMax * i) / 6, x = xOf(t);
     return `<line x1="${x.toFixed(1)}" y1="${padT}" x2="${x.toFixed(1)}" y2="${padT + ph}" stroke="#EEF1F4"/><text x="${x.toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="8" fill="#6B7A8A">${Math.round(t / 60)}′</text>`;
   }).join("");
-  const trns = sig.trains.map((tr) => {
+  const upLines = up.trains.map((tr) => {
     const col = tr.delay > 2 ? RED : INK;
     const pts = tr.points.map((p) => `${xOf(p.t).toFixed(1)},${yOf(p.s).toFixed(1)}`).join(" ");
     return `<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.4" opacity="0.9"/>`;
   }).join("");
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${st}${tg}${trns}</svg>`;
+  const dnLines = dn.trains.map((tr) => {
+    const col = tr.delay > 2 ? RED : "#0C6DB8";
+    const pts = tr.points.map((p) => `${xOf(p.t).toFixed(1)},${yOf(L - p.s).toFixed(1)}`).join(" ");
+    return `<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.4" opacity="0.9" stroke-dasharray="1 0"/>`;
+  }).join("");
+  const leg = `<text x="${W - padR}" y="${padT + 10}" text-anchor="end" font-size="8.5"><tspan fill="${INK}">— gidiş</tspan>  <tspan fill="#0C6DB8">— dönüş</tspan>  <tspan fill="${RED}">— gecikmeli</tspan></text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${st}${tg}${upLines}${dnLines}${leg}</svg>`;
+}
+
+// Gerçek Sperrzeitentreppe (gömülü SVG): iki ardışık tren + her bloğun blocking-time
+// dikdörtgeni. Kritik blokta ikinci trenin başlangıcı birincinin bitişine DEĞER = min headway.
+function sperrzeitSvg(bt: ReturnType<typeof blockingTimeRing>, L: number): string {
+  if (!bt.bloklar.length || L <= 0) return "";
+  const h = bt.minHeadway;
+  const pencere = (b: (typeof bt.bloklar)[number]) => ({
+    t0: Math.max(0, b.girisT - b.tApproach - b.tSighting - b.tSetup),
+    t1: b.cikisT + b.tClearing + b.tRelease,
+  });
+  const tMax = Math.max(...bt.bloklar.map((b) => pencere(b).t1)) + h;
+  const W = 760, H = 250, padL = 44, padR = 12, padT = 12, padB = 26;
+  const pw = W - padL - padR, ph = H - padT - padB;
+  const xOf = (t: number) => padL + (t / (tMax || 1)) * pw;
+  const yOf = (s: number) => padT + (s / L) * ph;
+  const rects: string[] = [];
+  [0, h].forEach((off, k) => {
+    bt.bloklar.forEach((b) => {
+      const w = pencere(b);
+      const x = xOf(w.t0 + off), y = yOf(b.start);
+      const ww = Math.max(0.6, xOf(w.t1 + off) - x), hh = Math.max(0.6, yOf(b.end) - y);
+      const kritik = b.i === bt.kritikBlok;
+      const fill = k === 0 ? "rgba(12,109,184,0.16)" : "rgba(168,132,44,0.16)";
+      rects.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${ww.toFixed(1)}" height="${hh.toFixed(1)}" fill="${fill}" stroke="${kritik ? RED : "#B9C4CE"}" stroke-width="${kritik ? 1.4 : 0.6}"/>`);
+    });
+  });
+  // istasyon çizgileri (yorunge üstünden değil; blok sınırlarından kaba)
+  const traj = (off: number, col: string) =>
+    `<polyline points="${bt.yorunge.map((p) => `${xOf(p.t + off).toFixed(1)},${yOf(p.s).toFixed(1)}`).join(" ")}" fill="none" stroke="${col}" stroke-width="1.6"/>`;
+  const yTicks = [0, L / 2, L].map((s) => `<text x="${padL - 6}" y="${(yOf(s) + 3).toFixed(1)}" text-anchor="end" font-size="8" fill="#6B7A8A">${Math.round(s)}</text>`).join("");
+  const hMark = `<text x="${xOf(h / 2).toFixed(1)}" y="${padT + 12}" font-size="9" fill="${RED}">↔ min headway ${Math.round(h)}s</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${yTicks}${rects.join("")}${traj(0, INK)}${traj(h, "#7A6224")}${hMark}<text x="${padL}" y="${H - 8}" font-size="8.5" fill="#6B7A8A">zaman (s) →</text><text x="8" y="${padT + 8}" font-size="8.5" fill="#6B7A8A">m</text></svg>`;
 }
 
 export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock): string {
@@ -161,7 +213,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const line: Line | null = rings.length ? loopToHat(rings, true, cfg).line : null;
   const bfCount = Math.max(3, Math.min(6, olcek.maxTrenHedefHeadway || 4));
   const hizFig = line ? `<div class="fig">${speedProfileSvg(line, stock)}<div class="cap">Şekil 2 — Hız-mesafe profili (worst-case tek tren): kırmızı kesikli = hız limiti zarfı, mürekkep = fiili hız.</div></div>` : "";
-  const bfFig = line ? `<div class="fig">${bildfahrplanSvg(line, stock, cfg, bfCount)}<div class="cap">Şekil 3 — Zaman-mesafe diyagramı (Bildfahrplan): ${bfCount} tren, ${cfg.headway}s aralık; kırmızı = gecikmeli sefer.</div></div>` : "";
+  const bfFig = line ? `<div class="fig">${bildfahrplanSvg(line, stock, cfg, bfCount)}<div class="cap">Şekil 3 — Zaman-mesafe diyagramı (Bildfahrplan), ÇİFT YÖN: gidiş (mürekkep) + dönüş (mavi), ${bfCount}+${bfCount} tren, ${cfg.headway}s aralık. Ters eğimli çizgilerin kesişimi = kruvasman/karşılaşma; kırmızı = gecikmeli sefer.</div></div>` : "";
 
   // ---- Kapak künye ----
   const kunye = [
@@ -362,8 +414,9 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <p>En yüksek blocking-time'lı blok minimum tren aralığını (headway) belirler; UIC 406 doluluk oranı bu değerin hedef headway'e bölümüdür. Her bloğun rezerve süresi altı bileşenden oluşur.</p>
   ${kapasiteTbl}
   ${bfFig}
-  <h3 class="sub">4.1 Blocking-Time (Sperrzeitentreppe) Bileşen Dağılımı</h3>
-  <div class="fig">${blockingBarSvg(bt.bloklar, bt.kritikBlok)}<div class="cap">Şekil 4 — Blok başına blocking-time bileşenleri (kritik blok kırmızı etiketli).</div></div>
+  <h3 class="sub">4.1 Blocking-Time (Sperrzeitentreppe)</h3>
+  <div class="fig">${line ? sperrzeitSvg(bt, line.length) : ""}<div class="cap">Şekil 4 — Sperrzeitentreppe: iki ardışık trenin blok işgal (blocking-time) pencereleri; kritik blokta ikinci trenin başlangıcı birincinin bitişine değer = min headway ${Math.round(bt.minHeadway)}s.</div></div>
+  <div class="fig">${blockingBarSvg(bt.bloklar, bt.kritikBlok)}<div class="cap">Şekil 5 — Blok başına blocking-time bileşen dağılımı (kritik blok kırmızı etiketli).</div></div>
   ${btTbl}
 
   <!-- 5. ONAY -->

@@ -89,7 +89,8 @@ function runTrains(
   count: number,
   dt: number,
   baseTime: number,
-  pert?: Perturb
+  pert?: Perturb,
+  blocked?: Set<number> // kalıcı arızalı bloklar (dispatcher modu) — hep dolu sayılır
 ): SignalTrain[] {
   const meff = stock.mass * (1 + stock.rotatingMassFactor);
   const b = stock.maxBraking;
@@ -115,6 +116,8 @@ function runTrains(
       const [a, c] = occupiedBlocks(bounds, tr.s, stock.length);
       for (let j = a; j <= c; j++) occ[j] = tr.k;
     }
+    // Arızalı bloklar: sahipsiz ama hep dolu (-2 = tren değil) → arkadaki trenler kırmızıda bekler.
+    if (blocked) for (const j of blocked) if (j >= 0 && j < nb) occ[j] = -2;
 
     for (const tr of trains) {
       if (tr.done) continue;
@@ -197,13 +200,14 @@ function runTrains(
 export function simulateSignalled(
   line: Line,
   stock: RollingStock,
-  opts: { headway: number; count: number; maxBlockLen: number; dt?: number }
+  opts: { headway: number; count: number; maxBlockLen: number; dt?: number; blocked?: number[] }
 ): SignalResult {
   const dt = opts.dt ?? 0.5;
   const bounds = makeBlocks(line, opts.maxBlockLen);
   const baseTime = runTrains(line, stock, bounds, 1e9, 1, dt, 600)[0].arr;
 
-  const runs = runTrains(line, stock, bounds, opts.headway, Math.max(1, opts.count), dt, baseTime);
+  const blocked = opts.blocked && opts.blocked.length ? new Set(opts.blocked) : undefined;
+  const runs = runTrains(line, stock, bounds, opts.headway, Math.max(1, opts.count), dt, baseTime, undefined, blocked);
   const trains = runs.map((tr) => ({ ...tr, delay: Math.max(0, tr.arr - (tr.index * opts.headway + baseTime)) }));
   const maxDelay = Math.max(0, ...trains.map((t) => t.delay));
   const tMax = Math.max(...trains.map((t) => t.arr));

@@ -265,6 +265,33 @@ export function HatSim() {
         </div>
       )}
 
+      {/* Sabit blok vs CBTC — yan yana kapasite karşılaştırması */}
+      {(() => {
+        const hSabit = sonuc.kapasiteFixed, hHareketli = sonuc.kapasiteMoving;
+        const tphSabit = hSabit > 0 ? 3600 / hSabit : 0;
+        const tphHareketli = hHareketli > 0 ? 3600 / hHareketli : 0;
+        const kazanc = tphSabit > 0 ? ((tphHareketli - tphSabit) / tphSabit) * 100 : 0;
+        return (
+          <div className="rounded-md border p-4" style={{ borderColor: brand.border, background: brand.surface }}>
+            <div className="mb-3 flex items-baseline justify-between">
+              <div className="field-label">Sinyal sistemi kapasite karşılaştırması</div>
+              {kazanc > 0.5 && (
+                <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold" style={{ background: "#E6F4EC", color: "#0E7C57" }}>
+                  CBTC ile +%{kazanc.toFixed(0)} kapasite
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <KapasiteKart ad="Sabit blok" h={hSabit} tph={tphSabit} renk="#0C6DB8" />
+              <KapasiteKart ad="Hareketli blok (CBTC)" h={hHareketli} tph={tphHareketli} renk="#0E7C57" one />
+            </div>
+            <p className="mt-2 text-xs" style={{ color: brand.muted }}>
+              CBTC (hareketli blok) sabit sinyal bloğu granülünü kaldırır; trenler öndekinin fiziksel kuyruğuna kadar yaklaşır → aynı altyapıda saatte <span className="font-medium" style={{ color: "#0E7C57" }}>%{kazanc.toFixed(0)}</span> daha fazla tren.
+            </p>
+          </div>
+        );
+      })()}
+
       {/* Kapasite Mutabakatı — analitik vs simüle vs gerçekleşen */}
       {(() => {
         const analitik = bt.minHeadway;
@@ -358,6 +385,19 @@ export function HatSim() {
         Ring hücreleri tek koridora zincirlendi; makaslar gerçek interlocking ile kilitlenir.
       </p>
       </div>
+    </div>
+  );
+}
+
+function KapasiteKart({ ad, h, tph, renk, one }: { ad: string; h: number; tph: number; renk: string; one?: boolean }) {
+  return (
+    <div className="rounded-md border p-3" style={{ borderColor: one ? renk : brand.border, borderWidth: one ? 2 : 1, background: one ? "#F2FAF6" : brand.surface }}>
+      <div className="flex items-center gap-2">
+        <span className="inline-block h-3 w-3 rounded-full" style={{ background: renk }} />
+        <span className="text-sm font-semibold" style={{ color: brand.ink }}>{ad}</span>
+      </div>
+      <div className="mt-2 font-mono text-2xl font-bold" style={{ color: renk }}>{tph.toFixed(1)}<span className="ml-1 text-xs font-normal" style={{ color: brand.muted }}>tren/saat</span></div>
+      <div className="mt-0.5 text-xs" style={{ color: brand.muted }}>min headway {sure(h)}</div>
     </div>
   );
 }

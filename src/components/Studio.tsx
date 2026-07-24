@@ -39,6 +39,7 @@ export function Studio() {
   const [seferSayisi, setSeferSayisi] = useState(6);
   const [blockLen, setBlockLen] = useState(() => cfg.blokMaxUzunluk);
   const [turnaroundDk, setTurnaroundDk] = useState(3);
+  const [ariza, setAriza] = useState<number[]>([]); // dispatcher: arızalı bloklar (gidiş hattı)
   const [yon, setYon] = useState<"gidis" | "donus" | "ikisi">("gidis");
   const [meanEntry, setMeanEntry] = useState(30);
   const [meanDwell, setMeanDwell] = useState(5);
@@ -58,9 +59,10 @@ export function Studio() {
   const reverseLine = useMemo(() => flattenRoute(network, reverseRoute(route)), [network, route]);
 
   const gidisSim = useMemo(
-    () => simulateSignalled(line, stock, { headway: headwayDk * 60, count: seferSayisi, maxBlockLen: blockLen }),
-    [line, stock, headwayDk, seferSayisi, blockLen]
+    () => simulateSignalled(line, stock, { headway: headwayDk * 60, count: seferSayisi, maxBlockLen: blockLen, blocked: ariza }),
+    [line, stock, headwayDk, seferSayisi, blockLen, ariza]
   );
+  const arizaToggle = (i: number) => setAriza((a) => (a.includes(i) ? a.filter((x) => x !== i) : [...a, i]));
   const donusSim = useMemo(
     () => simulateSignalled(reverseLine, stock, { headway: headwayDk * 60, count: seferSayisi, maxBlockLen: blockLen }),
     [reverseLine, stock, headwayDk, seferSayisi, blockLen]
@@ -144,9 +146,16 @@ export function Studio() {
       </div>
 
       {/* Canlı ağ simülasyonu (kahraman) */}
-      <Panel baslik="Canlı Ağ Simülasyonu" aciklama="Tüm trenler (gidiş + dönüş) aynı anda hat üzerinde hareket eder; işgal edilen bloklar canlı kırmızıya döner. Oynat ▶">
+      <Panel baslik="Canlı Ağ Simülasyonu" aciklama="Tüm trenler (gidiş + dönüş) aynı anda hat üzerinde hareket eder; işgal edilen bloklar canlı kırmızıya döner. Dispatcher: gidiş şeridindeki bir sinyale tıkla → o blok arızalanır, trenler arkasında kuyruklanır. Oynat ▶">
         <LiveNetwork network={network} route={route} line={line} blocks={gidisSim.blocks}
-          up={gidisSim.trains} down={donusSim.trains} tMax={Math.max(gidisSim.tMax, donusSim.tMax)} />
+          up={gidisSim.trains} down={donusSim.trains} tMax={Math.max(gidisSim.tMax, donusSim.tMax)} trainLen={stock.length}
+          faultBlocks={ariza} onBlockClick={arizaToggle} />
+        {ariza.length > 0 && (
+          <div className="mt-2 flex items-center gap-3 text-xs">
+            <span style={{ color: brand.red }}>⚠ {ariza.length} blok arızalı (gidiş) — trenler kuyruklanıyor.</span>
+            <button onClick={() => setAriza([])} className="rounded border px-2 py-1 font-medium" style={{ borderColor: brand.border, color: brand.ink }}>Arızayı temizle</button>
+          </div>
+        )}
       </Panel>
 
       {/* Senaryolar (Firebase) */}
