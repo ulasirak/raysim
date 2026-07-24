@@ -10,4 +10,8 @@ export const emblemSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="46" hei
 </svg>`;
 
 // Node çalışma zamanında (ImageResponse) base64 data-URI üret.
-export const emblemDataUri = `data:image/svg+xml;base64,${Buffer.from(emblemSvg).toString("base64")}`;
+// LAZY fonksiyon: modül düzeyinde Buffer'a dokunmaz → client bundle'da
+// (emblemSvg'yi rapor.ts gibi tarayıcı modülleri import ettiğinde) çökmemesi için.
+export function emblemDataUri(): string {
+  return `data:image/svg+xml;base64,${Buffer.from(emblemSvg).toString("base64")}`;
+}

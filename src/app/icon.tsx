@@ -18,7 +18,7 @@ export default function Icon() {
           background: "#0C2233",
         }}
       >
-        <img width={56} height={56} src={emblemDataUri} />
+        <img width={56} height={56} src={emblemDataUri()} />
       </div>
     ),
     { ...size }

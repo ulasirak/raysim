@@ -1,8 +1,9 @@
 "use client";
 
-// raysim — CANLI AĞ SİMÜLASYONU ("sim videosu").
-// Tüm trenler (gidiş + dönüş) aynı anda hat üzerinde hareket eder; blok işgali
-// canlı kırmızıya döner; saat + oynat/duraklat + hız + zaman çubuğu.
+// raysim — CANLI AĞ SİMÜLASYONU ("sim videosu"), ÇİFT ŞERİT (double-track).
+// Gidiş üst şerit / dönüş alt şerit — iki yön ayrı hatta akar (gerçek hat gibi).
+// Trenler vagon kutucuğu + yön oku ile çizilir; blok işgali her şeritte ayrı
+// kırmızıya döner; saat + oynat/duraklat + hız + zaman çubuğu.
 // Trenler önceden hesaplanmış yörüngelerden (t→konum) arc-length ile konumlanır.
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -12,9 +13,12 @@ import { saat } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
 
 const VBW = 860;
-const VBH = 230;
+const VBH = 300;
 const HIZLAR = [1, 5, 15, 30, 60];
 const DOWN = "#0C6DB8";
+const GAP = 9; // şeritlerin merkez hattından dik ofseti (px)
+const UP_SIDE = -1; // gidiş üst şerit (SVG'de -y yukarı)
+const DOWN_SIDE = 1; // dönüş alt şerit
 
 function sampleS(points: { t: number; s: number }[], t: number): { s: number; active: boolean } {
   if (points.length === 0) return { s: 0, active: false };
@@ -83,39 +87,75 @@ export function LiveNetwork({
     [line, nodeById]
   );
 
+  // Kavşak noktalarında pürüzsüz şerit için köşe (vertex) normalleri
+  const vertexN = useMemo(() => {
+    const n = basePts.length;
+    if (n < 2) return basePts.map(() => ({ nx: 0, ny: 1 }));
+    const seg: { nx: number; ny: number }[] = [];
+    for (let i = 0; i < n - 1; i++) {
+      const dx = basePts[i + 1].x - basePts[i].x;
+      const dy = basePts[i + 1].y - basePts[i].y;
+      const len = Math.hypot(dx, dy) || 1;
+      seg.push({ nx: -dy / len, ny: dx / len });
+    }
+    return basePts.map((_, i) => {
+      const a = seg[Math.max(0, i - 1)];
+      const b = seg[Math.min(seg.length - 1, i)];
+      const nx = a.nx + b.nx, ny = a.ny + b.ny;
+      const len = Math.hypot(nx, ny) || 1;
+      return { nx: nx / len, ny: ny / len };
+    });
+  }, [basePts]);
+
   if (!mounted) {
-    return <div className="h-[240px] w-full animate-pulse rounded-md" style={{ background: "#EDF0F3" }} aria-hidden />;
+    return <div className="h-[280px] w-full animate-pulse rounded-md" style={{ background: "#EDF0F3" }} aria-hidden />;
   }
 
-  const screenAt = (fp: number) => {
+  // fp → merkez hattı noktası + segment normali + açı
+  const segAt = (fp: number) => {
     const p = Math.max(0, Math.min(L, fp));
     for (let i = 0; i < basePts.length - 1; i++) {
       const a = basePts[i];
       const b = basePts[i + 1];
       if (p <= b.fp + 1e-6) {
         const f = (p - a.fp) / ((b.fp - a.fp) || 1);
-        return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f };
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const len = Math.hypot(dx, dy) || 1;
+        return { x: a.x + dx * f, y: a.y + dy * f, nx: -dy / len, ny: dx / len, ang: Math.atan2(dy, dx) };
       }
     }
     const lst = basePts[basePts.length - 1];
-    return { x: lst.x, y: lst.y };
+    const pr = basePts[Math.max(0, basePts.length - 2)];
+    const dx = lst.x - pr.x, dy = lst.y - pr.y;
+    const len = Math.hypot(dx, dy) || 1;
+    return { x: lst.x, y: lst.y, nx: -dy / len, ny: dx / len, ang: Math.atan2(dy, dx) };
   };
+  // Şerit üzerindeki nokta (side: -1 üst gidiş, +1 alt dönüş)
+  const laneAt = (fp: number, side: number) => {
+    const s = segAt(fp);
+    return { x: s.x + side * GAP * s.nx, y: s.y + side * GAP * s.ny, ang: s.ang };
+  };
+  // Şerit polyline (köşe normalleriyle)
+  const lanePoly = (side: number) =>
+    basePts.map((p, i) => `${(p.x + side * GAP * vertexN[i].nx).toFixed(1)},${(p.y + side * GAP * vertexN[i].ny).toFixed(1)}`).join(" ");
 
   // Anlık tren konumları (ileri koordinat fp)
-  const upNow = up.map((tr) => { const r = sampleS(tr.points, t); return { tr, active: r.active, fp: r.s, up: true }; });
-  const downNow = down.map((tr) => { const r = sampleS(tr.points, t); return { tr, active: r.active, fp: L - r.s, up: false }; });
-  const aktif = [...upNow, ...downNow].filter((x) => x.active);
+  const upNow = up.map((tr) => { const r = sampleS(tr.points, t); return { tr, active: r.active, fp: r.s, up: true }; }).filter((x) => x.active);
+  const downNow = down.map((tr) => { const r = sampleS(tr.points, t); return { tr, active: r.active, fp: L - r.s, up: false }; }).filter((x) => x.active);
+  const aktifSayi = upNow.length + downNow.length;
 
-  // Blok işgali (herhangi aktif tren o blokta mı)
-  const occupied = new Set<number>();
-  for (const x of aktif) {
+  // Blok işgali — her şerit ayrı
+  const blokIndeks = (fp: number) => {
     for (let i = 0; i < blocks.length - 1; i++) {
-      if (x.fp >= blocks[i] - 1e-6 && x.fp < blocks[i + 1] - 1e-6) { occupied.add(i); break; }
+      if (fp >= blocks[i] - 1e-6 && fp < blocks[i + 1] - 1e-6) return i;
     }
-  }
+    return -1;
+  };
+  const occUp = new Set<number>();
+  const occDown = new Set<number>();
+  for (const x of upNow) { const i = blokIndeks(x.fp); if (i >= 0) occUp.add(i); }
+  for (const x of downNow) { const i = blokIndeks(x.fp); if (i >= 0) occDown.add(i); }
 
-  // Rota polyline (ekran)
-  const routePoly = basePts.map((p) => `${p.x},${p.y}`).join(" ");
   // Depo hattı (rota dışı kenarlar) statik
   const spur = network.edges
     .filter((e) => !route.edgeIds.includes(e.id))
@@ -124,53 +164,84 @@ export function LiveNetwork({
 
   const oynatDurdur = () => { if (t >= T) setT(0); setOynat((o) => !o); };
 
+  const laneRed = (occ: Set<number>, side: number, key: string) =>
+    [...occ].map((i) => {
+      const a = laneAt(blocks[i], side);
+      const b = laneAt(blocks[i + 1], side);
+      return <line key={`${key}${i}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={brand.red} strokeWidth={4.5} strokeLinecap="round" />;
+    });
+
+  const wagon = (x: { tr: SignalTrain; fp: number; up: boolean }, i: number) => {
+    const side = x.up ? UP_SIDE : DOWN_SIDE;
+    const pos = laneAt(x.fp, side);
+    const col = x.up ? brand.ink : DOWN;
+    // yön: gidiş +tangent, dönüş -tangent
+    const deg = (pos.ang * 180) / Math.PI + (x.up ? 0 : 180);
+    const no = `${x.tr.index + 1}`;
+    return (
+      <g key={`tr${i}`}>
+        <g transform={`translate(${pos.x},${pos.y}) rotate(${deg})`}>
+          <rect x={-11} y={-5} width={22} height={10} rx={3} fill={col} stroke="#fff" strokeWidth={1.3} />
+          <polygon points="11,-5 16,0 11,5" fill={col} />
+        </g>
+        <text x={pos.x} y={pos.y + 3.2} fill="#fff" fontSize={8.5} fontWeight={700} textAnchor="middle">{no}</text>
+      </g>
+    );
+  };
+
   return (
     <div className="flex flex-col gap-3">
-      <svg viewBox={`0 0 ${VBW} ${VBH}`} className="w-full h-auto" role="img" aria-label="Canlı ağ simülasyonu">
+      <svg viewBox={`0 0 ${VBW} ${VBH}`} className="w-full h-auto" role="img" aria-label="Canlı ağ simülasyonu (çift hat)">
         {/* Depo hattı (statik) */}
         {spur.map((e, i) => (
           <line key={`sp${i}`} x1={e.a.x} y1={e.a.y} x2={e.b.x} y2={e.b.y} stroke={brand.faint} strokeWidth={2} strokeDasharray="5 4" strokeLinecap="round" />
         ))}
 
-        {/* Ana hat (boş = koyu gri) */}
-        <polyline points={routePoly} fill="none" stroke={brand.borderStrong} strokeWidth={5} strokeLinejoin="round" strokeLinecap="round" />
-
-        {/* İşgal edilen bloklar (kırmızı) */}
-        {[...occupied].map((i) => {
-          const a = screenAt(blocks[i]);
-          const b = screenAt(blocks[i + 1]);
-          return <line key={`oc${i}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={brand.red} strokeWidth={5} strokeLinecap="round" />;
+        {/* Traversler (iki şerit arası bağlantı çentikleri) */}
+        {basePts.length > 1 && Array.from({ length: 60 }).map((_, k) => {
+          const fp = (L * (k + 0.5)) / 60;
+          const a = laneAt(fp, UP_SIDE);
+          const b = laneAt(fp, DOWN_SIDE);
+          return <line key={`tie${k}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={brand.faint} strokeWidth={1} opacity={0.5} />;
         })}
 
-        {/* Sinyal blok sınırları (ince dik çentik) */}
+        {/* Boş şeritler (koyu gri) */}
+        <polyline points={lanePoly(UP_SIDE)} fill="none" stroke={brand.borderStrong} strokeWidth={4.5} strokeLinejoin="round" strokeLinecap="round" />
+        <polyline points={lanePoly(DOWN_SIDE)} fill="none" stroke={brand.borderStrong} strokeWidth={4.5} strokeLinejoin="round" strokeLinecap="round" />
+
+        {/* İşgal edilen bloklar (her şerit ayrı) */}
+        {laneRed(occUp, UP_SIDE, "ou")}
+        {laneRed(occDown, DOWN_SIDE, "od")}
+
+        {/* Sinyal blok sınırları (her şeritte ince çentik) */}
         {blocks.map((fp, i) => {
-          const p = screenAt(fp);
-          return <line key={`b${i}`} x1={p.x} y1={p.y - 6} x2={p.x} y2={p.y + 6} stroke={brand.faint} strokeWidth={1} />;
+          const u = laneAt(fp, UP_SIDE);
+          const d = laneAt(fp, DOWN_SIDE);
+          return (
+            <g key={`b${i}`}>
+              <line x1={u.x} y1={u.y - 5} x2={u.x} y2={u.y + 5} stroke={brand.faint} strokeWidth={1} />
+              <line x1={d.x} y1={d.y - 5} x2={d.x} y2={d.y + 5} stroke={brand.faint} strokeWidth={1} />
+            </g>
+          );
         })}
 
-        {/* İstasyonlar */}
+        {/* İstasyonlar (peron = iki şeridi kesen dik marka) */}
         {line.stations.map((st) => {
-          const p = screenAt(st.position);
+          const c = segAt(st.position);
+          const u = laneAt(st.position, UP_SIDE);
+          const d = laneAt(st.position, DOWN_SIDE);
           return (
             <g key={st.id}>
-              <circle cx={p.x} cy={p.y} r={5} fill={brand.surface} stroke={brand.ink} strokeWidth={2} />
-              <text x={p.x} y={p.y - 12} fill={brand.muted} fontSize={10} textAnchor="middle">{st.name}</text>
+              <line x1={u.x} y1={u.y} x2={d.x} y2={d.y} stroke={brand.ink} strokeWidth={2.5} strokeLinecap="round" />
+              <circle cx={c.x} cy={c.y} r={4} fill={brand.surface} stroke={brand.ink} strokeWidth={2} />
+              <text x={u.x} y={u.y - 10} fill={brand.muted} fontSize={10} textAnchor="middle">{st.name}</text>
             </g>
           );
         })}
 
         {/* Trenler */}
-        {aktif.map((x, i) => {
-          const p = screenAt(x.fp);
-          const col = x.up ? brand.ink : DOWN;
-          const no = `${x.tr.index + 1}`;
-          return (
-            <g key={`tr${i}`} transform={`translate(${p.x},${p.y})`}>
-              <circle r={8} fill={col} stroke={brand.surface} strokeWidth={2} />
-              <text x={0} y={3.5} fill="#fff" fontSize={9} fontWeight={700} textAnchor="middle">{no}</text>
-            </g>
-          );
-        })}
+        {upNow.map(wagon)}
+        {downNow.map((x, i) => wagon(x, i + upNow.length))}
 
         {/* Saat */}
         <g transform="translate(16,26)">
@@ -178,7 +249,10 @@ export function LiveNetwork({
           <text x={40} y={1} fill="#fff" fontSize={14} fontWeight={700} textAnchor="middle" className="font-mono">{saat(t)}</text>
         </g>
         {/* Aktif tren sayısı */}
-        <text x={VBW - 10} y={22} fill={brand.muted} fontSize={11} textAnchor="end">Hatta {aktif.length} tren</text>
+        <text x={VBW - 10} y={22} fill={brand.muted} fontSize={11} textAnchor="end">Hatta {aktifSayi} tren</text>
+        {/* Şerit etiketleri */}
+        <text x={10} y={VBH - 30} fill={brand.ink} fontSize={10} fontWeight={600}>▲ Gidiş (üst şerit)</text>
+        <text x={10} y={VBH - 12} fill={DOWN} fontSize={10} fontWeight={600}>▼ Dönüş (alt şerit)</text>
       </svg>
 
       {/* Kontroller */}
@@ -199,7 +273,7 @@ export function LiveNetwork({
         <span className="font-mono text-xs" style={{ color: brand.muted }}>{saat(t)} / {saat(T)}</span>
       </div>
       <p className="text-xs" style={{ color: brand.muted }}>
-        <span style={{ color: brand.ink }}>●</span> Gidiş · <span style={{ color: DOWN }}>●</span> Dönüş · <span style={{ color: brand.red }}>▬</span> işgal edilen blok. Çift hat servisi canlı akıyor.
+        <span style={{ color: brand.ink }}>▬</span> Üst şerit: Gidiş · <span style={{ color: DOWN }}>▬</span> Alt şerit: Dönüş · <span style={{ color: brand.red }}>▬</span> işgal edilen blok. Çift hat servisi iki ayrı şeritte canlı akıyor.
       </p>
     </div>
   );

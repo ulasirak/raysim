@@ -14,13 +14,14 @@ import { varsayilanArac } from "@/lib/anaray/vehicles";
 import { loopDenge, olceklenme, ringChallenge } from "@/lib/anaray/ring";
 import { bolgeSeed } from "@/lib/anaray/interlocking";
 import { wordUret, excelUret, indir } from "@/lib/anaray/dokuman";
+import { raporHTML, yazdirRapor } from "@/lib/anaray/rapor";
 
 export function Belgeler() {
   const { cfg } = useSimConfig();
   const { rings, meta, patchMeta } = useProje();
   const stock = varsayilanArac;
   const [durum, setDurum] = useState<{ tip: "ok" | "err" | "info"; metin: string } | null>(null);
-  const [mesgul, setMesgul] = useState<"" | "word" | "excel">("");
+  const [mesgul, setMesgul] = useState<"" | "word" | "excel" | "rapor">("");
 
   const ozet = useMemo(() => {
     const olcek = olceklenme(rings, stock, true, cfg);
@@ -41,6 +42,17 @@ export function Belgeler() {
   }, [rings, stock, cfg]);
 
   const dosyaAdi = (ext: string) => `${meta.dokumanNo || "raysim"}_${(meta.hatAdi || "hat").replace(/\s+/g, "_")}.${ext}`;
+
+  const raporUret = () => {
+    setMesgul("rapor"); setDurum(null);
+    try {
+      const html = raporHTML(meta, cfg, rings, stock);
+      yazdirRapor(html);
+      setDurum({ tip: "ok", metin: "Rapor yeni sekmede açıldı — yazdırma diyalogunda “Hedef: PDF olarak kaydet”i seçin." });
+    } catch (e) {
+      setDurum({ tip: "err", metin: `Rapor açılamadı: ${e instanceof Error ? e.message : String(e)}` });
+    } finally { setMesgul(""); }
+  };
 
   const wordIndir = async () => {
     setMesgul("word"); setDurum(null);
@@ -75,8 +87,12 @@ export function Belgeler() {
       </div>
 
       {/* İndirme */}
-      <Panel baslik="Belge Üret" aciklama="Word = kapak + tasarım kriterleri + ring şartları + makas senaryoları & çakışma matriksleri + kapasite + challenge + imza. Excel = 7 sayfalı çalışma kitabı.">
+      <Panel baslik="Belge Üret" aciklama="Şık PDF = amblemli kapak + KPI kartları + hat şeması + renkli çakışma matriksleri + blocking-time grafiği (baskıya hazır). Word = düzenlenebilir Tasarım El Kitabı. Excel = 7 sayfalı çalışma kitabı.">
         <div className="flex flex-wrap items-center gap-3">
+          <button onClick={raporUret} disabled={!!mesgul}
+            className="rounded-md px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: brand.red }}>
+            {mesgul === "rapor" ? "Açılıyor…" : "🖨 Şık PDF Rapor"}
+          </button>
           <button onClick={wordIndir} disabled={!!mesgul}
             className="rounded-md px-5 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: brand.ink }}>
             {mesgul === "word" ? "Üretiliyor…" : "📄 Word (.docx) indir"}
