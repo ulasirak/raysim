@@ -25,7 +25,8 @@ const MODULLER: Modul[] = [
   { href: "/anklasman", ad: "Makas Bölgesi Anklaşman", rol: "Interlocking · çakışma matriksi · aspekt", kod: "SR-0003", rota: "Makas Bölgesi Anklaşman" },
   { href: "/hat", ad: "Tam Hat Simülasyonu", rol: "Ring + anklaşman · çok tren · darboğaz", kod: "SR-0005", rota: "Tam Hat Çok-Tren Canlı Simülasyon" },
   { href: "/sistem", ad: "Sistem Merkezi", rol: "Parametreler · canlı durum · bilgi", kod: "SR-0004", rota: "Simülasyon Parametreleri & Durum" },
-  { href: "/belgeler", ad: "Teknik Belgeler", rol: "Word + Excel · tasarım el kitabı", kod: "SR-0006", rota: "Teknik Dokümantasyon Üretimi" },
+  { href: "/belgeler", ad: "Teknik Belgeler", rol: "PDF + Word + Excel · tasarım el kitabı", kod: "SR-0006", rota: "Teknik Dokümantasyon Üretimi" },
+  { href: "/cografi", ad: "Coğrafi Güzergah", rol: "GTFS · gerçek koordinat · harita", kod: "SR-0007", rota: "Gerçek Koordinatlı Hat Haritası" },
 ];
 
 function aktifModul(pathname: string): Modul {
