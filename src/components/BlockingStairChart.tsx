@@ -10,14 +10,14 @@
 
 import type { BlokSperr } from "@/lib/anaray/blockingtime";
 import { saat, km } from "@/lib/anaray/format";
-import { brand } from "@/lib/anaray/brand";
+import { CK } from "@/lib/anaray/chartkit";
 
 const VBW = 820;
 const VBH = 460;
 const PAD = { top: 22, right: 20, bottom: 42, left: 74 };
 
-const FILL_DUZ = "#0C6DB8"; // düz blok
-const FILL_MAKAS = "#A8842C"; // makas bloğu
+const FILL_DUZ = CK.blue; // düz blok
+const FILL_MAKAS = CK.orange; // makas bloğu
 
 export function BlockingStairChart({
   bloklar, L, minHeadway, kritikBlok, yorunge,
@@ -62,13 +62,14 @@ export function BlockingStairChart({
       return (
         <rect
           key={`${ana ? "a" : "b"}-${b.i}`}
-          x={x0}
-          y={y0}
-          width={Math.max(1, x1 - x0)}
-          height={Math.max(1, y1 - y0)}
+          x={x0 + 0.4}
+          y={y0 + 0.4}
+          width={Math.max(1, x1 - x0 - 0.8)}
+          height={Math.max(1, y1 - y0 - 0.8)}
+          rx={1}
           fill={b.makasBlok ? FILL_MAKAS : FILL_DUZ}
           fillOpacity={ana ? (kritik ? 0.42 : 0.22) : kritik ? 0.3 : 0.13}
-          stroke={kritik ? brand.red : b.makasBlok ? FILL_MAKAS : FILL_DUZ}
+          stroke={kritik ? CK.red : b.makasBlok ? FILL_MAKAS : FILL_DUZ}
           strokeWidth={kritik ? 1.6 : 0.6}
           strokeOpacity={kritik ? 1 : 0.5}
         />
@@ -76,31 +77,31 @@ export function BlockingStairChart({
     });
 
   return (
-    <svg viewBox={`0 0 ${VBW} ${VBH}`} className="w-full h-auto" role="img" aria-label="Sperrzeitentreppe blocking-time merdiveni">
+    <svg viewBox={`0 0 ${VBW} ${VBH}`} className="w-full h-auto" role="img" aria-label="Sperrzeitentreppe blocking-time merdiveni" style={{ fontFamily: CK.sans }}>
       {/* Zaman ızgarası */}
       {ticks.map((t) => (
         <g key={t}>
-          <line x1={xFor(t)} y1={PAD.top} x2={xFor(t)} y2={PAD.top + plotH} stroke={brand.grid} strokeWidth={1} />
-          <text x={xFor(t)} y={PAD.top + plotH + 18} fill={brand.muted} fontSize={11} textAnchor="middle">{saat(t)}</text>
+          <line x1={xFor(t)} y1={PAD.top} x2={xFor(t)} y2={PAD.top + plotH} stroke={CK.grid} strokeWidth={1} />
+          <text x={xFor(t)} y={PAD.top + plotH + 18} fill={CK.muted} fontSize={11} textAnchor="middle">{saat(t)}</text>
         </g>
       ))}
 
       {/* Mesafe ekseni: blok sınırları */}
       {bloklar.map((b) => (
         <g key={`bl${b.i}`}>
-          <line x1={PAD.left} y1={yFor(b.start)} x2={PAD.left + plotW} y2={yFor(b.start)} stroke={brand.grid} strokeWidth={0.5} strokeDasharray="2 4" />
+          <line x1={PAD.left} y1={yFor(b.start)} x2={PAD.left + plotW} y2={yFor(b.start)} stroke={CK.grid} strokeWidth={0.5} strokeDasharray="2 4" />
         </g>
       ))}
-      <text x={PAD.left - 10} y={yFor(0) + 4} fill={brand.faint} fontSize={9} textAnchor="end">0 km</text>
-      <text x={PAD.left - 10} y={yFor(L) - 2} fill={brand.faint} fontSize={9} textAnchor="end">{km(L)} km</text>
+      <text x={PAD.left - 10} y={yFor(0) + 4} fill={CK.faint} fontSize={9} textAnchor="end">0 km</text>
+      <text x={PAD.left - 10} y={yFor(L) - 2} fill={CK.faint} fontSize={9} textAnchor="end">{km(L)} km</text>
 
       {/* 2. tren (soluk) — 1. + min headway */}
       {rects(minHeadway, false)}
-      <polyline points={trenPath(minHeadway)} fill="none" stroke={brand.route} strokeWidth={1.4} strokeOpacity={0.45} strokeLinejoin="round" />
+      <polyline points={trenPath(minHeadway)} fill="none" stroke={CK.ink} strokeWidth={1.4} strokeOpacity={0.45} strokeLinejoin="round" />
 
       {/* 1. tren (ana) */}
       {rects(0, true)}
-      <polyline points={trenPath(0)} fill="none" stroke={brand.route} strokeWidth={2.2} strokeLinejoin="round" strokeLinecap="round" />
+      <polyline points={trenPath(0)} fill="none" stroke={CK.ink} strokeWidth={2.2} strokeLinejoin="round" strokeLinecap="round" />
 
       {/* min headway göstergesi (kritik blok hizasında iki tren arası) */}
       {(() => {
@@ -111,8 +112,8 @@ export function BlockingStairChart({
         const xb = xFor(kb.rStart + minHeadway);
         return (
           <g>
-            <line x1={xa} y1={yk} x2={xb} y2={yk} stroke={brand.red} strokeWidth={1.4} markerEnd="url(#ok)" markerStart="url(#ok)" />
-            <rect x={(xa + xb) / 2 - 34} y={yk - 20} width={68} height={15} rx={3} fill={brand.red} />
+            <line x1={xa} y1={yk} x2={xb} y2={yk} stroke={CK.red} strokeWidth={1.4} markerEnd="url(#ok)" markerStart="url(#ok)" />
+            <rect x={(xa + xb) / 2 - 34} y={yk - 20} width={68} height={15} rx={3} fill={CK.red} />
             <text x={(xa + xb) / 2} y={yk - 9} fill="#fff" fontSize={10} fontWeight={700} textAnchor="middle" className="font-mono">{saat(minHeadway)}</text>
           </g>
         );
@@ -120,11 +121,11 @@ export function BlockingStairChart({
 
       <defs>
         <marker id="ok" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-          <path d="M0,0 L6,3 L0,6 Z" fill={brand.red} />
+          <path d="M0,0 L6,3 L0,6 Z" fill={CK.red} />
         </marker>
       </defs>
 
-      <text x={PAD.left + plotW / 2} y={VBH - 4} fill={brand.muted} fontSize={11} textAnchor="middle">Zaman (dk:sn) →  ·  kritik blokta iki merdiven değer = min headway</text>
+      <text x={PAD.left + plotW / 2} y={VBH - 4} fill={CK.muted} fontSize={11} textAnchor="middle">Zaman (dk:sn) →  ·  kritik blokta iki merdiven değer = min headway</text>
     </svg>
   );
 }
