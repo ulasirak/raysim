@@ -10,7 +10,7 @@ import Link from "next/link";
 import { brand } from "@/lib/anaray/brand";
 import { useProje } from "@/components/SimConfigProvider";
 import {
-  parseStops, parseShapes, makeProjector, polylineLength, gtfsToRings,
+  parseStops, parseShapes, makeProjector, polylineLength, gtfsToRings, tahminEtKisitlar,
   ornekGtfsStops, ornekGtfsShapes, type GeoStop, type GeoShape,
 } from "@/lib/anaray/gtfs";
 
@@ -28,14 +28,16 @@ export function CografiHarita() {
   const [shapes, setShapes] = useState<GeoShape[]>(() => parseShapes(ornekGtfsShapes));
   const [kaynak, setKaynak] = useState<string>("Demo güzergah (yaklaşık Konya koordinatları)");
   const [hata, setHata] = useState<string>("");
-  const [uretildi, setUretildi] = useState<number | null>(null);
+  const [uretildi, setUretildi] = useState<{ rings: number; makas: number; hemzemin: number } | null>(null);
+  const [tahmin, setTahmin] = useState(true);
   const { setRings } = useProje();
 
   const hatUret = () => {
     const r = gtfsToRings(stops, shapes);
     if (r.length < 1) { setHata("Hat üretilemedi — en az 2 durak gerekli."); return; }
+    const t = tahmin ? tahminEtKisitlar(r, stops, shapes) : { makas: 0, hemzemin: 0 };
     setRings(r);
-    setUretildi(r.length);
+    setUretildi({ rings: r.length, makas: t.makas, hemzemin: t.hemzemin });
     setHata("");
   };
 
@@ -111,15 +113,25 @@ export function CografiHarita() {
         <button onClick={hatUret} className="rounded-md px-4 py-2 text-sm font-semibold text-white" style={{ background: brand.red }}>
           ⇥ Bu güzergahtan hat üret
         </button>
+        <label className="flex items-center gap-1.5 text-sm" style={{ color: brand.inkSoft }}>
+          <input type="checkbox" checked={tahmin} onChange={(e) => setTahmin(e.target.checked)} />
+          Makas/geçit tahmin et
+        </label>
       </div>
 
       {hata && <div className="mb-4 rounded-md border-l-4 px-4 py-2 text-sm" style={{ background: "#FBE9EC", borderColor: brand.red, color: brand.red }}>⚠ {hata}</div>}
 
       {uretildi != null && (
         <div className="mb-4 rounded-md border-l-4 px-4 py-3 text-sm" style={{ background: "#E6F4EC", borderColor: "#0E7C57", color: brand.ink }}>
-          ✓ <b>{uretildi} durak-arası hücre</b> gerçek koordinatlardan üretildi ve paylaşılan hatta yazıldı. Makas/hemzemin GTFS&apos;te olmadığından boş geldi — 2. etap verisiyle ya da{" "}
-          <Link href="/ringler" className="underline" style={{ color: brand.red }}>Ringler</Link> editöründen eklenir. Artık{" "}
-          <Link href="/ringler" className="underline" style={{ color: brand.red }}>Ringler</Link>,{" "}
+          ✓ <b>{uretildi.rings} durak-arası hücre</b> gerçek koordinatlardan üretildi ve paylaşılan hatta yazıldı.
+          {uretildi.makas + uretildi.hemzemin > 0 ? (
+            <> Ayrıca <b>{uretildi.makas} makas</b> (keskin dönüş + hat sonu U-dönüş) ve <b>{uretildi.hemzemin} hemzemin geçit</b> <i>tahmin edildi</i>.{" "}
+            <span style={{ color: "#A8842C" }}>▲ Tahminler geometri sezgiseldir</span> (hemzemin konumu shape&apos;ten çıkarılamaz, eşit-aralık varsayımıdır) — 2. etap saha verisiyle veya{" "}
+            <Link href="/ringler" className="underline" style={{ color: brand.red }}>Ringler</Link> editöründen düzeltin.</>
+          ) : (
+            <> Makas/hemzemin GTFS&apos;te olmadığından boş geldi — 2. etap verisiyle ya da <Link href="/ringler" className="underline" style={{ color: brand.red }}>Ringler</Link> editöründen eklenir.</>
+          )}
+          {" "}Artık <Link href="/ringler" className="underline" style={{ color: brand.red }}>Ringler</Link>,{" "}
           <Link href="/hat" className="underline" style={{ color: brand.red }}>Tam Hat</Link> ve{" "}
           <Link href="/belgeler" className="underline" style={{ color: brand.red }}>Belgeler</Link> bu hattı kullanır.
         </div>

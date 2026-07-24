@@ -5,7 +5,7 @@
 // Şebeke/sim modeliyle birebir bağlanmaz; amaç güzergahı gerçek koordinatlarda
 // göstermek (inandırıcılık + veri devralma). Tarayıcıda ve SSR'de saf çalışır.
 
-import { yeniRing, BELGE, type DurakArasiRing } from "./ring";
+import { yeniRing, yeniMakas, yeniHemzemin, BELGE, type DurakArasiRing } from "./ring";
 
 export interface GeoStop { id: string; name: string; lat: number; lon: number; }
 export interface GeoShape { id: string; points: { lat: number; lon: number; seq: number }[]; }
@@ -123,6 +123,96 @@ export function polylineLength(pts: { lat: number; lon: number }[]): number {
   return d;
 }
 
+/** İki koordinat arası pusula açısı (derece, 0=kuzey). */
+function bearingDeg(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const y = Math.sin(toRad(b.lon - a.lon)) * Math.cos(toRad(b.lat));
+  const x = Math.cos(toRad(a.lat)) * Math.sin(toRad(b.lat)) - Math.sin(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.cos(toRad(b.lon - a.lon));
+  return (Math.atan2(y, x) * 180) / Math.PI;
+}
+/** İki pusula açısı arası mutlak sapma (0–180°). */
+function angDiff(b1: number, b2: number): number {
+  let d = Math.abs(b1 - b2) % 360;
+  if (d > 180) d = 360 - d;
+  return d;
+}
+
+// ————————————————————————————————————————————————
+// TAHMİN: shape geometrisinden makas + hemzemin öner (hepsi "tahmini")
+// ————————————————————————————————————————————————
+
+export interface TahminSonuc { makas: number; hemzemin: number; }
+
+/** Shape üzerinde pencereli keskin yön değişimlerini (olası kavşak/makas) bul. */
+function detectTurns(pts: { lat: number; lon: number }[], cum: number[], W: number, thresh: number): { cum: number; ang: number }[] {
+  const n = pts.length;
+  const cand: { cum: number; ang: number }[] = [];
+  for (let i = 1; i < n - 1; i++) {
+    let j = i; while (j > 0 && cum[i] - cum[j] < W) j--;
+    let k = i; while (k < n - 1 && cum[k] - cum[i] < W) k++;
+    if (j === i || k === i) continue;
+    const ang = angDiff(bearingDeg(pts[j], pts[i]), bearingDeg(pts[i], pts[k]));
+    if (ang >= thresh) cand.push({ cum: cum[i], ang });
+  }
+  // en keskinden başlayarak, min 250 m aralıkla non-maximum suppression
+  cand.sort((a, b) => b.ang - a.ang);
+  const picked: { cum: number; ang: number }[] = [];
+  for (const c of cand) if (picked.every((p) => Math.abs(p.cum - c.cum) >= 250)) picked.push(c);
+  picked.sort((a, b) => a.cum - b.cum);
+  return picked;
+}
+
+/**
+ * Ring'lere shape geometrisinden TAHMİNİ makas + hemzemin ekler (mutasyon).
+ * - Makas: keskin yön değişimi (bearing reversal) + hat sonu U-dönüş (yapısal).
+ * - Hemzemin: geometriden konum çıkarılamaz → eşit-aralık VARSAYIMI (saha ile düzelt).
+ * Hepsi adında "(tahmini)" taşır.
+ */
+export function tahminEtKisitlar(rings: DurakArasiRing[], stops: GeoStop[], shapes: GeoShape[]): TahminSonuc {
+  let makasSay = 0, hemzeminSay = 0;
+  if (!rings.length) return { makas: 0, hemzemin: 0 };
+
+  // --- Makas: keskin dönüşler (shape varsa) ---
+  const sh = shapes.length ? shapes.reduce((a, b) => (b.points.length > a.points.length ? b : a)) : null;
+  if (sh && sh.points.length >= 3) {
+    const pts = sh.points;
+    const cum = [0];
+    for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + haversine(pts[i - 1], pts[i]));
+    const stopCum = stopCumulative(stops, shapes);
+    // ring sınırları (shape-cum uzayında) = ardışık durak kümülatifleri
+    const turns = detectTurns(pts, cum, 45, 40);
+    for (const tr of turns) {
+      for (let i = 0; i < rings.length; i++) {
+        const a = stopCum[i], b = stopCum[i + 1];
+        if (a == null || b == null) continue;
+        const lo = Math.min(a, b), hi = Math.max(a, b);
+        if (tr.cum >= lo - 1e-6 && tr.cum <= hi + 1e-6) {
+          const pos = Math.max(10, Math.min(rings[i].uzunluk - 10, Math.abs(tr.cum - a)));
+          rings[i].makaslar.push({ ...yeniMakas("karsilasmali", Math.round(pos)), ad: `Tahmini makas (keskin dönüş ~${Math.round(tr.ang)}°)` });
+          makasSay++;
+          break;
+        }
+      }
+    }
+  }
+  // Hat sonu U-dönüş makası (yapısal olarak yüksek olasılık)
+  const son = rings[rings.length - 1];
+  son.makaslar.push({ ...yeniMakas("udonus", Math.round(son.uzunluk * 0.9)), ad: "Tahmini U-dönüş (hat sonu)" });
+  makasSay++;
+
+  // --- Hemzemin: eşit-aralık VARSAYIMI (geometriden çıkarılamaz) ---
+  for (const r of rings) {
+    if (r.uzunluk < 500) continue;
+    const adet = Math.min(3, Math.floor(r.uzunluk / 600));
+    for (let c = 1; c <= adet; c++) {
+      const pos = Math.round((r.uzunluk * c) / (adet + 1));
+      r.hemzeminler.push({ ...yeniHemzemin("karayolu", pos), ad: "Tahmini hemzemin geçit (eşit-aralık varsayımı)" });
+      hemzeminSay++;
+    }
+  }
+  return { makas: makasSay, hemzemin: hemzeminSay };
+}
+
 // ————————————————————————————————————————————————
 // GTFS → Ring modeli (simülasyona bağla)
 // ————————————————————————————————————————————————
@@ -184,18 +274,10 @@ export const ornekGtfsStops = `stop_id,stop_name,stop_lat,stop_lon
 9,Şehir Hastanesi,37.90820,32.47150
 10,Terminal,37.91330,32.47620`;
 
-// Duraklardan geçen basit bir shape (aynı noktalar, ara enterpolasyon eklenmiş).
+// Duraklardan geçen basit bir shape (temiz stop poligonu; yapay zikzak yok).
 export const ornekGtfsShapes = (() => {
   const stops = parseStops(ornekGtfsStops);
-  let seq = 0;
   const rows = ["shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence"];
-  for (let i = 0; i < stops.length; i++) {
-    rows.push(`H1,${stops[i].lat.toFixed(5)},${stops[i].lon.toFixed(5)},${seq++}`);
-    if (i < stops.length - 1) {
-      const a = stops[i], b = stops[i + 1];
-      // hafif eğri hissi için orta nokta (kaba)
-      rows.push(`H1,${((a.lat + b.lat) / 2 + 0.0004).toFixed(5)},${((a.lon + b.lon) / 2).toFixed(5)},${seq++}`);
-    }
-  }
+  stops.forEach((s, i) => rows.push(`H1,${s.lat.toFixed(5)},${s.lon.toFixed(5)},${i}`));
   return rows.join("\n");
 })();
