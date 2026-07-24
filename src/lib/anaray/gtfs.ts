@@ -143,15 +143,16 @@ function angDiff(b1: number, b2: number): number {
 
 export interface TahminSonuc { makas: number; hemzemin: number; }
 
-/** Shape üzerinde pencereli keskin yön değişimlerini (olası kavşak/makas) bul. */
-function detectTurns(pts: { lat: number; lon: number }[], cum: number[], W: number, thresh: number): { cum: number; ang: number }[] {
+/**
+ * Shape üzerinde TEK NOKTADA keskin kırılmaları (olası makas/kavşak) bul.
+ * Komşu segment açısı kullanır → dağıtık KURP tetiklemez (kurp = her noktada küçük
+ * açı), yalnız ani kırılma (switch/junction = tek noktada büyük açı) yakalanır.
+ */
+function detectTurns(pts: { lat: number; lon: number }[], cum: number[], thresh: number): { cum: number; ang: number }[] {
   const n = pts.length;
   const cand: { cum: number; ang: number }[] = [];
   for (let i = 1; i < n - 1; i++) {
-    let j = i; while (j > 0 && cum[i] - cum[j] < W) j--;
-    let k = i; while (k < n - 1 && cum[k] - cum[i] < W) k++;
-    if (j === i || k === i) continue;
-    const ang = angDiff(bearingDeg(pts[j], pts[i]), bearingDeg(pts[i], pts[k]));
+    const ang = angDiff(bearingDeg(pts[i - 1], pts[i]), bearingDeg(pts[i], pts[i + 1]));
     if (ang >= thresh) cand.push({ cum: cum[i], ang });
   }
   // en keskinden başlayarak, min 250 m aralıkla non-maximum suppression
@@ -180,7 +181,7 @@ export function tahminEtKisitlar(rings: DurakArasiRing[], stops: GeoStop[], shap
     for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + haversine(pts[i - 1], pts[i]));
     const stopCum = stopCumulative(stops, shapes);
     // ring sınırları (shape-cum uzayında) = ardışık durak kümülatifleri
-    const turns = detectTurns(pts, cum, 45, 40);
+    const turns = detectTurns(pts, cum, 48);
     for (const tr of turns) {
       for (let i = 0; i < rings.length; i++) {
         const a = stopCum[i], b = stopCum[i + 1];
@@ -211,6 +212,59 @@ export function tahminEtKisitlar(rings: DurakArasiRing[], stops: GeoStop[], shap
     }
   }
   return { makas: makasSay, hemzemin: hemzeminSay };
+}
+
+/** Üç noktanın çevrel çember yarıçapı (m); noktalar yerel metre {x,y}. */
+function circumradius(A: { x: number; y: number }, B: { x: number; y: number }, C: { x: number; y: number }): number {
+  const d = (p: { x: number; y: number }, q: { x: number; y: number }) => Math.hypot(p.x - q.x, p.y - q.y);
+  const a = d(B, C), b = d(A, C), c = d(A, B);
+  const area = Math.abs((B.x - A.x) * (C.y - A.y) - (C.x - A.x) * (B.y - A.y)) / 2;
+  if (area < 1e-6) return Infinity; // ~doğrusal → düz
+  return (a * b * c) / (4 * area);
+}
+
+/**
+ * Shape'in yerel kurp yarıçapından ring başına TAHMİNİ hız kısıtı (vmax) hesaplar.
+ * v = √(a_lat · R), a_lat ≈ 0.8 m/s² (hafif raylı yanal ivme). Yalnız DÜŞÜRÜR
+ * (mevcut sahasal vmax'ın üstüne çıkmaz), tabanı makas hızı. 5 km/h'ye yuvarlar.
+ * Yalnız gerçek yoğun shape'lerde (sık nokta) anlamlı; seyrek shape'te R büyük çıkar.
+ */
+export function tahminEtHiz(rings: DurakArasiRing[], stops: GeoStop[], shapes: GeoShape[]): { ayarlanan: number; minVmaxKmh: number | null } {
+  const sh = shapes.length ? shapes.reduce((a, b) => (b.points.length > a.points.length ? b : a)) : null;
+  if (!sh || sh.points.length < 3 || !rings.length) return { ayarlanan: 0, minVmaxKmh: null };
+  const pts = sh.points;
+  const lat0 = pts[0].lat, lon0 = pts[0].lon;
+  const kx = Math.cos((lat0 * Math.PI) / 180) * 111320, ky = 111320;
+  const xy = pts.map((p) => ({ x: (p.lon - lon0) * kx, y: (p.lat - lat0) * ky }));
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + haversine(pts[i - 1], pts[i]));
+  const stopCum = stopCumulative(stops, shapes);
+  const A_LAT = 0.8;             // m/s² — izin verilen yanal ivme (hafif raylı)
+  const CAP = BELGE.vAnahat;     // üst sınır (ana hat hızı)
+  const FLOOR = BELGE.vMakas;    // taban (bu altı makas rejimi)
+
+  const ringMinR = rings.map(() => Infinity);
+  for (let i = 1; i < xy.length - 1; i++) {
+    const R = circumradius(xy[i - 1], xy[i], xy[i + 1]);
+    if (!isFinite(R)) continue;
+    for (let k = 0; k < rings.length; k++) {
+      const a = stopCum[k], b = stopCum[k + 1];
+      if (a == null || b == null) continue;
+      const lo = Math.min(a, b), hi = Math.max(a, b);
+      if (cum[i] >= lo - 1e-6 && cum[i] <= hi + 1e-6) { ringMinR[k] = Math.min(ringMinR[k], R); break; }
+    }
+  }
+
+  let ayarlanan = 0, gmin = Infinity;
+  rings.forEach((r, k) => {
+    if (!isFinite(ringMinR[k])) return;
+    const vCurve = Math.min(Math.sqrt(A_LAT * ringMinR[k]), CAP); // m/s
+    let kmh = Math.round((vCurve * 3.6) / 5) * 5;
+    kmh = Math.max(Math.round(FLOOR * 3.6), kmh);
+    const nv = kmh / 3.6;
+    if (nv < r.vmax - 1e-6) { r.vmax = nv; ayarlanan++; gmin = Math.min(gmin, kmh); }
+  });
+  return { ayarlanan, minVmaxKmh: isFinite(gmin) ? gmin : null };
 }
 
 // ————————————————————————————————————————————————
@@ -274,10 +328,42 @@ export const ornekGtfsStops = `stop_id,stop_name,stop_lat,stop_lon
 9,Şehir Hastanesi,37.90820,32.47150
 10,Terminal,37.91330,32.47620`;
 
-// Duraklardan geçen basit bir shape (temiz stop poligonu; yapay zikzak yok).
+// Duraklardan geçen YOĞUN shape: çoğu düz interpolasyon, bir segmentte gerçekçi
+// kurp (chicane) — hız-kısıtı tahminini göstermek için (~65 m yarıçap → ~25 km/h).
+// Komşu-açı makas eşiğinin altında kaldığından yanlış makas üretmez.
 export const ornekGtfsShapes = (() => {
-  const stops = parseStops(ornekGtfsStops);
+  const s = parseStops(ornekGtfsStops);
+  const lat0 = s[0].lat, lon0 = s[0].lon;
+  const kx = Math.cos((lat0 * Math.PI) / 180) * 111320, ky = 111320;
+  const toXY = (p: { lat: number; lon: number }) => ({ x: (p.lon - lon0) * kx, y: (p.lat - lat0) * ky });
+  const XY = s.map(toXY);
+  const out: { x: number; y: number }[] = [];
+  const push = (x: number, y: number) => out.push({ x, y });
+  const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(b.x - a.x, b.y - a.y);
+  const straight = (A: { x: number; y: number }, B: { x: number; y: number }, step: number) => {
+    const d = dist(A, B), n = Math.max(1, Math.round(d / step));
+    for (let k = 0; k < n; k++) { const t = k / n; push(A.x + (B.x - A.x) * t, A.y + (B.y - A.y) * t); }
+  };
+  const CURVE_I = 5; // Üniversite → İstasyon E segmentinde kurp
+  for (let i = 0; i < XY.length - 1; i++) {
+    const A = XY[i], B = XY[i + 1];
+    if (i === CURVE_I) {
+      const len = dist(A, B);
+      const ux = (B.x - A.x) / len, uy = (B.y - A.y) / len, nx = -uy, ny = ux;
+      const chLen = Math.min(240, len * 0.6), c0 = (len - chLen) / 2, amp = 34, N = 44;
+      straight(A, { x: A.x + ux * c0, y: A.y + uy * c0 }, 60);
+      for (let k = 0; k <= N; k++) {
+        // yükselen-kosinüs sapma: uçlarda eğim 0 → pürüzsüz birleşme (kink yok)
+        const t = k / N, along = c0 + t * chLen, off = (amp / 2) * (1 - Math.cos(2 * Math.PI * t));
+        push(A.x + ux * along + nx * off, A.y + uy * along + ny * off);
+      }
+      straight({ x: A.x + ux * (c0 + chLen), y: A.y + uy * (c0 + chLen) }, B, 60);
+    } else {
+      straight(A, B, 80);
+    }
+  }
+  push(XY[XY.length - 1].x, XY[XY.length - 1].y);
   const rows = ["shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence"];
-  stops.forEach((s, i) => rows.push(`H1,${s.lat.toFixed(5)},${s.lon.toFixed(5)},${i}`));
+  out.forEach((p, i) => rows.push(`H1,${(lat0 + p.y / ky).toFixed(6)},${(lon0 + p.x / kx).toFixed(6)},${i}`));
   return rows.join("\n");
 })();

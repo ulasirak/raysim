@@ -10,7 +10,7 @@ import Link from "next/link";
 import { brand } from "@/lib/anaray/brand";
 import { useProje } from "@/components/SimConfigProvider";
 import {
-  parseStops, parseShapes, makeProjector, polylineLength, gtfsToRings, tahminEtKisitlar,
+  parseStops, parseShapes, makeProjector, polylineLength, gtfsToRings, tahminEtKisitlar, tahminEtHiz,
   ornekGtfsStops, ornekGtfsShapes, type GeoStop, type GeoShape,
 } from "@/lib/anaray/gtfs";
 
@@ -28,7 +28,7 @@ export function CografiHarita() {
   const [shapes, setShapes] = useState<GeoShape[]>(() => parseShapes(ornekGtfsShapes));
   const [kaynak, setKaynak] = useState<string>("Demo güzergah (yaklaşık Konya koordinatları)");
   const [hata, setHata] = useState<string>("");
-  const [uretildi, setUretildi] = useState<{ rings: number; makas: number; hemzemin: number } | null>(null);
+  const [uretildi, setUretildi] = useState<{ rings: number; makas: number; hemzemin: number; hiz: number; minVmax: number | null } | null>(null);
   const [tahmin, setTahmin] = useState(true);
   const { setRings } = useProje();
 
@@ -36,8 +36,9 @@ export function CografiHarita() {
     const r = gtfsToRings(stops, shapes);
     if (r.length < 1) { setHata("Hat üretilemedi — en az 2 durak gerekli."); return; }
     const t = tahmin ? tahminEtKisitlar(r, stops, shapes) : { makas: 0, hemzemin: 0 };
+    const h = tahmin ? tahminEtHiz(r, stops, shapes) : { ayarlanan: 0, minVmaxKmh: null };
     setRings(r);
-    setUretildi({ rings: r.length, makas: t.makas, hemzemin: t.hemzemin });
+    setUretildi({ rings: r.length, makas: t.makas, hemzemin: t.hemzemin, hiz: h.ayarlanan, minVmax: h.minVmaxKmh });
     setHata("");
   };
 
@@ -115,7 +116,7 @@ export function CografiHarita() {
         </button>
         <label className="flex items-center gap-1.5 text-sm" style={{ color: brand.inkSoft }}>
           <input type="checkbox" checked={tahmin} onChange={(e) => setTahmin(e.target.checked)} />
-          Makas/geçit tahmin et
+          Makas/geçit/hız tahmin et
         </label>
       </div>
 
@@ -124,9 +125,10 @@ export function CografiHarita() {
       {uretildi != null && (
         <div className="mb-4 rounded-md border-l-4 px-4 py-3 text-sm" style={{ background: "#E6F4EC", borderColor: "#0E7C57", color: brand.ink }}>
           ✓ <b>{uretildi.rings} durak-arası hücre</b> gerçek koordinatlardan üretildi ve paylaşılan hatta yazıldı.
-          {uretildi.makas + uretildi.hemzemin > 0 ? (
-            <> Ayrıca <b>{uretildi.makas} makas</b> (keskin dönüş + hat sonu U-dönüş) ve <b>{uretildi.hemzemin} hemzemin geçit</b> <i>tahmin edildi</i>.{" "}
-            <span style={{ color: "#A8842C" }}>▲ Tahminler geometri sezgiseldir</span> (hemzemin konumu shape&apos;ten çıkarılamaz, eşit-aralık varsayımıdır) — 2. etap saha verisiyle veya{" "}
+          {uretildi.makas + uretildi.hemzemin + uretildi.hiz > 0 ? (
+            <> Ayrıca <b>{uretildi.makas} makas</b> (keskin dönüş + hat sonu U-dönüş), <b>{uretildi.hemzemin} hemzemin geçit</b>
+            {uretildi.hiz > 0 && <> ve <b>{uretildi.hiz} hücrede hız kısıtı</b>{uretildi.minVmax != null ? ` (en düşük ${uretildi.minVmax} km/h, kurp yarıçapından)` : ""}</>} <i>tahmin edildi</i>.{" "}
+            <span style={{ color: "#A8842C" }}>▲ Tahminler geometri sezgiseldir</span> (hemzemin konumu shape&apos;ten çıkarılamaz, eşit-aralık varsayımıdır; hız kısıtı yalnız yoğun shape&apos;te anlamlıdır) — 2. etap saha verisiyle veya{" "}
             <Link href="/ringler" className="underline" style={{ color: brand.red }}>Ringler</Link> editöründen düzeltin.</>
           ) : (
             <> Makas/hemzemin GTFS&apos;te olmadığından boş geldi — 2. etap verisiyle ya da <Link href="/ringler" className="underline" style={{ color: brand.red }}>Ringler</Link> editöründen eklenir.</>
