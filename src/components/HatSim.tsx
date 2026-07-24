@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { loopToHat, simuleHat, type ZonFaz } from "@/lib/anaray/hatsim";
 import { blockingTimeRing } from "@/lib/anaray/blockingtime";
 import { useSimConfig, useProje } from "@/components/SimConfigProvider";
+import { BosHat } from "@/components/BosHat";
 import { varsayilanArac } from "@/lib/anaray/vehicles";
 import { saat, sure } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
@@ -53,6 +54,13 @@ function fazAt(olaylar: { t: number; faz: ZonFaz }[] | undefined, t: number): Zo
 }
 
 export function HatSim() {
+  const { rings } = useProje();
+  // Ring yoksa simüle edilecek hat da yok — kullanıcıyı hattı kurmaya yönlendir.
+  if (rings.length === 0) return <BosHat modul="Tam hat simülasyonu" />;
+  return <HatSimIc />;
+}
+
+function HatSimIc() {
   const { cfg } = useSimConfig();
   const { rings } = useProje();
   const [headway, setHeadway] = useState(120);

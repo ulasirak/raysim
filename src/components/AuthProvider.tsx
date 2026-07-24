@@ -1,20 +1,15 @@
 "use client";
 
 // raysim — HESAP (kimlik) katmanı.
-// Self-servis kayıt: herkes kendi e-posta/şifresiyle hesap açar, kendi
-// projelerini yönetir. Firebase Auth (Email/Password) kullanılır.
-//
-// E-posta doğrulaması: kayıtta doğrulama postası gönderilir ve arayüzde bant
-// gösterilir, ancak yazma ENGELLENMEZ (demo sürtünmesini artırmamak için).
-// Zorunlu hale getirmek istenirse: firestore.rules içinde `girisli()` fonksiyonuna
-// `&& request.auth.token.email_verified` eklemek yeterlidir.
+// Klasik e-posta/şifre girişi (Firebase Auth). Kayıt olan hesap ANINDA açılır:
+// e-posta doğrulama adımı YOKTUR — kayıt biter bitmez kullanıcı içerdedir.
+// Tek yardımcı akış şifre sıfırlamadır.
 
 import { createContext, useContext, useEffect, useState } from "react";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  sendEmailVerification,
   sendPasswordResetEmail,
   signOut,
   type User,
@@ -30,7 +25,6 @@ interface AuthCtx {
   kayitOl: (eposta: string, sifre: string) => Promise<void>;
   cikisYap: () => Promise<void>;
   sifreSifirla: (eposta: string) => Promise<void>;
-  dogrulamaGonder: () => Promise<void>;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -63,21 +57,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await signInWithEmailAndPassword(auth(), eposta.trim(), sifre);
   };
 
+  // Kayıt = anında oturum: Firebase, hesabı oluşturur oluşturmaz kullanıcıyı
+  // içeri alır. Ek bir onay/doğrulama adımı yoktur.
   const kayitOl = async (eposta: string, sifre: string) => {
-    const cred = await createUserWithEmailAndPassword(auth(), eposta.trim(), sifre);
-    try {
-      await sendEmailVerification(cred.user);
-    } catch {
-      // doğrulama postası gönderilemezse kayıt yine geçerli — sessiz geç
-    }
+    await createUserWithEmailAndPassword(auth(), eposta.trim(), sifre);
   };
 
   const cikisYap = async () => { await signOut(auth()); };
   const sifreSifirla = async (eposta: string) => { await sendPasswordResetEmail(auth(), eposta.trim()); };
-  const dogrulamaGonder = async () => { if (user) await sendEmailVerification(user); };
 
   return (
-    <Ctx.Provider value={{ user, hazir, yapilandirildi, girisYap, kayitOl, cikisYap, sifreSifirla, dogrulamaGonder }}>
+    <Ctx.Provider value={{ user, hazir, yapilandirildi, girisYap, kayitOl, cikisYap, sifreSifirla }}>
       {children}
     </Ctx.Provider>
   );

@@ -21,6 +21,7 @@ import { isFirebaseConfigured, getAuthInstance } from "@/lib/firebase";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from "firebase/auth";
 import { saveScenario, listScenarios, loadScenario, deleteScenario, type ScenarioMeta } from "@/lib/scenarios";
 import { useSimConfig, useProje } from "@/components/SimConfigProvider";
+import { BosHat } from "@/components/BosHat";
 import { LiveNetwork } from "@/components/LiveNetwork";
 import { NetworkDiagram } from "@/components/NetworkDiagram";
 import { TimeDistanceChart } from "@/components/TimeDistanceChart";
@@ -44,6 +45,13 @@ const BOS_SEBEKE: RailNetwork = {
 const BOS_ROTA: Route = { id: "rota_bos", name: "—", edgeIds: ["bos_e"], startNodeId: "bos_a" };
 
 export function Studio() {
+  const { rings } = useProje();
+  // Proje hattı boşken sahte bir örnek şebeke göstermek yanıltıcı olur.
+  if (rings.length === 0) return <BosHat modul="Sefer simülasyonu" />;
+  return <StudioIc />;
+}
+
+function StudioIc() {
   const { cfg } = useSimConfig();
   const { rings, meta } = useProje();
 

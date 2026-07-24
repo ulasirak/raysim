@@ -7,6 +7,7 @@
 //     challenge referansı — sistemin karşıladığı gerçek-hayat durumları.
 
 import { useMemo } from "react";
+import Link from "next/link";
 import { brand } from "@/lib/anaray/brand";
 import { sure, kmh } from "@/lib/anaray/format";
 import { useSimConfig, useProje } from "@/components/SimConfigProvider";
@@ -46,7 +47,10 @@ export function SistemMerkezi() {
     [zoneler, cfg]
   );
   const ihlaller = useMemo(() => rings.filter((r) => !ringSenaryo(r, stock, cfg).headwayUygun), [rings, stock, cfg]);
-  const bt = useMemo(() => blockingTimeRing(rings, stock, cfg), [rings, stock, cfg]);
+  // Hat boşken (yeni hesap / yeni proje) çözülecek bir şey yoktur: canlı durum ve
+  // blocking-time panelleri gizlenir, parametre girişi açık kalır.
+  const bosHat = rings.length === 0;
+  const bt = useMemo(() => (rings.length ? blockingTimeRing(rings, stock, cfg) : null), [rings, stock, cfg]);
 
   const gruplar = useMemo(() => {
     const g = new Map<string, ParamMeta[]>();
@@ -72,8 +76,17 @@ export function SistemMerkezi() {
         </button>
       </div>
 
+      {bosHat && (
+        <div className="mb-6 rounded border-l-4 px-4 py-3 text-sm" style={{ borderColor: CK.amber, background: CK.amberBg, color: CK.amberInk }}>
+          ▲ Bu hatta henüz ring (durak arası hücre) yok — canlı durum ve kapasite panelleri gizlendi.
+          Parametreleri şimdi girebilir, hattı{" "}
+          <Link href="/ringler" className="underline">Ringler modülünden</Link> kurabilirsiniz.
+        </div>
+      )}
+
       {/* Canlı sistem durumu — hero */}
-      <Panel baslik="Canlı Sistem Durumu" aciklama="Aşağıdaki parametrelerle örnek hat (ring loop + makas bölgeleri) anlık çözülür. Parametreyi değiştir → tüm sistem canlı güncellenir.">
+      {!bosHat && (
+      <Panel baslik="Canlı Sistem Durumu" aciklama="Aşağıdaki parametrelerle proje hattı (ring loop + makas bölgeleri) anlık çözülür. Parametreyi değiştir → tüm sistem canlı güncellenir.">
         {uyarilar.length > 0 ? (
           <div className="mb-4 flex flex-col gap-1.5">
             {uyarilar.map((u, i) => (
@@ -114,8 +127,10 @@ export function SistemMerkezi() {
           </table>
         </div>
       </Panel>
+      )}
 
       {/* Blocking-Time (Sperrzeitentreppe) + UIC 406 */}
+      {bt && (
       <Panel baslik="Blocking-Time (Sperrzeitentreppe) & UIC 406 Kapasite" aciklama="Her sinyal bloğunun rezerve süresi = 6 bileşen (rota kurma + görme + yaklaşma + seyir + temizleme + release). En yüksek blocking-time'lı blok min headway'i belirler; UIC 406 doluluk = min headway / hedef headway.">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <MiniStat etiket="Min headway (kritik blok)" deger={sure(bt.minHeadway)} alt={`blok #${bt.kritikBlok}${bt.bloklar[bt.kritikBlok]?.makasBlok ? " (makas)" : ""}`} vurgu={brand.red} />
@@ -169,6 +184,7 @@ export function SistemMerkezi() {
           </div>
         </div>
       </Panel>
+      )}
 
       {/* Parametreler — editable, paylaşılan */}
       <Panel baslik="Simülasyon Parametreleri" aciklama="Tek kaynak. Değiştirdiğin an Sefer / Ringler / Anklaşman modüllerinin tümü bu değerlerle yeniden hesaplar. Tarayıcıda kalıcıdır.">

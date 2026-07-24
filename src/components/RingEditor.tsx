@@ -41,7 +41,7 @@ const OK = CK.good;
 
 export function RingEditor() {
   const { cfg } = useSimConfig();
-  const { rings, setRings, sifirlaRings, meta } = useProje();
+  const { rings, setRings, sifirlaRings, meta, yonetici } = useProje();
   const [kapali, setKapali] = useState(true);
   const [stock, setStock] = useState<RollingStock>(varsayilanArac);
   const [acik, setAcik] = useState<Record<string, boolean>>(() => (rings[0] ? { [rings[0].id]: true } : {}));
@@ -96,10 +96,15 @@ export function RingEditor() {
       <div className="mb-6 flex items-end justify-between border-b pb-4" style={{ borderColor: brand.border }}>
         <div>
           <div className="field-label">Durak Arası Ring Editörü — Gerçek-Hayat İşletim Hücreleri</div>
-          <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>{meta.hatAdi} · Loop Şartları</h1>
+          <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>{meta.hatAdi || "Adsız Hat"} · Loop Şartları</h1>
         </div>
-        <button onClick={sifirla} className="rounded-md border px-3 py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
-          ↺ Örnek hatta dön
+        <button
+          onClick={() => {
+            if (!yonetici && rings.length > 0 && !confirm("Bu hattın tüm ringleri silinsin mi? (geri alınamaz)")) return;
+            sifirla();
+          }}
+          className="rounded-md border px-3 py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
+          {yonetici ? "↺ Vitrin hattına dön" : "🗑 Hattı temizle"}
         </button>
       </div>
 
@@ -180,6 +185,18 @@ export function RingEditor() {
             {tumEksik.slice(0, 8).map((e, i) => (<li key={i}>{e.mesaj}</li>))}
             {tumEksik.length > 8 && <li>… ve {tumEksik.length - 8} tane daha</li>}
           </ul>
+        </div>
+      )}
+
+      {/* Hat boşsa: ilk adım burasıdır — kullanıcı hattını buradan kurmaya başlar */}
+      {rings.length === 0 && (
+        <div className="mt-6 rounded-lg border-2 border-dashed px-6 py-8 text-center" style={{ borderColor: brand.border }}>
+          <div className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>Hattınız boş</div>
+          <p className="mx-auto mt-1 max-w-lg text-sm leading-relaxed" style={{ color: brand.muted }}>
+            Her <b>ring</b>, iki durak arasındaki işletim hücresidir: mesafe, duruş süresi, üzerindeki
+            makaslar, hemzemin geçitler ve tehlike noktaları. Ringleri sırayla ekleyerek hattı kurun —
+            diğer altı modül aynı anda bu hatta göre hesaplamaya başlar.
+          </p>
         </div>
       )}
 

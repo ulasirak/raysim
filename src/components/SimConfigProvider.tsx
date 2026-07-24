@@ -7,15 +7,19 @@
 // Böylece o an hangi hesabın hangi projesi aktifse, YEDİ MODÜLÜN TAMAMI tek bir
 // hatta hizmet eder.
 //
-// Depolama üç kademeli:
+// Depolama iki kademeli:
 //   • Giriş yapmış kullanıcı → Firestore `projeler/{id}` (kiracı izolasyonu
 //     güvenlik kurallarıyla), değişiklikler geciktirmeli (debounce) otomatik kaydedilir.
 //   • Salt-okunur paylaşım linki (?proje=<id>) → o proje yalnız görüntülenir.
-//   • Giriş yok → demo hattı (tohum), SALT OKUNUR; hiçbir yere yazılmaz.
+// Giriş yoksa içerik YOKTUR: `Kapi` bileşeni giriş/kayıt ekranını gösterir.
+//
+// İLK HAT TOHUMU: yönetici hesabı vitrin hattını (Konya Tramvay 2. Etap taslağı)
+// hazır bulur; başka her hesap SIFIRDAN BOŞ hatla başlar ve kendi verisini girer.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { varsayilanConfig, varsayilanMeta, type SimConfig, type ProjeMeta } from "@/lib/anaray/config";
+import { varsayilanConfig, varsayilanMeta, konyaMeta, type SimConfig, type ProjeMeta } from "@/lib/anaray/config";
 import { konya2EtapSeed, type DurakArasiRing } from "@/lib/anaray/ring";
+import { yoneticiMi } from "@/lib/anaray/yetki";
 import { useAuth } from "@/components/AuthProvider";
 import {
   projeleriListele, projeOlustur, projeGetir, projeKaydet, projeSil,
@@ -41,6 +45,8 @@ interface Ctx {
   patchMeta: (p: Partial<ProjeMeta>) => void;
   // — hesap / proje —
   yazilabilir: boolean;
+  /** Bu hesap vitrin (Konya) hattının sahibi mi? Yalnız tohum/etiket kararı. */
+  yonetici: boolean;
   demoMu: boolean;
   paylasimGorunumu: boolean;
   durum: KayitDurumu;
@@ -58,7 +64,7 @@ interface Ctx {
 
 const SimConfigCtx = createContext<Ctx | null>(null);
 
-function seedRings(): DurakArasiRing[] {
+function vitrinRings(): DurakArasiRing[] {
   return konya2EtapSeed().rings;
 }
 
@@ -86,20 +92,29 @@ function eskiYerelTaslak(): ProjeVerisi | null {
   }
 }
 
-function demoVerisi(): ProjeVerisi {
-  return { rings: seedRings(), cfg: varsayilanConfig, meta: varsayilanMeta };
+/** Sıfırdan başlayan hesap: hat BOŞ, künye nötr. Kullanıcı kendi verisini girer. */
+function bosVeri(): ProjeVerisi {
+  return { rings: [], cfg: varsayilanConfig, meta: varsayilanMeta };
+}
+
+/** Yönetici vitrini: Konya Tramvay 2. Etap taslağı hazır gelir. */
+function vitrinVerisi(): ProjeVerisi {
+  return { rings: vitrinRings(), cfg: varsayilanConfig, meta: konyaMeta };
 }
 
 export function SimConfigProvider({ children }: { children: React.ReactNode }) {
   const { user, hazir: authHazir } = useAuth();
 
+  const yonetici = yoneticiMi(user?.email);
+
   const [cfg, setCfg] = useState<SimConfig>(varsayilanConfig);
-  const [rings, setRingsRaw] = useState<DurakArasiRing[]>(seedRings);
+  // Başlangıç BOŞ: hiçbir hat, oturum çözülmeden ekrana düşmez.
+  const [rings, setRingsRaw] = useState<DurakArasiRing[]>([]);
   const [meta, setMeta] = useState<ProjeMeta>(varsayilanMeta);
 
   const [projeler, setProjeler] = useState<ProjeOzet[]>([]);
   const [aktifId, setAktifId] = useState<string | null>(null);
-  const [aktifAd, setAktifAd] = useState<string>("Demo hattı");
+  const [aktifAd, setAktifAd] = useState<string>("—");
   const [paylasimAcik, setPaylasimAcik] = useState(false);
   const [paylasimId, setPaylasimId] = useState<string | null>(null);
   const [durum, setDurum] = useState<KayitDurumu>("yukleniyor");
@@ -150,11 +165,12 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (!user) {
+          // Giriş yok → hiçbir hat gösterilmez (Kapi giriş ekranını açar).
           if (iptal) return;
-          veriUygula(demoVerisi());
+          veriUygula(bosVeri());
           setProjeler([]);
           setAktifId(null);
-          setAktifAd("Demo hattı");
+          setAktifAd("—");
           setDurum("hazir");
           return;
         }
@@ -163,15 +179,18 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
         if (iptal) return;
 
         if (liste.length === 0) {
-          // İlk giriş: tarayıcıdaki eski taslak varsa onu taşı, yoksa örnek hattı ver.
-          const taslak = eskiYerelTaslak();
+          // İlk giriş. Yönetici → vitrin hattı (varsa tarayıcıdaki eski taslağı taşı).
+          // Diğer herkes → SIFIRDAN boş hat; verisini kendisi girer.
+          const taslak = yonetici ? eskiYerelTaslak() : null;
+          const ilkVeri = taslak ?? (yonetici ? vitrinVerisi() : bosVeri());
+          const ilkAd = taslak
+            ? "Taşınan taslak"
+            : yonetici
+              ? konyaMeta.hatAdi
+              : "İlk hattım";
           let soz = ilkKurulum.get(user.uid);
           if (!soz) {
-            soz = projeOlustur(
-              user.uid,
-              taslak ? "Taşınan taslak" : (varsayilanMeta.hatAdi || "İlk projem"),
-              taslak ?? demoVerisi()
-            );
+            soz = projeOlustur(user.uid, ilkAd, ilkVeri);
             ilkKurulum.set(user.uid, soz);
           }
           const id = await soz;
@@ -208,7 +227,7 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
 
     calistir();
     return () => { iptal = true; };
-  }, [authHazir, user, paylasimId, veriUygula]);
+  }, [authHazir, user, yonetici, paylasimId, veriUygula]);
 
   // 3) Otomatik kayıt (geciktirmeli) — yalnız yazılabilir durumda ve gerçek değişimde
   useEffect(() => {
@@ -252,10 +271,12 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
     setCfg(varsayilanConfig);
   }, [yazilabilir]);
 
+  // "Sıfırla": yöneticide vitrin hattına döner, diğer hesaplarda hattı BOŞALTIR
+  // (kimseye başka bir projenin verisi tohumlanmaz).
   const sifirlaRings = useCallback(() => {
     if (!yazilabilir) return;
-    setRingsRaw(seedRings());
-  }, [yazilabilir]);
+    setRingsRaw(yonetici ? vitrinRings() : []);
+  }, [yazilabilir, yonetici]);
 
   const patchMeta = useCallback((p: Partial<ProjeMeta>) => {
     if (!yazilabilir) return;
@@ -278,9 +299,10 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
       .catch((e) => { setHataMetni(e instanceof Error ? e.message : String(e)); setDurum("hata"); });
   }, [user, veriUygula]);
 
+  // Yeni hat her zaman BOŞ açılır (yönetici dahil) — mevcut hat kopyalanmaz.
   const projeYeni = useCallback(async (ad: string) => {
     if (!user) return;
-    const id = await projeOlustur(user.uid, ad || "Yeni proje", demoVerisi());
+    const id = await projeOlustur(user.uid, ad || "Yeni hat", bosVeri());
     setProjeler(await projeleriListele(user.uid));
     projeSec(id);
   }, [user, projeSec]);
@@ -292,7 +314,7 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
     setProjeler(liste);
     if (id === aktifId) {
       if (liste.length > 0) projeSec(liste[0].id);
-      else { setAktifId(null); veriUygula(demoVerisi()); setAktifAd("Demo hattı"); }
+      else { setAktifId(null); veriUygula(bosVeri()); setAktifAd("—"); }
     }
   }, [user, aktifId, projeSec, veriUygula]);
 
@@ -312,12 +334,12 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
 
   const deger = useMemo<Ctx>(() => ({
     cfg, patch, sifirla, rings, setRings, sifirlaRings, meta, patchMeta,
-    yazilabilir, demoMu, paylasimGorunumu, durum, hataMetni,
+    yazilabilir, yonetici, demoMu, paylasimGorunumu, durum, hataMetni,
     projeler, aktifId, aktifAd, paylasimAcik,
     projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle, paylasimDegistir,
   }), [
     cfg, patch, sifirla, rings, setRings, sifirlaRings, meta, patchMeta,
-    yazilabilir, demoMu, paylasimGorunumu, durum, hataMetni,
+    yazilabilir, yonetici, demoMu, paylasimGorunumu, durum, hataMetni,
     projeler, aktifId, aktifAd, paylasimAcik,
     projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle, paylasimDegistir,
   ]);
@@ -350,16 +372,17 @@ export function useProje(): {
   meta: ProjeMeta;
   patchMeta: (p: Partial<ProjeMeta>) => void;
   yazilabilir: boolean;
+  yonetici: boolean;
 } {
-  const { rings, setRings, sifirlaRings, meta, patchMeta, yazilabilir } = useCtx();
-  return { rings, setRings, sifirlaRings, meta, patchMeta, yazilabilir };
+  const { rings, setRings, sifirlaRings, meta, patchMeta, yazilabilir, yonetici } = useCtx();
+  return { rings, setRings, sifirlaRings, meta, patchMeta, yazilabilir, yonetici };
 }
 
 /** Oturum + proje yönetimi (kabuk/başlık için). */
 export function useHesap(): Omit<Ctx, "cfg" | "patch" | "sifirla" | "rings" | "setRings" | "sifirlaRings" | "meta" | "patchMeta"> {
   const c = useCtx();
   return {
-    yazilabilir: c.yazilabilir, demoMu: c.demoMu, paylasimGorunumu: c.paylasimGorunumu,
+    yazilabilir: c.yazilabilir, yonetici: c.yonetici, demoMu: c.demoMu, paylasimGorunumu: c.paylasimGorunumu,
     durum: c.durum, hataMetni: c.hataMetni, projeler: c.projeler, aktifId: c.aktifId,
     aktifAd: c.aktifAd, paylasimAcik: c.paylasimAcik, projeSec: c.projeSec,
     projeYeni: c.projeYeni, projeSilmeIstegi: c.projeSilmeIstegi,

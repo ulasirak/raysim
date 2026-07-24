@@ -124,14 +124,24 @@ export function Belgeler() {
         {!hatTam && (
           <div className="mb-3 rounded-md border-l-4 px-4 py-3 text-sm" style={{ background: CK.badBgSoft, borderColor: brand.red, color: brand.ink }}>
             <div className="font-medium" style={{ color: brand.red }}>
-              ⚠ Hat eksik — resmî belge üretimi kapalı ({eksikler.length} zorunlu şart)
+              {rings.length === 0
+                ? "⚠ Hat boş — resmî belge üretimi kapalı"
+                : `⚠ Hat eksik — resmî belge üretimi kapalı (${eksikler.length} zorunlu şart)`}
             </div>
-            <ul className="ml-4 mt-1 list-disc text-xs" style={{ color: brand.inkSoft }}>
-              {eksikler.slice(0, 6).map((m, i) => (<li key={i}>{m}</li>))}
-              {eksikler.length > 6 && <li>… ve {eksikler.length - 6} tane daha</li>}
-            </ul>
+            {rings.length === 0 ? (
+              <div className="mt-1 text-xs" style={{ color: brand.inkSoft }}>
+                Bu hatta henüz durak arası ring tanımlı değil. Künyeyi şimdi doldurabilirsiniz; belgeler
+                hattı kurduktan sonra üretilir.
+              </div>
+            ) : (
+              <ul className="ml-4 mt-1 list-disc text-xs" style={{ color: brand.inkSoft }}>
+                {eksikler.slice(0, 6).map((m, i) => (<li key={i}>{m}</li>))}
+                {eksikler.length > 6 && <li>… ve {eksikler.length - 6} tane daha</li>}
+              </ul>
+            )}
             <div className="mt-1 text-xs" style={{ color: brand.muted }}>
-              Eksikleri <b>Ringler</b> modülünden tamamlayın; belge ancak tam hattan üretilir.
+              {rings.length === 0 ? "Hattı" : "Eksikleri"} <b>Ringler</b> modülünden {rings.length === 0 ? "kurun" : "tamamlayın"};
+              belge ancak tam hattan üretilir.
             </div>
           </div>
         )}

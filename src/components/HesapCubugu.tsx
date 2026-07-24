@@ -13,7 +13,7 @@ import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 
 export function HesapCubugu() {
-  const { user, hazir, yapilandirildi, cikisYap, dogrulamaGonder } = useAuth();
+  const { user, hazir, yapilandirildi, cikisYap } = useAuth();
   const {
     demoMu, paylasimGorunumu, durum, hataMetni, projeler, aktifId, aktifAd,
     paylasimAcik, projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle, paylasimDegistir,
@@ -46,26 +46,8 @@ export function HesapCubugu() {
     );
   }
 
-  // — Giriş yapılmamış: demo —
-  if (demoMu) {
-    return (
-      <Serit renk={CK.blue}>
-        <span style={{ color: brand.ink }}>
-          <b>Demo hattı</b> — salt okunur. Kendi hattınızı kurup kaydetmek için hesabınıza girin.
-        </span>
-        <div className="ml-auto flex items-center gap-2">
-          <Link href="/giris" className="rounded px-2.5 py-1 text-xs font-medium" style={{ background: brand.ink, color: "#fff" }}>
-            Giriş yap
-          </Link>
-          <Link href="/giris?mod=kayit" className="rounded border px-2.5 py-1 text-xs font-medium" style={{ borderColor: brand.borderStrong, color: brand.ink }}>
-            Kayıt ol
-          </Link>
-        </div>
-      </Serit>
-    );
-  }
-
-  if (!hazir) return null;
+  // Giriş yoksa çubuk hiç görünmez (Kapi zaten giriş/kayıt ekranını gösterir).
+  if (demoMu || !hazir || !user) return null;
 
   // — Girişli: proje yönetimi —
   const paylasimLinki = aktifId ? `${typeof window !== "undefined" ? window.location.origin : ""}/?proje=${aktifId}` : "";
@@ -147,14 +129,6 @@ export function HesapCubugu() {
             style={{ borderColor: brand.border, color: brand.inkSoft }}>Çıkış</button>
         </div>
       </div>
-
-      {/* E-posta doğrulama hatırlatması (yazmayı engellemez) */}
-      {user && !user.emailVerified && (
-        <div className="mx-auto max-w-6xl px-6 pb-2 text-xs" style={{ color: CK.amberInk }}>
-          ▲ E-posta adresiniz doğrulanmadı.{" "}
-          <button onClick={() => sar(dogrulamaGonder(), "dogrula")} className="underline">Doğrulama postasını tekrar gönder</button>
-        </div>
-      )}
     </div>
   );
 }

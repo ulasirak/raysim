@@ -11,6 +11,7 @@ import { Masthead } from "@/components/Masthead";
 import { SimConfigProvider } from "@/components/SimConfigProvider";
 import { AuthProvider } from "@/components/AuthProvider";
 import { HesapCubugu } from "@/components/HesapCubugu";
+import { Kapi, useErisim } from "@/components/Kapi";
 import { brand } from "@/lib/anaray/brand";
 
 interface Modul {
@@ -37,15 +38,30 @@ function aktifModul(pathname: string): Modul {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname() || "/";
-  const aktif = aktifModul(pathname);
-
   return (
     <AuthProvider>
-    <SimConfigProvider>
+      <SimConfigProvider>
+        <Govde>{children}</Govde>
+      </SimConfigProvider>
+    </AuthProvider>
+  );
+}
+
+/** Kabuk gövdesi — sağlayıcıların İÇİNDE olduğu için oturum durumunu okuyabilir. */
+function Govde({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname() || "/";
+  const aktif = aktifModul(pathname);
+  // Giriş yapılmadan modül navigasyonu ve hesap çubuğu gösterilmez: site,
+  // ziyaretçiyi doğrudan giriş/kayıt ekranıyla karşılar.
+  const erisim = useErisim();
+  const icerikVar = erisim === "acik";
+
+  return (
+    <>
       <Masthead belgeKodu={aktif.kod} rota={aktif.rota} />
 
       {/* Modül navigasyonu — sistemin mantıksal iş akışı (soldan sağa boru hattı) */}
+      {icerikVar && (
       <nav className="sticky top-0 z-20 border-b" style={{ background: "#0E2739", borderColor: "#1E3A50" }}>
         {/* Butonlar sayfanın yatayına eşit yayılır: dar ekranda 2, orta ekranda 4, geniş ekranda 7 sütun */}
         <div className="mx-auto grid max-w-6xl grid-cols-2 gap-1 px-4 py-2 sm:grid-cols-4 lg:grid-cols-7">
@@ -64,11 +80,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </div>
       </nav>
+      )}
 
       {/* Hesap & aktif hat şeridi — hangi kiracının hangi hattı işlendiğini gösterir */}
-      <HesapCubugu />
+      {icerikVar && <HesapCubugu />}
 
-      <main className="flex-1" style={{ background: brand.paper }}>{children}</main>
+      <main className="flex-1" style={{ background: brand.paper }}>
+        <Kapi>{children}</Kapi>
+      </main>
 
       {/* Global footer — sol: dürüst metodoloji notu · orta: amblem · sağ: künye */}
       <footer className="border-t-2" style={{ background: "#0C2233", borderColor: "#C8102E" }}>
@@ -99,7 +118,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </footer>
-    </SimConfigProvider>
-    </AuthProvider>
+    </>
   );
 }

@@ -119,18 +119,28 @@ export interface ProjeMeta {
   onaylayan: string;
 }
 
+// Yeni bir hesabın/hattın künyesi NÖTRDÜR: hiçbir gerçek projeye ait ad taşımaz.
+// Kullanıcı kendi proje bilgilerini Belgeler modülünden girer.
 export const varsayilanMeta: ProjeMeta = {
-  projeAdi: "Konya Tramvay 2. Etap Sinyalizasyon Projesi",
+  projeAdi: "Yeni Sinyalizasyon Projesi",
   idare: "İdare / İşveren",
   yuklenici: "Yüklenici Firma",
   musavir: "Müşavir Firma",
   sinyalizasyonFirmasi: "RaySim",
-  dokumanNo: "TR-VA-AKS-001",
+  dokumanNo: "PRJ-VA-AKS-001",
   revizyon: "v1.0 (TASLAK)",
   tarih: "",
-  hatAdi: "Alaaddin – Adliye (TASLAK)",
+  hatAdi: "Adsız Hat",
   hazirlayan: "Tasarım Mühendisi",
   onaylayan: "Firma Yetkilisi",
+};
+
+/** Vitrin (yönetici) hattının künyesi — Konya Tramvay 2. Etap taslağı. */
+export const konyaMeta: ProjeMeta = {
+  ...varsayilanMeta,
+  projeAdi: "Konya Tramvay 2. Etap Sinyalizasyon Projesi",
+  dokumanNo: "TR-VA-AKS-001",
+  hatAdi: "Alaaddin – Adliye (TASLAK)",
 };
 
 export interface ProjeMetaAlan {
