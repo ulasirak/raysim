@@ -14,14 +14,15 @@ import { varsayilanArac } from "@/lib/anaray/vehicles";
 import { loopDenge, olceklenme, ringChallenge } from "@/lib/anaray/ring";
 import { bolgeSeed } from "@/lib/anaray/interlocking";
 import { wordUret, excelUret, indir } from "@/lib/anaray/dokuman";
-import { raporHTML, yazdirRapor } from "@/lib/anaray/rapor";
+import { raporHTML, yazdirRapor, type RaporDil } from "@/lib/anaray/rapor";
 
 export function Belgeler() {
   const { cfg } = useSimConfig();
   const { rings, meta, patchMeta } = useProje();
   const stock = varsayilanArac;
   const [durum, setDurum] = useState<{ tip: "ok" | "err" | "info"; metin: string } | null>(null);
-  const [mesgul, setMesgul] = useState<"" | "word" | "excel" | "rapor">("");
+  const [mesgul, setMesgul] = useState<"" | "word" | "excel" | "rapor" | "html">("");
+  const [dil, setDil] = useState<RaporDil>("tr");
 
   const ozet = useMemo(() => {
     const olcek = olceklenme(rings, stock, true, cfg);
@@ -46,11 +47,22 @@ export function Belgeler() {
   const raporUret = () => {
     setMesgul("rapor"); setDurum(null);
     try {
-      const html = raporHTML(meta, cfg, rings, stock);
+      const html = raporHTML(meta, cfg, rings, stock, dil);
       yazdirRapor(html);
       setDurum({ tip: "ok", metin: "Rapor yeni sekmede açıldı — yazdırma diyalogunda “Hedef: PDF olarak kaydet”i seçin." });
     } catch (e) {
       setDurum({ tip: "err", metin: `Rapor açılamadı: ${e instanceof Error ? e.message : String(e)}` });
+    } finally { setMesgul(""); }
+  };
+
+  const raporHTMLIndir = () => {
+    setMesgul("html"); setDurum(null);
+    try {
+      const html = raporHTML(meta, cfg, rings, stock, dil);
+      indir(new Blob([html], { type: "text/html;charset=utf-8" }), dosyaAdi(`${dil}.html`));
+      setDurum({ tip: "ok", metin: `Rapor (HTML) indirildi: ${dosyaAdi("html")} — tarayıcıda açıp yazdırınca da PDF olur.` });
+    } catch (e) {
+      setDurum({ tip: "err", metin: `HTML üretilemedi: ${e instanceof Error ? e.message : String(e)}` });
     } finally { setMesgul(""); }
   };
 
@@ -88,10 +100,26 @@ export function Belgeler() {
 
       {/* İndirme */}
       <Panel baslik="Belge Üret" aciklama="Şık PDF = amblemli kapak + KPI kartları + hat şeması + renkli çakışma matriksleri + blocking-time grafiği (baskıya hazır). Word = düzenlenebilir Tasarım El Kitabı. Excel = 7 sayfalı çalışma kitabı.">
+        <div className="mb-3 flex items-center gap-2">
+          <span className="field-label">Rapor dili</span>
+          <div className="inline-flex overflow-hidden rounded-md border" style={{ borderColor: brand.borderStrong }}>
+            {(["tr", "en"] as RaporDil[]).map((d) => (
+              <button key={d} onClick={() => setDil(d)} className="px-3 py-1 text-xs font-semibold uppercase transition"
+                style={dil === d ? { background: brand.ink, color: "#fff" } : { background: "#fff", color: brand.inkSoft }}>
+                {d === "tr" ? "Türkçe" : "English"}
+              </button>
+            ))}
+          </div>
+          <span className="text-xs" style={{ color: brand.muted }}>PDF/HTML rapor bu dilde üretilir (yapısal metinler; proje verisi/adlar kaynak dilde kalır).</span>
+        </div>
         <div className="flex flex-wrap items-center gap-3">
           <button onClick={raporUret} disabled={!!mesgul}
             className="rounded-md px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: brand.red }}>
             {mesgul === "rapor" ? "Açılıyor…" : "🖨 Şık PDF Rapor"}
+          </button>
+          <button onClick={raporHTMLIndir} disabled={!!mesgul}
+            className="rounded-md border px-4 py-2 text-sm font-medium transition hover:bg-slate-50 disabled:opacity-50" style={{ borderColor: brand.borderStrong, color: brand.ink }}>
+            {mesgul === "html" ? "İndiriliyor…" : "⭳ HTML indir (tek tık)"}
           </button>
           <button onClick={wordIndir} disabled={!!mesgul}
             className="rounded-md px-5 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: brand.ink }}>

@@ -8,6 +8,7 @@
 // Tarayıcıda çalışır: yeni pencerede açar, yazdırma diyalogunu tetikler
 // (kullanıcı "Hedef: PDF olarak kaydet" ile indirir). SSR'de çağrılmaz.
 
+import qrcode from "qrcode-generator";
 import { emblemSvg } from "@/lib/emblem";
 import type { SimConfig, ProjeMeta } from "./config";
 import { PARAM_META, paramGoster, birim } from "./config";
@@ -31,6 +32,20 @@ function esc(s: unknown): string {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 }
 const s0 = (v: number) => `${Math.round(v)} s`;
+
+// QR kodu (gömülü SVG) — canlı simülasyon linki için.
+function qrSvg(text: string, size = 96): string {
+  try {
+    const qr = qrcode(0, "M");
+    qr.addData(text);
+    qr.make();
+    const n = qr.getModuleCount();
+    const cell = size / n;
+    let rects = "";
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) rects += `<rect x="${(c * cell).toFixed(2)}" y="${(r * cell).toFixed(2)}" width="${cell.toFixed(2)}" height="${cell.toFixed(2)}"/>`;
+    return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}"><rect width="${size}" height="${size}" fill="#fff"/><g fill="${INK}">${rects}</g></svg>`;
+  } catch { return ""; }
+}
 
 function tbl(headers: string[], rows: (string | number)[][], opts: { first?: boolean } = {}): string {
   const head = `<tr>${headers.map((h, i) => `<th class="${opts.first && i === 0 ? "l" : ""}">${esc(h)}</th>`).join("")}</tr>`;
@@ -195,12 +210,83 @@ function sperrzeitSvg(bt: ReturnType<typeof blockingTimeRing>, L: number): strin
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${yTicks}${rects.join("")}${traj(0, INK)}${traj(h, "#7A6224")}${hMark}<text x="${padL}" y="${H - 8}" font-size="8.5" fill="#6B7A8A">zaman (s) →</text><text x="8" y="${padT + 8}" font-size="8.5" fill="#6B7A8A">m</text></svg>`;
 }
 
-export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock): string {
+export type RaporDil = "tr" | "en";
+
+function rDil(lang: RaporDil) {
+  const tr = {
+    htmlLang: "tr", barTitle: "Rapor",
+    barHint: 'Yazdır diyalogunda "Hedef: PDF olarak kaydet"i seçin.',
+    barBtn: "⭳ PDF olarak kaydet / Yazdır",
+    sys: "SİNYALİZASYON SİSTEMİ", kit: "TASARIM EL KİTABI",
+    foot: "RaySim Sinyalizasyon Tasarım & Dokümantasyon Sistemi tarafından üretilmiştir.",
+    qrCap: "Canlı simülasyon",
+    kunye: { proje: "Proje", hat: "Hat", dok: "Doküman No", rev: "Revizyon", tarih: "Tarih", idare: "İdare", yuk: "Yüklenici", mus: "Müşavir", firma: "Sinyalizasyon Firması" },
+    kpi: { hucre: "Durak arası hücre", hedef: "Hedef headway", sigan: "Headway'de sığan tren", kapasite: "Teorik kapasite", uic: "UIC 406 doluluk", ch: "Challenge / kritik" },
+    altMakas: (n: number) => `${n} makas`, altTumu: "tümü uygun", altIhlal: "ihlal var", altTur: (s: string) => `tur ${s}`, altTph: "tren/saat", altUygun: "uygun", altIhlalK: "ihlal", altRisk: "risk kaydı",
+    s1: "Tasarım Kriterleri", s1i: "Sistem, sabit blok ve dağıtık SIL4 anklaşman mimarisi üzerine kurulmuştur. Aşağıdaki göstergeler ve parametreler tüm işletim senaryolarının temelini oluşturur.",
+    thParam: ["Parametre", "Değer", "Etkisi"],
+    s2: "Durak Arası İşletim Hücreleri", s2i: (n: number, h: number) => `Hat, ${n} durak-arası hücreye (ring) bölünmüştür. Her hücre kendi mesafe, makas, hemzemin ve tehlike (acil frenleme) şartlarını taşır; worst-case senaryo en uzun mesafe + tüm kısıtlarla, hedef headway ${h} s ile değerlendirilir.`,
+    fig1: "Şekil 1 — Hat şeması: istasyon zinciri, makas (⑂) ve hemzemin geçit dağılımı.",
+    fig2: "Şekil 2 — Hız-mesafe profili (worst-case tek tren): kırmızı kesikli = hız limiti zarfı, mürekkep = fiili hız.",
+    fig3: (c: number, h: number) => `Şekil 3 — Zaman-mesafe diyagramı (Bildfahrplan), ÇİFT YÖN: gidiş (mürekkep) + dönüş (mavi), ${c}+${c} tren, ${h}s aralık. Ters eğimli çizgilerin kesişimi = kruvasman/karşılaşma; kırmızı = gecikmeli sefer.`,
+    thRing: ["No", "Durak Arası", "Mesafe (m)", "Worst (m)", "Makas", "Hemzemin", "Tehlike", "Worst Toplam", "Headway"],
+    s21: "2.1 Ring Bazında Kısıt ve Risk (Challenge) Analizi",
+    thKisit: ["Kısıt", "Konum (m)", "Detay"], noKisit: "Kısıt yok — kesintisiz seyir.",
+    pillOk: "UYGUN", pillBad: "İHLAL",
+    s3: "Makas Bölgesi Operasyon Senaryoları ve Çakışma Matriksleri", s3i: "Her makas bölgesi bağımsız SIL4 anklaşman birimidir. Rotalar NEREDEN→NEREYE tanımlıdır; çakışma matriksi hangi rotaların eşzamanlı kurulabileceğini belirler.",
+    thRota: ["Rota", "Nereden", "Nereye", "Bloklar", "TCC"], evet: "Evet", hayir: "Hayır",
+    bolge: "Bölge", matris: "Çakışma Matriksi", matrisYes: "birlikte kurulabilir", matrisNo: "mümkün değil",
+    s4: "Kapasite ve Blocking-Time Analizi", s4i: "En yüksek blocking-time'lı blok minimum tren aralığını (headway) belirler; UIC 406 doluluk oranı bu değerin hedef headway'e bölümüdür. Her bloğun rezerve süresi altı bileşenden oluşur.",
+    thGost: ["Gösterge", "Değer"],
+    kapTur: "Tur süresi (worst-case)", kapHedef: "Hedef headway", kapSigan: "Headway'de sığan tren", kapDarbogaz: "Darboğaz hücre", kapDenge: "Denge (eşit şartlar)", kapDengeli: "Dengeli", kapSapma: (p: string) => `%${p} sapma`, kapMin: "Minimum headway (kritik blok)", kapTeorik: "Teorik kapasite", kapUIC: "UIC 406 doluluk (hedef headway'de)", tphSuffix: "tren/saat",
+    s41: "4.1 Blocking-Time (Sperrzeitentreppe)",
+    fig4: (h: number) => `Şekil 4 — Sperrzeitentreppe: iki ardışık trenin blok işgal (blocking-time) pencereleri; kritik blokta ikinci trenin başlangıcı birincinin bitişine değer = min headway ${h}s.`,
+    fig5: "Şekil 5 — Blok başına blocking-time bileşen dağılımı (kritik blok kırmızı etiketli).",
+    thBt: ["Blok", "Setup", "Görme", "Yaklaşma", "Seyir", "Temizleme", "Release", "Toplam (s)"],
+    s5: "Onay", thImza: ["Hazırlayan", "Onaylayan"], imzaTarih: "İmza / Tarih",
+  };
+  const en: typeof tr = {
+    htmlLang: "en", barTitle: "Report",
+    barHint: 'In the print dialog, choose "Destination: Save as PDF".',
+    barBtn: "⭳ Save as PDF / Print",
+    sys: "SIGNALLING SYSTEM", kit: "DESIGN HANDBOOK",
+    foot: "Produced by the RaySim Signalling Design & Documentation System.",
+    qrCap: "Live simulation",
+    kunye: { proje: "Project", hat: "Line", dok: "Document No", rev: "Revision", tarih: "Date", idare: "Authority", yuk: "Contractor", mus: "Consultant", firma: "Signalling Firm" },
+    kpi: { hucre: "Inter-station cells", hedef: "Target headway", sigan: "Trains within headway", kapasite: "Theoretical capacity", uic: "UIC 406 occupancy", ch: "Challenges / critical" },
+    altMakas: (n) => `${n} switches`, altTumu: "all compliant", altIhlal: "violations", altTur: (s) => `cycle ${s}`, altTph: "trains/hour", altUygun: "compliant", altIhlalK: "violation", altRisk: "risk records",
+    s1: "Design Criteria", s1i: "The system is built on a fixed-block, distributed SIL4 interlocking architecture. The indicators and parameters below form the basis of all operating scenarios.",
+    thParam: ["Parameter", "Value", "Effect"],
+    s2: "Inter-station Operating Cells", s2i: (n, h) => `The line is divided into ${n} inter-station cells (rings). Each cell carries its own distance, switch, level-crossing and hazard (emergency braking) conditions; the worst case is evaluated at the longest distance with all constraints against the ${h}s target headway.`,
+    fig1: "Figure 1 — Line schematic: station chain, switch (⑂) and level-crossing distribution.",
+    fig2: "Figure 2 — Speed-distance profile (worst-case single train): red dashed = speed-limit envelope, ink = actual speed.",
+    fig3: (c, h) => `Figure 3 — Time-distance diagram (Bildfahrplan), BOTH DIRECTIONS: outbound (ink) + return (blue), ${c}+${c} trains, ${h}s headway. Crossing of opposing lines = meeting/passing point; red = delayed service.`,
+    thRing: ["No", "Section", "Distance (m)", "Worst (m)", "Switches", "Level xing", "Hazards", "Worst Total", "Headway"],
+    s21: "2.1 Per-cell Constraint & Risk (Challenge) Analysis",
+    thKisit: ["Constraint", "Position (m)", "Detail"], noKisit: "No constraints — uninterrupted run.",
+    pillOk: "OK", pillBad: "VIOLATION",
+    s3: "Switch Zone Operation Scenarios and Conflict Matrices", s3i: "Each switch zone is an independent SIL4 interlocking unit. Routes are defined FROM→TO; the conflict matrix determines which routes may be set simultaneously.",
+    thRota: ["Route", "From", "To", "Blocks", "TCC"], evet: "Yes", hayir: "No",
+    bolge: "Zone", matris: "Conflict Matrix", matrisYes: "can be set together", matrisNo: "not possible",
+    s4: "Capacity and Blocking-Time Analysis", s4i: "The block with the highest blocking-time sets the minimum train interval (headway); the UIC 406 occupancy ratio is this value divided by the target headway. Each block's reserved time comprises six components.",
+    thGost: ["Indicator", "Value"],
+    kapTur: "Cycle time (worst-case)", kapHedef: "Target headway", kapSigan: "Trains within headway", kapDarbogaz: "Bottleneck cell", kapDenge: "Balance (equal conditions)", kapDengeli: "Balanced", kapSapma: (p) => `${p}% deviation`, kapMin: "Minimum headway (critical block)", kapTeorik: "Theoretical capacity", kapUIC: "UIC 406 occupancy (at target headway)", tphSuffix: "trains/hour",
+    s41: "4.1 Blocking-Time (Sperrzeitentreppe)",
+    fig4: (h) => `Figure 4 — Sperrzeitentreppe: block occupation (blocking-time) windows of two consecutive trains; at the critical block the second train's start touches the first's end = min headway ${h}s.`,
+    fig5: "Figure 5 — Per-block blocking-time component breakdown (critical block labelled red).",
+    thBt: ["Block", "Setup", "Sighting", "Approach", "Running", "Clearing", "Release", "Total (s)"],
+    s5: "Approval", thImza: ["Prepared by", "Approved by"], imzaTarih: "Signature / Date",
+  };
+  return lang === "en" ? en : tr;
+}
+
+export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, lang: RaporDil = "tr"): string {
+  const L = rDil(lang);
   const rs = rings.map((r, i) => {
     const sen = ringSenaryo(r, stock, cfg);
     return { no: i + 1, ad: `${r.fromAd} → ${r.toAd}`, mesafe: Math.round(r.uzunluk), worst: Math.round(r.worstUzunluk),
       makas: r.makaslar.length, hemzemin: r.hemzeminler.length, tehlike: r.tehlikeNoktalari.length,
-      worstToplam: Math.round(sen.worstToplam), headway: sen.headwayUygun ? "UYGUN" : "İHLAL", pay: Math.round(sen.headwayPayi) };
+      worstToplam: Math.round(sen.worstToplam), headwayOk: sen.headwayUygun, pay: Math.round(sen.headwayPayi) };
   });
   const denge = loopDenge(rings, stock, cfg);
   const olcek = olceklenme(rings, stock, true, cfg);
@@ -212,26 +298,26 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   // Birleşik hat (loop → tek Line) → hız profili + Bildfahrplan grafikleri
   const line: Line | null = rings.length ? loopToHat(rings, true, cfg).line : null;
   const bfCount = Math.max(3, Math.min(6, olcek.maxTrenHedefHeadway || 4));
-  const hizFig = line ? `<div class="fig">${speedProfileSvg(line, stock)}<div class="cap">Şekil 2 — Hız-mesafe profili (worst-case tek tren): kırmızı kesikli = hız limiti zarfı, mürekkep = fiili hız.</div></div>` : "";
-  const bfFig = line ? `<div class="fig">${bildfahrplanSvg(line, stock, cfg, bfCount)}<div class="cap">Şekil 3 — Zaman-mesafe diyagramı (Bildfahrplan), ÇİFT YÖN: gidiş (mürekkep) + dönüş (mavi), ${bfCount}+${bfCount} tren, ${cfg.headway}s aralık. Ters eğimli çizgilerin kesişimi = kruvasman/karşılaşma; kırmızı = gecikmeli sefer.</div></div>` : "";
+  const hizFig = line ? `<div class="fig">${speedProfileSvg(line, stock)}<div class="cap">${L.fig2}</div></div>` : "";
+  const bfFig = line ? `<div class="fig">${bildfahrplanSvg(line, stock, cfg, bfCount)}<div class="cap">${L.fig3(bfCount, cfg.headway)}</div></div>` : "";
 
   // ---- Kapak künye ----
   const kunye = [
-    ["Proje", meta.projeAdi], ["Hat", meta.hatAdi], ["Doküman No", meta.dokumanNo], ["Revizyon", meta.revizyon],
-    ["Tarih", meta.tarih || "—"], ["İdare", meta.idare], ["Yüklenici", meta.yuklenici], ["Müşavir", meta.musavir],
-    ["Sinyalizasyon Firması", meta.sinyalizasyonFirmasi],
+    [L.kunye.proje, meta.projeAdi], [L.kunye.hat, meta.hatAdi], [L.kunye.dok, meta.dokumanNo], [L.kunye.rev, meta.revizyon],
+    [L.kunye.tarih, meta.tarih || "—"], [L.kunye.idare, meta.idare], [L.kunye.yuk, meta.yuklenici], [L.kunye.mus, meta.musavir],
+    [L.kunye.firma, meta.sinyalizasyonFirmasi],
   ];
 
   // ---- KPI kartları ----
   const kpi = (etiket: string, deger: string, alt: string, renk = INK) =>
     `<div class="kpi"><div class="kpi-l">${esc(etiket)}</div><div class="kpi-v" style="color:${renk}">${esc(deger)}</div><div class="kpi-a">${esc(alt)}</div></div>`;
   const kpiRow = `<div class="kpi-row">
-    ${kpi("Durak arası hücre", `${rings.length}`, `${rings.reduce((n, r) => n + r.makaslar.length, 0)} makas`)}
-    ${kpi("Hedef headway", `${cfg.headway} s`, olcek.headwayUygun ? "tümü uygun" : "ihlal var", olcek.headwayUygun ? "#0E7C57" : RED)}
-    ${kpi("Headway'de sığan tren", `${olcek.maxTrenHedefHeadway}`, `tur ${s0(olcek.turSuresi)}`)}
-    ${kpi("Teorik kapasite", `${bt.teorikKapasite.toFixed(0)}`, "tren/saat")}
-    ${kpi("UIC 406 doluluk", `%${bt.dolulukHedef.toFixed(0)}`, bt.hedefUygun ? "uygun" : "ihlal", bt.hedefUygun ? "#0E7C57" : RED)}
-    ${kpi("Challenge / kritik", `${chSayi} / ${kritik}`, "risk kaydı", kritik > 0 ? RED : INK)}
+    ${kpi(L.kpi.hucre, `${rings.length}`, L.altMakas(rings.reduce((n, r) => n + r.makaslar.length, 0)))}
+    ${kpi(L.kpi.hedef, `${cfg.headway} s`, olcek.headwayUygun ? L.altTumu : L.altIhlal, olcek.headwayUygun ? "#0E7C57" : RED)}
+    ${kpi(L.kpi.sigan, `${olcek.maxTrenHedefHeadway}`, L.altTur(s0(olcek.turSuresi)))}
+    ${kpi(L.kpi.kapasite, `${bt.teorikKapasite.toFixed(0)}`, L.altTph)}
+    ${kpi(L.kpi.uic, `%${bt.dolulukHedef.toFixed(0)}`, bt.hedefUygun ? L.altUygun : L.altIhlalK, bt.hedefUygun ? "#0E7C57" : RED)}
+    ${kpi(L.kpi.ch, `${chSayi} / ${kritik}`, L.altRisk, kritik > 0 ? RED : INK)}
   </div>`;
 
   // ---- Parametre tablosu ----
@@ -240,7 +326,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   // ---- Ring tablosu ----
   const ringRows = rs.map((r) => [
     `${r.no}`, r.ad, `${r.mesafe}`, `${r.worst}`, `${r.makas}`, `${r.hemzemin}`, `${r.tehlike}`, s0(r.worstToplam),
-    `<span class="pill ${r.headway === "UYGUN" ? "ok" : "bad"}">${r.headway} (${r.pay >= 0 ? "+" : ""}${r.pay}s)</span>`,
+    `<span class="pill ${r.headwayOk ? "ok" : "bad"}">${r.headwayOk ? L.pillOk : L.pillBad} (${r.pay >= 0 ? "+" : ""}${r.pay}s)</span>`,
   ]);
 
   // ---- Ring challenge detayları ----
@@ -248,8 +334,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     const kisit = ringKisitDizisi(r);
     const ch = ringChallenge(r, stock, cfg);
     const kisitTbl = kisit.length
-      ? tbl(["Kısıt", "Konum (m)", "Detay"], kisit.map((k) => [k.ad, `${Math.round(k.konum)}`, k.detay]))
-      : `<p class="muted">Kısıt yok — kesintisiz seyir.</p>`;
+      ? tbl(L.thKisit, kisit.map((k) => [k.ad, `${Math.round(k.konum)}`, k.detay]))
+      : `<p class="muted">${L.noKisit}</p>`;
     const chList = ch.length
       ? `<ul class="ch">${ch.map((c) => `<li class="${c.seviye === "kritik" ? "krit" : ""}"><b>[${esc(c.seviye.toUpperCase())}]</b> ${esc(c.baslik)}: ${esc(c.mesaj)}</li>`).join("")}</ul>`
       : "";
@@ -258,36 +344,37 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
 
   // ---- Makas bölgeleri + çakışma matriksleri ----
   const bolgeBlok = zones.map((z) => {
-    const rotaTbl = tbl(["Rota", "Nereden", "Nereye", "Bloklar", "TCC"],
-      z.rotalar.map((r) => [r.id, r.nereden, r.nereye, r.bloklar.join(", "), r.tccGerekli ? "Evet" : "Hayır"]), { first: true });
+    const rotaTbl = tbl(L.thRota,
+      z.rotalar.map((r) => [r.id, r.nereden, r.nereye, r.bloklar.join(", "), r.tccGerekli ? L.evet : L.hayir]), { first: true });
     const m = cakismaMatriksi(z);
     const mHead = `<tr><th></th>${z.rotalar.map((r) => `<th>${esc(r.nereden)}${esc(r.nereye)}</th>`).join("")}</tr>`;
     const mBody = z.rotalar.map((r, i) =>
       `<tr><th class="l">${esc(r.nereden)}${esc(r.nereye)}</th>${z.rotalar.map((_, j) =>
         i === j ? `<td class="mx diag">·</td>` : `<td class="mx ${m[i][j] ? "yes" : "no"}">${m[i][j] ? "X" : "0"}</td>`).join("")}</tr>`).join("");
-    return `<div class="bolge"><h4>Bölge ${esc(z.id)} — ${esc(z.ad)}</h4>${rotaTbl}
-      <div class="matris-etiket">Çakışma Matriksi <span class="mx-leg"><span class="yes">X</span> birlikte kurulabilir · <span class="no">0</span> mümkün değil</span></div>
+    return `<div class="bolge"><h4>${L.bolge} ${esc(z.id)} — ${esc(z.ad)}</h4>${rotaTbl}
+      <div class="matris-etiket">${L.matris} <span class="mx-leg"><span class="yes">X</span> ${L.matrisYes} · <span class="no">0</span> ${L.matrisNo}</span></div>
       <table class="matris"><thead>${mHead}</thead><tbody>${mBody}</tbody></table></div>`;
   }).join("");
 
   // ---- Kapasite ----
-  const kapasiteTbl = tbl(["Gösterge", "Değer"], [
-    ["Tur süresi (worst-case)", s0(olcek.turSuresi)],
-    ["Hedef headway", s0(cfg.headway)],
-    ["Headway'de sığan tren", `${olcek.maxTrenHedefHeadway}`],
-    ["Darboğaz hücre", olcek.darbogazRing ? `${olcek.darbogazRing.ad} (${s0(olcek.darbogazRing.worstToplam)})` : "—"],
-    ["Denge (eşit şartlar)", denge.dengeli ? "Dengeli" : `%${denge.sapmaYuzde.toFixed(0)} sapma`],
-    ["Minimum headway (kritik blok)", `${s0(bt.minHeadway)} (blok #${bt.kritikBlok})`],
-    ["Teorik kapasite", `${bt.teorikKapasite.toFixed(0)} tren/saat`],
-    ["UIC 406 doluluk (hedef headway'de)", `%${bt.dolulukHedef.toFixed(0)}`],
+  const kapasiteTbl = tbl(L.thGost, [
+    [L.kapTur, s0(olcek.turSuresi)],
+    [L.kapHedef, s0(cfg.headway)],
+    [L.kapSigan, `${olcek.maxTrenHedefHeadway}`],
+    [L.kapDarbogaz, olcek.darbogazRing ? `${olcek.darbogazRing.ad} (${s0(olcek.darbogazRing.worstToplam)})` : "—"],
+    [L.kapDenge, denge.dengeli ? L.kapDengeli : L.kapSapma(denge.sapmaYuzde.toFixed(0))],
+    [L.kapMin, `${s0(bt.minHeadway)} (#${bt.kritikBlok})`],
+    [L.kapTeorik, `${bt.teorikKapasite.toFixed(0)} ${L.tphSuffix}`],
+    [L.kapUIC, `%${bt.dolulukHedef.toFixed(0)}`],
   ], { first: true });
 
-  const btTbl = tbl(["Blok", "Setup", "Görme", "Yaklaşma", "Seyir", "Temizleme", "Release", "Toplam (s)"],
+  const btTbl = tbl(L.thBt,
     bt.bloklar.map((b) => [`#${b.i}${b.makasBlok ? " ⑂" : ""}`, `${b.tSetup}`, `${b.tSighting}`, b.tApproach.toFixed(0), b.tRunning.toFixed(0), b.tClearing.toFixed(0), `${b.tRelease}`, b.toplam.toFixed(0)]), { first: true });
 
   const bugun = meta.tarih || "";
+  const siteUrl = (typeof window !== "undefined" && window.location?.origin) ? window.location.origin : "https://raysim.vercel.app";
 
-  return `<!doctype html><html lang="tr"><head><meta charset="utf-8">
+  return `<!doctype html><html lang="${L.htmlLang}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(meta.dokumanNo)} — ${esc(meta.projeAdi)}</title>
 <style>
@@ -321,7 +408,10 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   .cover table { margin: 26px auto 0; width: 76%; }
   .cover td { text-align: left; }
   .kunye td.k { font-weight: 600; color: ${INK}; width: 40%; background: #F5F7F9; }
-  .cover .foot { margin-top: 30px; font-size: 9pt; color: #9AA7B4; font-style: italic; }
+  .cover .foot { margin-top: 20px; font-size: 9pt; color: #9AA7B4; font-style: italic; }
+  .cover .qr { margin-top: 26px; }
+  .cover .qr svg { border: 1px solid #E6E9ED; padding: 4px; background: #fff; }
+  .cover .qr-cap { font-size: 8pt; color: #6B7A8A; margin-top: 5px; line-height: 1.3; }
   .brandmark { font-family: "Spectral", Georgia, serif; font-weight: 700; letter-spacing: .12em; color: ${INK}; font-size: 12pt; }
   .brandmark .r { color: ${RED}; }
 
@@ -368,10 +458,10 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
 </style></head>
 <body>
 <div class="bar noprint">
-  <b class="brandmark">Ray<span class="r">Sim</span> · Rapor</b>
-  <span class="hint">Yazdır diyalogunda “Hedef: PDF olarak kaydet”i seçin.</span>
+  <b class="brandmark">Ray<span class="r">Sim</span> · ${L.barTitle}</b>
+  <span class="hint">${esc(L.barHint)}</span>
   <span class="sp"></span>
-  <button onclick="window.print()">⭳ PDF olarak kaydet / Yazdır</button>
+  <button onclick="window.print()">${L.barBtn}</button>
 </div>
 <div class="sheet">
 
@@ -380,50 +470,51 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     <div class="emblem">${emblemSvg}</div>
     <div class="brandmark" style="margin-top:8px">Ray<span class="r">Sim</span></div>
     <div class="rule"></div>
-    <div class="sys">SİNYALİZASYON SİSTEMİ</div>
-    <div class="kit">TASARIM EL KİTABI</div>
+    <div class="sys">${L.sys}</div>
+    <div class="kit">${L.kit}</div>
     <div class="proje">${esc(meta.projeAdi)}</div>
     <div class="hat">${esc(meta.hatAdi)}</div>
     <table class="kunye"><tbody>${kunye.map(([a, b]) => `<tr><td class="l k">${esc(a)}</td><td class="l">${esc(b)}</td></tr>`).join("")}</tbody></table>
-    <div class="foot">RaySim Sinyalizasyon Tasarım &amp; Dokümantasyon Sistemi tarafından üretilmiştir.${bugun ? " · " + esc(bugun) : ""}</div>
+    <div class="qr">${qrSvg(siteUrl, 92)}<div class="qr-cap">${L.qrCap}<br>${esc(siteUrl.replace(/^https?:\/\//, ""))}</div></div>
+    <div class="foot">${esc(L.foot)}${bugun ? " · " + esc(bugun) : ""}</div>
   </section>
 
-  <!-- 1. TASARIM KRİTERLERİ -->
+  <!-- 1 -->
   <div class="breakbefore"></div>
-  <div class="banner"><span class="no">1</span>Tasarım Kriterleri</div>
-  <p>Sistem, sabit blok ve dağıtık SIL4 anklaşman mimarisi üzerine kurulmuştur. Aşağıdaki göstergeler ve parametreler tüm işletim senaryolarının temelini oluşturur.</p>
+  <div class="banner"><span class="no">1</span>${L.s1}</div>
+  <p>${L.s1i}</p>
   ${kpiRow}
-  ${tbl(["Parametre", "Değer", "Etkisi"], paramRows, { first: true })}
+  ${tbl(L.thParam, paramRows, { first: true })}
 
-  <!-- 2. RING ŞARTLARI -->
-  <div class="banner"><span class="no">2</span>Durak Arası İşletim Hücreleri</div>
-  <p>Hat, ${rings.length} durak-arası hücreye (ring) bölünmüştür. Her hücre kendi mesafe, makas, hemzemin ve tehlike (acil frenleme) şartlarını taşır; worst-case senaryo en uzun mesafe + tüm kısıtlarla, hedef headway ${cfg.headway} s ile değerlendirilir.</p>
-  <div class="fig">${ringSemaSvg(rings)}<div class="cap">Şekil 1 — Hat şeması: istasyon zinciri, makas (⑂) ve hemzemin geçit dağılımı.</div></div>
+  <!-- 2 -->
+  <div class="banner"><span class="no">2</span>${L.s2}</div>
+  <p>${L.s2i(rings.length, cfg.headway)}</p>
+  <div class="fig">${ringSemaSvg(rings)}<div class="cap">${L.fig1}</div></div>
   ${hizFig}
-  ${tbl(["No", "Durak Arası", "Mesafe (m)", "Worst (m)", "Makas", "Hemzemin", "Tehlike", "Worst Toplam", "Headway"], ringRows, { first: true })}
-  <h3 class="sub">2.1 Ring Bazında Kısıt ve Risk (Challenge) Analizi</h3>
+  ${tbl(L.thRing, ringRows, { first: true })}
+  <h3 class="sub">${L.s21}</h3>
   ${ringDetay}
 
-  <!-- 3. MAKAS BÖLGELERİ -->
-  <div class="banner"><span class="no">3</span>Makas Bölgesi Operasyon Senaryoları ve Çakışma Matriksleri</div>
-  <p>Her makas bölgesi bağımsız SIL4 anklaşman birimidir. Rotalar NEREDEN→NEREYE tanımlıdır; çakışma matriksi hangi rotaların eşzamanlı kurulabileceğini belirler.</p>
+  <!-- 3 -->
+  <div class="banner"><span class="no">3</span>${L.s3}</div>
+  <p>${L.s3i}</p>
   ${bolgeBlok}
 
-  <!-- 4. KAPASİTE -->
-  <div class="banner"><span class="no">4</span>Kapasite ve Blocking-Time Analizi</div>
-  <p>En yüksek blocking-time'lı blok minimum tren aralığını (headway) belirler; UIC 406 doluluk oranı bu değerin hedef headway'e bölümüdür. Her bloğun rezerve süresi altı bileşenden oluşur.</p>
+  <!-- 4 -->
+  <div class="banner"><span class="no">4</span>${L.s4}</div>
+  <p>${L.s4i}</p>
   ${kapasiteTbl}
   ${bfFig}
-  <h3 class="sub">4.1 Blocking-Time (Sperrzeitentreppe)</h3>
-  <div class="fig">${line ? sperrzeitSvg(bt, line.length) : ""}<div class="cap">Şekil 4 — Sperrzeitentreppe: iki ardışık trenin blok işgal (blocking-time) pencereleri; kritik blokta ikinci trenin başlangıcı birincinin bitişine değer = min headway ${Math.round(bt.minHeadway)}s.</div></div>
-  <div class="fig">${blockingBarSvg(bt.bloklar, bt.kritikBlok)}<div class="cap">Şekil 5 — Blok başına blocking-time bileşen dağılımı (kritik blok kırmızı etiketli).</div></div>
+  <h3 class="sub">${L.s41}</h3>
+  <div class="fig">${line ? sperrzeitSvg(bt, line.length) : ""}<div class="cap">${L.fig4(Math.round(bt.minHeadway))}</div></div>
+  <div class="fig">${blockingBarSvg(bt.bloklar, bt.kritikBlok)}<div class="cap">${L.fig5}</div></div>
   ${btTbl}
 
-  <!-- 5. ONAY -->
-  <div class="banner"><span class="no">5</span>Onay</div>
-  <table class="imza"><thead><tr><th>Hazırlayan</th><th>Onaylayan</th></tr></thead>
+  <!-- 5 -->
+  <div class="banner"><span class="no">5</span>${L.s5}</div>
+  <table class="imza"><thead><tr><th>${esc(L.thImza[0])}</th><th>${esc(L.thImza[1])}</th></tr></thead>
   <tbody><tr><td class="l">${esc(meta.hazirlayan)}</td><td class="l">${esc(meta.onaylayan)}</td></tr>
-  <tr><td class="l">İmza / Tarih</td><td class="l">İmza / Tarih</td></tr></tbody></table>
+  <tr><td class="l">${esc(L.imzaTarih)}</td><td class="l">${esc(L.imzaTarih)}</td></tr></tbody></table>
 
 </div>
 </body></html>`;
