@@ -19,6 +19,11 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
+/* Tek sayfa: nav ankoruna tıklayınca bölümler arası yumuşak kaydırma. */
+html {
+  scroll-behavior: smooth;
+}
+
 /* Kurumsal marka serifi (Spectral) */
 .font-brand {
   font-family: var(--font-spectral), Georgia, "Times New Roman", serif;
@@ -34,6 +39,9 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
   * {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
