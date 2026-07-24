@@ -131,8 +131,25 @@ function speedProfileSvg(line: Line, stock: RollingStock): string {
     `<line x1="${xOf(s.start).toFixed(1)}" y1="${yOf(s.vmax).toFixed(1)}" x2="${xOf(s.end).toFixed(1)}" y2="${yOf(s.vmax).toFixed(1)}" stroke="${RED}" stroke-width="1.4" stroke-dasharray="5 4" opacity="0.85"/>`).join("");
   const spd = res.points.map((p) => `${xOf(p.s).toFixed(1)},${yOf(p.v * 3.6).toFixed(1)}`).join(" ");
   const speed = `<polyline points="${spd}" fill="none" stroke="${INK}" stroke-width="1.8"/>`;
-  const axis = `<text x="${padL}" y="${H - 8}" font-size="9" fill="#6B7A8A">mesafe (m) →</text><text x="8" y="${padT + 8}" font-size="9" fill="#6B7A8A">km/h</text><text x="${W - padR}" y="${padT + 10}" text-anchor="end" font-size="8.5" fill="${RED}">– – hız limiti · — fiili hız</text>`;
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${yTicks}${st}${env}${speed}${axis}</svg>`;
+  // Kısıt bölgeleri: azami vmax'ın altındaki bitişik segmentleri birleştir → kurp/kısıt işareti
+  const maxV = Math.max(...line.segments.map((s) => s.vmax));
+  type Zon = { start: number; end: number; vk: number };
+  const zones: Zon[] = [];
+  let cur: Zon | null = null;
+  for (const s of line.segments) {
+    const vk = Math.round(s.vmax * 3.6);
+    if (s.vmax < maxV - 0.1) {
+      if (cur && Math.abs(cur.vk - vk) < 0.5) cur.end = s.end;
+      else { if (cur) zones.push(cur); cur = { start: s.start, end: s.end, vk }; }
+    } else if (cur) { zones.push(cur); cur = null; }
+  }
+  if (cur) zones.push(cur);
+  const marks = zones.slice(0, 10).map((z) => {
+    const mx = xOf((z.start + z.end) / 2), my = yOf(z.vk);
+    return `<polygon points="${(mx - 4).toFixed(1)},${(my - 9).toFixed(1)} ${(mx + 4).toFixed(1)},${(my - 9).toFixed(1)} ${mx.toFixed(1)},${(my - 2).toFixed(1)}" fill="${GOLD}"/><text x="${mx.toFixed(1)}" y="${(my - 11).toFixed(1)}" text-anchor="middle" font-size="8" font-weight="700" fill="${GOLD}">⌒${z.vk}</text>`;
+  }).join("");
+  const axis = `<text x="${padL}" y="${H - 8}" font-size="9" fill="#6B7A8A">mesafe (m) →</text><text x="8" y="${padT + 8}" font-size="9" fill="#6B7A8A">km/h</text><text x="${W - padR}" y="${padT + 10}" text-anchor="end" font-size="8.5" fill="#6B7A8A"><tspan fill="${RED}">– – limit</tspan> · <tspan fill="${INK}">— fiili</tspan> · <tspan fill="${GOLD}">▼ kurp/kısıt</tspan></text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${yTicks}${st}${env}${speed}${marks}${axis}</svg>`;
 }
 
 // Bir Line'ı ters çevir (dönüş yönü): konum aynala + eğim işaretini çevir.
@@ -227,7 +244,7 @@ function rDil(lang: RaporDil) {
     thParam: ["Parametre", "Değer", "Etkisi"],
     s2: "Durak Arası İşletim Hücreleri", s2i: (n: number, h: number) => `Hat, ${n} durak-arası hücreye (ring) bölünmüştür. Her hücre kendi mesafe, makas, hemzemin ve tehlike (acil frenleme) şartlarını taşır; worst-case senaryo en uzun mesafe + tüm kısıtlarla, hedef headway ${h} s ile değerlendirilir.`,
     fig1: "Şekil 1 — Hat şeması: istasyon zinciri, makas (⑂) ve hemzemin geçit dağılımı.",
-    fig2: "Şekil 2 — Hız-mesafe profili (worst-case tek tren): kırmızı kesikli = hız limiti zarfı, mürekkep = fiili hız.",
+    fig2: "Şekil 2 — Hız-mesafe profili (worst-case tek tren): kırmızı kesikli = hız limiti zarfı, mürekkep = fiili hız, ⌒ = kurp/hız kısıtı bölgeleri (km/h).",
     fig3: (c: number, h: number) => `Şekil 3 — Zaman-mesafe diyagramı (Bildfahrplan), ÇİFT YÖN: gidiş (mürekkep) + dönüş (mavi), ${c}+${c} tren, ${h}s aralık. Ters eğimli çizgilerin kesişimi = kruvasman/karşılaşma; kırmızı = gecikmeli sefer.`,
     thRing: ["No", "Durak Arası", "Mesafe (m)", "Worst (m)", "Makas", "Hemzemin", "Tehlike", "Worst Toplam", "Headway"],
     s21: "2.1 Ring Bazında Kısıt ve Risk (Challenge) Analizi",
@@ -259,7 +276,7 @@ function rDil(lang: RaporDil) {
     thParam: ["Parameter", "Value", "Effect"],
     s2: "Inter-station Operating Cells", s2i: (n, h) => `The line is divided into ${n} inter-station cells (rings). Each cell carries its own distance, switch, level-crossing and hazard (emergency braking) conditions; the worst case is evaluated at the longest distance with all constraints against the ${h}s target headway.`,
     fig1: "Figure 1 — Line schematic: station chain, switch (⑂) and level-crossing distribution.",
-    fig2: "Figure 2 — Speed-distance profile (worst-case single train): red dashed = speed-limit envelope, ink = actual speed.",
+    fig2: "Figure 2 — Speed-distance profile (worst-case single train): red dashed = speed-limit envelope, ink = actual speed, ⌒ = curve/speed-restriction zones (km/h).",
     fig3: (c, h) => `Figure 3 — Time-distance diagram (Bildfahrplan), BOTH DIRECTIONS: outbound (ink) + return (blue), ${c}+${c} trains, ${h}s headway. Crossing of opposing lines = meeting/passing point; red = delayed service.`,
     thRing: ["No", "Section", "Distance (m)", "Worst (m)", "Switches", "Level xing", "Hazards", "Worst Total", "Headway"],
     s21: "2.1 Per-cell Constraint & Risk (Challenge) Analysis",

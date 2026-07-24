@@ -7,7 +7,7 @@
 
 import { yeniRing, yeniMakas, yeniHemzemin, BELGE, type DurakArasiRing } from "./ring";
 
-export interface GeoStop { id: string; name: string; lat: number; lon: number; }
+export interface GeoStop { id: string; name: string; lat: number; lon: number; ele?: number; }
 export interface GeoShape { id: string; points: { lat: number; lon: number; seq: number }[]; }
 
 // ————————————————————————————————————————————————
@@ -46,12 +46,16 @@ function parseCSV(text: string): Record<string, string>[] {
 
 export function parseStops(text: string): GeoStop[] {
   return parseCSV(text)
-    .map((r) => ({
-      id: r.stop_id || r.id || "",
-      name: r.stop_name || r.name || r.stop_id || "",
-      lat: parseFloat(r.stop_lat || r.lat || ""),
-      lon: parseFloat(r.stop_lon || r.lon || ""),
-    }))
+    .map((r) => {
+      const ele = parseFloat(r.stop_elevation || r.elevation || r.stop_ele || r.ele || "");
+      return {
+        id: r.stop_id || r.id || "",
+        name: r.stop_name || r.name || r.stop_id || "",
+        lat: parseFloat(r.stop_lat || r.lat || ""),
+        lon: parseFloat(r.stop_lon || r.lon || ""),
+        ...(isFinite(ele) ? { ele } : {}),
+      };
+    })
     .filter((s) => isFinite(s.lat) && isFinite(s.lon));
 }
 
@@ -267,6 +271,25 @@ export function tahminEtHiz(rings: DurakArasiRing[], stops: GeoStop[], shapes: G
   return { ayarlanan, minVmaxKmh: isFinite(gmin) ? gmin : null };
 }
 
+/**
+ * Durak yüksekliklerinden (varsa) ring başına eğim (‰) hesaplar → ring.egim.
+ * grade = Δyükseklik / mesafe × 1000, ±80‰ ile sınırlı. Yükseklik yoksa 0 döner.
+ * GTFS'te yükseklik standart değildir; stop_elevation/elevation/ele sütunundan okunur.
+ */
+export function tahminEtEgim(rings: DurakArasiRing[], stops: GeoStop[]): { ayarlanan: number; maxEgim: number } {
+  let n = 0, maxAbs = 0;
+  for (let i = 0; i < rings.length && i + 1 < stops.length; i++) {
+    const a = stops[i].ele, b = stops[i + 1].ele;
+    if (a == null || b == null || !isFinite(a) || !isFinite(b)) continue;
+    let g = ((b - a) / Math.max(1, rings[i].uzunluk)) * 1000; // ‰
+    g = Math.max(-80, Math.min(80, g));
+    rings[i].egim = Math.round(g * 10) / 10;
+    if (Math.abs(g) > maxAbs) maxAbs = Math.abs(g);
+    n++;
+  }
+  return { ayarlanan: n, maxEgim: Math.round(maxAbs * 10) / 10 };
+}
+
 // ————————————————————————————————————————————————
 // GTFS → Ring modeli (simülasyona bağla)
 // ————————————————————————————————————————————————
@@ -316,17 +339,17 @@ export function gtfsToRings(stops: GeoStop[], shapes: GeoShape[]): DurakArasiRin
 // DEMO veri (yaklaşık Konya koordinatları — gerçek GTFS import'unu göstermek için)
 // ————————————————————————————————————————————————
 
-export const ornekGtfsStops = `stop_id,stop_name,stop_lat,stop_lon
-1,Merkez,37.87050,32.49250
-2,İstasyon A,37.87360,32.48540
-3,İstasyon B,37.87720,32.47880
-4,İstasyon C,37.88140,32.47330
-5,İstasyon D,37.88620,32.46940
-6,Üniversite,37.89150,32.46720
-7,İstasyon E,37.89700,32.46680
-8,İstasyon F,37.90260,32.46840
-9,Şehir Hastanesi,37.90820,32.47150
-10,Terminal,37.91330,32.47620`;
+export const ornekGtfsStops = `stop_id,stop_name,stop_lat,stop_lon,stop_elevation
+1,Merkez,37.87050,32.49250,1016
+2,İstasyon A,37.87360,32.48540,1019
+3,İstasyon B,37.87720,32.47880,1023
+4,İstasyon C,37.88140,32.47330,1028
+5,İstasyon D,37.88620,32.46940,1034
+6,Üniversite,37.89150,32.46720,1039
+7,İstasyon E,37.89700,32.46680,1041
+8,İstasyon F,37.90260,32.46840,1038
+9,Şehir Hastanesi,37.90820,32.47150,1033
+10,Terminal,37.91330,32.47620,1029`;
 
 // Duraklardan geçen YOĞUN shape: çoğu düz interpolasyon, bir segmentte gerçekçi
 // kurp (chicane) — hız-kısıtı tahminini göstermek için (~65 m yarıçap → ~25 km/h).

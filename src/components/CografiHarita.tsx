@@ -10,7 +10,7 @@ import Link from "next/link";
 import { brand } from "@/lib/anaray/brand";
 import { useProje } from "@/components/SimConfigProvider";
 import {
-  parseStops, parseShapes, makeProjector, polylineLength, gtfsToRings, tahminEtKisitlar, tahminEtHiz,
+  parseStops, parseShapes, makeProjector, polylineLength, gtfsToRings, tahminEtKisitlar, tahminEtHiz, tahminEtEgim,
   ornekGtfsStops, ornekGtfsShapes, type GeoStop, type GeoShape,
 } from "@/lib/anaray/gtfs";
 
@@ -28,17 +28,20 @@ export function CografiHarita() {
   const [shapes, setShapes] = useState<GeoShape[]>(() => parseShapes(ornekGtfsShapes));
   const [kaynak, setKaynak] = useState<string>("Demo güzergah (yaklaşık Konya koordinatları)");
   const [hata, setHata] = useState<string>("");
-  const [uretildi, setUretildi] = useState<{ rings: number; makas: number; hemzemin: number; hiz: number; minVmax: number | null } | null>(null);
+  const [uretildi, setUretildi] = useState<{ rings: number; makas: number; hemzemin: number; hiz: number; minVmax: number | null; egim: number; maxEgim: number } | null>(null);
   const [tahmin, setTahmin] = useState(true);
   const { setRings } = useProje();
+
+  const yukseklikVar = useMemo(() => stops.some((s) => s.ele != null), [stops]);
 
   const hatUret = () => {
     const r = gtfsToRings(stops, shapes);
     if (r.length < 1) { setHata("Hat üretilemedi — en az 2 durak gerekli."); return; }
     const t = tahmin ? tahminEtKisitlar(r, stops, shapes) : { makas: 0, hemzemin: 0 };
     const h = tahmin ? tahminEtHiz(r, stops, shapes) : { ayarlanan: 0, minVmaxKmh: null };
+    const g = tahminEtEgim(r, stops); // yükseklik varsa (gerçek veri, tahmin kutusundan bağımsız)
     setRings(r);
-    setUretildi({ rings: r.length, makas: t.makas, hemzemin: t.hemzemin, hiz: h.ayarlanan, minVmax: h.minVmaxKmh });
+    setUretildi({ rings: r.length, makas: t.makas, hemzemin: t.hemzemin, hiz: h.ayarlanan, minVmax: h.minVmaxKmh, egim: g.ayarlanan, maxEgim: g.maxEgim });
     setHata("");
   };
 
@@ -94,7 +97,7 @@ export function CografiHarita() {
         <div className="field-label">Coğrafi Güzergah — GTFS / Gerçek Koordinat</div>
         <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>Gerçek Koordinatlı Hat Haritası</h1>
         <p className="mt-2 max-w-3xl text-sm" style={{ color: brand.inkSoft }}>
-          GTFS <code>stops.txt</code> (ve varsa <code>shapes.txt</code>) veya benzeri CSV yükle; güzergah şematik değil <b>gerçek coğrafi koordinatlarda</b> çizilir. Karşı tarafın hat verisini doğrudan görselleştirmek için.
+          GTFS <code>stops.txt</code> (ve varsa <code>shapes.txt</code>) veya benzeri CSV yükle; güzergah şematik değil <b>gerçek coğrafi koordinatlarda</b> çizilir. <code>stop_elevation</code> sütunu varsa <b>eğim (‰)</b> de hesaplanır. Karşı tarafın hat verisini doğrudan görselleştirmek için.
         </p>
       </div>
 
@@ -133,6 +136,9 @@ export function CografiHarita() {
           ) : (
             <> Makas/hemzemin GTFS&apos;te olmadığından boş geldi — 2. etap verisiyle ya da <Link href="/ringler" className="underline" style={{ color: brand.red }}>Ringler</Link> editöründen eklenir.</>
           )}
+          {uretildi.egim > 0 && (
+            <> <b>{uretildi.egim} hücrede eğim</b> yükseklik verisinden <i>hesaplandı</i> (maks ±{uretildi.maxEgim}‰) — bu tahmin değil, gerçek veridir.</>
+          )}
           {" "}Artık <Link href="/ringler" className="underline" style={{ color: brand.red }}>Ringler</Link>,{" "}
           <Link href="/hat" className="underline" style={{ color: brand.red }}>Tam Hat</Link> ve{" "}
           <Link href="/belgeler" className="underline" style={{ color: brand.red }}>Belgeler</Link> bu hattı kullanır.
@@ -145,6 +151,7 @@ export function CografiHarita() {
         <Stat etiket="Shape" deger={`${shapes.length}`} alt={shapes.length ? `${shapes.reduce((n, s) => n + s.points.length, 0)} nokta` : "yok"} />
         <Stat etiket="Güzergah uzunluğu" deger={`${(uzunluk / 1000).toFixed(2)} km`} />
         <Stat etiket="Kaynak" deger={kaynak.length > 18 ? kaynak.slice(0, 17) + "…" : kaynak} alt={proj ? `${proj.mPerPx.toFixed(0)} m/px` : ""} />
+        <Stat etiket="Yükseklik" deger={yukseklikVar ? "var" : "yok"} alt={yukseklikVar ? "eğim hesaplanır" : "stop_elevation sütunu"} />
       </div>
 
       {/* Harita */}
