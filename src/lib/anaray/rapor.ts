@@ -18,6 +18,10 @@ import {
 } from "./ring";
 import { bolgeSeed, cakismaMatriksi } from "./interlocking";
 import { blockingTimeRing } from "./blockingtime";
+import { loopToHat } from "./hatsim";
+import { simulate } from "./sim";
+import { simulateSignalled } from "./signalling";
+import type { Line } from "./types";
 
 const INK = "#0C2233";
 const RED = "#C8102E";
@@ -92,6 +96,53 @@ function blockingBarSvg(bloklar: { i: number; makasBlok?: boolean; tSetup: numbe
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${rows}${legend}</svg>`;
 }
 
+// Hız-mesafe profili (gömülü SVG): worst-case tek tren, vmax zarfı + fiili hız.
+function speedProfileSvg(line: Line, stock: RollingStock): string {
+  if (line.length <= 0) return "";
+  const res = simulate(line, stock, 0.5);
+  if (!res.points.length) return "";
+  const L = line.length;
+  const W = 760, H = 210, padL = 44, padR = 12, padT = 14, padB = 30;
+  const pw = W - padL - padR, ph = H - padT - padB;
+  const vmax = Math.max(...line.segments.map((s) => s.vmax), ...res.points.map((p) => p.v * 3.6), 10);
+  const vAxis = Math.ceil(vmax / 10) * 10;
+  const xOf = (s: number) => padL + (s / L) * pw;
+  const yOf = (vk: number) => padT + ph - (vk / vAxis) * ph;
+  const yTicks = [0, vAxis / 2, vAxis].map((v) =>
+    `<line x1="${padL}" y1="${yOf(v).toFixed(1)}" x2="${W - padR}" y2="${yOf(v).toFixed(1)}" stroke="#E6E9ED"/><text x="${padL - 6}" y="${(yOf(v) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="#6B7A8A">${v.toFixed(0)}</text>`).join("");
+  const st = line.stations.map((s) =>
+    `<line x1="${xOf(s.position).toFixed(1)}" y1="${padT}" x2="${xOf(s.position).toFixed(1)}" y2="${padT + ph}" stroke="#DCE1E7" stroke-dasharray="2 3"/>`).join("");
+  const env = line.segments.map((s) =>
+    `<line x1="${xOf(s.start).toFixed(1)}" y1="${yOf(s.vmax).toFixed(1)}" x2="${xOf(s.end).toFixed(1)}" y2="${yOf(s.vmax).toFixed(1)}" stroke="${RED}" stroke-width="1.4" stroke-dasharray="5 4" opacity="0.85"/>`).join("");
+  const spd = res.points.map((p) => `${xOf(p.s).toFixed(1)},${yOf(p.v * 3.6).toFixed(1)}`).join(" ");
+  const speed = `<polyline points="${spd}" fill="none" stroke="${INK}" stroke-width="1.8"/>`;
+  const axis = `<text x="${padL}" y="${H - 8}" font-size="9" fill="#6B7A8A">mesafe (m) →</text><text x="8" y="${padT + 8}" font-size="9" fill="#6B7A8A">km/h</text><text x="${W - padR}" y="${padT + 10}" text-anchor="end" font-size="8.5" fill="${RED}">– – hız limiti · — fiili hız</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${yTicks}${st}${env}${speed}${axis}</svg>`;
+}
+
+// Zaman-mesafe diyagramı / Bildfahrplan (gömülü SVG): çok tren, headway merdiveni.
+function bildfahrplanSvg(line: Line, stock: RollingStock, cfg: SimConfig, count: number): string {
+  if (line.length <= 0) return "";
+  const sig = simulateSignalled(line, stock, { headway: cfg.headway, count, maxBlockLen: cfg.blokMaxUzunluk });
+  const L = line.length, tMax = Math.max(1, sig.tMax);
+  const W = 760, H = 240, padL = 78, padR = 12, padT = 12, padB = 26;
+  const pw = W - padL - padR, ph = H - padT - padB;
+  const xOf = (t: number) => padL + (t / tMax) * pw;
+  const yOf = (s: number) => padT + (s / L) * ph; // s=0 üstte, s=L altta
+  const st = line.stations.map((s) =>
+    `<line x1="${padL}" y1="${yOf(s.position).toFixed(1)}" x2="${W - padR}" y2="${yOf(s.position).toFixed(1)}" stroke="#E6E9ED"/><text x="${padL - 6}" y="${(yOf(s.position) + 3).toFixed(1)}" text-anchor="end" font-size="8" fill="#6B7A8A">${esc(s.name)}</text>`).join("");
+  const tg = Array.from({ length: 7 }).map((_, i) => {
+    const t = (tMax * i) / 6, x = xOf(t);
+    return `<line x1="${x.toFixed(1)}" y1="${padT}" x2="${x.toFixed(1)}" y2="${padT + ph}" stroke="#EEF1F4"/><text x="${x.toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="8" fill="#6B7A8A">${Math.round(t / 60)}′</text>`;
+  }).join("");
+  const trns = sig.trains.map((tr) => {
+    const col = tr.delay > 2 ? RED : INK;
+    const pts = tr.points.map((p) => `${xOf(p.t).toFixed(1)},${yOf(p.s).toFixed(1)}`).join(" ");
+    return `<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.4" opacity="0.9"/>`;
+  }).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${st}${tg}${trns}</svg>`;
+}
+
 export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock): string {
   const rs = rings.map((r, i) => {
     const sen = ringSenaryo(r, stock, cfg);
@@ -105,6 +156,12 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const bt = blockingTimeRing(rings, stock, cfg);
   const chSayi = rings.reduce((n, r) => n + ringChallenge(r, stock, cfg).length, 0);
   const kritik = rings.reduce((n, r) => n + ringChallenge(r, stock, cfg).filter((c) => c.seviye === "kritik").length, 0);
+
+  // Birleşik hat (loop → tek Line) → hız profili + Bildfahrplan grafikleri
+  const line: Line | null = rings.length ? loopToHat(rings, true, cfg).line : null;
+  const bfCount = Math.max(3, Math.min(6, olcek.maxTrenHedefHeadway || 4));
+  const hizFig = line ? `<div class="fig">${speedProfileSvg(line, stock)}<div class="cap">Şekil 2 — Hız-mesafe profili (worst-case tek tren): kırmızı kesikli = hız limiti zarfı, mürekkep = fiili hız.</div></div>` : "";
+  const bfFig = line ? `<div class="fig">${bildfahrplanSvg(line, stock, cfg, bfCount)}<div class="cap">Şekil 3 — Zaman-mesafe diyagramı (Bildfahrplan): ${bfCount} tren, ${cfg.headway}s aralık; kırmızı = gecikmeli sefer.</div></div>` : "";
 
   // ---- Kapak künye ----
   const kunye = [
@@ -290,6 +347,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <div class="banner"><span class="no">2</span>Durak Arası İşletim Hücreleri</div>
   <p>Hat, ${rings.length} durak-arası hücreye (ring) bölünmüştür. Her hücre kendi mesafe, makas, hemzemin ve tehlike (acil frenleme) şartlarını taşır; worst-case senaryo en uzun mesafe + tüm kısıtlarla, hedef headway ${cfg.headway} s ile değerlendirilir.</p>
   <div class="fig">${ringSemaSvg(rings)}<div class="cap">Şekil 1 — Hat şeması: istasyon zinciri, makas (⑂) ve hemzemin geçit dağılımı.</div></div>
+  ${hizFig}
   ${tbl(["No", "Durak Arası", "Mesafe (m)", "Worst (m)", "Makas", "Hemzemin", "Tehlike", "Worst Toplam", "Headway"], ringRows, { first: true })}
   <h3 class="sub">2.1 Ring Bazında Kısıt ve Risk (Challenge) Analizi</h3>
   ${ringDetay}
@@ -303,8 +361,9 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <div class="banner"><span class="no">4</span>Kapasite ve Blocking-Time Analizi</div>
   <p>En yüksek blocking-time'lı blok minimum tren aralığını (headway) belirler; UIC 406 doluluk oranı bu değerin hedef headway'e bölümüdür. Her bloğun rezerve süresi altı bileşenden oluşur.</p>
   ${kapasiteTbl}
+  ${bfFig}
   <h3 class="sub">4.1 Blocking-Time (Sperrzeitentreppe) Bileşen Dağılımı</h3>
-  <div class="fig">${blockingBarSvg(bt.bloklar, bt.kritikBlok)}<div class="cap">Şekil 2 — Blok başına blocking-time bileşenleri (kritik blok kırmızı etiketli).</div></div>
+  <div class="fig">${blockingBarSvg(bt.bloklar, bt.kritikBlok)}<div class="cap">Şekil 4 — Blok başına blocking-time bileşenleri (kritik blok kırmızı etiketli).</div></div>
   ${btTbl}
 
   <!-- 5. ONAY -->

@@ -135,6 +135,11 @@ export function LiveNetwork({
     const s = segAt(fp);
     return { x: s.x + side * GAP * s.nx, y: s.y + side * GAP * s.ny, ang: s.ang };
   };
+  // Şeridin dışına (dist px) ofsetli nokta — wayside sinyal fenerleri için
+  const offsetAt = (fp: number, dist: number, side: number) => {
+    const s = segAt(fp);
+    return { x: s.x + side * dist * s.nx, y: s.y + side * dist * s.ny };
+  };
   // Şerit polyline (köşe normalleriyle)
   const lanePoly = (side: number) =>
     basePts.map((p, i) => `${(p.x + side * GAP * vertexN[i].nx).toFixed(1)},${(p.y + side * GAP * vertexN[i].ny).toFixed(1)}`).join(" ");
@@ -155,6 +160,12 @@ export function LiveNetwork({
   const occDown = new Set<number>();
   for (const x of upNow) { const i = blokIndeks(x.fp); if (i >= 0) occUp.add(i); }
   for (const x of downNow) { const i = blokIndeks(x.fp); if (i >= 0) occDown.add(i); }
+
+  // Sinyal fener aspekti (sabit blok, 3 fener): korunan blok dolu → KIRMIZI;
+  // bir sonraki blok dolu → SARI (dikkat); ikisi de boş → YEŞİL.
+  const nb = blocks.length - 1;
+  const asp = (occ: Set<number>, ahead: number, after: number) =>
+    occ.has(ahead) ? "#C8102E" : occ.has(after) ? "#E0A400" : "#0E7C57";
 
   // Depo hattı (rota dışı kenarlar) statik
   const spur = network.edges
@@ -225,6 +236,17 @@ export function LiveNetwork({
           );
         })}
 
+        {/* Sinyal fenerleri (3 aspekt) — gidiş şeridi üstte, dönüş şeridi altta */}
+        {Array.from({ length: nb }).map((_, i) => {
+          const p = offsetAt(blocks[i], GAP + 6, UP_SIDE);
+          return <circle key={`su${i}`} cx={p.x} cy={p.y} r={3.1} fill={asp(occUp, i, i + 1)} stroke="#fff" strokeWidth={1} />;
+        })}
+        {Array.from({ length: nb }).map((_, k) => {
+          const i = k + 1;
+          const p = offsetAt(blocks[i], GAP + 6, DOWN_SIDE);
+          return <circle key={`sd${i}`} cx={p.x} cy={p.y} r={3.1} fill={asp(occDown, i - 1, i - 2)} stroke="#fff" strokeWidth={1} />;
+        })}
+
         {/* İstasyonlar (peron = iki şeridi kesen dik marka) */}
         {line.stations.map((st) => {
           const c = segAt(st.position);
@@ -273,7 +295,8 @@ export function LiveNetwork({
         <span className="font-mono text-xs" style={{ color: brand.muted }}>{saat(t)} / {saat(T)}</span>
       </div>
       <p className="text-xs" style={{ color: brand.muted }}>
-        <span style={{ color: brand.ink }}>▬</span> Üst şerit: Gidiş · <span style={{ color: DOWN }}>▬</span> Alt şerit: Dönüş · <span style={{ color: brand.red }}>▬</span> işgal edilen blok. Çift hat servisi iki ayrı şeritte canlı akıyor.
+        <span style={{ color: brand.ink }}>▬</span> Üst şerit: Gidiş · <span style={{ color: DOWN }}>▬</span> Alt şerit: Dönüş · <span style={{ color: brand.red }}>▬</span> işgal edilen blok.
+        {" "}Sinyal: <span style={{ color: "#0E7C57" }}>●</span> yeşil (serbest) · <span style={{ color: "#E0A400" }}>●</span> sarı (dikkat) · <span style={{ color: "#C8102E" }}>●</span> kırmızı (dur). Sabit blok 3-fener mantığı canlı akıyor.
       </p>
     </div>
   );
