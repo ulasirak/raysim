@@ -108,7 +108,8 @@ export function RingEditor() {
         </button>
       </div>
 
-      {/* Loop özeti + ölçeklenme */}
+      {/* Loop özeti + ölçeklenme — hat boşken gösterilecek bir ölçek yok */}
+      {rings.length > 0 && (
       <Panel baslik="Loop Özeti & Ölçeklenme" aciklama="Ringler zincirlenerek loop oluşturur. Worst-case (belge: 1500 m + makas + hemzemin) her hücrenin 240 s headway'e sığması gerekir. Tren sayısı arttıkça darboğaz en yavaş ringdir.">
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <select
@@ -161,6 +162,7 @@ export function RingEditor() {
           </div>
         </div>
       </Panel>
+      )}
 
       {/* Eşit şartlar — durak-çiftleri dengeleme önerisi */}
       {oneriler.length > 0 && (

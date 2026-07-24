@@ -177,8 +177,10 @@ export function Belgeler() {
           <MiniStat etiket="Challenge kaydı" deger={`${ozet.chSayi}`} alt={`${ozet.kritik} kritik`} vurgu={ozet.kritik > 0 ? brand.red : undefined} />
           <MiniStat etiket="Darboğaz" deger={ozet.darbogaz ? sure(ozet.darbogaz.worstToplam) : "—"} alt={ozet.darbogaz?.ad} vurgu={brand.red} />
         </div>
-        <div className="mt-2 text-xs" style={{ color: ozet.headwayUygun && ozet.dengeli ? CK.good : CK.amber }}>
-          {ozet.headwayUygun && ozet.dengeli ? "✓ Belge: tüm hücreler headway'e uygun ve dengeli." : "▲ Belge, headway ihlali / dengesizlik uyarılarını içerecek."}
+        <div className="mt-2 text-xs" style={{ color: rings.length === 0 ? brand.muted : ozet.headwayUygun && ozet.dengeli ? CK.good : CK.amber }}>
+          {rings.length === 0
+            ? "Hat kurulduğunda burada headway/denge değerlendirmesi görünür."
+            : ozet.headwayUygun && ozet.dengeli ? "✓ Belge: tüm hücreler headway'e uygun ve dengeli." : "▲ Belge, headway ihlali / dengesizlik uyarılarını içerecek."}
         </div>
       </Panel>
 

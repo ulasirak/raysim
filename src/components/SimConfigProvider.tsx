@@ -49,6 +49,8 @@ interface Ctx {
   yonetici: boolean;
   demoMu: boolean;
   paylasimGorunumu: boolean;
+  /** Paylaşım (salt-okunur) görünümünden çıkıp kendi hattına döner. */
+  paylasimdanCik: () => void;
   durum: KayitDurumu;
   hataMetni: string | null;
   projeler: ProjeOzet[];
@@ -136,6 +138,20 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
     imzaRef.current = JSON.stringify(v);
   }, []);
 
+  // Paylaşım görünümünden çıkış. ADRESTEKİ `?proje=` DE SİLİNİR: aksi halde
+  // istemci-içi gezinme sağlayıcıyı yeniden kurmadığı için kullanıcı salt-okunur
+  // görünümde kilitli kalıyordu (Link ile "/" demek yetmiyor).
+  const paylasimdanCik = useCallback(() => {
+    setPaylasimId(null);
+    try {
+      const u = new URL(window.location.href);
+      if (u.searchParams.has("proje")) {
+        u.searchParams.delete("proje");
+        window.history.replaceState(null, "", u.pathname + u.search + u.hash);
+      }
+    } catch { /* sessiz */ }
+  }, []);
+
   // 1) Paylaşım linki (?proje=<id>) — yalnız istemcide okunur (hydration güvenli).
   useEffect(() => {
     try {
@@ -157,6 +173,12 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
         if (paylasimId) {
           const p = await projeGetir(paylasimId);
           if (iptal) return;
+          // Kendi projesinin linkini açan SAHİP misafir sayılmaz: salt-okunur
+          // görünümden çıkılır ve normal (yazılabilir) akış devreye girer.
+          if (user && p.sahipUid === user.uid) {
+            paylasimdanCik();
+            return;
+          }
           veriUygula(p.veri);
           setAktifAd(p.ad);
           setPaylasimAcik(p.paylasimAcik);
@@ -227,7 +249,7 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
 
     calistir();
     return () => { iptal = true; };
-  }, [authHazir, user, yonetici, paylasimId, veriUygula]);
+  }, [authHazir, user, yonetici, paylasimId, veriUygula, paylasimdanCik]);
 
   // 3) Otomatik kayıt (geciktirmeli) — yalnız yazılabilir durumda ve gerçek değişimde
   useEffect(() => {
@@ -334,12 +356,12 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
 
   const deger = useMemo<Ctx>(() => ({
     cfg, patch, sifirla, rings, setRings, sifirlaRings, meta, patchMeta,
-    yazilabilir, yonetici, demoMu, paylasimGorunumu, durum, hataMetni,
+    yazilabilir, yonetici, demoMu, paylasimGorunumu, paylasimdanCik, durum, hataMetni,
     projeler, aktifId, aktifAd, paylasimAcik,
     projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle, paylasimDegistir,
   }), [
     cfg, patch, sifirla, rings, setRings, sifirlaRings, meta, patchMeta,
-    yazilabilir, yonetici, demoMu, paylasimGorunumu, durum, hataMetni,
+    yazilabilir, yonetici, demoMu, paylasimGorunumu, paylasimdanCik, durum, hataMetni,
     projeler, aktifId, aktifAd, paylasimAcik,
     projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle, paylasimDegistir,
   ]);
@@ -383,6 +405,7 @@ export function useHesap(): Omit<Ctx, "cfg" | "patch" | "sifirla" | "rings" | "s
   const c = useCtx();
   return {
     yazilabilir: c.yazilabilir, yonetici: c.yonetici, demoMu: c.demoMu, paylasimGorunumu: c.paylasimGorunumu,
+    paylasimdanCik: c.paylasimdanCik,
     durum: c.durum, hataMetni: c.hataMetni, projeler: c.projeler, aktifId: c.aktifId,
     aktifAd: c.aktifAd, paylasimAcik: c.paylasimAcik, projeSec: c.projeSec,
     projeYeni: c.projeYeni, projeSilmeIstegi: c.projeSilmeIstegi,

@@ -5,7 +5,6 @@
 // olduğunu ve kaydetme durumunu gösterir. Yedi modülün tamamı bu çubuğun
 // gösterdiği tek hatta hizmet eder.
 
-import Link from "next/link";
 import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { useHesap } from "@/components/SimConfigProvider";
@@ -15,7 +14,7 @@ import { CK } from "@/lib/anaray/chartkit";
 export function HesapCubugu() {
   const { user, hazir, yapilandirildi, cikisYap } = useAuth();
   const {
-    demoMu, paylasimGorunumu, durum, hataMetni, projeler, aktifId, aktifAd,
+    demoMu, paylasimGorunumu, paylasimdanCik, durum, hataMetni, projeler, aktifId, aktifAd,
     paylasimAcik, projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle, paylasimDegistir,
   } = useHesap();
 
@@ -39,9 +38,12 @@ export function HesapCubugu() {
         <span style={{ color: brand.ink }}>
           👁 <b>Salt-okunur paylaşım görünümü</b> — “{aktifAd}”. Değişiklik yapılamaz.
         </span>
-        <Link href="/" className="ml-auto rounded px-2.5 py-1 text-xs font-medium" style={{ background: brand.ink, color: "#fff" }}>
-          Kendi hattıma dön
-        </Link>
+        {/* Buton, adresteki ?proje= parametresini de siler — yalnız "/" linki
+            vermek görünümden ÇIKARMIYORDU (sağlayıcı yeniden kurulmuyor). */}
+        <button onClick={paylasimdanCik} className="ml-auto rounded px-2.5 py-1 text-xs font-medium"
+          style={{ background: brand.ink, color: "#fff" }}>
+          {user ? "Kendi hattıma dön" : "Giriş yap"}
+        </button>
       </Serit>
     );
   }
