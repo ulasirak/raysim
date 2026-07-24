@@ -588,31 +588,52 @@ export function ornekSeed(): { rings: DurakArasiRing[]; loop: Loop } {
 }
 
 // ————————————————————————————————————————————————
-// Konya Tramvay 2. Etap — Alaaddin ↔ Adliye kesimi (TASLAK)
+// Konya Tramvay T2 — Alaaddin → Adliye (Tasarım El Kitabı MAZ-VA-AKS-001 v6.0)
 // ————————————————————————————————————————————————
-// ⚠️ TASLAK/BAŞLANGIÇ verisi: durak dizisi, mesafeler ve makas/kavşak konumları
-// YAKLAŞIKTIR; saha/idare verisiyle doğrulanacaktır. Kesin değer gelince buradaki
-// sayılar Ringler editöründen ya da gerçek veri içe-aktarımıyla düzeltilir.
+// Kaynak: KONYA STADYUM–ŞEHİR HASTANESİ 2. ETAP Sinyalizasyon Tasarım El Kitabı
+// (Aslan Sinyalizasyon / Müşavir Emay / Yüklenici Uğursal-ONH) + T2 hat durak
+// dizisi. Duraklar ve makas bölgeleri GERÇEK (el kitabı senaryolarından):
+//   • 1. Makas Bölgesi (LOC1) = Alaaddin — karşılaşmalı (AD/AB/CD/CB, her geçiş TCC)
+//   • 2. Makas Bölgesi (LOC2) = Mevlana — headway (karma trafik notu)
+//   • MKM sonrası S-makas (izole U-dönüş) · Adliye S-makas (izole çift-yön U-dönüş)
+// ⚠️ Durak-arası MESAFELER yaklaşık koordinattan türetilmiştir (as-built cetvelle
+//    düzeltilecek). Hızlar/headway/süreler el kitabı kabulleridir (config.ts).
 export function konya2EtapSeed(): { rings: DurakArasiRing[]; loop: Loop } {
   _sayac = 0;
+  const w = (u: number) => Math.round(u * 1.1); // worst-case ≈ +%10 (gerçek geometri)
   const rings: DurakArasiRing[] = [
-    // Alaaddin: hattın merkez kavşağı — makas bölgesi (loop/karşılaşmalı)
-    seedRing("Alaaddin", "Zafer", 700, {
-      worstUzunluk: 850,
-      makaslar: [{ ...yeniMakas("karsilasmali", 45), ad: "Alaaddin Kavşağı — makas bölgesi (TASLAK)" }],
-      hemzeminler: [{ ...yeniHemzemin("karayolu", 350), ad: "Alaaddin kavşak geçidi (TASLAK)" }],
+    // Alaaddin → Hükümet: hattın merkez kavşağı (1. Makas Bölgesi, karşılaşmalı)
+    // El kitabı notu: Hükümet–Alaaddin arası ~15 s'de aşılır (kısa aralık).
+    seedRing("Alaaddin", "Hükümet", 360, {
+      worstUzunluk: w(360),
+      makaslar: [{ ...yeniMakas("karsilasmali", 45), ad: "1. Makas Bölgesi — Alaaddin (karşılaşmalı, TCC)" }],
+      hemzeminler: [{ ...yeniHemzemin("karayolu", 210), ad: "Alaaddin–Hükümet karayolu geçidi (karma trafik)" }],
     }),
-    seedRing("Zafer", "Rampalı Çarşı", 600, {
-      makaslar: [{ ...yeniMakas("headway", 560), ad: "Zafer makas bölgesi — headway (TASLAK)" }],
-      hemzeminler: [{ ...yeniHemzemin("yaya", 300), ad: "Zafer yaya geçidi (TASLAK)" }],
+    // Hükümet → Mevlana: 2. Makas Bölgesi (headway). Karma trafik (yaya/karayolu).
+    seedRing("Hükümet", "Mevlana", 660, {
+      worstUzunluk: w(660),
+      makaslar: [{ ...yeniMakas("headway", 610), ad: "2. Makas Bölgesi — Mevlana (headway)" }],
+      hemzeminler: [{ ...yeniHemzemin("yaya", 300), ad: "Mevlana yaya geçidi (karma trafik)" }],
     }),
-    // Adliye: kesim sonu — U-dönüş makas bölgesi
-    seedRing("Rampalı Çarşı", "Adliye", 650, {
-      worstUzunluk: 800,
-      makaslar: [{ ...yeniMakas("udonus", 605), ad: "Adliye U-dönüş makas bölgesi (TASLAK)" }],
-      hemzeminler: [{ ...yeniHemzemin("karayolu", 320), ad: "Adliye kavşak geçidi (TASLAK)" }],
+    // Mevlana → Mevlana Kültür Merkezi
+    seedRing("Mevlana", "Mevlana Kültür Merkezi", 390, {
+      worstUzunluk: w(390),
+      hemzeminler: [{ ...yeniHemzemin("karayolu", 200), ad: "MKM karayolu geçidi" }],
+    }),
+    // MKM → Fetih Caddesi: MKM sonrası S-makas bölgesi (izole, karma trafiksiz)
+    seedRing("Mevlana Kültür Merkezi", "Fetih Caddesi", 540, {
+      worstUzunluk: w(540),
+      makaslar: [{ ...yeniMakas("udonus", 70), ad: "MKM S-Makas Bölgesi (izole U-dönüş)" }],
+    }),
+    seedRing("Fetih Caddesi", "Spor ve Kongre Merkezi", 636, { worstUzunluk: w(636) }),
+    seedRing("Spor ve Kongre Merkezi", "Karşehir Caddesi", 636, { worstUzunluk: w(636) }),
+    // Karşehir Caddesi → Adliye: Adliye S-makas bölgesi (izole, çift-yön geri dönüş)
+    seedRing("Karşehir Caddesi", "Adliye", 706, {
+      worstUzunluk: w(706),
+      makaslar: [{ ...yeniMakas("udonus", 660), ad: "Adliye S-Makas Bölgesi (izole çift-yön U-dönüş)" }],
+      hemzeminler: [{ ...yeniHemzemin("karayolu", 330), ad: "Adliye karayolu geçidi" }],
     }),
   ];
-  const loop: Loop = { id: "loop_konya2", ad: "Konya 2. Etap — Alaaddin ↔ Adliye (TASLAK)", ringIds: rings.map((r) => r.id), kapali: false };
+  const loop: Loop = { id: "loop_konya_t2", ad: "Konya T2 — Alaaddin → Adliye", ringIds: rings.map((r) => r.id), kapali: false };
   return { rings, loop };
 }

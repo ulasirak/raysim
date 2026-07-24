@@ -367,59 +367,26 @@ export function gtfsToRings(stops: GeoStop[], shapes: GeoShape[]): DurakArasiRin
 }
 
 // ————————————————————————————————————————————————
-// ÖRNEK/DEMO veri — TAMAMEN JENERİK, gerçek proje DEĞİLDİR (yalnız arayüzü göstermek
-// için). Gerçek proje verisi ASLA koda gömülmez; yalnız çalışma anında yüklenen
-// dosyadan gelir ve bu örneği ezer. İstasyon adları ve konumlar kurgusaldır.
+// Konya Tramvay T2 — Alaaddin → Adliye (durak dizisi GERÇEK; koordinatlar YAKLAŞIK).
+// Kaynak: Tasarım El Kitabı MAZ-VA-AKS-001 + T2 hat durakları. Koordinat/yükseklik
+// as-built/GTFS ile düzeltilecek. "Hat üret" → ring modeli (makas/geçit el kitabından).
 // ————————————————————————————————————————————————
 
 export const ornekGtfsStops = `stop_id,stop_name,stop_lat,stop_lon,stop_elevation
-1,Merkez,37.87050,32.49250,1016
-2,İstasyon A,37.87360,32.48540,1019
-3,İstasyon B,37.87720,32.47880,1023
-4,İstasyon C,37.88140,32.47330,1028
-5,İstasyon D,37.88620,32.46940,1034
-6,İstasyon E,37.89150,32.46720,1039
-7,İstasyon F,37.89700,32.46680,1041
-8,İstasyon G,37.90260,32.46840,1038
-9,İstasyon H,37.90820,32.47150,1033
-10,Terminal,37.91330,32.47620,1029`;
+1,Alaaddin,37.87200,32.49350,1020
+2,Hükümet,37.87030,32.49700,1019
+3,Mevlana,37.87090,32.50450,1018
+4,Mevlana Kültür Merkezi,37.87300,32.50800,1019
+5,Fetih Caddesi,37.87700,32.51150,1021
+6,Spor ve Kongre Merkezi,37.88200,32.51500,1023
+7,Karşehir Caddesi,37.88700,32.51850,1025
+8,Adliye,37.89250,32.52250,1027`;
 
-// Duraklardan geçen YOĞUN shape: çoğu düz interpolasyon, bir segmentte gerçekçi
-// kurp (chicane) — hız-kısıtı tahminini göstermek için (~65 m yarıçap → ~25 km/h).
-// Komşu-açı makas eşiğinin altında kaldığından yanlış makas üretmez.
+// Güzergah shape: gerçek durakların poligonu (as-built kurp geometrisi gelince
+// sıklaştırılacak — o zaman kurp→hız tahmini de devreye girer).
 export const ornekGtfsShapes = (() => {
   const s = parseStops(ornekGtfsStops);
-  const lat0 = s[0].lat, lon0 = s[0].lon;
-  const kx = Math.cos((lat0 * Math.PI) / 180) * 111320, ky = 111320;
-  const toXY = (p: { lat: number; lon: number }) => ({ x: (p.lon - lon0) * kx, y: (p.lat - lat0) * ky });
-  const XY = s.map(toXY);
-  const out: { x: number; y: number }[] = [];
-  const push = (x: number, y: number) => out.push({ x, y });
-  const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(b.x - a.x, b.y - a.y);
-  const straight = (A: { x: number; y: number }, B: { x: number; y: number }, step: number) => {
-    const d = dist(A, B), n = Math.max(1, Math.round(d / step));
-    for (let k = 0; k < n; k++) { const t = k / n; push(A.x + (B.x - A.x) * t, A.y + (B.y - A.y) * t); }
-  };
-  const CURVE_I = 5; // örnek: bir durak-arasında gerçekçi kurp (hız tahminini göstermek için)
-  for (let i = 0; i < XY.length - 1; i++) {
-    const A = XY[i], B = XY[i + 1];
-    if (i === CURVE_I) {
-      const len = dist(A, B);
-      const ux = (B.x - A.x) / len, uy = (B.y - A.y) / len, nx = -uy, ny = ux;
-      const chLen = Math.min(240, len * 0.6), c0 = (len - chLen) / 2, amp = 34, N = 44;
-      straight(A, { x: A.x + ux * c0, y: A.y + uy * c0 }, 60);
-      for (let k = 0; k <= N; k++) {
-        // yükselen-kosinüs sapma: uçlarda eğim 0 → pürüzsüz birleşme (kink yok)
-        const t = k / N, along = c0 + t * chLen, off = (amp / 2) * (1 - Math.cos(2 * Math.PI * t));
-        push(A.x + ux * along + nx * off, A.y + uy * along + ny * off);
-      }
-      straight({ x: A.x + ux * (c0 + chLen), y: A.y + uy * (c0 + chLen) }, B, 60);
-    } else {
-      straight(A, B, 80);
-    }
-  }
-  push(XY[XY.length - 1].x, XY[XY.length - 1].y);
   const rows = ["shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence"];
-  out.forEach((p, i) => rows.push(`H1,${(lat0 + p.y / ky).toFixed(6)},${(lon0 + p.x / kx).toFixed(6)},${i}`));
+  s.forEach((p, i) => rows.push(`H1,${p.lat.toFixed(6)},${p.lon.toFixed(6)},${i}`));
   return rows.join("\n");
 })();
