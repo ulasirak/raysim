@@ -55,24 +55,43 @@ function aktifModul(pathname: string): Modul {
 function useAktifBolum(aktifMi: boolean): BolumSlug | null {
   const [slug, setSlug] = useState<BolumSlug | null>(null);
   useEffect(() => {
-    // Ana sayfa dışında gözlemci kurulmaz; slug kullanılmadığı için sıfırlamaya
-    // gerek yok (ana sayfaya dönünce gözlemci yeniden kurulup günceller).
+    // Ana sayfa dışında dinleyici kurulmaz; slug kullanılmadığı için sıfırlamaya
+    // gerek yok (ana sayfaya dönünce yeniden kurulup günceller).
     if (!aktifMi) return;
-    const gorunur = new Map<string, number>();
-    const gozlemci = new IntersectionObserver(
-      (girisler) => {
-        for (const g of girisler) gorunur.set(g.target.id, g.isIntersecting ? g.intersectionRatio : 0);
-        // Görünürlerden BOLUM_SLUG sırasında en üsttekini seç (kararlı).
-        let secili: BolumSlug | null = null;
-        for (const s of BOLUM_SLUG) if ((gorunur.get(s) ?? 0) > 0) { secili = s; break; }
-        if (secili) setSlug(secili);
-      },
-      // Sticky nav'ın hemen altındaki şerit gözlemlenir.
-      { rootMargin: "-140px 0px -55% 0px", threshold: [0, 0.01] },
-    );
-    const bolumler = BOLUM_SLUG.map((s) => document.getElementById(s)).filter((el): el is HTMLElement => !!el);
-    bolumler.forEach((el) => gozlemci.observe(el));
-    return () => gozlemci.disconnect();
+
+    // Scroll-spy'ı kaydırma konumundan DETERMİNİSTİK hesaplıyoruz (IntersectionObserver
+    // yerine): navigasyon çizgisini (nav alt kenarı) geçen SON bölüm aktiftir; böylece
+    // ekrandan büyük bölümler ve sayfa sonundaki son bölüm de doğru vurgulanır.
+    const NAV_ESIK = 150; // sticky nav + pay
+    let bekliyor = false;
+
+    const hesapla = () => {
+      bekliyor = false;
+      let secili: BolumSlug = BOLUM_SLUG[0];
+      for (const s of BOLUM_SLUG) {
+        const el = document.getElementById(s);
+        if (el && el.getBoundingClientRect().top <= NAV_ESIK) secili = s;
+      }
+      // Sayfa dibine gelindiyse (son bölüm çizgiye ulaşamayabilir) son bölümü seç.
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2) {
+        secili = BOLUM_SLUG[BOLUM_SLUG.length - 1];
+      }
+      setSlug((onceki) => (onceki === secili ? onceki : secili));
+    };
+
+    const tetikle = () => {
+      if (bekliyor) return;
+      bekliyor = true;
+      requestAnimationFrame(hesapla);
+    };
+
+    hesapla(); // ilk konum
+    window.addEventListener("scroll", tetikle, { passive: true });
+    window.addEventListener("resize", tetikle, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", tetikle);
+      window.removeEventListener("resize", tetikle);
+    };
   }, [aktifMi]);
   return slug;
 }
