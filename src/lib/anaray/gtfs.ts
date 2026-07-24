@@ -367,7 +367,9 @@ export function gtfsToRings(stops: GeoStop[], shapes: GeoShape[]): DurakArasiRin
 }
 
 // ————————————————————————————————————————————————
-// DEMO veri (yaklaşık Konya koordinatları — gerçek GTFS import'unu göstermek için)
+// ÖRNEK/DEMO veri — TAMAMEN JENERİK, gerçek proje DEĞİLDİR (yalnız arayüzü göstermek
+// için). Gerçek proje verisi ASLA koda gömülmez; yalnız çalışma anında yüklenen
+// dosyadan gelir ve bu örneği ezer. İstasyon adları ve konumlar kurgusaldır.
 // ————————————————————————————————————————————————
 
 export const ornekGtfsStops = `stop_id,stop_name,stop_lat,stop_lon,stop_elevation
@@ -376,10 +378,10 @@ export const ornekGtfsStops = `stop_id,stop_name,stop_lat,stop_lon,stop_elevatio
 3,İstasyon B,37.87720,32.47880,1023
 4,İstasyon C,37.88140,32.47330,1028
 5,İstasyon D,37.88620,32.46940,1034
-6,Üniversite,37.89150,32.46720,1039
-7,İstasyon E,37.89700,32.46680,1041
-8,İstasyon F,37.90260,32.46840,1038
-9,Şehir Hastanesi,37.90820,32.47150,1033
+6,İstasyon E,37.89150,32.46720,1039
+7,İstasyon F,37.89700,32.46680,1041
+8,İstasyon G,37.90260,32.46840,1038
+9,İstasyon H,37.90820,32.47150,1033
 10,Terminal,37.91330,32.47620,1029`;
 
 // Duraklardan geçen YOĞUN shape: çoğu düz interpolasyon, bir segmentte gerçekçi
@@ -398,7 +400,7 @@ export const ornekGtfsShapes = (() => {
     const d = dist(A, B), n = Math.max(1, Math.round(d / step));
     for (let k = 0; k < n; k++) { const t = k / n; push(A.x + (B.x - A.x) * t, A.y + (B.y - A.y) * t); }
   };
-  const CURVE_I = 5; // Üniversite → İstasyon E segmentinde kurp
+  const CURVE_I = 5; // örnek: bir durak-arasında gerçekçi kurp (hız tahminini göstermek için)
   for (let i = 0; i < XY.length - 1; i++) {
     const A = XY[i], B = XY[i + 1];
     if (i === CURVE_I) {

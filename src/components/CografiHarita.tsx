@@ -26,7 +26,7 @@ function niceMeters(target: number): number {
 export function CografiHarita() {
   const [stops, setStops] = useState<GeoStop[]>(() => parseStops(ornekGtfsStops));
   const [shapes, setShapes] = useState<GeoShape[]>(() => parseShapes(ornekGtfsShapes));
-  const [kaynak, setKaynak] = useState<string>("Demo güzergah (yaklaşık Konya koordinatları)");
+  const [kaynak, setKaynak] = useState<string>("ÖRNEK HAT — gerçek proje değildir");
   const [hata, setHata] = useState<string>("");
   const [uretildi, setUretildi] = useState<{ rings: number; makas: number; hemzemin: number; hiz: number; minVmax: number | null; egim: number; maxEgim: number } | null>(null);
   const [tahmin, setTahmin] = useState(true);
@@ -82,7 +82,7 @@ export function CografiHarita() {
   const ornekYukle = () => {
     setStops(parseStops(ornekGtfsStops));
     setShapes(parseShapes(ornekGtfsShapes));
-    setKaynak("Demo güzergah (yaklaşık Konya koordinatları)");
+    setKaynak("ÖRNEK HAT — gerçek proje değildir");
     setHata("");
   };
 
