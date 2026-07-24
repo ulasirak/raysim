@@ -57,12 +57,13 @@ export function HesapCubugu() {
   return (
     <div className="border-b" style={{ background: brand.surface, borderColor: brand.border }}>
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-6 py-2 text-xs">
-        <span className="field-label" style={{ color: brand.faint }}>AKTİF HAT</span>
+        <span className="field-label" style={{ color: brand.faint }} title="Şu an üzerinde çalıştığınız hat — yedi modülün tamamı bu hattı kullanır">AKTİF HAT</span>
 
         {/* Proje seçici */}
         <select
           value={aktifId ?? ""}
           onChange={(e) => projeSec(e.target.value)}
+          title="Bu hesaptaki hatlar. Seçtiğiniz hat anında yüklenir ve Sefer/Ringler/Anklaşman/Tam Hat/Sistem/Belgeler/Coğrafi modüllerinin tamamı o hatta çalışır."
           className="rounded border px-2 py-1 text-xs"
           style={{ borderColor: brand.border, color: brand.ink, maxWidth: 260 }}
         >
@@ -71,7 +72,7 @@ export function HesapCubugu() {
 
         {/* Ad düzenleme */}
         {adTaslak === null ? (
-          <button onClick={() => setAdTaslak(aktifAd)} title="Proje adını değiştir"
+          <button onClick={() => setAdTaslak(aktifAd)} title="Aktif hattın adını değiştir (yalnız ad — veriler aynı kalır)"
             className="rounded px-1.5 py-1 transition hover:opacity-70" style={{ color: brand.faint }}>✎</button>
         ) : (
           <>
@@ -93,18 +94,20 @@ export function HesapCubugu() {
               className="rounded px-2 py-1 font-medium disabled:opacity-50" style={{ background: brand.ink, color: "#fff" }}>Oluştur</button>
           </>
         ) : (
-          <button onClick={() => setYeniAcik(true)} className="rounded border px-2 py-1 font-medium transition hover:bg-slate-50"
+          <button onClick={() => setYeniAcik(true)} title="Sıfırdan BOŞ yeni bir hat açar (mevcut hat kopyalanmaz); listeye eklenir ve aktif olur"
+            className="rounded border px-2 py-1 font-medium transition hover:bg-slate-50"
             style={{ borderColor: brand.border, color: brand.inkSoft }}>＋ Yeni hat</button>
         )}
 
         {projeler.length > 1 && aktifId && (
           <button
             onClick={() => { if (confirm(`“${aktifAd}” kalıcı olarak silinsin mi?`)) sar(projeSilmeIstegi(aktifId), "sil"); }}
-            title="Bu hattı sil" className="rounded px-1.5 py-1 transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
+            title="Aktif hattı kalıcı olarak siler (geri alınamaz). Son hat silinemez." className="rounded px-1.5 py-1 transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
         )}
 
         {/* Kaydetme durumu */}
-        <span className="ml-1" style={{ color: durum === "hata" ? brand.red : brand.faint }}>
+        <span className="ml-1" title="Otomatik kayıt: yaptığınız her değişiklik 1,2 saniye sonra hesabınıza kaydedilir — ayrıca kaydet düğmesi yoktur"
+          style={{ color: durum === "hata" ? brand.red : brand.faint }}>
           {durum === "yukleniyor" && "⟳ yükleniyor…"}
           {durum === "kaydediliyor" && "⟳ kaydediliyor…"}
           {durum === "kaydedildi" && <span style={{ color: CK.good }}>✓ kaydedildi</span>}
@@ -114,20 +117,22 @@ export function HesapCubugu() {
 
         {/* Sağ blok: paylaşım + hesap */}
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-1.5" title="Açıkken linki bilen herkes bu hattı yalnız GÖRÜNTÜLER">
+          <label className="flex items-center gap-1.5" title="Açıkken bu hattın linkini bilen herkes (giriş yapmadan) hattı YALNIZ GÖRÜNTÜLER — değiştiremez. Kapatınca erişim anında kesilir.">
             <input type="checkbox" checked={paylasimAcik} onChange={(e) => sar(paylasimDegistir(e.target.checked), "paylasim")} />
             <span style={{ color: brand.inkSoft }}>Paylaşım linki</span>
           </label>
           {paylasimAcik && (
             <button
               onClick={() => { navigator.clipboard?.writeText(paylasimLinki); setKopyalandi(true); setTimeout(() => setKopyalandi(false), 2000); }}
+              title="Salt-okunur görüntüleme linkini panoya kopyalar (müşteriye/idareye göstermek için)"
               className="rounded border px-2 py-1 font-medium" style={{ borderColor: brand.border, color: brand.ink }}>
               {kopyalandi ? "✓ kopyalandı" : "🔗 linki kopyala"}
             </button>
           )}
           <span style={{ color: brand.faint }}>|</span>
-          <span style={{ color: brand.muted }}>{user?.email}</span>
-          <button onClick={() => cikisYap()} className="rounded border px-2 py-1 font-medium transition hover:bg-slate-50"
+          <span style={{ color: brand.muted }} title="Bu hatların sahibi olan hesap">{user?.email}</span>
+          <button onClick={() => cikisYap()} title="Oturumu kapatır; hatlarınız hesabınızda kayıtlı kalır"
+            className="rounded border px-2 py-1 font-medium transition hover:bg-slate-50"
             style={{ borderColor: brand.border, color: brand.inkSoft }}>Çıkış</button>
         </div>
       </div>
