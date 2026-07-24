@@ -13,7 +13,7 @@
 // Firestore doküman yapısı sabit kalır, iç içe dizi kısıtları hiç devreye girmez.
 
 import {
-  collection, addDoc, getDocs, getDoc, doc, updateDoc, deleteDoc,
+  collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc,
   serverTimestamp, query, where, type Timestamp,
 } from "firebase/firestore";
 import { getDb } from "./firebase";
@@ -21,6 +21,22 @@ import type { SimConfig, ProjeMeta } from "./anaray/config";
 import type { DurakArasiRing } from "./anaray/ring";
 
 const COL = "projeler";
+
+/**
+ * Hesap başına açılabilecek en fazla hat. Yönetici muaftır.
+ * Sınır İSTEMCİDE uygulanır: Firestore kuralları doküman SAYAMAZ, dolayısıyla
+ * bu bir maliyet/kötüye kullanım freni; güvenlik sınırı değildir. Gerçek
+ * izolasyonu kurallar sağlar (bkz. firestore.rules).
+ */
+export const PROJE_KOTASI = 10;
+
+/** Tek projenin JSON boyutu üst sınırı — firestore.rules'daki değerle AYNI olmalı. */
+export const VERI_BAYT_SINIRI = 900_000;
+
+/** `veri` alanının Firestore'a gidecek gerçek boyutu (bayt). */
+export function veriBoyutu(json: string): number {
+  return new TextEncoder().encode(json).length;
+}
 
 /** Bir projenin taşıdığı tüm simülasyon durumu. */
 export interface ProjeVerisi {
@@ -80,6 +96,34 @@ export async function projeOlustur(uid: string, ad: string, veri: ProjeVerisi): 
     guncelleme: serverTimestamp(),
   });
   return ref.id;
+}
+
+/**
+ * İLK proje — doküman kimliği uid'den TÜRETİLİR (`ilk_<uid>`), rastgele değil.
+ *
+ * Neden: kayıt olduktan sonra sayfa yeniden yükleniyor; yeni JS bağlamında
+ * bellekteki "kurulum sürüyor" kilidi sıfırlanıyor, liste hâlâ boş görünüyor ve
+ * hesaba İKİNCİ bir proje açılıyordu. Sabit kimlikle iki eşzamanlı deneme aynı
+ * dokümanda birleşir.
+ *
+ * ÖNCE OKUMA YAPILMAZ — bilerek: kurallarda var olmayan bir dokümanın `get`i
+ * `resource == null` olduğu için "permission-denied" ATAR, "yok" dönmez; varlık
+ * kontrolü ilk girişi tamamen kırardı. Ezme riski yok, çünkü bu işlev yalnız
+ * sunucu "bu hesapta hiç proje yok" dedikten sonra çağrılır ve eşzamanlı iki
+ * çağrı da AYNI tohum veriyi yazar.
+ */
+export async function ilkProjeOlustur(uid: string, ad: string, veri: ProjeVerisi): Promise<string> {
+  const id = `ilk_${uid}`;
+  const ref = doc(db(), COL, id);
+  await setDoc(ref, {
+    sahipUid: uid,
+    ad,
+    veri: JSON.stringify(veri),
+    paylasim: { acik: false },
+    olusturma: serverTimestamp(),
+    guncelleme: serverTimestamp(),
+  });
+  return id;
 }
 
 export interface ProjeKaydi extends ProjeOzet {

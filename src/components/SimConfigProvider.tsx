@@ -22,8 +22,9 @@ import { konya2EtapSeed, type DurakArasiRing } from "@/lib/anaray/ring";
 import { yoneticiMi } from "@/lib/anaray/yetki";
 import { useAuth } from "@/components/AuthProvider";
 import {
-  projeleriListele, projeOlustur, projeGetir, projeKaydet, projeSil,
-  projeAdiDegistir, paylasimAyarla, type ProjeOzet, type ProjeVerisi,
+  projeleriListele, projeOlustur, ilkProjeOlustur, projeGetir, projeKaydet, projeSil,
+  projeAdiDegistir, paylasimAyarla, veriBoyutu,
+  PROJE_KOTASI, VERI_BAYT_SINIRI, type ProjeOzet, type ProjeVerisi,
 } from "@/lib/projeler";
 
 // Eski (tek kullanıcılı) yerel taslak anahtarları — yalnız İLK projeye taşımak için okunur.
@@ -57,6 +58,10 @@ interface Ctx {
   aktifId: string | null;
   aktifAd: string;
   paylasimAcik: boolean;
+  /** Hesap başına hat sınırı; `null` = sınırsız (yönetici). */
+  kota: number | null;
+  /** Kota dolduysa `projeYeni` reddeder — arayüz düğmeyi kapatmalı. */
+  kotaDoldu: boolean;
   projeSec: (id: string) => void;
   projeYeni: (ad: string) => Promise<void>;
   projeSilmeIstegi: (id: string) => Promise<void>;
@@ -70,9 +75,11 @@ function vitrinRings(): DurakArasiRing[] {
   return konya2EtapSeed().rings;
 }
 
-// İlk giriş kurulumu kilidi (uid → süren oluşturma sözü). React geliştirme
-// modunda effect'ler iki kez koşar; kilit olmadan aynı kullanıcıya İKİ proje
-// açılırdı. Modül düzeyinde tutulur ki yeniden bağlanmalarda da paylaşılsın.
+// İlk giriş kurulumu kilidi (uid → süren oluşturma sözü). Aynı sayfa yüklemesi
+// içinde effect iki kez koşarsa ikinci çağrı aynı sözü bekler.
+// DİKKAT: bu kilit yalnız TEK bir JS bağlamını korur — kayıt sonrası sayfa
+// yenilenince sıfırlanır. Asıl güvence `ilkProjeOlustur`un uid'den türettiği
+// SABİT doküman kimliğidir; iki ayrı bağlam bile aynı dokümanda birleşir.
 const ilkKurulum = new Map<string, Promise<string>>();
 
 /** Tarayıcıda kalmış tek kullanıcılı taslak (varsa) — ilk projeye taşınır. */
@@ -127,6 +134,14 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
   const imzaRef = useRef<string>("");
   const zamanlayiciRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // BAYATLIK JETONU. Her yükleme isteği (ilk açılış effect'i VE hat değiştirme)
+  // bir numara alır; asenkron sonuç döndüğünde numara hâlâ güncel değilse
+  // yazılmaz. Olmadığında hızlı hat değiştirmede A'nın verisi B aktifken
+  // uygulanıyor, ardından otomatik kayıt A'yı B'nin ÜSTÜNE yazıyordu.
+  const yuklemeRef = useRef(0);
+  const yeniJeton = () => ++yuklemeRef.current;
+  const guncelMi = (jeton: number) => yuklemeRef.current === jeton;
+
   const paylasimGorunumu = paylasimId !== null;
   const demoMu = !paylasimGorunumu && !user;
   const yazilabilir = Boolean(user) && !paylasimGorunumu && aktifId !== null;
@@ -165,6 +180,9 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!authHazir) return;
     let iptal = false;
+    const jeton = yeniJeton();
+    // Effect iptal edilmiş VEYA arada daha yeni bir yükleme başlamışsa yazma.
+    const bayat = () => iptal || !guncelMi(jeton);
 
     const calistir = async () => {
       setDurum("yukleniyor");
@@ -172,7 +190,7 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
       try {
         if (paylasimId) {
           const p = await projeGetir(paylasimId);
-          if (iptal) return;
+          if (bayat()) return;
           // Kendi projesinin linkini açan SAHİP misafir sayılmaz: salt-okunur
           // görünümden çıkılır ve normal (yazılabilir) akış devreye girer.
           if (user && p.sahipUid === user.uid) {
@@ -188,7 +206,7 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
 
         if (!user) {
           // Giriş yok → hiçbir hat gösterilmez (Kapi giriş ekranını açar).
-          if (iptal) return;
+          if (bayat()) return;
           veriUygula(bosVeri());
           setProjeler([]);
           setAktifId(null);
@@ -198,7 +216,7 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
         }
 
         const liste = await projeleriListele(user.uid);
-        if (iptal) return;
+        if (bayat()) return;
 
         if (liste.length === 0) {
           // İlk giriş. Yönetici → vitrin hattı (varsa tarayıcıdaki eski taslağı taşı).
@@ -212,17 +230,20 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
               : "İlk hattım";
           let soz = ilkKurulum.get(user.uid);
           if (!soz) {
-            soz = projeOlustur(user.uid, ilkAd, ilkVeri);
+            // Sabit kimlik (`ilk_<uid>`): eşzamanlı iki deneme tek dokümanda birleşir.
+            soz = ilkProjeOlustur(user.uid, ilkAd, ilkVeri);
+            // Başarısızsa kilidi bırak, sonraki deneme yeniden kurabilsin.
+            soz.catch(() => ilkKurulum.delete(user.uid));
             ilkKurulum.set(user.uid, soz);
           }
           const id = await soz;
-          if (iptal) return;
+          if (bayat()) return;
           const yeni = await projeleriListele(user.uid);
-          if (iptal) return;
+          if (bayat()) return;
           setProjeler(yeni);
           setAktifId(id);
           const p = await projeGetir(id);
-          if (iptal) return;
+          if (bayat()) return;
           veriUygula(p.veri);
           setAktifAd(p.ad);
           setPaylasimAcik(p.paylasimAcik);
@@ -235,13 +256,13 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
         const secili = liste.find((p) => p.id === kayitli) ?? liste[0];
         setAktifId(secili.id);
         const p = await projeGetir(secili.id);
-        if (iptal) return;
+        if (bayat()) return;
         veriUygula(p.veri);
         setAktifAd(p.ad);
         setPaylasimAcik(p.paylasimAcik);
         setDurum("hazir");
       } catch (e) {
-        if (iptal) return;
+        if (bayat()) return;
         setHataMetni(e instanceof Error ? e.message : String(e));
         setDurum("hata");
       }
@@ -258,14 +279,31 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
     const imza = JSON.stringify(veri);
     if (imza === imzaRef.current) return;
 
+    // Kaydın ait olduğu yükleme. Bekleme sırasında hat değişirse yazılmaz —
+    // aksi halde eski hattın verisi yenisinin üstüne giderdi.
+    const jeton = yuklemeRef.current;
+
     if (zamanlayiciRef.current) clearTimeout(zamanlayiciRef.current);
     zamanlayiciRef.current = setTimeout(async () => {
+      if (!guncelMi(jeton)) return;
+      // Firestore kuralı 900 000 baytta reddediyor; ham "permission-denied"
+      // yerine ne olduğunu söyleyen bir mesaj göster.
+      const bayt = veriBoyutu(imza);
+      if (bayt > VERI_BAYT_SINIRI) {
+        setHataMetni(
+          `Hat verisi çok büyük (${Math.round(bayt / 1024)} KB, sınır ${Math.round(VERI_BAYT_SINIRI / 1024)} KB) — kaydedilmedi. Ring sayısını azaltın veya hattı ikiye bölün.`,
+        );
+        setDurum("hata");
+        return;
+      }
       try {
         setDurum("kaydediliyor");
         await projeKaydet(aktifId, veri);
+        if (!guncelMi(jeton)) return;
         imzaRef.current = imza;
         setDurum("kaydedildi");
       } catch (e) {
+        if (!guncelMi(jeton)) return;
         setHataMetni(e instanceof Error ? e.message : String(e));
         setDurum("hata");
       }
@@ -306,63 +344,108 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
   }, [yazilabilir]);
 
   // — proje yönetimi —
+  // Yazma işlemlerinin ORTAK sarmalayıcısı. Öncesinde eski hatayı temizler,
+  // hata olursa çubukta görünür kılar ve çağırana yeniden fırlatır. Bu olmadan
+  // oluşturma/silme/paylaşım hataları (kural reddi, ağ kopması) sessizce yutuluyordu.
+  const islem = useCallback(async <T,>(f: () => Promise<T>): Promise<T> => {
+    setHataMetni(null);
+    try {
+      return await f();
+    } catch (e) {
+      setHataMetni(e instanceof Error ? e.message : String(e));
+      setDurum("hata");
+      throw e;
+    }
+  }, []);
+
   const projeSec = useCallback((id: string) => {
     if (!user) return;
     try { localStorage.setItem(AKTIF_ANAHTAR(user.uid), id); } catch { /* sessiz */ }
+    const jeton = yeniJeton(); // bu seçimden sonra başlayan bir yükleme bunu geçersiz kılar
     setAktifId(id);
     setDurum("yukleniyor");
+    setHataMetni(null);
     projeGetir(id)
       .then((p) => {
+        if (!guncelMi(jeton)) return; // arada başka bir hatta geçildi — yazma
         veriUygula(p.veri);
         setAktifAd(p.ad);
         setPaylasimAcik(p.paylasimAcik);
         setDurum("hazir");
       })
-      .catch((e) => { setHataMetni(e instanceof Error ? e.message : String(e)); setDurum("hata"); });
+      .catch((e) => {
+        if (!guncelMi(jeton)) return;
+        setHataMetni(e instanceof Error ? e.message : String(e));
+        setDurum("hata");
+      });
   }, [user, veriUygula]);
+
+  const kota = yonetici ? null : PROJE_KOTASI;
+  const kotaDoldu = kota !== null && projeler.length >= kota;
 
   // Yeni hat her zaman BOŞ açılır (yönetici dahil) — mevcut hat kopyalanmaz.
   const projeYeni = useCallback(async (ad: string) => {
     if (!user) return;
-    const id = await projeOlustur(user.uid, ad || "Yeni hat", bosVeri());
-    setProjeler(await projeleriListele(user.uid));
-    projeSec(id);
-  }, [user, projeSec]);
+    await islem(async () => {
+      // Kota SUNUCUDAKİ sayıya göre denetlenir: ekrandaki liste bayat olabilir
+      // (başka sekmede hat açılmış olabilir).
+      const mevcut = await projeleriListele(user.uid);
+      if (kota !== null && mevcut.length >= kota) {
+        setProjeler(mevcut);
+        throw new Error(`Hat kotanız dolu (${mevcut.length}/${kota}). Yeni hat açmak için önce bir hattı silin.`);
+      }
+      const id = await projeOlustur(user.uid, ad || "Yeni hat", bosVeri());
+      setProjeler(await projeleriListele(user.uid));
+      projeSec(id);
+    });
+  }, [user, kota, islem, projeSec]);
 
   const projeSilmeIstegi = useCallback(async (id: string) => {
     if (!user) return;
-    await projeSil(id);
-    const liste = await projeleriListele(user.uid);
-    setProjeler(liste);
-    if (id === aktifId) {
-      if (liste.length > 0) projeSec(liste[0].id);
-      else { setAktifId(null); veriUygula(bosVeri()); setAktifAd("—"); }
-    }
-  }, [user, aktifId, projeSec, veriUygula]);
+    await islem(async () => {
+      await projeSil(id);
+      const liste = await projeleriListele(user.uid);
+      setProjeler(liste);
+      if (id === aktifId) {
+        if (liste.length > 0) projeSec(liste[0].id);
+        else {
+          yeniJeton(); // süren bir yükleme varsa geçersiz kıl
+          setAktifId(null);
+          veriUygula(bosVeri());
+          setAktifAd("—");
+          setDurum("hazir");
+        }
+      }
+    });
+  }, [user, aktifId, islem, projeSec, veriUygula]);
 
   const projeAdiGuncelle = useCallback(async (ad: string) => {
     if (!user || !aktifId) return;
-    await projeAdiDegistir(aktifId, ad);
-    setAktifAd(ad);
-    setProjeler(await projeleriListele(user.uid));
-  }, [user, aktifId]);
+    await islem(async () => {
+      await projeAdiDegistir(aktifId, ad);
+      setAktifAd(ad);
+      setProjeler(await projeleriListele(user.uid));
+    });
+  }, [user, aktifId, islem]);
 
   const paylasimDegistir = useCallback(async (acik: boolean) => {
     if (!user || !aktifId) return;
-    await paylasimAyarla(aktifId, acik);
-    setPaylasimAcik(acik);
-    setProjeler(await projeleriListele(user.uid));
-  }, [user, aktifId]);
+    await islem(async () => {
+      await paylasimAyarla(aktifId, acik);
+      setPaylasimAcik(acik);
+      setProjeler(await projeleriListele(user.uid));
+    });
+  }, [user, aktifId, islem]);
 
   const deger = useMemo<Ctx>(() => ({
     cfg, patch, sifirla, rings, setRings, sifirlaRings, meta, patchMeta,
     yazilabilir, yonetici, demoMu, paylasimGorunumu, paylasimdanCik, durum, hataMetni,
-    projeler, aktifId, aktifAd, paylasimAcik,
+    projeler, aktifId, aktifAd, paylasimAcik, kota, kotaDoldu,
     projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle, paylasimDegistir,
   }), [
     cfg, patch, sifirla, rings, setRings, sifirlaRings, meta, patchMeta,
     yazilabilir, yonetici, demoMu, paylasimGorunumu, paylasimdanCik, durum, hataMetni,
-    projeler, aktifId, aktifAd, paylasimAcik,
+    projeler, aktifId, aktifAd, paylasimAcik, kota, kotaDoldu,
     projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle, paylasimDegistir,
   ]);
 
@@ -407,7 +490,8 @@ export function useHesap(): Omit<Ctx, "cfg" | "patch" | "sifirla" | "rings" | "s
     yazilabilir: c.yazilabilir, yonetici: c.yonetici, demoMu: c.demoMu, paylasimGorunumu: c.paylasimGorunumu,
     paylasimdanCik: c.paylasimdanCik,
     durum: c.durum, hataMetni: c.hataMetni, projeler: c.projeler, aktifId: c.aktifId,
-    aktifAd: c.aktifAd, paylasimAcik: c.paylasimAcik, projeSec: c.projeSec,
+    aktifAd: c.aktifAd, paylasimAcik: c.paylasimAcik, kota: c.kota, kotaDoldu: c.kotaDoldu,
+    projeSec: c.projeSec,
     projeYeni: c.projeYeni, projeSilmeIstegi: c.projeSilmeIstegi,
     projeAdiGuncelle: c.projeAdiGuncelle, paylasimDegistir: c.paylasimDegistir,
   };

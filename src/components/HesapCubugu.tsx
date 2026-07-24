@@ -19,7 +19,8 @@ export function HesapCubugu() {
   const { user, hazir, yapilandirildi, cikisYap } = useAuth();
   const {
     demoMu, paylasimGorunumu, paylasimdanCik, durum, hataMetni, projeler, aktifId, aktifAd,
-    paylasimAcik, projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle, paylasimDegistir,
+    paylasimAcik, kota, kotaDoldu,
+    projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle, paylasimDegistir,
   } = useHesap();
 
   const [yeniAcik, setYeniAcik] = useState(false);
@@ -101,8 +102,11 @@ export function HesapCubugu() {
             <button onClick={() => setYeniAcik(false)} className="rounded px-2 py-1" style={{ color: brand.muted }}>Vazgeç</button>
           </>
         ) : (
-          <button onClick={() => setYeniAcik(true)} title="Sıfırdan boş yeni bir proje açar"
-            className="rounded border px-2 py-1 font-medium transition hover:bg-slate-50"
+          <button onClick={() => setYeniAcik(true)} disabled={kotaDoldu}
+            title={kotaDoldu
+              ? `Hat kotanız dolu (${projeler.length}/${kota}). Yeni hat açmak için önce bir hattı silin.`
+              : "Sıfırdan boş yeni bir proje açar"}
+            className="rounded border px-2 py-1 font-medium transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
             style={{ borderColor: brand.border, color: brand.inkSoft }}>＋ Yeni hat</button>
         )}
 
@@ -135,6 +139,9 @@ export function HesapCubugu() {
                 <div className="border-b px-3 py-2" style={{ borderColor: brand.border }}>
                   <div className="field-label" style={{ color: brand.faint }}>HESAP</div>
                   <div style={{ color: brand.ink }}>{user.email}</div>
+                  <div className="mt-0.5 text-[0.7rem]" style={{ color: kotaDoldu ? brand.red : brand.muted }}>
+                    {kota === null ? `${projeler.length} hat · sınırsız` : `${projeler.length}/${kota} hat`}
+                  </div>
                 </div>
 
                 <MenuOge onClick={() => { setAdTaslak(aktifAd); menuKapat(); }}
