@@ -14,6 +14,7 @@ import { useSimConfig, useProje } from "@/components/SimConfigProvider";
 import type { SimConfig } from "@/lib/anaray/config";
 import { araclar, varsayilanArac } from "@/lib/anaray/vehicles";
 import { brand } from "@/lib/anaray/brand";
+import { CK, SERI } from "@/lib/anaray/chartkit";
 import { kmh, sure } from "@/lib/anaray/format";
 import {
   MAKAS_TIP_AD,
@@ -36,7 +37,7 @@ import {
 } from "@/lib/anaray/ring";
 
 const KMH = 1 / 3.6;
-const OK = "#0E7C57";
+const OK = CK.good;
 
 export function RingEditor() {
   const { cfg } = useSimConfig();
@@ -161,7 +162,7 @@ export function RingEditor() {
         <Panel baslik="Eşit Şartlar — Dengeleme Önerileri" aciklama="Best-case yakın-mesafe hedefi: durak-çiftleri arası worst-case süreler eşitlendikçe headway kararlı olur. Ortalamadan sapan ringler ve öneriler:">
           <div className="flex flex-col gap-1.5">
             {oneriler.map((o) => (
-              <div key={o.ringId} className="flex items-start gap-2 rounded border px-3 py-2 text-sm" style={{ borderColor: o.fark > 0 ? brand.red + "55" : OK + "55", background: o.fark > 0 ? "#FDF4F5" : "#F2F9F5" }}>
+              <div key={o.ringId} className="flex items-start gap-2 rounded border px-3 py-2 text-sm" style={{ borderColor: o.fark > 0 ? brand.red + "55" : OK + "55", background: o.fark > 0 ? CK.badBgSoft : CK.goodBgSoft }}>
                 <span className="shrink-0 font-mono text-xs" style={{ color: o.fark > 0 ? brand.red : OK }}>{o.fark > 0 ? "+" : ""}{Math.round(o.fark)} s</span>
                 <span className="font-medium" style={{ color: brand.ink }}>{o.ad}:</span>
                 <span style={{ color: brand.inkSoft }}>{o.oneri}</span>
@@ -173,7 +174,7 @@ export function RingEditor() {
 
       {/* Eksik şart uyarısı */}
       {tumEksik.length > 0 && (
-        <div className="mt-4 rounded-lg border p-4" style={{ borderColor: brand.red, background: "#FDF2F4" }}>
+        <div className="mt-4 rounded-lg border p-4" style={{ borderColor: brand.red, background: CK.badBgSoft }}>
           <div className="mb-1 text-sm font-semibold" style={{ color: brand.red }}>⚠ Zorunlu şartlar eksik — loop kurulamaz ({tumEksik.length})</div>
           <ul className="ml-4 list-disc text-xs" style={{ color: brand.inkSoft }}>
             {tumEksik.slice(0, 8).map((e, i) => (<li key={i}>{e.mesaj}</li>))}
@@ -311,7 +312,7 @@ function RingKart(p: KartProps) {
                 <MiniStat etiket="Makas/route ek" deger={`${sen.timingEk.toFixed(0)} s`} alt="tanzim + release" />
                 <MiniStat etiket="Worst toplam" deger={sure(sen.worstToplam)} alt="+ bekleme" vurgu={sen.headwayUygun ? OK : brand.red} />
               </div>
-              <div className="mt-2 rounded border p-2.5 text-xs" style={{ borderColor: sen.headwayUygun ? OK : brand.red, background: sen.headwayUygun ? "#F0F9F4" : "#FDF2F4" }}>
+              <div className="mt-2 rounded border p-2.5 text-xs" style={{ borderColor: sen.headwayUygun ? OK : brand.red, background: sen.headwayUygun ? CK.goodBgSoft : CK.badBgSoft }}>
                 {sen.headwayUygun ? (
                   <span style={{ color: OK }}>✓ {cfg.headway} s headway&apos;e sığıyor — <b>{Math.round(sen.headwayPayi)} s</b> marj.</span>
                 ) : (
@@ -349,7 +350,7 @@ function RingKart(p: KartProps) {
               <SubBaslik>Challenge — Karşılaşılabilecek Durumlar</SubBaslik>
               <div className="mt-2 flex flex-col gap-1.5">
                 {challenge.map((c, i) => {
-                  const renk = c.seviye === "kritik" ? brand.red : c.seviye === "uyari" ? "#A8842C" : brand.muted;
+                  const renk = c.seviye === "kritik" ? brand.red : c.seviye === "uyari" ? CK.amber : brand.muted;
                   return (
                     <div key={i} className="flex items-start gap-2 rounded border px-2.5 py-1.5 text-xs" style={{ borderColor: renk + "55", background: renk + "0F" }}>
                       <span className="shrink-0 font-medium" style={{ color: renk }}>{c.seviye === "kritik" ? "⚠" : c.seviye === "uyari" ? "▲" : "•"} {c.baslik}:</span>
@@ -384,7 +385,7 @@ function RingKart(p: KartProps) {
                         <input value={m.ad} placeholder="ad (ör. 1. Makas)" onChange={(e) => p.onMakasPatch(m.id, { ad: e.target.value })}
                           className="min-w-0 flex-1 rounded border px-1.5 py-1 text-xs" style={{ borderColor: brand.border, color: brand.ink }} />
                         <Link href={`/anklasman?bolge=${bolgeIdIcin(m.tip)}`} title="Bu makasın anklaşman modelini aç"
-                          className="rounded px-2 py-1 text-[0.65rem] font-medium transition hover:opacity-80" style={{ background: "#EDF0F3", color: brand.ink }}>
+                          className="rounded px-2 py-1 text-[0.65rem] font-medium transition hover:opacity-80" style={{ background: CK.track, color: brand.ink }}>
                           anklaşman →
                         </Link>
                         <button onClick={() => p.onMakasSil(m.id)} className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
@@ -412,8 +413,8 @@ function RingKart(p: KartProps) {
             <div className="mb-2 flex items-center justify-between">
               <SubBaslik>Hemzemin & Yaya Geçitleri</SubBaslik>
               <div className="flex gap-1">
-                <button onClick={() => p.onHzEkle("yaya")} className="rounded px-2 py-1 text-xs font-medium" style={{ background: "#EDF0F3", color: brand.inkSoft }}>＋ yaya</button>
-                <button onClick={() => p.onHzEkle("karayolu")} className="rounded px-2 py-1 text-xs font-medium" style={{ background: "#EDF0F3", color: brand.inkSoft }}>＋ karayolu</button>
+                <button onClick={() => p.onHzEkle("yaya")} className="rounded px-2 py-1 text-xs font-medium" style={{ background: CK.track, color: brand.inkSoft }}>＋ yaya</button>
+                <button onClick={() => p.onHzEkle("karayolu")} className="rounded px-2 py-1 text-xs font-medium" style={{ background: CK.track, color: brand.inkSoft }}>＋ karayolu</button>
               </div>
             </div>
             {ring.hemzeminler.length === 0 ? (
@@ -438,7 +439,7 @@ function RingKart(p: KartProps) {
           <div className="mt-4 border-t pt-3" style={{ borderColor: brand.border }}>
             <div className="mb-2 flex items-center justify-between">
               <SubBaslik>Tehlike / Acil Frenleme Noktaları</SubBaslik>
-              <button onClick={p.onTnEkle} className="rounded px-2 py-1 text-xs font-medium" style={{ background: "#EDF0F3", color: brand.inkSoft }}>＋ ekle</button>
+              <button onClick={p.onTnEkle} className="rounded px-2 py-1 text-xs font-medium" style={{ background: CK.track, color: brand.inkSoft }}>＋ ekle</button>
             </div>
             {ring.tehlikeNoktalari.length === 0 ? (
               <p className="text-xs" style={{ color: brand.faint }}>Tehlike noktası yok.</p>
@@ -477,8 +478,8 @@ function RingKart(p: KartProps) {
 
 const KISIT_RENK: Record<KisitTur | "durak", string> = {
   durak: brand.ink,
-  makas: "#A8842C",
-  hemzemin: "#0C6DB8",
+  makas: SERI.makasBlok,
+  hemzemin: SERI.duzBlok,
   tehlike: brand.red,
 };
 const KISIT_IKON: Record<KisitTur | "durak", string> = { durak: "◉", makas: "⑂", hemzemin: "⊞", tehlike: "▲" };
@@ -512,7 +513,7 @@ function MakasEkleMenu({ onEkle }: { onEkle: (t: MakasTip) => void }) {
 
 function Rozet({ ok, okText, hataText }: { ok: boolean; okText: string; hataText: string }) {
   return (
-    <span className="shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-medium" style={ok ? { background: "#E6F4EC", color: OK } : { background: "#FBE9EC", color: brand.red }}>
+    <span className="shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-medium" style={ok ? { background: CK.goodBg, color: OK } : { background: CK.badBg, color: CK.red }}>
       {ok ? `✓ ${okText}` : `⚠ ${hataText}`}
     </span>
   );

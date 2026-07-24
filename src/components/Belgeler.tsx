@@ -7,6 +7,7 @@
 
 import { useMemo, useState } from "react";
 import { brand } from "@/lib/anaray/brand";
+import { CK } from "@/lib/anaray/chartkit";
 import { sure } from "@/lib/anaray/format";
 import { useSimConfig, useProje } from "@/components/SimConfigProvider";
 import { PROJE_META_ALANLAR } from "@/lib/anaray/config";
@@ -126,11 +127,11 @@ export function Belgeler() {
             {mesgul === "word" ? "Üretiliyor…" : "📄 Word (.docx) indir"}
           </button>
           <button onClick={excelIndir} disabled={!!mesgul}
-            className="rounded-md px-5 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: "#0E7C57" }}>
+            className="rounded-md px-5 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: CK.good }}>
             {mesgul === "excel" ? "Üretiliyor…" : "📊 Excel (.xlsx) indir"}
           </button>
           {durum && (
-            <span className="text-sm" style={{ color: durum.tip === "err" ? brand.red : durum.tip === "ok" ? "#0E7C57" : brand.muted }}>
+            <span className="text-sm" style={{ color: durum.tip === "err" ? brand.red : durum.tip === "ok" ? CK.good : brand.muted }}>
               {durum.tip === "ok" ? "✓ " : durum.tip === "err" ? "⚠ " : ""}{durum.metin}
             </span>
           )}
@@ -143,7 +144,7 @@ export function Belgeler() {
           <MiniStat etiket="Challenge kaydı" deger={`${ozet.chSayi}`} alt={`${ozet.kritik} kritik`} vurgu={ozet.kritik > 0 ? brand.red : undefined} />
           <MiniStat etiket="Darboğaz" deger={ozet.darbogaz ? sure(ozet.darbogaz.worstToplam) : "—"} alt={ozet.darbogaz?.ad} vurgu={brand.red} />
         </div>
-        <div className="mt-2 text-xs" style={{ color: ozet.headwayUygun && ozet.dengeli ? "#0E7C57" : "#A8842C" }}>
+        <div className="mt-2 text-xs" style={{ color: ozet.headwayUygun && ozet.dengeli ? CK.good : CK.amber }}>
           {ozet.headwayUygun && ozet.dengeli ? "✓ Belge: tüm hücreler headway'e uygun ve dengeli." : "▲ Belge, headway ihlali / dengesizlik uyarılarını içerecek."}
         </div>
       </Panel>

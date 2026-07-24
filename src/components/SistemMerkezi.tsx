@@ -16,9 +16,16 @@ import { loopDenge, olceklenme, ringSenaryo } from "@/lib/anaray/ring";
 import { bolgeSeed, simuleEtAnklasman } from "@/lib/anaray/interlocking";
 import { blockingTimeRing } from "@/lib/anaray/blockingtime";
 import { BlockingStairChart } from "@/components/BlockingStairChart";
+import { CK, RAMP_BLUE, SERI } from "@/lib/anaray/chartkit";
 
-const OK = "#0E7C57";
-const MODUL_RENK: Record<ParamModul, string> = { sefer: "#0C6DB8", ringler: "#0E7C57", anklasman: "#A8842C" };
+const OK = CK.good;
+// Modül etiketleri = 3 kategorik seri (valide: mavi · turkuaz · turuncu).
+const MODUL_RENK: Record<ParamModul, string> = { sefer: CK.blue, ringler: CK.aqua, anklasman: CK.orange };
+// Blocking-time 6 bileşeni ZAMAN SIRALI → kategorik değil ordinal rampa (raporla aynı).
+const BT_PARCA: [string, string][] = [
+  ["Setup", RAMP_BLUE[0]], ["Görme", RAMP_BLUE[1]], ["Yaklaşma", RAMP_BLUE[2]],
+  ["Seyir", RAMP_BLUE[3]], ["Temizleme", RAMP_BLUE[4]], ["Release", RAMP_BLUE[5]],
+];
 
 export function SistemMerkezi() {
   const { cfg, patch, sifirla } = useSimConfig();
@@ -70,13 +77,13 @@ export function SistemMerkezi() {
         {uyarilar.length > 0 ? (
           <div className="mb-4 flex flex-col gap-1.5">
             {uyarilar.map((u, i) => (
-              <div key={i} className="rounded border px-3 py-2 text-sm" style={{ borderColor: u.tip === "err" ? brand.red : "#C79A2E", background: u.tip === "err" ? "#FDF2F4" : "#FBF7EC", color: u.tip === "err" ? brand.red : "#8A6D1E" }}>
+              <div key={i} className="rounded border px-3 py-2 text-sm" style={{ borderColor: u.tip === "err" ? CK.red : CK.amber, background: u.tip === "err" ? CK.badBgSoft : CK.amberBg, color: u.tip === "err" ? CK.red : CK.amberInk }}>
                 {u.tip === "err" ? "⚠ " : "▲ "}{u.metin}
               </div>
             ))}
           </div>
         ) : (
-          <div className="mb-4 rounded border px-3 py-2 text-sm" style={{ borderColor: OK, background: "#F0F9F4", color: OK }}>✓ Tüm ringler headway&apos;e sığıyor, denge korunuyor, bölgelerde kuyruk yok.</div>
+          <div className="mb-4 rounded border px-3 py-2 text-sm" style={{ borderColor: OK, background: CK.goodBgSoft, color: OK }}>✓ Tüm ringler headway&apos;e sığıyor, denge korunuyor, bölgelerde kuyruk yok.</div>
         )}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <MiniStat etiket="Loop tur süresi" deger={sure(olcek.turSuresi)} alt="worst-case, kapalı hat" />
@@ -113,7 +120,7 @@ export function SistemMerkezi() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <MiniStat etiket="Min headway (kritik blok)" deger={sure(bt.minHeadway)} alt={`blok #${bt.kritikBlok}${bt.bloklar[bt.kritikBlok]?.makasBlok ? " (makas)" : ""}`} vurgu={brand.red} />
           <MiniStat etiket="Teorik kapasite" deger={`${bt.teorikKapasite.toFixed(0)}/sa`} alt="tren/saat üst sınır" />
-          <MiniStat etiket="UIC 406 doluluk" deger={`%${bt.dolulukHedef.toFixed(0)}`} alt={`hedef ${bt.hedefHeadway} s`} vurgu={bt.dolulukHedef > 80 ? brand.red : bt.dolulukHedef > 60 ? "#A8842C" : OK} />
+          <MiniStat etiket="UIC 406 doluluk" deger={`%${bt.dolulukHedef.toFixed(0)}`} alt={`hedef ${bt.hedefHeadway} s`} vurgu={bt.dolulukHedef > 80 ? CK.red : bt.dolulukHedef > 60 ? CK.amber : OK} />
           <MiniStat etiket="Hedef headway" deger={bt.hedefUygun ? "UYGUN" : "İHLAL"} vurgu={bt.hedefUygun ? OK : brand.red} />
         </div>
 
@@ -126,35 +133,39 @@ export function SistemMerkezi() {
           <p className="mt-1.5 text-xs" style={{ color: brand.muted }}>
             Her dikdörtgen bir sinyal bloğunun rezerve süresi (blocking-time); dikey = blok uzunluğu, yatay = süre.
             İki merdiven <span style={{ color: brand.red }}>kritik blokta</span> tam değer → o an sürdürülebilir min headway.
-            <span style={{ color: "#0C6DB8" }}> ■</span> düz blok · <span style={{ color: "#A8842C" }}>■</span> makas bloğu.
+            <span style={{ color: SERI.duzBlok }}> ■</span> düz blok · <span style={{ color: SERI.makasBlok }}>■</span> makas bloğu.
           </p>
         </div>
 
         {/* Blok başına bileşen dökümü (yardımcı görünüm) */}
         <div className="mt-4">
           <div className="field-label mb-2">Blok başına blocking-time bileşenleri (6 parça yığını)</div>
-          <div className="flex h-40 items-end gap-1">
+          {/* Yükseklik zinciri: h-40 (kesin) → sütun h-full → bar alanı flex-1 (kesin)
+              → bar `%`. Ara sarmalayıcı olmadan yüzde yükseklik çözülmez (barlar
+              minHeight'a düşer, grafik boş görünür). */}
+          <div className="flex h-40 items-stretch gap-1">
             {bt.bloklar.map((b) => {
               const mx = Math.max(1, ...bt.bloklar.map((x) => x.toplam));
-              const parcalar: [number, string][] = [
-                [b.tSetup, "#A8842C"], [b.tSighting, "#6B7A8A"], [b.tApproach, "#0C6DB8"],
-                [b.tRunning, brand.ink], [b.tClearing, "#0E7C57"], [b.tRelease, brand.red],
-              ];
+              const sureler = [b.tSetup, b.tSighting, b.tApproach, b.tRunning, b.tClearing, b.tRelease];
+              const parcalar: [number, string][] = BT_PARCA.map(([, c], j) => [sureler[j], c]);
               const kritik = b.i === bt.kritikBlok;
               return (
-                <div key={b.i} className="flex flex-1 flex-col items-center gap-0.5" title={`Blok #${b.i}: ${b.toplam.toFixed(0)} s${b.makasBlok ? " (makas)" : ""}`}>
-                  <div className="flex w-full flex-col justify-end overflow-hidden rounded-t" style={{ height: `${(b.toplam / mx) * 100}%`, minHeight: 3, outline: kritik ? `2px solid ${brand.red}` : "none" }}>
-                    {parcalar.map(([v, c], j) => v > 0 && <div key={j} style={{ height: `${(v / b.toplam) * 100}%`, background: c }} />)}
+                <div key={b.i} className="flex h-full flex-1 flex-col items-center gap-0.5" title={`Blok #${b.i}: ${b.toplam.toFixed(0)} s${b.makasBlok ? " (makas)" : ""}`}>
+                  <div className="flex w-full min-h-0 flex-1 flex-col justify-end">
+                    <div className="flex w-full flex-col justify-end overflow-hidden rounded-t" style={{ height: `${(b.toplam / mx) * 100}%`, minHeight: 3, outline: kritik ? `2px solid ${CK.red}` : "none" }}>
+                      {parcalar.map(([v, c], j) => v > 0 && <div key={j} style={{ height: `${(v / b.toplam) * 100}%`, background: c }} />)}
+                    </div>
                   </div>
-                  <span className="text-[0.55rem]" style={{ color: kritik ? brand.red : brand.faint }}>{b.i}</span>
+                  <span className="shrink-0 text-[0.55rem]" style={{ color: kritik ? CK.red : CK.faint }}>{b.i}</span>
                 </div>
               );
             })}
           </div>
           <div className="mt-1 flex flex-wrap gap-2 text-[0.6rem]" style={{ color: brand.muted }}>
-            {[["Setup", "#A8842C"], ["Görme", "#6B7A8A"], ["Yaklaşma", "#0C6DB8"], ["Seyir", brand.ink], ["Temizleme", "#0E7C57"], ["Release", brand.red]].map(([ad, c]) => (
-              <span key={ad} className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: c as string }} />{ad}</span>
+            {BT_PARCA.map(([ad, c]) => (
+              <span key={ad} className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: c }} />{ad}</span>
             ))}
+            <span className="ml-1" style={{ color: CK.faint }}>(açıktan koyuya = zaman sırası)</span>
           </div>
         </div>
       </Panel>
@@ -173,7 +184,7 @@ export function SistemMerkezi() {
                       <div className="text-[0.7rem]" style={{ color: brand.muted }}>{m.etkiler}</div>
                       <div className="mt-1 flex flex-wrap gap-1">
                         {m.moduller.map((mm) => (<span key={mm} className="rounded px-1.5 py-0.5 text-[0.6rem] font-medium" style={{ background: MODUL_RENK[mm] + "1A", color: MODUL_RENK[mm] }}>{mm}</span>))}
-                        <span className="rounded px-1.5 py-0.5 text-[0.6rem] font-mono" style={{ background: "#EDF0F3", color: brand.faint }}>{m.kaynak}</span>
+                        <span className="rounded px-1.5 py-0.5 text-[0.6rem] font-mono" style={{ background: CK.track, color: brand.faint }}>{m.kaynak}</span>
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">

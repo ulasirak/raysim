@@ -23,7 +23,44 @@ export const CK = {
   red: "#C8102E",       // durum-kritik / tırmanış / limit (marka kırmızısı)
   gold: "#A8842C",      // YALNIZ etiketli kurp işareti
   good: "#0E7C57",      // durum-iyi
+  amber: "#C79A2E",     // durum-dikkat (sinyal sarısıyla aynı aile)
   sans: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+
+  // ————— DOM yüzeyleri (div-tabanlı barlar, rozetler, uyarı kutuları) —————
+  // SVG grafiklerle AYNI sistemi paylaşsınlar diye burada; tüm tint'ler beyaz
+  // zeminde AA metin kontrastı verecek kadar açık tutuldu.
+  track: "#EDF0F3",     // bar kanalı (dolmamış kısım)
+  goodBg: "#E6F4EC",    // rozet zemini — iyi
+  goodBgSoft: "#F0F9F4",// kutu zemini — iyi
+  badBg: "#FBE9EC",     // rozet zemini — kritik
+  badBgSoft: "#FDF2F4", // kutu zemini — kritik
+  amberBg: "#FBF7EC",   // kutu zemini — dikkat
+  amberInk: "#8A6D1E",  // dikkat kutusu metni (AA)
+} as const;
+
+/** Ordinal mavi rampa (açık→koyu) — sıralı/kademeli bileşenler için.
+ *  Blocking-time'ın 6 zaman bileşeni hem raporda hem uygulamada bunu kullanır. */
+export const RAMP_BLUE = ["#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b"] as const;
+
+/** Model serileri — aynı kavram her modülde aynı renk.
+ *  sabit blok ↔ hareketli blok karşıtlığı mavi↔turkuaz (valide),
+ *  analitik/gerçekleşen referansları nötr mürekkep (seri değil, ölçüt). */
+export const SERI = {
+  sabitBlok: CK.blue,
+  hareketliBlok: CK.aqua,
+  analitik: CK.ink2,
+  gerceklesen: CK.ink,
+  duzBlok: CK.blue,
+  makasBlok: CK.orange,
+} as const;
+
+/** Sinyal aspektleri — ALAN semantiği (gerçek fener renkleri).
+ *  Dataviz paletinden bağımsızdır: kırmızı/sarı/yeşil değiştirilemez. */
+export const ASPEKT = {
+  yesil: CK.good,
+  sari: CK.amber,
+  kirmizi: CK.red,
+  sonuk: "#4A5A6A",
 } as const;
 
 // Sayısal etiket (tabular-nums, sans) — hizalı, temiz.

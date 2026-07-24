@@ -16,6 +16,7 @@ import { araclar } from "@/lib/anaray/vehicles";
 import { ornekSebeke, anaHat, ornekTramvay, ornekHat } from "@/lib/anaray/scenario";
 import { kmh, km, sure, saat } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
+import { CK } from "@/lib/anaray/chartkit";
 import { isFirebaseConfigured, getAuthInstance } from "@/lib/firebase";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from "firebase/auth";
 import { saveScenario, listScenarios, loadScenario, deleteScenario, type ScenarioMeta } from "@/lib/scenarios";
@@ -334,7 +335,7 @@ export function Studio() {
             <div className="flex items-center gap-1">
               {(["gidis", "donus", "ikisi"] as const).map((y) => (
                 <button key={y} onClick={() => setYon(y)} className="rounded px-2.5 py-1 text-xs font-medium transition"
-                  style={yon === y ? { background: brand.ink, color: "#fff" } : { background: "#EDF0F3", color: brand.inkSoft }}>
+                  style={yon === y ? { background: brand.ink, color: "#fff" } : { background: CK.track, color: brand.inkSoft }}>
                   {y === "gidis" ? "Gidiş" : y === "donus" ? "Dönüş" : "İkisi"}
                 </button>
               ))}
@@ -343,7 +344,7 @@ export function Studio() {
               {gidisSim.anyDelay ? (
                 <span style={{ color: brand.red }}>⚠ Bu aralıkta trenler birbirini bekliyor — en fazla {sure(gidisSim.maxDelay)} gecikme.</span>
               ) : (
-                <span style={{ color: "#0E7C57" }}>✓ Bu aralıkta bekleme yok — trenler serbest akıyor.</span>
+                <span style={{ color: CK.good }}>✓ Bu aralıkta bekleme yok — trenler serbest akıyor.</span>
               )}
             </div>
           </div>
@@ -365,7 +366,7 @@ export function Studio() {
           />
           {yon !== "gidis" && (
             <p className="mt-2 text-xs" style={{ color: brand.muted }}>
-              <span style={{ color: "#0C6DB8" }}>■</span> Dönüş yönü (Terminal → Merkez). Çift hat varsayımı: yönler bağımsız.
+              <span style={{ color: CK.orange }}>■</span> Dönüş yönü (Terminal → Merkez). Çift hat varsayımı: yönler bağımsız.
             </p>
           )}
         </Panel>
@@ -383,7 +384,7 @@ export function Studio() {
                   <button key={st.id}
                     onClick={() => setPassingIds(on ? passingIds.filter((x) => x !== st.id) : [...passingIds, st.id])}
                     className="rounded-full px-3 py-1 text-xs font-medium transition"
-                    style={on ? { background: brand.ink, color: "#fff" } : { background: "#EDF0F3", color: brand.inkSoft }}>
+                    style={on ? { background: brand.ink, color: "#fff" } : { background: CK.track, color: brand.inkSoft }}>
                     {on ? "⊕ " : ""}{st.name}
                   </button>
                 );
@@ -405,7 +406,7 @@ export function Studio() {
 
           <TrainGraphChart line={line} blocks={stSim.sections} gidis={stSim.up} donus={stSim.down} tMax={stSim.tMax} />
           <p className="mt-2 text-xs" style={{ color: brand.muted }}>
-            <span style={{ color: brand.route }}>■</span> Gidiş (Merkez → Terminal) · <span style={{ color: "#0C6DB8" }}>■</span> Dönüş — çizgilerin kesiştiği nokta = kruvasman (karşılaşma). Kalın yatay çizgiler geçiş istasyonlarıdır.
+            <span style={{ color: CK.blue }}>■</span> Gidiş (Merkez → Terminal) · <span style={{ color: CK.orange }}>■</span> Dönüş — çizgilerin kesiştiği nokta = kruvasman (karşılaşma). Kalın yatay çizgiler geçiş istasyonlarıdır.
           </p>
         </Panel>
       </section>
@@ -606,7 +607,7 @@ function SenaryoPaneli({
               {liste.map((s) => (
                 <li key={s.id} className="flex items-center gap-2 px-3 py-2 text-sm" style={{ borderColor: brand.border }}>
                   <span className="min-w-0 flex-1 truncate" style={{ color: brand.ink }}>{s.name}</span>
-                  <button onClick={() => yukle(s.id, s.name)} disabled={mesgul} className="rounded px-2 py-1 text-xs font-medium transition hover:opacity-90 disabled:opacity-50" style={{ background: "#EDF0F3", color: brand.inkSoft }}>Yükle</button>
+                  <button onClick={() => yukle(s.id, s.name)} disabled={mesgul} className="rounded px-2 py-1 text-xs font-medium transition hover:opacity-90 disabled:opacity-50" style={{ background: CK.track, color: brand.inkSoft }}>Yükle</button>
                   {yazabilir && (
                     <button onClick={() => sil(s.id)} disabled={mesgul} title="Sil" className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
                   )}
@@ -620,7 +621,7 @@ function SenaryoPaneli({
           )}
 
           {mesaj && (
-            <p className="text-xs" style={{ color: mesaj.tip === "err" ? brand.red : mesaj.tip === "ok" ? "#0E7C57" : brand.muted }}>
+            <p className="text-xs" style={{ color: mesaj.tip === "err" ? brand.red : mesaj.tip === "ok" ? CK.good : brand.muted }}>
               {mesaj.metin}
               {mesaj.tip === "err" && (
                 <span style={{ color: brand.muted }}> — Firestore Database etkin mi ve kurallar okuma/yazmaya izin veriyor mu?</span>
@@ -694,7 +695,7 @@ function VeritabaniDurumu() {
   const ok = isFirebaseConfigured();
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5"
-      style={ok ? { background: "#E6F4EC", color: "#0E7C57" } : { background: "#FBE9EC", color: brand.red }}>
+      style={ok ? { background: CK.goodBg, color: CK.good } : { background: CK.badBg, color: CK.red }}>
       <span className="h-1.5 w-1.5 rounded-full" style={{ background: "currentColor" }} />
       Veritabanı: {ok ? "yapılandırıldı" : "yapılandırma bekleniyor"}
     </span>
@@ -733,7 +734,7 @@ function Satir({ ad, konum, varis, kalkis, dwell }: { ad: string; konum: string;
       <td className="py-2" style={{ color: brand.red }}>{kalkis}</td>
       <td className="py-2">
         {dwell > 0 ? (
-          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: "#FBE9EC", color: brand.red }}>⏱ {dwell} sn</span>
+          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: CK.badBg, color: CK.red }}>⏱ {dwell} sn</span>
         ) : (
           <span style={{ color: brand.faint }}>—</span>
         )}

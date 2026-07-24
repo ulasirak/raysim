@@ -8,6 +8,7 @@ import type { Line, SimResult, RollingStock, Regime } from "@/lib/anaray/types";
 import { sampleAt } from "@/lib/anaray/sim";
 import { kmh, km, saat } from "@/lib/anaray/format";
 import { brand, rejimRenk } from "@/lib/anaray/brand";
+import { CK } from "@/lib/anaray/chartkit";
 
 const VBW = 240;
 const PAD_Y = 28;
@@ -113,7 +114,7 @@ export function TrainAnimation({ line, result, stock }: { line: Line; result: Si
               style={
                 carpan === h
                   ? { background: brand.ink, color: "#fff" }
-                  : { background: "#EDF0F3", color: brand.inkSoft }
+                  : { background: CK.track, color: brand.inkSoft }
               }
             >
               {h}×

@@ -11,11 +11,15 @@ import type { RailNetwork, Route, Line } from "@/lib/anaray/types";
 import type { SignalTrain } from "@/lib/anaray/signalling";
 import { saat } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
+import { CK, ASPEKT } from "@/lib/anaray/chartkit";
 
 const VBW = 860;
 const VBH = 300;
 const HIZLAR = [1, 5, 15, 30, 60];
-const DOWN = "#0C6DB8";
+// Yön kodlaması TÜM modüllerde aynı (Bildfahrplan/TrainGraphChart ile birebir):
+// gidiş = mavi · dönüş = turuncu (chartkit'te valide edilmiş çift).
+const UP_COL = CK.blue;
+const DOWN = CK.orange;
 const GAP = 9; // şeritlerin merkez hattından dik ofseti (px)
 const UP_SIDE = -1; // gidiş üst şerit (SVG'de -y yukarı)
 const DOWN_SIDE = 1; // dönüş alt şerit
@@ -112,7 +116,7 @@ export function LiveNetwork({
   }, [basePts]);
 
   if (!mounted) {
-    return <div className="h-[280px] w-full animate-pulse rounded-md" style={{ background: "#EDF0F3" }} aria-hidden />;
+    return <div className="h-[280px] w-full animate-pulse rounded-md" style={{ background: CK.track }} aria-hidden />;
   }
 
   // fp → merkez hattı noktası + segment normali + açı
@@ -169,7 +173,7 @@ export function LiveNetwork({
   // bir sonraki blok dolu → SARI (dikkat); ikisi de boş → YEŞİL.
   const nb = blocks.length - 1;
   const asp = (occ: Set<number>, ahead: number, after: number) =>
-    occ.has(ahead) ? "#C8102E" : occ.has(after) ? "#E0A400" : "#0E7C57";
+    occ.has(ahead) ? ASPEKT.kirmizi : occ.has(after) ? ASPEKT.sari : ASPEKT.yesil;
 
   // Depo hattı (rota dışı kenarlar) statik
   const spur = network.edges
@@ -191,7 +195,7 @@ export function LiveNetwork({
   const wagon = (x: { tr: SignalTrain; fp: number; up: boolean; v: number }, i: number) => {
     const side = x.up ? UP_SIDE : DOWN_SIDE;
     const pos = laneAt(x.fp, side);
-    const col = x.up ? brand.ink : DOWN;
+    const col = x.up ? UP_COL : DOWN;
     // yön: gidiş +tangent, dönüş -tangent
     const deg = (pos.ang * 180) / Math.PI + (x.up ? 0 : 180);
     const no = `${x.tr.index + 1}`;
@@ -308,7 +312,7 @@ export function LiveNetwork({
         {/* Aktif tren sayısı */}
         <text x={VBW - 10} y={22} fill={brand.muted} fontSize={11} textAnchor="end">Hatta {aktifSayi} tren</text>
         {/* Şerit etiketleri */}
-        <text x={10} y={VBH - 30} fill={brand.ink} fontSize={10} fontWeight={600}>▲ Gidiş (üst şerit)</text>
+        <text x={10} y={VBH - 30} fill={UP_COL} fontSize={10} fontWeight={600}>▲ Gidiş (üst şerit)</text>
         <text x={10} y={VBH - 12} fill={DOWN} fontSize={10} fontWeight={600}>▼ Dönüş (alt şerit)</text>
       </svg>
 
@@ -320,7 +324,7 @@ export function LiveNetwork({
         <div className="flex items-center gap-1">
           {HIZLAR.map((h) => (
             <button key={h} onClick={() => setHiz(h)} className="rounded px-2 py-1 text-xs font-medium transition"
-              style={hiz === h ? { background: brand.ink, color: "#fff" } : { background: "#EDF0F3", color: brand.inkSoft }}>
+              style={hiz === h ? { background: brand.ink, color: "#fff" } : { background: CK.track, color: brand.inkSoft }}>
               {h}×
             </button>
           ))}
@@ -330,8 +334,8 @@ export function LiveNetwork({
         <span className="font-mono text-xs" style={{ color: brand.muted }}>{saat(t)} / {saat(T)}</span>
       </div>
       <p className="text-xs" style={{ color: brand.muted }}>
-        <span style={{ color: brand.ink }}>▬</span> Üst şerit: Gidiş · <span style={{ color: DOWN }}>▬</span> Alt şerit: Dönüş · <span style={{ color: brand.red }}>▬</span> işgal edilen blok.
-        {" "}Sinyal: <span style={{ color: "#0E7C57" }}>●</span> yeşil (serbest) · <span style={{ color: "#E0A400" }}>●</span> sarı (dikkat) · <span style={{ color: "#C8102E" }}>●</span> kırmızı (dur). Sabit blok 3-fener mantığı canlı akıyor.
+        <span style={{ color: UP_COL }}>▬</span> Üst şerit: Gidiş · <span style={{ color: DOWN }}>▬</span> Alt şerit: Dönüş · <span style={{ color: CK.red }}>▬</span> işgal edilen blok.
+        {" "}Sinyal: <span style={{ color: ASPEKT.yesil }}>●</span> yeşil (serbest) · <span style={{ color: ASPEKT.sari }}>●</span> sarı (dikkat) · <span style={{ color: ASPEKT.kirmizi }}>●</span> kırmızı (dur). Sabit blok 3-fener mantığı canlı akıyor.
       </p>
     </div>
   );

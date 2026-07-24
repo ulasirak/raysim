@@ -10,7 +10,7 @@
 
 import qrcode from "qrcode-generator";
 import { emblemSvg } from "@/lib/emblem";
-import { CK, num, lab, areaGrad, smoothPath, egimRenk } from "./chartkit";
+import { CK, RAMP_BLUE, num, lab, areaGrad, smoothPath, egimRenk } from "./chartkit";
 import type { SimConfig, ProjeMeta } from "./config";
 import { PARAM_META, paramGoster, birim } from "./config";
 import type { RollingStock } from "./types";
@@ -81,9 +81,9 @@ function ringSemaSvg(rings: DurakArasiRing[]): string {
 function blockingBarSvg(bloklar: { i: number; makasBlok?: boolean; tSetup: number; tSighting: number; tApproach: number; tRunning: number; tClearing: number; tRelease: number; toplam: number }[], kritik: number): string {
   if (!bloklar.length) return "";
   const parts = [
-    { k: "tSetup", c: "#9ec5f4", ad: "Setup" }, { k: "tSighting", c: "#6da7ec", ad: "Görme" },
-    { k: "tApproach", c: "#3987e5", ad: "Yaklaşma" }, { k: "tRunning", c: "#256abf", ad: "Seyir" },
-    { k: "tClearing", c: "#184f95", ad: "Temizleme" }, { k: "tRelease", c: "#0d366b", ad: "Release" },
+    { k: "tSetup", c: RAMP_BLUE[0], ad: "Setup" }, { k: "tSighting", c: RAMP_BLUE[1], ad: "Görme" },
+    { k: "tApproach", c: RAMP_BLUE[2], ad: "Yaklaşma" }, { k: "tRunning", c: RAMP_BLUE[3], ad: "Seyir" },
+    { k: "tClearing", c: RAMP_BLUE[4], ad: "Temizleme" }, { k: "tRelease", c: RAMP_BLUE[5], ad: "Release" },
   ] as const;
   const max = Math.max(...bloklar.map((b) => b.toplam)) || 1;
   const rowH = 20, W = 760, labelW = 64, barW = W - labelW - 64, barH = 12;

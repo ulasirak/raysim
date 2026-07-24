@@ -17,13 +17,10 @@ import {
   type RotaTalebi,
   type SinyalAspekt,
 } from "@/lib/anaray/interlocking";
+import { CK, ASPEKT } from "@/lib/anaray/chartkit";
 
-const ASPEKT_RENK: Record<SinyalAspekt, string> = {
-  yesil: "#0E7C57",
-  sari: "#C79A2E",
-  kirmizi: "#C8102E",
-  sonuk: "#4A5A6A",
-};
+// Aspekt renkleri chartkit'in ALAN semantiği katmanından (gerçek fener renkleri).
+const ASPEKT_RENK: Record<SinyalAspekt, string> = ASPEKT;
 const ASPEKT_AD: Record<SinyalAspekt, string> = { yesil: "YEŞİL", sari: "SARI", kirmizi: "KIRMIZI", sonuk: "SÖNÜK" };
 
 export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {}) {
@@ -104,7 +101,7 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <MiniStat etiket="Kabul / talep" deger={`${kabuller} / ${istekler.length}`} />
-          <MiniStat etiket="Maks. eşzamanlı rota" deger={`${sonuc.maxEszamanli}`} alt={sonuc.maxEszamanli > 1 ? "paralel kurulum" : "tek tren"} vurgu={sonuc.maxEszamanli > 1 ? "#0E7C57" : brand.ink} />
+          <MiniStat etiket="Maks. eşzamanlı rota" deger={`${sonuc.maxEszamanli}`} alt={sonuc.maxEszamanli > 1 ? "paralel kurulum" : "tek tren"} vurgu={sonuc.maxEszamanli > 1 ? CK.good : brand.ink} />
           <MiniStat etiket="Ort. bekleme" deger={sure(sonuc.ortBekleme)} alt="çakışma kuyruğu" />
           <MiniStat etiket="Throughput" deger={`${sonuc.throughput.toFixed(0)}/sa`} alt="kabul edilen" />
         </div>
@@ -128,7 +125,7 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
                     {[2, 4, 8, 16].map((h) => (<option key={h} value={h}>{h}×</option>))}
                   </select>
                 </label>
-                {kare?.failSafe && <span className="rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: "#3A4A5A", color: "#fff" }}>⚠ FAIL-SAFE — bölge sönük</span>}
+                {kare?.failSafe && <span className="rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: ASPEKT.sonuk, color: "#fff" }}>⚠ FAIL-SAFE — bölge sönük</span>}
               </div>
 
               {/* Rotalar + sinyaller */}
@@ -145,7 +142,7 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
                           <span className="font-mono text-sm font-semibold" style={{ color: brand.ink }}>{r.nereden} → {r.nereye}</span>
                           <span className="text-xs" style={{ color: brand.faint }}>{r.id}</span>
                           <span className="ml-auto text-xs font-medium" style={{ color: ASPEKT_RENK[asp] }}>{ASPEKT_AD[asp]}</span>
-                          {r.tccGerekli && <span className="rounded px-1.5 py-0.5 text-[0.6rem]" style={{ background: "#EDF0F3", color: brand.muted }}>TCC</span>}
+                          {r.tccGerekli && <span className="rounded px-1.5 py-0.5 text-[0.6rem]" style={{ background: CK.track, color: brand.muted }}>TCC</span>}
                         </div>
                       );
                     })}
@@ -158,7 +155,7 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {topo.makaslar.map((pm) => {
                       const d = kare?.makaslar[pm] ?? "serbest";
-                      const renk = d === "kilitli" ? "#0E7C57" : d === "hareket" ? "#C79A2E" : brand.muted;
+                      const renk = d === "kilitli" ? ASPEKT.yesil : d === "hareket" ? ASPEKT.sari : brand.muted;
                       return (
                         <span key={pm} className="rounded px-2 py-1 text-xs font-medium" style={{ background: renk + "1A", color: renk }} title={d}>
                           {pm} · {d === "kilitli" ? "🔒" : d === "hareket" ? "↻" : "○"}
@@ -173,7 +170,7 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
                       {topo.bloklar.map((bs) => {
                         const dolu = kare?.bloklar[bs];
                         return (
-                          <span key={bs} className="rounded px-2 py-1 text-xs font-medium" style={{ background: dolu ? brand.red : "#EDF0F3", color: dolu ? "#fff" : brand.muted }}>
+                          <span key={bs} className="rounded px-2 py-1 text-xs font-medium" style={{ background: dolu ? CK.red : CK.track, color: dolu ? "#fff" : brand.muted }}>
                             {bs} {dolu ? "●" : "○"}
                           </span>
                         );
@@ -203,7 +200,7 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
                     <td className="p-2 font-mono font-medium" style={{ color: brand.muted }}>{r.nereden}{r.nereye}</td>
                     {topo.rotalar.map((c, j) => (
                       <td key={c.id} className="p-2 text-center font-mono font-semibold"
-                        style={{ color: i === j ? brand.faint : matriks[i][j] ? "#0E7C57" : brand.red, background: i === j ? "#F5F6F8" : matriks[i][j] ? "#EAF6EF" : "#FBE9EC" }}>
+                        style={{ color: i === j ? brand.faint : matriks[i][j] ? CK.good : CK.red, background: i === j ? brand.paper : matriks[i][j] ? CK.goodBg : CK.badBg }}>
                         {i === j ? "·" : matriks[i][j] ? "X" : "0"}
                       </td>
                     ))}
@@ -237,11 +234,11 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
                   <td className="py-2" style={{ color: brand.inkSoft }}>{s.rotaId}</td>
                   <td className="py-2" style={{ color: brand.muted }}>{sure(s.talepT)}</td>
                   <td className="py-2" style={{ color: brand.inkSoft }}>{s.kabulT < 0 ? "—" : sure(s.kabulT)}</td>
-                  <td className="py-2" style={{ color: "#0E7C57" }}>{s.yesilT < 0 ? "—" : sure(s.yesilT)}</td>
+                  <td className="py-2" style={{ color: ASPEKT.yesil }}>{s.yesilT < 0 ? "—" : sure(s.yesilT)}</td>
                   <td className="py-2" style={{ color: brand.inkSoft }}>{s.cikisT < 0 ? "—" : sure(s.cikisT)}</td>
                   <td className="py-2">
                     {s.bekleme > 1 ? (
-                      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: "#FBE9EC", color: brand.red }}>⏱ {sure(s.bekleme)}</span>
+                      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: CK.badBg, color: CK.red }}>⏱ {sure(s.bekleme)}</span>
                     ) : (
                       <span style={{ color: brand.faint }}>—</span>
                     )}

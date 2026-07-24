@@ -13,6 +13,7 @@ import { useSimConfig, useProje } from "@/components/SimConfigProvider";
 import { varsayilanArac } from "@/lib/anaray/vehicles";
 import { saat, sure } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
+import { CK, SERI, ASPEKT } from "@/lib/anaray/chartkit";
 
 const VBW = 900;
 const VBH = 180;
@@ -20,11 +21,12 @@ const MX = 40; // yatay kenar boşluğu
 const YHAT = 96; // koridor y
 const HIZLAR = [1, 5, 15, 30, 60];
 
+// Makas bandı fazları = gerçek sinyal aspektleri (alan semantiği, chartkit/ASPEKT).
 const FAZ_RENK: Record<ZonFaz, string> = {
-  bos: brand.faint,
-  tanzim: brand.gold, // sarı — tanzim
-  kilitli: "#0E7C57", // yeşil — rota kurulu
-  release: brand.red, // kırmızı — release kilidi
+  bos: CK.faint,
+  tanzim: ASPEKT.sari, // sarı — tanzim
+  kilitli: ASPEKT.yesil, // yeşil — rota kurulu
+  release: ASPEKT.kirmizi, // kırmızı — release kilidi
 };
 const FAZ_AD: Record<ZonFaz, string> = { bos: "boş", tanzim: "tanzim (sarı)", kilitli: "kurulu (yeşil)", release: "release kilidi" };
 
@@ -138,7 +140,7 @@ export function HatSim() {
       <div className="flex flex-col gap-4">
       {/* Koridor görselleştirmesi */}
       {!mounted ? (
-        <div className="h-[220px] w-full animate-pulse rounded-md" style={{ background: "#EDF0F3" }} aria-hidden />
+        <div className="h-[220px] w-full animate-pulse rounded-md" style={{ background: CK.track }} aria-hidden />
       ) : (
       <svg viewBox={`0 0 ${VBW} ${VBH}`} className="w-full h-auto" role="img" aria-label="Tam hat çok-tren canlı simülasyonu">
         {/* Boş hat */}
@@ -200,7 +202,7 @@ export function HatSim() {
         <div className="flex items-center gap-1">
           {HIZLAR.map((h) => (
             <button key={h} onClick={() => setHiz(h)} className="rounded px-2 py-1 text-xs font-medium transition"
-              style={hiz === h ? { background: brand.ink, color: "#fff" } : { background: "#EDF0F3", color: brand.inkSoft }}>
+              style={hiz === h ? { background: brand.ink, color: "#fff" } : { background: CK.track, color: brand.inkSoft }}>
               {h}×
             </button>
           ))}
@@ -252,7 +254,9 @@ export function HatSim() {
 
       {/* Darboğaz kartı */}
       {sonuc.darbogaz && (
-        <div className="rounded-md border-l-4 px-4 py-3 text-sm" style={{ background: brand.surface, borderColor: sonuc.darbogaz.tur === "makas" ? "#0E7C57" : brand.red }}>
+        // Kenar rengi = darboğazın TÜRÜ (Sperrzeitentreppe lejandıyla aynı kod:
+        // makas bloğu turuncu · düz blok mavi); aciliyet aşağıdaki kırmızı satırda.
+        <div className="rounded-md border-l-4 px-4 py-3 text-sm" style={{ background: brand.surface, borderColor: sonuc.darbogaz.tur === "makas" ? SERI.makasBlok : SERI.duzBlok }}>
           <div className="font-medium" style={{ color: brand.ink }}>
             Darboğaz: {sonuc.darbogaz.tur === "makas" ? "Makas anklaşmanı" : "Blok + durak aralığı"} — {sonuc.darbogaz.ad}
           </div>
@@ -276,17 +280,17 @@ export function HatSim() {
             <div className="mb-3 flex items-baseline justify-between">
               <div className="field-label">Sinyal sistemi kapasite karşılaştırması</div>
               {kazanc > 0.5 && (
-                <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold" style={{ background: "#E6F4EC", color: "#0E7C57" }}>
+                <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold" style={{ background: CK.goodBg, color: CK.good }}>
                   CBTC ile +%{kazanc.toFixed(0)} kapasite
                 </span>
               )}
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <KapasiteKart ad="Sabit blok" h={hSabit} tph={tphSabit} renk="#0C6DB8" />
-              <KapasiteKart ad="Hareketli blok (CBTC)" h={hHareketli} tph={tphHareketli} renk="#0E7C57" one />
+              <KapasiteKart ad="Sabit blok" h={hSabit} tph={tphSabit} renk={SERI.sabitBlok} />
+              <KapasiteKart ad="Hareketli blok (CBTC)" h={hHareketli} tph={tphHareketli} renk={SERI.hareketliBlok} one />
             </div>
             <p className="mt-2 text-xs" style={{ color: brand.muted }}>
-              CBTC (hareketli blok) sabit sinyal bloğu granülünü kaldırır; trenler öndekinin fiziksel kuyruğuna kadar yaklaşır → aynı altyapıda saatte <span className="font-medium" style={{ color: "#0E7C57" }}>%{kazanc.toFixed(0)}</span> daha fazla tren.
+              CBTC (hareketli blok) sabit sinyal bloğu granülünü kaldırır; trenler öndekinin fiziksel kuyruğuna kadar yaklaşır → aynı altyapıda saatte <span className="font-medium" style={{ color: SERI.hareketliBlok }}>%{kazanc.toFixed(0)}</span> daha fazla tren.
             </p>
           </div>
         );
@@ -307,17 +311,17 @@ export function HatSim() {
         const kazanPct = simSabit > 0 ? ((simSabit - simHareketli) / simSabit) * 100 : 0; // sabit→hareketli kazanç
         const enUzun = Math.max(analitik, simSabit, simHareketli, gerc, 1);
         const satirlar: [string, number, string][] = [
-          ["Analitik · blocking-time (ihtiyatlı)", analitik, brand.gold],
-          ["Simüle · sabit blok", simSabit, "#0C6DB8"],
-          ["Simüle · hareketli blok (CBTC)", simHareketli, "#0E7C57"],
-          ["Gerçekleşen (bu koşum)", gerc, brand.ink],
+          ["Analitik · blocking-time (ihtiyatlı)", analitik, SERI.analitik],
+          ["Simüle · sabit blok", simSabit, SERI.sabitBlok],
+          ["Simüle · hareketli blok (CBTC)", simHareketli, SERI.hareketliBlok],
+          ["Gerçekleşen (bu koşum)", gerc, SERI.gerceklesen],
         ];
         return (
           <div className="rounded-md border p-4" style={{ borderColor: brand.border, background: brand.surface }}>
             <div className="mb-1 flex items-baseline justify-between">
               <div className="field-label">Kapasite Mutabakatı — min sürdürülebilir headway</div>
               <span className="rounded-full px-2 py-0.5 text-[0.65rem] font-medium"
-                style={siraOk ? { background: "#E6F4EC", color: "#0E7C57" } : { background: "#FBE9EC", color: brand.red }}>
+                style={siraOk ? { background: CK.goodBg, color: CK.good } : { background: CK.badBg, color: CK.red }}>
                 {siraOk ? "✓ Tutarlı (teori ≥ sabit ≥ hareketli)" : "⚠ Sıralama bozuk — incele"}
               </span>
             </div>
@@ -325,14 +329,14 @@ export function HatSim() {
               Doğru ölçüt eşitlik değil <span className="font-medium" style={{ color: brand.ink }}>sıralamadır</span>:
               analitik blocking-time <span className="font-medium">ihtiyatlı</span> (blok, yaklaşma+sighting boyunca da rezerve),
               simülasyon setup&apos;ı yaklaşmayla <span className="font-medium">örtüştürür</span> (%{ortusmePct.toFixed(0)} kazanç),
-              hareketli blok granülü kaldırır (sabit bloğa göre ek <span className="font-medium" style={{ color: "#0E7C57" }}>%{kazanPct.toFixed(0)}</span>).
+              hareketli blok granülü kaldırır (sabit bloğa göre ek <span className="font-medium" style={{ color: SERI.hareketliBlok }}>%{kazanPct.toFixed(0)}</span>).
               Teori simülasyonu üstten sınırladığı sürece sistemler mutabıktır.
             </p>
             <div className="flex flex-col gap-1.5">
               {satirlar.map(([ad, v, c]) => (
                 <div key={ad} className="flex items-center gap-2">
                   <span className="w-52 shrink-0 text-xs" style={{ color: brand.inkSoft }}>{ad}</span>
-                  <div className="h-4 flex-1 overflow-hidden rounded" style={{ background: "#EDF0F3" }}>
+                  <div className="h-4 flex-1 overflow-hidden rounded" style={{ background: CK.track }}>
                     <div className="h-full rounded" style={{ width: `${(v / enUzun) * 100}%`, background: c }} />
                   </div>
                   <span className="w-12 shrink-0 text-right font-mono text-xs" style={{ color: brand.ink }}>{stat(v)}</span>
@@ -391,7 +395,8 @@ export function HatSim() {
 
 function KapasiteKart({ ad, h, tph, renk, one }: { ad: string; h: number; tph: number; renk: string; one?: boolean }) {
   return (
-    <div className="rounded-md border p-3" style={{ borderColor: one ? renk : brand.border, borderWidth: one ? 2 : 1, background: one ? "#F2FAF6" : brand.surface }}>
+    // vurgulu kart zemini = kendi seri renginin ~%5 tint'i (renk sabitleri tekilleşti)
+    <div className="rounded-md border p-3" style={{ borderColor: one ? renk : brand.border, borderWidth: one ? 2 : 1, background: one ? renk + "0D" : brand.surface }}>
       <div className="flex items-center gap-2">
         <span className="inline-block h-3 w-3 rounded-full" style={{ background: renk }} />
         <span className="text-sm font-semibold" style={{ color: brand.ink }}>{ad}</span>

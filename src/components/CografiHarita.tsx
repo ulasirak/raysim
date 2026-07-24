@@ -8,6 +8,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { brand } from "@/lib/anaray/brand";
+import { CK } from "@/lib/anaray/chartkit";
 import { useProje } from "@/components/SimConfigProvider";
 import {
   parseStops, parseShapes, makeProjector, polylineLength, gtfsToRings, tahminEtKisitlar, tahminEtHiz, tahminEtEgim, shapeElevations,
@@ -125,15 +126,15 @@ export function CografiHarita() {
         </label>
       </div>
 
-      {hata && <div className="mb-4 rounded-md border-l-4 px-4 py-2 text-sm" style={{ background: "#FBE9EC", borderColor: brand.red, color: brand.red }}>⚠ {hata}</div>}
+      {hata && <div className="mb-4 rounded-md border-l-4 px-4 py-2 text-sm" style={{ background: CK.badBg, borderColor: brand.red, color: brand.red }}>⚠ {hata}</div>}
 
       {uretildi != null && (
-        <div className="mb-4 rounded-md border-l-4 px-4 py-3 text-sm" style={{ background: "#E6F4EC", borderColor: "#0E7C57", color: brand.ink }}>
+        <div className="mb-4 rounded-md border-l-4 px-4 py-3 text-sm" style={{ background: CK.goodBg, borderColor: CK.good, color: brand.ink }}>
           ✓ <b>{uretildi.rings} durak-arası hücre</b> gerçek koordinatlardan üretildi ve paylaşılan hatta yazıldı.
           {uretildi.makas + uretildi.hemzemin + uretildi.hiz > 0 ? (
             <> Ayrıca <b>{uretildi.makas} makas</b> (keskin dönüş + hat sonu U-dönüş), <b>{uretildi.hemzemin} hemzemin geçit</b>
             {uretildi.hiz > 0 && <> ve <b>{uretildi.hiz} hücrede hız kısıtı</b>{uretildi.minVmax != null ? ` (en düşük ${uretildi.minVmax} km/h, kurp yarıçapından)` : ""}</>} <i>tahmin edildi</i>.{" "}
-            <span style={{ color: "#A8842C" }}>▲ Tahminler geometri sezgiseldir</span> (hemzemin konumu shape&apos;ten çıkarılamaz, eşit-aralık varsayımıdır; hız kısıtı yalnız yoğun shape&apos;te anlamlıdır) — 2. etap saha verisiyle veya{" "}
+            <span style={{ color: CK.amber }}>▲ Tahminler geometri sezgiseldir</span> (hemzemin konumu shape&apos;ten çıkarılamaz, eşit-aralık varsayımıdır; hız kısıtı yalnız yoğun shape&apos;te anlamlıdır) — 2. etap saha verisiyle veya{" "}
             <Link href="/ringler" className="underline" style={{ color: brand.red }}>Ringler</Link> editöründen düzeltin.</>
           ) : (
             <> Makas/hemzemin GTFS&apos;te olmadığından boş geldi — 2. etap verisiyle ya da <Link href="/ringler" className="underline" style={{ color: brand.red }}>Ringler</Link> editöründen eklenir.</>
@@ -176,7 +177,7 @@ export function CografiHarita() {
                   const a = proj.project(sh.points[k].lat, sh.points[k].lon);
                   const b = proj.project(p.lat, p.lon);
                   const de = shapeEle[k + 1] - shapeEle[k];
-                  const col = de > 0.03 ? brand.red : de < -0.03 ? DOWN : "#9AA7B4";
+                  const col = de > 0.03 ? brand.red : de < -0.03 ? DOWN : CK.faint;
                   return <line key={`gs${si}-${k}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={col} strokeWidth={3.5} strokeLinecap="round" />;
                 });
               }
@@ -225,7 +226,7 @@ export function CografiHarita() {
         )}
         <p className="mt-2 text-xs" style={{ color: brand.muted }}>
           {shapeEle ? (
-            <><span style={{ color: brand.red }}>▬</span> tırmanış · <span style={{ color: DOWN }}>▬</span> iniş · <span style={{ color: "#9AA7B4" }}>▬</span> düz (yükseklikten eğim) · </>
+            <><span style={{ color: brand.red }}>▬</span> tırmanış · <span style={{ color: DOWN }}>▬</span> iniş · <span style={{ color: CK.faint }}>▬</span> düz (yükseklikten eğim) · </>
           ) : (
             <><span style={{ color: DOWN }}>▬</span> güzergah (shape) · </>
           )}
