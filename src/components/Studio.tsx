@@ -31,6 +31,11 @@ import { TrainGraphChart } from "@/components/TrainGraphChart";
 
 const KMH = 1 / 3.6;
 
+// MODEL KURALI: her durak arası TEK sinyal bloğudur. makeBlocks'a sonsuz blok
+// uzunluğu verilince istasyon sınırları dışında alt bölme yapılmaz (blok = durak
+// arası). Böylece canlı sim, grafikler ve kapasite/headway tek blok modeliyle tutarlı.
+const BLOK_MAXLEN = Infinity;
+
 // Proje hattı boşsa (kullanıcı Ringler'de tüm hücreleri sildiyse) motorlar çökmesin
 // diye geçerli ama boş bir iskelet; ekranda uyarı gösterilir.
 const BOS_SEBEKE: RailNetwork = {
@@ -80,10 +85,6 @@ function StudioIc() {
   const [selEdge, setSelEdge] = useState<string>("");
   const [headwayDk, setHeadwayDk] = useState(() => Math.round((cfg.headway / 60) * 2) / 2);
   const [seferSayisi, setSeferSayisi] = useState(6);
-  // MODEL KURALI: her durak arası TEK sinyal bloğudur. makeBlocks'a sonsuz blok
-  // uzunluğu verilir → istasyon sınırları dışında alt bölme yapılmaz (blok = durak
-  // arası). Böylece canlı sim, grafikler ve kapasite/headway tek blok modeliyle tutarlı.
-  const BLOK_MAXLEN = Infinity;
   const [turnaroundDk, setTurnaroundDk] = useState(3);
   const [ariza, setAriza] = useState<number[]>([]); // dispatcher: arızalı bloklar (gidiş hattı)
   const [yon, setYon] = useState<"gidis" | "donus" | "ikisi">("gidis");
@@ -135,7 +136,7 @@ function StudioIc() {
     setTimeout(() => {
       const r = monteCarlo(
         line, stock,
-        { headway: headwayDk * 60, count: seferSayisi, maxBlockLen: blockLen },
+        { headway: headwayDk * 60, count: seferSayisi, maxBlockLen: BLOK_MAXLEN },
         { trials: 150, meanEntry, meanDwell, threshold: 120 }
       );
       setMc(r);
@@ -399,10 +400,9 @@ function StudioIc() {
       {/* Sefer sıklığı, sinyalizasyon & kapasite */}
       <section className="mt-6">
         <Panel baslik="Sefer Sıklığı, Sinyalizasyon & Kapasite" aciklama="Sabit blok sinyal sistemi + çift yön. Tren dolu bloğa giremez (kırmızı sinyalde durur); ince yatay çizgiler sinyal bloklarıdır.">
-          <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
             <Num label="Sefer Aralığı" suffix="dk" step={0.5} value={headwayDk} onChange={(v) => setHeadwayDk(Math.max(0.5, v))} />
             <Num label="Sefer Sayısı" suffix="tren" step={1} value={seferSayisi} onChange={(v) => setSeferSayisi(Math.max(1, Math.round(v)))} />
-            <Num label="Blok Uzunluğu" suffix="m" step={100} value={blockLen} onChange={(v) => setBlockLen(Math.max(100, Math.round(v)))} />
             <Num label="Dönüş Bekleme" suffix="dk" step={0.5} value={turnaroundDk} onChange={(v) => setTurnaroundDk(Math.max(0, v))} />
           </div>
 
@@ -428,7 +428,7 @@ function StudioIc() {
           {/* Kapasite / filo çıktıları */}
           <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <MiniStat etiket="Gecikmesiz en sık aralık" deger={sure(gidisSim.minHeadway)} />
-            <MiniStat etiket="Sinyal bloğu" deger={`${gidisSim.blocks.length - 1}`} alt={`${blockLen} m/blok`} />
+            <MiniStat etiket="Sinyal bloğu" deger={`${gidisSim.blocks.length - 1}`} alt="durak arası = 1 blok" />
             <MiniStat etiket="Tur süresi" deger={sure(filo.roundTrip)} alt="gidiş-dönüş + bekleme" />
             <MiniStat etiket="Araç ihtiyacı" deger={`${filo.trains} tren`} alt={`${headwayDk} dk arayla`} />
           </div>
