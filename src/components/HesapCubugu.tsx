@@ -153,13 +153,9 @@ export function HesapCubugu() {
             {bakiye === null ? "◌ kredi" : `◈ ${bakiye} kredi`}
           </span>
 
-          <button onClick={() => setMenuAcik((a) => !a)} title="Bu hat için diğer işlemler"
+          <button onClick={() => setMenuAcik((a) => !a)} title="Hesap · kredi · hat işlemleri · çıkış"
             className="rounded border px-2 py-1 font-medium transition hover:bg-slate-50"
             style={{ borderColor: brand.border, color: brand.inkSoft }}>⋮</button>
-
-          <button onClick={() => cikisYap()} title="Oturumu kapatır; hatlarınız hesabınızda kalır"
-            className="rounded border px-2 py-1 font-medium transition hover:bg-slate-50"
-            style={{ borderColor: brand.border, color: brand.inkSoft }}>Çıkış</button>
 
           {menuAcik && (
             <>
@@ -217,6 +213,12 @@ export function HesapCubugu() {
                     onClick={() => { if (confirm(`“${aktifAd}” kalıcı olarak silinsin mi?`)) { sar(projeSilmeIstegi(aktifId!), "sil"); menuKapat(); } }}
                     ad="Hattı sil" alt="Bu projeyi kalıcı olarak siler (geri alınamaz)" />
                 )}
+
+                {/* Oturumu kapat — çubuğun sadeleşmesi için ayrı buton yerine menüde */}
+                <div className="border-t" style={{ borderColor: brand.border }}>
+                  <MenuOge onClick={() => { menuKapat(); cikisYap(); }}
+                    ad="Çıkış" alt="Oturumu kapatır; hatlarınız hesabınızda kalır" />
+                </div>
               </div>
             </>
           )}

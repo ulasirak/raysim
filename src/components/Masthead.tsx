@@ -1,7 +1,7 @@
 // raysim — resmî künye başlığı (masthead).
 // Koyu mürekkep zemin + amblem (ray rozeti) + Spectral marka + resmî belge künyesi.
 
-export function Masthead({ belgeKodu, rota }: { belgeKodu: string; rota: string }) {
+export function Masthead({ belgeKodu, rota, rotaEtiketi = "Rota" }: { belgeKodu: string; rota: string; rotaEtiketi?: string }) {
   return (
     <header className="border-b-2" style={{ background: "#0C2233", borderColor: "#C8102E" }}>
       <div className="mx-auto flex max-w-6xl items-center gap-4 px-6 py-5">
@@ -32,7 +32,7 @@ export function Masthead({ belgeKodu, rota }: { belgeKodu: string; rota: string 
         <div className="hidden shrink-0 border-l border-white/15 pl-4 text-right sm:block">
           <div className="text-[0.6rem] uppercase tracking-[0.18em] text-slate-400">Belge</div>
           <div className="font-mono text-sm text-white tabular-nums">{belgeKodu}</div>
-          <div className="mt-1 text-[0.6rem] uppercase tracking-[0.18em] text-slate-400">Rota</div>
+          <div className="mt-1 text-[0.6rem] uppercase tracking-[0.18em] text-slate-400">{rotaEtiketi}</div>
           <div className="max-w-[13rem] truncate text-xs text-slate-200">{rota}</div>
         </div>
       </div>

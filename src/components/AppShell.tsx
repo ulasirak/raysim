@@ -8,7 +8,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Masthead } from "@/components/Masthead";
-import { SimConfigProvider } from "@/components/SimConfigProvider";
+import { SimConfigProvider, useHesap } from "@/components/SimConfigProvider";
 import { AuthProvider } from "@/components/AuthProvider";
 import { HesapCubugu } from "@/components/HesapCubugu";
 import { CuzdanProvider } from "@/components/CuzdanProvider";
@@ -166,6 +166,8 @@ function Govde({ children }: { children: React.ReactNode }) {
   // ziyaretçiyi doğrudan giriş/kayıt ekranıyla karşılar.
   const erisim = useErisim();
   const icerikVar = erisim === "acik";
+  // O an seçili hattın adı (çok kiracılı hesap çubuğuyla aynı kaynak).
+  const { aktifAd } = useHesap();
 
   // Ana sayfada aktif bölüm kaydırmayla belirlenir; eski derin rotalarda yola göre.
   const aktifBolum = useAktifBolum(anaSayfa && icerikVar);
@@ -180,9 +182,15 @@ function Govde({ children }: { children: React.ReactNode }) {
   const ilerleme = anaSayfa ? kaydirma : aktifIndex / Math.max(1, MODULLER.length - 1);
   const genisEkran = useGenisEkran();
 
+  // Masthead künyesi: giriş yapılıp bir hat aktifse "AKTİF HAT" + hattın adı
+  // (hesap çubuğuyla tutarlı); aksi halde modülün statik rota adı ("Rota").
+  const hatAktif = icerikVar && Boolean(aktifAd) && aktifAd !== "—";
+  const rotaEtiketi = hatAktif ? "AKTİF HAT" : "Rota";
+  const rotaDeger = hatAktif ? aktifAd : aktif.rota;
+
   return (
     <>
-      <Masthead belgeKodu={aktif.kod} rota={aktif.rota} />
+      <Masthead belgeKodu={aktif.kod} rota={rotaDeger} rotaEtiketi={rotaEtiketi} />
 
       {/* Modül navigasyonu — sistemin mantıksal iş akışı bir METRO HATTI olarak:
           yedi istasyon soldan sağa boru hattı; kaydırma ilerlemesi rayda akan bir

@@ -23,9 +23,7 @@ function anahtarlar() {
 }
 
 /** IYZWSv2 yetkilendirme başlığı (rastgele anahtar + gövde imzası). */
-function yetkiBasligi(uriPath: string, govdeJson: string, apiKey: string, secretKey: string) {
-  // Rastgele anahtar: zaman damgası tohumlu (Date.now scriptte değil, sunucuda serbest).
-  const randomKey = `${Date.now()}${crypto.randomBytes(8).toString("hex")}`;
+function yetkiBasligi(uriPath: string, govdeJson: string, randomKey: string, apiKey: string, secretKey: string) {
   const payload = randomKey + uriPath + govdeJson;
   const signature = crypto.createHmac("sha256", secretKey).update(payload, "utf8").digest("hex");
   const authString = `apiKey:${apiKey}&randomKey:${randomKey}&signature:${signature}`;
@@ -35,11 +33,13 @@ function yetkiBasligi(uriPath: string, govdeJson: string, apiKey: string, secret
 async function iyzicoPost(uriPath: string, govde: Record<string, unknown>) {
   const { apiKey, secretKey, base } = anahtarlar();
   const govdeJson = JSON.stringify(govde);
+  const randomKey = `${Date.now()}${crypto.randomBytes(8).toString("hex")}`;
   const yanit = await fetch(base + uriPath, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: yetkiBasligi(uriPath, govdeJson, apiKey, secretKey),
+      Authorization: yetkiBasligi(uriPath, govdeJson, randomKey, apiKey, secretKey),
+      "x-iyzi-rnd": randomKey, // bazı iyzico sürümleri imza doğrulaması için bunu da ister
     },
     body: govdeJson,
   });
@@ -92,6 +92,7 @@ export async function odemeBaslat(g: OdemeBaslatGirdi): Promise<{ paymentPageUrl
     token: y.token as string | undefined,
     status: (y.status as string) ?? "failure",
     errorMessage: y.errorMessage as string | undefined,
+    errorCode: y.errorCode as string | undefined,
   };
 }
 

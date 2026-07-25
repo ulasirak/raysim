@@ -45,7 +45,10 @@ export async function POST(req: Request) {
       aliciUid: uid,
     });
     if (sonuc.status !== "success" || !sonuc.paymentPageUrl) {
-      return NextResponse.json({ hata: sonuc.errorMessage ?? "iyzico ödeme başlatılamadı." }, { status: 502 });
+      return NextResponse.json(
+        { hata: `iyzico: ${sonuc.errorMessage ?? "başlatılamadı"}${sonuc.errorCode ? ` (kod ${sonuc.errorCode})` : ""}` },
+        { status: 502 },
+      );
     }
     return NextResponse.json({ odemeUrl: sonuc.paymentPageUrl });
   } catch (e) {
