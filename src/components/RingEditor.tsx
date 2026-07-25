@@ -362,9 +362,19 @@ function RingKart(p: KartProps) {
                 <Num label="Best-case mesafe" suffix="m" step={50} value={ring.bestUzunluk} onChange={(v) => p.onPatch({ bestUzunluk: v })} />
                 <Num label="Worst-case mesafe" suffix="m" step={50} value={ring.worstUzunluk} onChange={(v) => p.onPatch({ worstUzunluk: v })} />
                 <Num label="Sahasal azami" suffix="km/h" step={5} value={Math.round(kmh(ring.vmax))} onChange={(v) => p.onPatch({ vmax: v * KMH })} />
-                <Num label="Eğim" suffix="‰" step={1} value={ring.egim} onChange={(v) => p.onPatch({ egim: v })} allowNeg />
                 <Num label="Varış durak bekleme" suffix="s" step={5} value={ring.dwell} onChange={(v) => p.onPatch({ dwell: v })} />
               </div>
+              {/* Eğim ikincil: tramvay hatları genelde düz (varsayılan 0). Gerekirse
+                  burada girilir ya da Coğrafi modülünde GTFS yüksekliğinden otomatik gelir. */}
+              <details className="mt-2">
+                <summary className="field-label cursor-pointer select-none" style={{ color: brand.faint }}>
+                  Gelişmiş · eğim {ring.egim ? `(${ring.egim}‰)` : "(düz)"}
+                </summary>
+                <div className="mt-1 w-40">
+                  <Num label="Eğim" suffix="‰" step={1} value={ring.egim} onChange={(v) => p.onPatch({ egim: v })} allowNeg />
+                  <p className="mt-1 text-[0.62rem]" style={{ color: brand.faint }}>Tramvayda çoğunlukla 0. Coğrafi modülünde GTFS yüksekliği varsa otomatik hesaplanır.</p>
+                </div>
+              </details>
             </div>
 
             {/* Senaryo çıktısı */}
