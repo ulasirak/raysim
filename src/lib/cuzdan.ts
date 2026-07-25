@@ -13,9 +13,9 @@ import { getDb } from "./firebase";
 
 /** Ücretli eylemlerin kredi bedeli. Sunucu bu değerlere göre düşer. */
 export const KREDI_BEDELI = {
-  /** Bir teknik rapor (PDF/Word/Excel) üretimi. */
-  rapor: 1,
-  /** Bir hattın hesaba yüklenmesi/kaydedilmesi (proje yükleme). */
+  /** Resmî PDF teknik rapor — asıl değerli çıktı, proje yüklemeden ÇOK pahalı. */
+  rapor: 10,
+  /** Bir hattın hesaba yüklenmesi (yeni hat oluşturma). */
   projeYukleme: 1,
 } as const;
 

@@ -21,8 +21,10 @@ import { SaltOkunurKalkan } from "@/components/SaltOkunurKalkan";
 import { brand } from "@/lib/anaray/brand";
 
 /** Bölüm ankorları — AppShell navigasyonu ve scroll-spy ile ORTAK kaynak. */
+// Teknik Belgeler EN SONDA: kullanıcı önce hattı kurup analiz eder (Sefer→Coğrafi),
+// en altta ücretli PDF raporu üretir — doğal iş akışının son adımı.
 export const BOLUM_SLUG = [
-  "sefer", "ringler", "anklasman", "tam-hat", "sistem", "belgeler", "cografi",
+  "sefer", "ringler", "anklasman", "tam-hat", "sistem", "cografi", "belgeler",
 ] as const;
 export type BolumSlug = (typeof BOLUM_SLUG)[number];
 
@@ -32,8 +34,8 @@ const BOLUMLER: { slug: BolumSlug; el: React.ReactNode }[] = [
   { slug: "anklasman", el: <AnklasmanSim /> },
   { slug: "tam-hat", el: <HatSim /> },
   { slug: "sistem", el: <SistemMerkezi /> },
-  { slug: "belgeler", el: <Belgeler /> },
   { slug: "cografi", el: <CografiHarita /> },
+  { slug: "belgeler", el: <Belgeler /> },
 ];
 
 export function TekSayfa() {
