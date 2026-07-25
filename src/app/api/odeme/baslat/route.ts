@@ -6,7 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { istekKimlik, isAdminConfigured } from "@/lib/firebaseAdmin";
-import { odemeKaydiOlustur } from "@/lib/cuzdanServer";
+import { odemeKaydiOlustur, kartAnahtariGetir } from "@/lib/cuzdanServer";
 import { isIyzicoConfigured, odemeBaslat } from "@/lib/iyzico";
 import { paketBul } from "@/lib/cuzdan";
 import crypto from "crypto";
@@ -34,6 +34,9 @@ export async function POST(req: Request) {
 
   await odemeKaydiOlustur(conversationId, { uid, kredi: paket.kredi, tl: paket.tl, durum: "beklemede" });
 
+  // Kullanıcının kayıtlı kartı varsa ödeme formunda çıkması için anahtarı ekle.
+  const cardUserKey = (await kartAnahtariGetir(uid)) ?? undefined;
+
   try {
     const sonuc = await odemeBaslat({
       conversationId,
@@ -43,6 +46,7 @@ export async function POST(req: Request) {
       aliciEposta: eposta,
       aliciAdSoyad: eposta ? eposta.split("@")[0] : "RaySim Kullanıcı",
       aliciUid: uid,
+      cardUserKey,
     });
     if (sonuc.status !== "success" || !sonuc.paymentPageUrl) {
       return NextResponse.json(

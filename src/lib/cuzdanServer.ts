@@ -47,6 +47,23 @@ export async function odemeKaydiDurum(id: string, durum: OdemeKaydi["durum"]): P
   await db.collection("odeme").doc(id).set({ durum, guncelleme: FieldValue.serverTimestamp() }, { merge: true });
 }
 
+/** iyzico kayıtlı-kart anahtarını (cardUserKey) kullanıcıya bağlı saklar. */
+export async function kartAnahtariKaydet(uid: string, cardUserKey: string): Promise<void> {
+  const db = await adminDb();
+  const FieldValue = await alanDegeri();
+  await db.collection("kart").doc(uid).set(
+    { cardUserKey, guncelleme: FieldValue.serverTimestamp() },
+    { merge: true },
+  );
+}
+
+/** Kullanıcının kayıtlı-kart anahtarı (yoksa null). */
+export async function kartAnahtariGetir(uid: string): Promise<string | null> {
+  const db = await adminDb();
+  const snap = await db.collection("kart").doc(uid).get();
+  return snap.exists ? ((snap.data()?.cardUserKey as string) ?? null) : null;
+}
+
 export class KrediYetersizError extends Error {
   constructor(public gereken: number, public mevcut: number) {
     super(`Yetersiz kredi: ${gereken} gerekli, ${mevcut} mevcut.`);

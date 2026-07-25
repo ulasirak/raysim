@@ -89,6 +89,13 @@ service cloud.firestore {
       allow read, write: if false; // yalnız Admin SDK
     }
 
+    // kart/{uid} = iyzico kayıtlı-kart anahtarı (cardUserKey). Kart bilgisi DEĞİL
+    // (o iyzico'da durur); yalnız o kullanıcının kartlarına ödeme formunda
+    // erişmeyi sağlayan referans. Tamamen sunucuya ait.
+    match /kart/{uid} {
+      allow read, write: if false; // yalnız Admin SDK
+    }
+
     // Tanımlı olmayan her yol tamamen kapalı (varsayılan reddet)
     match /{document=**} {
       allow read, write: if false;

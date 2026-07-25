@@ -55,6 +55,8 @@ export interface OdemeBaslatGirdi {
   aliciEposta: string;
   aliciAdSoyad: string;
   aliciUid: string;
+  /** Varsa kullanıcının iyzico kayıtlı-kart anahtarı; ödeme formunda kayıtlı kartları gösterir. */
+  cardUserKey?: string;
 }
 
 /** Checkout Form başlatır; ödeme sayfası URL'i döner. */
@@ -86,6 +88,10 @@ export async function odemeBaslat(g: OdemeBaslatGirdi): Promise<{ paymentPageUrl
     basketItems: [
       { id: "kredi", name: `${g.krediAdet} RaySim kredisi`, category1: "Kredi", itemType: "VIRTUAL", price: fiyat },
     ],
+    // Kayıtlı kart: varsa kullanıcının kartları formda çıkar (tekrar girmeden seçer).
+    // iyzico "kartımı sakla" seçilirse bu anahtara yeni kart ekler.
+    ...(g.cardUserKey ? { cardUserKey: g.cardUserKey } : {}),
+    enabledInstallments: [1],
   };
   const y = await iyzicoPost("/payment/iyzipos/checkoutform/initialize/auth/ecom", govde);
   return {
@@ -97,8 +103,8 @@ export async function odemeBaslat(g: OdemeBaslatGirdi): Promise<{ paymentPageUrl
   };
 }
 
-/** Callback'te ödeme sonucunu doğrular. */
-export async function odemeDogrula(token: string): Promise<{ basarili: boolean; conversationId?: string; odenenTl?: number; ham: Record<string, unknown> }> {
+/** Callback'te ödeme sonucunu doğrular. Kullanıcı kartını sakladıysa cardUserKey döner. */
+export async function odemeDogrula(token: string): Promise<{ basarili: boolean; conversationId?: string; odenenTl?: number; cardUserKey?: string; ham: Record<string, unknown> }> {
   const y = await iyzicoPost("/payment/iyzipos/checkoutform/auth/ecom/detail", {
     locale: "tr", token,
   });
@@ -107,6 +113,7 @@ export async function odemeDogrula(token: string): Promise<{ basarili: boolean; 
     basarili,
     conversationId: y.conversationId as string | undefined,
     odenenTl: y.paidPrice ? Number(y.paidPrice) : undefined,
+    cardUserKey: y.cardUserKey as string | undefined, // "kartımı sakla" seçildiyse dolu gelir
     ham: y,
   };
 }

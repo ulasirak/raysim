@@ -8,7 +8,7 @@
 import { NextResponse } from "next/server";
 import { isAdminConfigured } from "@/lib/firebaseAdmin";
 import { odemeDogrula } from "@/lib/iyzico";
-import { odemeKaydiGetir, odemeKaydiDurum, krediEkle } from "@/lib/cuzdanServer";
+import { odemeKaydiGetir, odemeKaydiDurum, krediEkle, kartAnahtariKaydet } from "@/lib/cuzdanServer";
 
 function siteUrl() {
   return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
@@ -47,6 +47,12 @@ export async function POST(req: Request) {
     // İdempotent: krediEkle odemeOlay/{conversationId} ile çift eklemeyi önler.
     await krediEkle(kayit.uid, kayit.kredi, dogrulama.conversationId, { tur: "satinalma", ref: dogrulama.conversationId });
     await odemeKaydiDurum(dogrulama.conversationId, "tamam");
+
+    // Kullanıcı "kartımı sakla" seçtiyse anahtarını kaydet — sonraki ödemelerde
+    // kart formda hazır gelir (kart bilgisi bizde DEĞİL, iyzico'da durur).
+    if (dogrulama.cardUserKey) {
+      try { await kartAnahtariKaydet(kayit.uid, dogrulama.cardUserKey); } catch { /* opsiyonel */ }
+    }
     return yonlendir("basarili");
   } catch {
     return yonlendir("hata");
