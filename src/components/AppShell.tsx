@@ -190,7 +190,7 @@ function Govde({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <Masthead belgeKodu={aktif.kod} rota={rotaDeger} rotaEtiketi={rotaEtiketi} />
+      <Masthead rota={rotaDeger} rotaEtiketi={rotaEtiketi} />
 
       {/* Modül navigasyonu — sistemin mantıksal iş akışı bir METRO HATTI olarak:
           yedi istasyon soldan sağa boru hattı; kaydırma ilerlemesi rayda akan bir

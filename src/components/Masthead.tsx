@@ -1,7 +1,9 @@
 // raysim — resmî künye başlığı (masthead).
-// Koyu mürekkep zemin + amblem (ray rozeti) + Spectral marka + resmî belge künyesi.
+// Koyu mürekkep zemin + amblem (ray rozeti) + Spectral marka + aktif hat künyesi.
+// Tek sayfa stüdyoda modül-bazlı belge kodu anlamını yitirdiği için künyede yalnız
+// o an işlenen AKTİF HAT gösterilir.
 
-export function Masthead({ belgeKodu, rota, rotaEtiketi = "Rota" }: { belgeKodu: string; rota: string; rotaEtiketi?: string }) {
+export function Masthead({ rota, rotaEtiketi = "Rota" }: { rota: string; rotaEtiketi?: string }) {
   return (
     <header className="border-b-2" style={{ background: "#0C2233", borderColor: "#C8102E" }}>
       <div className="mx-auto flex max-w-6xl items-center gap-4 px-6 py-5">
@@ -28,12 +30,15 @@ export function Masthead({ belgeKodu, rota, rotaEtiketi = "Rota" }: { belgeKodu:
           </div>
         </div>
 
-        {/* Resmî belge künyesi */}
-        <div className="hidden shrink-0 border-l border-white/15 pl-4 text-right sm:block">
-          <div className="text-[0.6rem] uppercase tracking-[0.18em] text-slate-400">Belge</div>
-          <div className="font-mono text-sm text-white tabular-nums">{belgeKodu}</div>
-          <div className="mt-1 text-[0.6rem] uppercase tracking-[0.18em] text-slate-400">{rotaEtiketi}</div>
-          <div className="max-w-[13rem] truncate text-xs text-slate-200">{rota}</div>
+        {/* Aktif hat künyesi — tek sayfa stüdyoda o an işlenen hat */}
+        <div className="hidden shrink-0 items-center gap-3 border-l border-white/15 pl-4 sm:flex">
+          {/* Küçük durum noktası: aktif hat varken altın, yokken sönük */}
+          <span className="h-2 w-2 shrink-0 rounded-full"
+            style={{ background: rotaEtiketi === "AKTİF HAT" ? "#E7B84B" : "#3A5568" }} aria-hidden="true" />
+          <div className="text-right">
+            <div className="text-[0.6rem] uppercase tracking-[0.18em] text-slate-400">{rotaEtiketi}</div>
+            <div className="max-w-[15rem] truncate text-sm font-medium text-white">{rota}</div>
+          </div>
         </div>
       </div>
     </header>

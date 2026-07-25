@@ -21,8 +21,9 @@ import { varsayilanConfig, varsayilanMeta, konyaMeta, type SimConfig, type Proje
 import { konya2EtapSeed, type DurakArasiRing } from "@/lib/anaray/ring";
 import { yoneticiMi } from "@/lib/anaray/yetki";
 import { useAuth } from "@/components/AuthProvider";
+import { getAuthInstance } from "@/lib/firebase";
 import {
-  projeleriListele, projeOlustur, ilkProjeOlustur, projeGetir, projeKaydet, projeSil,
+  projeleriListele, ilkProjeOlustur, projeGetir, projeKaydet, projeSil,
   projeAdiDegistir, paylasimAyarla, veriBoyutu,
   PROJE_KOTASI, VERI_BAYT_SINIRI, type ProjeOzet, type ProjeVerisi,
 } from "@/lib/projeler";
@@ -384,19 +385,35 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
   const kotaDoldu = kota !== null && projeler.length >= kota;
 
   // Yeni hat her zaman BOŞ açılır (yönetici dahil) — mevcut hat kopyalanmaz.
+  // Kredi düşme + oluşturma SUNUCUDA tek transaction'da (bkz. /api/proje/olustur):
+  // kredi yetersizse hat açılmaz; hat açılırsa kredi kesin düşer.
   const projeYeni = useCallback(async (ad: string) => {
     if (!user) return;
     await islem(async () => {
-      // Kota SUNUCUDAKİ sayıya göre denetlenir: ekrandaki liste bayat olabilir
-      // (başka sekmede hat açılmış olabilir).
+      // Kota istemci tarafı ön-kontrol (asıl ücret/atomiklik sunucuda).
       const mevcut = await projeleriListele(user.uid);
       if (kota !== null && mevcut.length >= kota) {
         setProjeler(mevcut);
         throw new Error(`Hat kotanız dolu (${mevcut.length}/${kota}). Yeni hat açmak için önce bir hattı silin.`);
       }
-      const id = await projeOlustur(user.uid, ad || "Yeni hat", bosVeri());
+
+      const a = getAuthInstance();
+      const token = await a?.currentUser?.getIdToken();
+      if (!token) throw new Error("Oturum bulunamadı.");
+      const yanit = await fetch("/api/proje/olustur", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ad: ad || "Yeni hat" }),
+      });
+      const veri = await yanit.json().catch(() => ({}));
+      if (!yanit.ok) {
+        if (yanit.status === 402) {
+          throw new Error(`Yeni hat ${veri.gereken ?? 1} kredi ister; ${veri.mevcut ?? 0} krediniz var. Hesap çubuğundan kredi alın.`);
+        }
+        throw new Error(veri.hata ?? "Hat oluşturulamadı.");
+      }
       setProjeler(await projeleriListele(user.uid));
-      projeSec(id);
+      projeSec(veri.id);
     });
   }, [user, kota, islem, projeSec]);
 

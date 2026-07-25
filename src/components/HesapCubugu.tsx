@@ -21,11 +21,11 @@ export function HesapCubugu() {
   const { user, hazir, yapilandirildi, cikisYap } = useAuth();
   const {
     demoMu, paylasimGorunumu, paylasimdanCik, durum, hataMetni, projeler, aktifId, aktifAd,
-    paylasimAcik, kota, kotaDoldu, yonetici,
+    paylasimAcik, kota, kotaDoldu,
     projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle, paylasimDegistir,
   } = useHesap();
 
-  const { bakiye, krediSatinAl, krediHarca, odemeSonucu, odemeSonucuTemizle } = useCuzdan();
+  const { bakiye, krediSatinAl, odemeSonucu, odemeSonucuTemizle } = useCuzdan();
   const [yeniAcik, setYeniAcik] = useState(false);
   const [odemeHata, setOdemeHata] = useState<string | null>(null);
   const [yeniAd, setYeniAd] = useState("");
@@ -55,20 +55,8 @@ export function HesapCubugu() {
   const hareketAdi = (t: KrediHareket["tur"]) =>
     t === "satinalma" ? "Kredi alımı" : t === "rapor" ? "PDF rapor" : t === "projeYukleme" ? "Yeni hat" : "Düzeltme";
 
-  // Yeni hat = ücretli (proje yükleme). Önce SUNUCUDA kredi düşülür; yeterliyse
-  // hat açılır. Yönetici muaftır. Yetersizse kredi al uyarısı gösterilir.
-  const yeniHatKredili = async (ad: string) => {
-    if (!yonetici) {
-      const r = await krediHarca("projeYukleme");
-      if (!r.tamam) {
-        setOdemeHata(r.yetersiz
-          ? `Yeni hat ${r.gereken} kredi ister; ${r.mevcut} krediniz var. Yukarıdan kredi alın.`
-          : (r.hata ?? "Kredi düşülemedi."));
-        throw new Error("kredi-yok");
-      }
-    }
-    await projeYeni(ad);
-  };
+  // Yeni hat ücretlidir; kredi düşme + oluşturma SUNUCUDA atomik (projeYeni →
+  // /api/proje/olustur). Yetersiz kredi/hata çubukta (durum/hataMetni) görünür.
 
   // — Salt-okunur paylaşım görünümü —
   if (paylasimGorunumu) {
@@ -115,58 +103,63 @@ export function HesapCubugu() {
       )}
 
     <div className="border-b" style={{ background: brand.surface, borderColor: brand.border }}>
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-6 py-2 text-xs">
-        <span className="field-label" style={{ color: brand.faint }}>AKTİF HAT</span>
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-2 px-6 py-2.5 text-xs">
+        {/* ── Hat grubu: etiket + seçici + yeni hat (birlikte hizalı durur) ── */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="field-label" style={{ color: brand.faint }}>AKTİF HAT</span>
 
-        {/* Hat seçici — seçilen hat yedi modülün tamamında aktif olur */}
-        {adTaslak === null ? (
-          <select
-            value={aktifId ?? ""}
-            onChange={(e) => projeSec(e.target.value)}
-            title="Üzerinde çalıştığınız proje. Seçtiğiniz hat tüm modüllerde aktif olur."
-            className="rounded border px-2 py-1 text-xs"
-            style={{ borderColor: brand.border, color: brand.ink, maxWidth: 260 }}
-          >
-            {projeler.map((p) => (<option key={p.id} value={p.id}>{p.ad}</option>))}
-          </select>
-        ) : (
-          /* Ad değiştirme — menüden açılır, seçicinin yerinde düzenlenir */
-          <>
-            <input value={adTaslak} onChange={(e) => setAdTaslak(e.target.value)} autoFocus
-              onKeyDown={(e) => { if (e.key === "Enter") { sar(projeAdiGuncelle(adTaslak.trim() || aktifAd), "ad"); setAdTaslak(null); } if (e.key === "Escape") setAdTaslak(null); }}
-              className="rounded border px-2 py-1 text-xs" style={{ borderColor: brand.borderStrong, color: brand.ink }} />
-            <button onClick={() => { sar(projeAdiGuncelle(adTaslak.trim() || aktifAd), "ad"); setAdTaslak(null); }}
-              className="rounded px-2 py-1 font-medium" style={{ background: brand.ink, color: "#fff" }}>Kaydet</button>
-            <button onClick={() => setAdTaslak(null)} className="rounded px-2 py-1" style={{ color: brand.muted }}>Vazgeç</button>
-          </>
-        )}
+          {/* Hat seçici — seçilen hat yedi modülün tamamında aktif olur */}
+          {adTaslak === null ? (
+            <select
+              value={aktifId ?? ""}
+              onChange={(e) => projeSec(e.target.value)}
+              title="Üzerinde çalıştığınız proje. Seçtiğiniz hat tüm modüllerde aktif olur."
+              className="rounded-md border px-2.5 py-1 text-xs font-medium"
+              style={{ borderColor: brand.border, color: brand.ink, maxWidth: 240 }}
+            >
+              {projeler.map((p) => (<option key={p.id} value={p.id}>{p.ad}</option>))}
+            </select>
+          ) : (
+            /* Ad değiştirme — menüden açılır, seçicinin yerinde düzenlenir */
+            <>
+              <input value={adTaslak} onChange={(e) => setAdTaslak(e.target.value)} autoFocus
+                onKeyDown={(e) => { if (e.key === "Enter") { sar(projeAdiGuncelle(adTaslak.trim() || aktifAd), "ad"); setAdTaslak(null); } if (e.key === "Escape") setAdTaslak(null); }}
+                className="rounded-md border px-2.5 py-1 text-xs" style={{ borderColor: brand.borderStrong, color: brand.ink }} />
+              <button onClick={() => { sar(projeAdiGuncelle(adTaslak.trim() || aktifAd), "ad"); setAdTaslak(null); }}
+                className="rounded-md px-2.5 py-1 font-medium" style={{ background: brand.ink, color: "#fff" }}>Kaydet</button>
+              <button onClick={() => setAdTaslak(null)} className="rounded-md px-2 py-1" style={{ color: brand.muted }}>Vazgeç</button>
+            </>
+          )}
 
-        {/* Yeni hat */}
-        {yeniAcik ? (
-          <>
-            <input value={yeniAd} onChange={(e) => setYeniAd(e.target.value)} placeholder="Yeni hat adı" autoFocus
-              onKeyDown={(e) => { if (e.key === "Enter") { setOdemeHata(null); sar(yeniHatKredili(yeniAd.trim()), "yeni"); setYeniAd(""); setYeniAcik(false); } if (e.key === "Escape") setYeniAcik(false); }}
-              className="rounded border px-2 py-1 text-xs" style={{ borderColor: brand.borderStrong, color: brand.ink }} />
-            <button onClick={() => { setOdemeHata(null); sar(yeniHatKredili(yeniAd.trim()), "yeni"); setYeniAd(""); setYeniAcik(false); }} disabled={isBasi === "yeni"}
-              className="rounded px-2 py-1 font-medium disabled:opacity-50" style={{ background: brand.ink, color: "#fff" }}>Oluştur</button>
-            <button onClick={() => setYeniAcik(false)} className="rounded px-2 py-1" style={{ color: brand.muted }}>Vazgeç</button>
-          </>
-        ) : (
-          <button onClick={() => setYeniAcik(true)} disabled={kotaDoldu}
-            title={kotaDoldu
-              ? `Hat kotanız dolu (${projeler.length}/${kota}). Yeni hat açmak için önce bir hattı silin.`
-              : "Sıfırdan boş yeni bir proje açar"}
-            className="rounded border px-2 py-1 font-medium transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
-            style={{ borderColor: brand.border, color: brand.inkSoft }}>＋ Yeni hat</button>
-        )}
+          {/* Yeni hat */}
+          {yeniAcik ? (
+            <>
+              <input value={yeniAd} onChange={(e) => setYeniAd(e.target.value)} placeholder="Yeni hat adı" autoFocus
+                onKeyDown={(e) => { if (e.key === "Enter") { setOdemeHata(null); sar(projeYeni(yeniAd.trim()), "yeni"); setYeniAd(""); setYeniAcik(false); } if (e.key === "Escape") setYeniAcik(false); }}
+                className="rounded-md border px-2.5 py-1 text-xs" style={{ borderColor: brand.borderStrong, color: brand.ink }} />
+              <button onClick={() => { setOdemeHata(null); sar(projeYeni(yeniAd.trim()), "yeni"); setYeniAd(""); setYeniAcik(false); }} disabled={isBasi === "yeni"}
+                className="rounded-md px-2.5 py-1 font-medium disabled:opacity-50" style={{ background: brand.ink, color: "#fff" }}>Oluştur</button>
+              <button onClick={() => setYeniAcik(false)} className="rounded-md px-2 py-1" style={{ color: brand.muted }}>Vazgeç</button>
+            </>
+          ) : (
+            <button onClick={() => setYeniAcik(true)} disabled={kotaDoldu}
+              title={kotaDoldu
+                ? `Hat kotanız dolu (${projeler.length}/${kota}). Yeni hat açmak için önce bir hattı silin.`
+                : "Sıfırdan boş yeni bir proje açar"}
+              className="rounded-md border px-2.5 py-1 font-medium transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+              style={{ borderColor: brand.border, color: brand.inkSoft }}>＋ Yeni hat</button>
+          )}
+        </div>
+
+        {/* İnce dikey ayraç — hat grubunu kayıt durumundan ayırır */}
+        <span className="hidden h-4 w-px sm:block" style={{ background: brand.border }} aria-hidden="true" />
 
         {/* Kaydetme durumu — ayrı bir "Kaydet" düğmesi yoktur, otomatik kaydedilir */}
-        <span className="ml-1" title="Değişiklikleriniz otomatik kaydedilir"
-          style={{ color: durum === "hata" ? brand.red : brand.faint }}>
+        <span className="inline-flex items-center gap-1 font-medium" title="Değişiklikleriniz otomatik kaydedilir"
+          style={{ color: durum === "hata" ? brand.red : (durum === "kaydedildi" || durum === "hazir") ? CK.good : brand.faint }}>
           {durum === "yukleniyor" && "⟳ yükleniyor…"}
           {durum === "kaydediliyor" && "⟳ kaydediliyor…"}
-          {durum === "kaydedildi" && <span style={{ color: CK.good }}>✓ kaydedildi</span>}
-          {durum === "hazir" && "✓ kaydedildi"}
+          {(durum === "kaydedildi" || durum === "hazir") && "✓ kaydedildi"}
           {durum === "hata" && `⚠ ${hataMetni ?? "kayıt hatası"}`}
         </span>
 
@@ -175,17 +168,17 @@ export function HesapCubugu() {
           <span className="max-w-xs truncate" title={odemeHata} style={{ color: brand.red }}>⚠ {odemeHata}</span>
         )}
 
-        {/* Sağ blok: kredi bakiyesi + ⋮ menüsü + çıkış */}
+        {/* ── Sağ blok: kredi bakiyesi + ⋮ menüsü ────────────────────────── */}
         <div className="relative ml-auto flex items-center gap-2">
           {/* Kredi bakiyesi — ücretli rapor/proje yükleme bu krediden düşer */}
           <span title="Kredi bakiyeniz — rapor ve proje yükleme bundan düşer"
-            className="rounded-full border px-2.5 py-1 font-medium"
+            className="inline-flex items-center rounded-full border px-2.5 py-1 font-medium tabular-nums"
             style={{ borderColor: brand.border, color: bakiye === 0 ? brand.red : brand.inkSoft }}>
             {bakiye === null ? "◌ kredi" : `◈ ${bakiye} kredi`}
           </span>
 
           <button onClick={() => setMenuAcik((a) => !a)} title="Hesap · kredi · hat işlemleri · çıkış"
-            className="rounded border px-2 py-1 font-medium transition hover:bg-slate-50"
+            className="rounded-md border px-2 py-1 font-medium leading-none transition hover:bg-slate-50"
             style={{ borderColor: brand.border, color: brand.inkSoft }}>⋮</button>
 
           {menuAcik && (

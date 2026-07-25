@@ -15,13 +15,14 @@ import { varsayilanArac } from "@/lib/anaray/vehicles";
 import { loopDenge, olceklenme, ringChallenge, ringDogrula, loopTamMi } from "@/lib/anaray/ring";
 import { bolgeSeed } from "@/lib/anaray/interlocking";
 import { wordUret, excelUret, indir } from "@/lib/anaray/dokuman";
-import { raporHTML, yazdirRapor, type RaporDil } from "@/lib/anaray/rapor";
+import { type RaporDil } from "@/lib/anaray/rapor";
 import { useCuzdan } from "@/components/CuzdanProvider";
+import { getAuthInstance } from "@/lib/firebase";
 
 export function Belgeler() {
   const { cfg } = useSimConfig();
-  const { rings, meta, patchMeta, yazilabilir, yonetici } = useProje();
-  const { krediHarca } = useCuzdan();
+  const { rings, meta, patchMeta, yazilabilir } = useProje();
+  const { yenile } = useCuzdan();
   const stock = varsayilanArac;
   const [durum, setDurum] = useState<{ tip: "ok" | "err" | "info"; metin: string } | null>(null);
   const [mesgul, setMesgul] = useState<"" | "word" | "excel" | "rapor" | "html">("");
@@ -55,39 +56,56 @@ export function Belgeler() {
 
   const dosyaAdi = (ext: string) => `${meta.dokumanNo || "raysim"}_${(meta.hatAdi || "hat").replace(/\s+/g, "_")}.${ext}`;
 
-  // PDF rapor ÜCRETLİDİR (yönetici muaf). Önce SUNUCUDA kredi düşülür; yeterliyse
-  // rapor yazdırılır. Word/Excel/HTML ham veri sayılıp ücretsizdir.
-  // Not: pencere popup engeline takılmasın diye HTML'i kredi düşmeden ÖNCE
-  // hazırlıyoruz; açma işlemi kredi onayından hemen sonra yapılıyor.
+  // Rapor SUNUCUDA üretilir + kredi SUNUCUDA düşülür (bkz. /api/rapor). Hem
+  // "yazdır→PDF" hem "HTML indir" bu ücretli uçtan geçer — HTML de raporun
+  // tıpkısı olduğu için (yazdırınca PDF olur) ücretsiz kaçak bırakılmaz.
+  // Dönüş: rapor HTML'i (hata durumunda null; mesaj setDurum'a yazılır).
+  const raporAl = async (): Promise<string | null> => {
+    const a = getAuthInstance();
+    const token = await a?.currentUser?.getIdToken();
+    if (!token) { setDurum({ tip: "err", metin: "Oturum bulunamadı — lütfen yeniden giriş yapın." }); return null; }
+    const yanit = await fetch("/api/rapor", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ veri: { rings, cfg, meta }, dil }),
+    });
+    if (!yanit.ok) {
+      const v = await yanit.json().catch(() => ({}));
+      setDurum({
+        tip: "err",
+        metin: v.hata === "yetersiz_kredi"
+          ? `PDF rapor ${v.gereken} kredi ister; ${v.mevcut} krediniz var. Hesap çubuğundaki “Kredi al”dan yükleyin.`
+          : (v.hata ?? "Rapor üretilemedi."),
+      });
+      return null;
+    }
+    await yenile(); // bakiye güncellendi
+    return await yanit.text();
+  };
+
   const raporUret = async () => {
     setMesgul("rapor"); setDurum(null);
+    // Pencereyi TIKLAMA jesti içinde aç (popup engeline takılmasın); içeriği
+    // sunucudan gelince doldur.
+    const w = window.open("", "_blank", "width=920,height=1000");
     try {
-      const html = raporHTML(meta, cfg, rings, stock, dil);
-      if (!yonetici) {
-        const r = await krediHarca("rapor", meta.dokumanNo || undefined);
-        if (!r.tamam) {
-          setDurum({
-            tip: "err",
-            metin: r.yetersiz
-              ? `PDF rapor ${r.gereken} kredi ister; ${r.mevcut} krediniz var. Hesap çubuğundaki “Kredi al”dan yükleyin.`
-              : (r.hata ?? "Kredi düşülemedi."),
-          });
-          return;
-        }
-      }
-      yazdirRapor(html);
+      const html = await raporAl();
+      if (!html) { w?.close(); return; }
+      if (w) { w.document.open(); w.document.write(html); w.document.close(); }
       setDurum({ tip: "ok", metin: "Rapor yeni sekmede açıldı — yazdırma diyalogunda “Hedef: PDF olarak kaydet”i seçin." });
     } catch (e) {
+      w?.close();
       setDurum({ tip: "err", metin: `Rapor açılamadı: ${e instanceof Error ? e.message : String(e)}` });
     } finally { setMesgul(""); }
   };
 
-  const raporHTMLIndir = () => {
+  const raporHTMLIndir = async () => {
     setMesgul("html"); setDurum(null);
     try {
-      const html = raporHTML(meta, cfg, rings, stock, dil);
+      const html = await raporAl();
+      if (!html) return;
       indir(new Blob([html], { type: "text/html;charset=utf-8" }), dosyaAdi(`${dil}.html`));
-      setDurum({ tip: "ok", metin: `Rapor (HTML) indirildi: ${dosyaAdi("html")} — tarayıcıda açıp yazdırınca da PDF olur.` });
+      setDurum({ tip: "ok", metin: `Rapor (HTML) indirildi: ${dosyaAdi("html")}` });
     } catch (e) {
       setDurum({ tip: "err", metin: `HTML üretilemedi: ${e instanceof Error ? e.message : String(e)}` });
     } finally { setMesgul(""); }
