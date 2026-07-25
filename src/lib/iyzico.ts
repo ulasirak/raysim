@@ -21,6 +21,7 @@ export function iyzicoTeshis() {
   return {
     apiKeyUzunluk: apiKey.length,
     apiKeySandboxPrefix: apiKey.startsWith("sandbox-"),
+    apiKeyBas: apiKey.slice(0, 12),   // ne girildiğini görmek için (sandbox key, düşük risk)
     secretUzunluk: secretKey.length,
     secretSandboxPrefix: secretKey.startsWith("sandbox-"),
     base: (process.env.IYZICO_BASE_URL || "https://sandbox-api.iyzipay.com").trim(),
