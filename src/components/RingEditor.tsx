@@ -7,7 +7,7 @@
 // darboğazı anında yeniden hesaplanır. Hücreler bir loop (kapalı hat) oluşturur.
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { RollingStock } from "@/lib/anaray/types";
 import { makasBolgeId } from "@/lib/anaray/interlocking";
 import { useSimConfig, useProje } from "@/components/SimConfigProvider";
@@ -75,16 +75,18 @@ export function RingEditor() {
     setAcik({});
   };
 
-  const makasEkle = (rid: string, tip: MakasTip) =>
-    setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, makaslar: [...r.makaslar, yeniMakas(tip, Math.round(r.uzunluk * 0.85))] } : r)));
+  // Ekleme fonksiyonları opsiyonel KONUM alır (şeritten tıklayınca o konuma;
+  // menüden eklerken varsayılan orana).
+  const makasEkle = (rid: string, tip: MakasTip, konum?: number) =>
+    setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, makaslar: [...r.makaslar, yeniMakas(tip, konum ?? Math.round(r.uzunluk * 0.85))] } : r)));
   const makasSil = (rid: string, mid: string) =>
     setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, makaslar: r.makaslar.filter((m) => m.id !== mid) } : r)));
-  const hzEkle = (rid: string, tip: HemzeminTip) =>
-    setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, hemzeminler: [...r.hemzeminler, yeniHemzemin(tip, Math.round(r.uzunluk * 0.5))] } : r)));
+  const hzEkle = (rid: string, tip: HemzeminTip, konum?: number) =>
+    setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, hemzeminler: [...r.hemzeminler, yeniHemzemin(tip, konum ?? Math.round(r.uzunluk * 0.5))] } : r)));
   const hzSil = (rid: string, hid: string) =>
     setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, hemzeminler: r.hemzeminler.filter((h) => h.id !== hid) } : r)));
-  const tnEkle = (rid: string) =>
-    setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, tehlikeNoktalari: [...r.tehlikeNoktalari, yeniTehlike(Math.round(r.uzunluk * 0.7))] } : r)));
+  const tnEkle = (rid: string, konum?: number) =>
+    setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, tehlikeNoktalari: [...r.tehlikeNoktalari, yeniTehlike(konum ?? Math.round(r.uzunluk * 0.7))] } : r)));
   const tnSil = (rid: string, tid: string) =>
     setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, tehlikeNoktalari: r.tehlikeNoktalari.filter((t) => t.id !== tid) } : r)));
 
@@ -226,13 +228,13 @@ export function RingEditor() {
             onToggle={() => setAcik((a) => ({ ...a, [r.id]: !a[r.id] }))}
             onPatch={(p) => patch(r.id, p)}
             onSil={() => ringSil(r.id)}
-            onMakasEkle={(tip) => makasEkle(r.id, tip)}
+            onMakasEkle={(tip, konum) => makasEkle(r.id, tip, konum)}
             onMakasSil={(mid) => makasSil(r.id, mid)}
             onMakasPatch={(mid, p) => patchMakas(r.id, mid, p)}
-            onHzEkle={(tip) => hzEkle(r.id, tip)}
+            onHzEkle={(tip, konum) => hzEkle(r.id, tip, konum)}
             onHzSil={(hid) => hzSil(r.id, hid)}
             onHzPatch={(hid, p) => patchHz(r.id, hid, p)}
-            onTnEkle={() => tnEkle(r.id)}
+            onTnEkle={(konum) => tnEkle(r.id, konum)}
             onTnSil={(tid) => tnSil(r.id, tid)}
             onTnPatch={(tid, p) => patchTn(r.id, tid, p)}
           />
@@ -263,13 +265,13 @@ interface KartProps {
   onToggle: () => void;
   onPatch: (p: Partial<DurakArasiRing>) => void;
   onSil: () => void;
-  onMakasEkle: (tip: MakasTip) => void;
+  onMakasEkle: (tip: MakasTip, konum?: number) => void;
   onMakasSil: (mid: string) => void;
   onMakasPatch: (mid: string, p: Partial<DurakArasiRing["makaslar"][number]>) => void;
-  onHzEkle: (tip: HemzeminTip) => void;
+  onHzEkle: (tip: HemzeminTip, konum?: number) => void;
   onHzSil: (hid: string) => void;
   onHzPatch: (hid: string, p: Partial<DurakArasiRing["hemzeminler"][number]>) => void;
-  onTnEkle: () => void;
+  onTnEkle: (konum?: number) => void;
   onTnSil: (tid: string) => void;
   onTnPatch: (tid: string, p: Partial<DurakArasiRing["tehlikeNoktalari"][number]>) => void;
 }
@@ -288,6 +290,21 @@ function RingKart(p: KartProps) {
   // konuma çevrilir, konum değişince süre türetilir.
   const konumSuresi = (konum: number) => (ring.uzunluk > 0 ? (konum / ring.uzunluk) * sen.worstSeyir : 0);
   const sureKonumu = (saniye: number) => (sen.worstSeyir > 0 ? Math.max(0, Math.min(ring.uzunluk, (saniye / sen.worstSeyir) * ring.uzunluk)) : 0);
+
+  // Görsel şerit: ekleme modu + sürükle-taşı/tıkla-ekle köprüsü.
+  const [ekleTuru, setEkleTuru] = useState<EkleTur | null>(null);
+  const seritTasi = (tur: KisitTur, id: string, konum: number) => {
+    if (tur === "makas") p.onMakasPatch(id, { konum });
+    else if (tur === "hemzemin") p.onHzPatch(id, { konum });
+    else p.onTnPatch(id, { konum });
+  };
+  const seritEkle = (konum: number) => {
+    if (!ekleTuru) return;
+    if (ekleTuru.kind === "makas") p.onMakasEkle(ekleTuru.tip, konum);
+    else if (ekleTuru.kind === "hemzemin") p.onHzEkle(ekleTuru.tip, konum);
+    else p.onTnEkle(konum);
+    setEkleTuru(null); // tek ekleme sonrası modu kapat
+  };
 
   return (
     <div className="overflow-hidden rounded-lg border bg-white" style={{ borderColor: tam ? brand.border : brand.red }}>
@@ -359,13 +376,30 @@ function RingKart(p: KartProps) {
             </div>
           </div>
 
-          {/* Kısıtlar arası mesafe ("şartları arası mesafeleri") */}
+          {/* Kısıtlar arası mesafe + GÖRSEL ZAMAN/MESAFE ŞERİDİ */}
           <div className="mt-4 border-t pt-3" style={{ borderColor: brand.border }}>
-            <SubBaslik>Kısıtlar & Aralarındaki Mesafeler</SubBaslik>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <SubBaslik>Kısıtlar & Zaman/Mesafe Şeridi</SubBaslik>
+              {/* Şeride ekleme modu — bir tür seç, sonra şeride tıkla */}
+              <div className="flex flex-wrap gap-1 text-[0.7rem]">
+                <SeritEkleBtn aktif={ekleTuru?.kind === "makas"} renk={SERI.makasBlok}
+                  onClick={() => setEkleTuru((e) => (e?.kind === "makas" ? null : { kind: "makas", tip: "headway" }))}>＋ makas</SeritEkleBtn>
+                <SeritEkleBtn aktif={ekleTuru?.kind === "hemzemin" && ekleTuru.tip === "yaya"} renk={SERI.duzBlok}
+                  onClick={() => setEkleTuru((e) => (e?.kind === "hemzemin" && e.tip === "yaya" ? null : { kind: "hemzemin", tip: "yaya" }))}>＋ yaya</SeritEkleBtn>
+                <SeritEkleBtn aktif={ekleTuru?.kind === "hemzemin" && ekleTuru.tip === "karayolu"} renk={SERI.duzBlok}
+                  onClick={() => setEkleTuru((e) => (e?.kind === "hemzemin" && e.tip === "karayolu" ? null : { kind: "hemzemin", tip: "karayolu" }))}>＋ karayolu</SeritEkleBtn>
+                <SeritEkleBtn aktif={ekleTuru?.kind === "tehlike"} renk={brand.red}
+                  onClick={() => setEkleTuru((e) => (e?.kind === "tehlike" ? null : { kind: "tehlike" }))}>＋ acil fren</SeritEkleBtn>
+              </div>
+            </div>
+
+            <KisitSeridi ring={ring} kisitlar={kisitlar} konumSuresi={konumSuresi}
+              onTasi={seritTasi} ekleTuru={ekleTuru} onSeritEkle={seritEkle} />
+
             {kisitlar.length === 0 ? (
-              <p className="mt-2 text-xs" style={{ color: brand.faint }}>Ringde makas/hemzemin/tehlike kısıtı yok — kesintisiz seyir.</p>
+              <p className="mt-6 text-xs" style={{ color: brand.faint }}>Ringde makas/hemzemin/tehlike kısıtı yok — kesintisiz seyir. Yukarıdan bir tür seçip şeride tıklayarak ekleyin.</p>
             ) : (
-              <div className="mt-2 flex flex-wrap items-center gap-1 text-[0.7rem]">
+              <div className="mt-6 flex flex-wrap items-center gap-1 text-[0.7rem]">
                 <KisitRozet tur="durak" ad={ring.fromAd} konum={0} />
                 {kisitlar.map((k, i) => (
                   <span key={k.id} className="flex items-center gap-1">
@@ -478,7 +512,7 @@ function RingKart(p: KartProps) {
           <div className="mt-4 border-t pt-3" style={{ borderColor: brand.border }}>
             <div className="mb-2 flex items-center justify-between">
               <SubBaslik>Tehlike / Acil Frenleme Noktaları</SubBaslik>
-              <button onClick={p.onTnEkle} className="rounded px-2 py-1 text-xs font-medium" style={{ background: CK.track, color: brand.inkSoft }}>＋ ekle</button>
+              <button onClick={() => p.onTnEkle()} className="rounded px-2 py-1 text-xs font-medium" style={{ background: CK.track, color: brand.inkSoft }}>＋ ekle</button>
             </div>
             {ring.tehlikeNoktalari.length === 0 ? (
               <p className="text-xs" style={{ color: brand.faint }}>Tehlike noktası yok.</p>
@@ -516,6 +550,12 @@ function RingKart(p: KartProps) {
 // Küçük yardımcılar
 // ————————————————————————————————————————————————
 
+/** Şeritten ekleme modu: hangi tür kısıt bir sonraki tıklamada eklenecek. */
+type EkleTur =
+  | { kind: "makas"; tip: MakasTip }
+  | { kind: "hemzemin"; tip: HemzeminTip }
+  | { kind: "tehlike" };
+
 const KISIT_RENK: Record<KisitTur | "durak", string> = {
   durak: brand.ink,
   makas: SERI.makasBlok,
@@ -523,6 +563,106 @@ const KISIT_RENK: Record<KisitTur | "durak", string> = {
   tehlike: brand.red,
 };
 const KISIT_IKON: Record<KisitTur | "durak", string> = { durak: "◉", makas: "⑂", hemzemin: "⊞", tehlike: "▲" };
+
+/**
+ * Görsel zaman/mesafe şeridi: ring boyunca kısıtları (makas/hemzemin/tehlike)
+ * nokta olarak gösterir; her nokta SÜRÜKLENEREK taşınır (konum canlı güncellenir).
+ * Uçlarda duraklar sabit. Üstte mesafe, altta yaklaşık süre ekseni. Boş yere
+ * tıklama, seçili "ekleme türü" varsa o konuma yeni kısıt ekler.
+ */
+function KisitSeridi({ ring, kisitlar, konumSuresi, onTasi, ekleTuru, onSeritEkle }: {
+  ring: DurakArasiRing;
+  kisitlar: ReturnType<typeof ringKisitDizisi>;
+  konumSuresi: (konum: number) => number;
+  onTasi: (tur: KisitTur, id: string, konum: number) => void;
+  ekleTuru: EkleTur | null;
+  onSeritEkle: (konum: number) => void;
+}) {
+  const refBar = useRef<HTMLDivElement>(null);
+  const [surukle, setSurukle] = useState<{ tur: KisitTur; id: string } | null>(null);
+
+  const konumdan = (clientX: number): number => {
+    const el = refBar.current;
+    if (!el || ring.uzunluk <= 0) return 0;
+    const r = el.getBoundingClientRect();
+    const oran = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+    return Math.round(oran * ring.uzunluk);
+  };
+
+  useEffect(() => {
+    if (!surukle) return;
+    const move = (e: PointerEvent) => onTasi(surukle.tur, surukle.id, konumdan(e.clientX));
+    const up = () => setSurukle(null);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [surukle]);
+
+  return (
+    <div className="mt-3 select-none">
+      <div className="mb-1 flex justify-between text-[0.62rem]" style={{ color: brand.faint }}>
+        <span>0 m · 0 s</span>
+        <span>{ekleTuru ? "şeride tıkla → buraya ekle" : "noktayı sürükle → taşı"}</span>
+        <span>{Math.round(ring.uzunluk)} m · ≈{Math.round(konumSuresi(ring.uzunluk))} s</span>
+      </div>
+      <div
+        ref={refBar}
+        onPointerDown={(e) => { if (ekleTuru) onSeritEkle(konumdan(e.clientX)); }}
+        className="relative h-11 rounded"
+        style={{ background: CK.track, cursor: ekleTuru ? "copy" : "default" }}
+      >
+        {/* Uç duraklar */}
+        <SeritDurak sol={0} ad={ring.fromAd} />
+        <SeritDurak sol={100} ad={ring.toAd} sag />
+        {/* Kısıtlar */}
+        {kisitlar.map((k) => {
+          const sol = ring.uzunluk > 0 ? (k.konum / ring.uzunluk) * 100 : 0;
+          const renk = KISIT_RENK[k.tur];
+          return (
+            <button
+              key={k.id}
+              onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); setSurukle({ tur: k.tur, id: k.id }); }}
+              title={`${k.ad} · ${Math.round(k.konum)} m · ≈${Math.round(konumSuresi(k.konum))} s — sürükleyip taşıyın`}
+              className="absolute top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
+              style={{ left: `${sol}%`, cursor: "grab" }}
+            >
+              <span className="flex h-5 w-5 items-center justify-center rounded-full text-[0.7rem] text-white shadow" style={{ background: renk }}>
+                {KISIT_IKON[k.tur]}
+              </span>
+              <span className="mt-0.5 whitespace-nowrap font-mono text-[0.55rem]" style={{ color: renk }}>
+                ≈{Math.round(konumSuresi(k.konum))}s
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SeritEkleBtn({ aktif, renk, onClick, children }: { aktif: boolean; renk: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button onClick={onClick}
+      title={aktif ? "Seçili — şeride tıklayın (iptal için tekrar basın)" : "Seç, sonra şeride tıklayarak ekleyin"}
+      className="rounded border px-2 py-1 font-medium transition"
+      style={{ borderColor: aktif ? renk : brand.border, background: aktif ? renk + "1A" : "transparent", color: aktif ? renk : brand.inkSoft }}>
+      {children}
+    </button>
+  );
+}
+
+function SeritDurak({ sol, ad, sag = false }: { sol: number; ad: string; sag?: boolean }) {
+  return (
+    <div className="absolute top-0 flex h-full flex-col items-center justify-center" style={{ left: `${sol}%`, transform: `translateX(${sag ? "-100%" : "0"})` }}>
+      <span className="h-full w-0.5" style={{ background: brand.ink }} />
+      <span className="absolute -bottom-4 whitespace-nowrap text-[0.55rem] font-medium" style={{ color: brand.ink }}>◉ {ad}</span>
+    </div>
+  );
+}
 
 function KisitRozet({ tur, ad, konum, detay }: { tur: KisitTur | "durak"; ad: string; konum: number; detay?: string }) {
   const renk = KISIT_RENK[tur];
