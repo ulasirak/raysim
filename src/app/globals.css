@@ -1,4 +1,5 @@
 @import "tailwindcss";
+/* raysim tek-sayfa hub — metro-hattı navigasyonu (bkz. AppShell) */
 
 :root {
   --paper: #f5f6f8;
@@ -22,6 +23,19 @@ body {
 /* Tek sayfa: nav ankoruna tıklayınca bölümler arası yumuşak kaydırma. */
 html {
   scroll-behavior: smooth;
+}
+
+/* Yan kaydırma çubuğunu GİZLE (kaydırma işlevi korunur — tekerlek/klavye/dokunmatik
+   çalışmaya devam eder). Tek-sayfa stüdyo daha temiz, kesintisiz bir yüzey sunar;
+   ilerleme metro-hattı navigasyonu ve üstteki ince ilerleme çizgisiyle gösterilir. */
+html {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* eski Edge/IE */
+}
+html::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none; /* Chrome/Safari/yeni Edge */
 }
 
 /* Kurumsal marka serifi (Spectral) */

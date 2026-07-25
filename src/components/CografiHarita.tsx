@@ -11,8 +11,8 @@ import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { useProje } from "@/components/SimConfigProvider";
 import {
-  parseStops, parseShapes, makeProjector, polylineLength, gtfsToRings, tahminEtKisitlar, tahminEtHiz, tahminEtEgim, shapeElevations,
-  ornekGtfsStops, ornekGtfsShapes, type GeoStop, type GeoShape,
+  parseStops, parseShapes, makeProjector, polylineLength, gtfsToRings, tahminEtKisitlar, tahminEtHiz, tahminEtEgim, shapeElevations, egimProfili, hizProfili,
+  ornekGtfsStops, ornekGtfsShapes, type GeoStop, type GeoShape, type EgimProfil, type HizProfil,
 } from "@/lib/anaray/gtfs";
 
 const VBW = 820, VBH = 460, PAD = 40;
@@ -53,6 +53,25 @@ export function CografiHarita() {
   const proj = useMemo(() => makeProjector(tumNoktalar, VBW, VBH, PAD), [tumNoktalar]);
   const mainShape = useMemo(() => (shapes.length ? shapes.reduce((a, b) => (b.points.length > a.points.length ? b : a)) : null), [shapes]);
   const shapeEle = useMemo(() => shapeElevations(stops, shapes), [stops, shapes]);
+  // Güzergah boyunca km taşları (her tam km'de ana shape üzerinde bir nokta)
+  const kmPosts = useMemo(() => {
+    const pts = mainShape?.points;
+    if (!pts || pts.length < 2) return [] as { lat: number; lon: number; km: number }[];
+    const out: { lat: number; lon: number; km: number }[] = [];
+    let acc = 0, nextKm = 1000;
+    for (let i = 1; i < pts.length; i++) {
+      const seg = polylineLength([pts[i - 1], pts[i]]);
+      while (acc + seg >= nextKm && seg > 0) {
+        const f = (nextKm - acc) / seg;
+        out.push({ lat: pts[i - 1].lat + (pts[i].lat - pts[i - 1].lat) * f, lon: pts[i - 1].lon + (pts[i].lon - pts[i - 1].lon) * f, km: nextKm / 1000 });
+        nextKm += 1000;
+      }
+      acc += seg;
+    }
+    return out;
+  }, [mainShape]);
+  const egim = useMemo(() => egimProfili(stops, shapes), [stops, shapes]);
+  const hiz = useMemo(() => hizProfili(stops, shapes), [stops, shapes]);
 
   const uzunluk = useMemo(() => {
     if (shapes.length) return shapes.reduce((m, sh) => m + polylineLength(sh.points), 0);
@@ -104,6 +123,24 @@ export function CografiHarita() {
         </p>
       </div>
 
+      {/* Kabul edilen dosyalar + bu modül ana projeden bağımsız mı? */}
+      <div className="mb-4 grid gap-3 md:grid-cols-2">
+        <div className="rounded-lg border bg-white p-4 text-xs" style={{ borderColor: brand.border, color: brand.inkSoft }}>
+          <div className="field-label mb-2">Kabul edilen dosyalar</div>
+          <ul className="space-y-1.5">
+            <li>📄 <b>stops.txt</b> / <b>.csv</b> — <span style={{ color: brand.muted }}>UTF-8, virgülle ayrılmış.</span><br />
+              Zorunlu sütun: <code>stop_lat</code>, <code>stop_lon</code> (veya <code>lat</code>/<code>lon</code>). Ad: <code>stop_name</code>. <b>Eğim için</b> <code>stop_elevation</code> (ya da <code>elevation</code>/<code>ele</code>).</li>
+            <li>📄 <b>shapes.txt</b> / <b>.csv</b> <span style={{ color: brand.muted }}>(opsiyonel)</span> — <code>shape_pt_lat</code>, <code>shape_pt_lon</code>, <code>shape_pt_sequence</code>. <span style={{ color: brand.muted }}>Gerçek kurp geometrisi → hız profili buradan çıkar.</span></li>
+            <li>Standart <b>GTFS</b> (Google Transit) ile birebir uyumlu; herhangi bir raylı-sistem/GIS aracının GTFS dışa aktarımı çalışır.</li>
+          </ul>
+        </div>
+        <div className="rounded-lg border-l-4 p-4 text-xs" style={{ background: CK.amberBg, borderColor: CK.amber, color: brand.inkSoft }}>
+          <div className="field-label mb-2" style={{ color: CK.amberInk }}>Ana projeden bağımsız mı?</div>
+          <p className="mb-1.5"><b>Veri akışı bağımsızdır.</b> Yüklediğin dosya <b>yalnız tarayıcında</b> okunur; <b>sunucuya gitmez</b> ve aktif projeye yazılmaz. Harita, eğim ve hız profili anında çizilir. (Uygulamaya girmek için hesap gerekir — bu tüm modüller için geçerli erişim kapısıdır, bu modüle özel değil.)</p>
+          <p><b>Tek bağlantı noktası:</b> <span style={{ color: brand.red }}>⇥ Bu güzergahtan hat üret</span> düğmesi. O an bu güzergahı <b>aktif projenin paylaşılan hattına</b> yazar ve simülasyon (Ringler/Hat/Belgeler) bunu kullanır. Yani <b>bakmak</b> bağımsız, <b>üretmek</b> ana projeye işler.</p>
+        </div>
+      </div>
+
       {/* Kontroller */}
       <div className="mb-4 flex flex-wrap items-center gap-4 rounded-lg border bg-white p-4" style={{ borderColor: brand.border }}>
         <label className="text-sm" style={{ color: brand.inkSoft }}>
@@ -133,6 +170,18 @@ export function CografiHarita() {
           Makas/geçit/hız tahmin et
         </label>
       </div>
+
+      {/* Butonların ne yaptığı — kısa kılavuz */}
+      <ul className="mb-4 space-y-1 rounded-md border border-dashed px-4 py-3 text-xs" style={{ borderColor: brand.border, color: brand.inkSoft }}>
+        <li><b>Dosya seç (stops.txt / shapes.txt)</b> — karşı taraftan gelen gerçek hat verisini yükler; harita anında bu koordinatlarda çizilir.</li>
+        <li><b>Demo güzergahı yükle</b> — kendi dosyan yoksa denemek için Konya T2 örneğini koyar.</li>
+        <li><b style={{ color: brand.red }}>⇥ Bu güzergahtan hat üret</b> — asıl aksiyon: bu coğrafi güzergahı simülasyonun <b>ring modeline</b> (durak-arası hücreler) çevirir ve <b>aktif hattına yazar</b>. Sonrasında <Link href="/ringler" className="underline" style={{ color: brand.red }}>Ringler</Link> / <Link href="/hat" className="underline" style={{ color: brand.red }}>Tam Hat</Link> / <Link href="/belgeler" className="underline" style={{ color: brand.red }}>Belgeler</Link> bu hattı kullanır.{" "}
+          {yazilabilir
+            ? <span style={{ color: CK.good }}>Hesabın buna hazır.</span>
+            : <span style={{ color: brand.red }}>Şu an pasif — hattı değiştireceği için <Link href="/giris" className="underline" style={{ color: brand.red }}>giriş</Link> gerekir.</span>}
+        </li>
+        <li><b>Makas/geçit/hız tahmin et</b> — üretim sırasında shape geometrisinden <i>tahmini</i> makas, hemzemin geçit ve hız kısıtı ekler (GTFS&apos;te bu bilgi yoktur, sahayla düzeltilir).</li>
+      </ul>
 
       {hata && <div className="mb-4 rounded-md border-l-4 px-4 py-2 text-sm" style={{ background: CK.badBg, borderColor: brand.red, color: brand.red }}>⚠ {hata}</div>}
 
@@ -211,6 +260,17 @@ export function CografiHarita() {
               );
             })}
 
+            {/* km taşları */}
+            {kmPosts.map((p) => {
+              const q = proj.project(p.lat, p.lon);
+              return (
+                <g key={`km${p.km}`}>
+                  <rect x={q.x - 1.5} y={q.y - 1.5} width={3} height={3} fill={brand.gold} transform={`rotate(45 ${q.x} ${q.y})`} />
+                  <text x={q.x - 6} y={q.y - 4} textAnchor="end" fontSize={7.5} fill={brand.gold}>{p.km}k</text>
+                </g>
+              );
+            })}
+
             {/* kuzey oku */}
             <g transform={`translate(${VBW - 28},28)`}>
               <path d="M0,-14 L5,6 L0,1 L-5,6 Z" fill={brand.ink} />
@@ -243,9 +303,171 @@ export function CografiHarita() {
         </p>
       </div>
 
+      {/* Eğim profili — giriş/üretim gerekmeden, yükseklik verisi yüklenince görünür */}
+      {egim ? (
+        <EgimProfilStrip profil={egim} />
+      ) : (
+        <div className="mt-4 rounded-lg border border-dashed bg-white p-4 text-xs" style={{ borderColor: brand.border, color: brand.muted }}>
+          <b>Eğim profili yok</b> — yüklediğin <code>stops.txt</code> dosyasında <code>stop_elevation</code> (veya <code>elevation</code>/<code>ele</code>) sütunu bulunamadı. Bu sütunu eklersen eğim burada, &quot;hat üret&quot;e basmadan çıkar. Demo verisinde bu sütun vardır.
+        </div>
+      )}
+
+      {/* Hız profili — kurp yarıçapından, shape varsa; giriş/üretim gerekmez */}
+      {hiz && <HizProfilStrip profil={hiz} />}
+
       <footer className="mt-10 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
         RaySim · Coğrafi Güzergah — GTFS stops/shapes içe aktarımı. Bu modül güzergahı gerçek koordinatlarda gösterir; simülasyon modeli (ring/anklaşman) ayrı Sefer/Ringler modüllerinden yürür.
       </footer>
+    </div>
+  );
+}
+
+function EgimProfilStrip({ profil }: { profil: EgimProfil }) {
+  const W = 820, H = 180, PL = 52, PR = 18, PT = 24, PB = 40;
+  const iw = W - PL - PR, ih = H - PT - PB;
+  const { cumDist, ele, minEle, maxEle, totalDist, maxAbsGrade } = profil;
+  const ePad = Math.max(1, maxEle - minEle) * 0.18;
+  const eLo = minEle - ePad, eHi = maxEle + ePad;
+  const x = (d: number) => PL + (totalDist ? (d / totalDist) * iw : 0);
+  const y = (e: number) => PT + (1 - (e - eLo) / (eHi - eLo)) * ih;
+  const col = (g: number) => (g > 0.5 ? brand.red : g < -0.5 ? DOWN : CK.faint);
+
+  // Sıralı geçerli (yükseklikli) durak indeksleri
+  const idx = cumDist.map((_, i) => i).filter((i) => isFinite(ele[i]));
+  const areaPts = idx.map((i) => `${x(cumDist[i]).toFixed(1)},${y(ele[i]).toFixed(1)}`);
+  const areaPath = areaPts.length
+    ? `M ${x(cumDist[idx[0]]).toFixed(1)},${(PT + ih).toFixed(1)} L ${areaPts.join(" L ")} L ${x(cumDist[idx[idx.length - 1]]).toFixed(1)},${(PT + ih).toFixed(1)} Z`
+    : "";
+
+  return (
+    <div className="mt-4 rounded-lg border bg-white p-3" style={{ borderColor: brand.border }}>
+      <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+        <div className="field-label">Eğim profili — yükseklik / mesafe (&quot;hat üret&quot; gerekmez)</div>
+        <div className="text-xs" style={{ color: brand.muted }}>
+          en dik <b style={{ color: maxAbsGrade >= 40 ? brand.red : brand.ink }}>±{maxAbsGrade}‰</b> · yükseklik {minEle.toFixed(0)}–{maxEle.toFixed(0)} m · {(totalDist / 1000).toFixed(2)} km
+        </div>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Eğim profili">
+        <rect x={0} y={0} width={W} height={H} fill="#F7F9FB" />
+        {/* yatay ızgara + yükseklik ekseni */}
+        {[0, 0.5, 1].map((f, i) => {
+          const e = eLo + (eHi - eLo) * (1 - f);
+          const yy = PT + f * ih;
+          return (
+            <g key={`ax${i}`}>
+              <line x1={PL} y1={yy} x2={W - PR} y2={yy} stroke="#E9EDF1" strokeWidth={1} />
+              <text x={PL - 6} y={yy + 3} textAnchor="end" fontSize={9} fill={brand.muted}>{e.toFixed(0)}</text>
+            </g>
+          );
+        })}
+        {/* istasyon kılavuz çizgileri (hız profiliyle ortak eksen) */}
+        {cumDist.map((d, i) => (
+          <line key={`sg${i}`} x1={x(d)} y1={PT} x2={x(d)} y2={PT + ih} stroke="#EDF1F5" strokeWidth={1} />
+        ))}
+        {/* dolgu */}
+        {areaPath && <path d={areaPath} fill={brand.route} opacity={0.05} />}
+        {/* eğime göre renkli segmentler + ‰ etiketi */}
+        {cumDist.slice(0, -1).map((_, i) => {
+          if (!isFinite(ele[i]) || !isFinite(ele[i + 1])) return null;
+          const dx = cumDist[i + 1] - cumDist[i];
+          const g = dx ? Math.round(((ele[i + 1] - ele[i]) / dx) * 1000 * 10) / 10 : 0;
+          const x1 = x(cumDist[i]), y1 = y(ele[i]), x2 = x(cumDist[i + 1]), y2 = y(ele[i + 1]);
+          const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+          return (
+            <g key={`seg${i}`}>
+              <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={col(g)} strokeWidth={3.5} strokeLinecap="round" />
+              {cumDist.length <= 16 && (
+                <text x={mx} y={my - 6} textAnchor="middle" fontSize={9} fontWeight={600} fill={col(g)}>
+                  {g > 0 ? "+" : ""}{g}‰
+                </text>
+              )}
+            </g>
+          );
+        })}
+        {/* durak işaretleri */}
+        {cumDist.map((d, i) => (isFinite(ele[i]) ? (
+          <circle key={`p${i}`} cx={x(d)} cy={y(ele[i])} r={3.2} fill={brand.surface} stroke={brand.ink} strokeWidth={1.6} />
+        ) : null))}
+        {/* mesafe ekseni */}
+        <line x1={PL} y1={PT + ih} x2={W - PR} y2={PT + ih} stroke={brand.borderStrong} strokeWidth={1} />
+        <text x={PL} y={H - 8} fontSize={9} fill={brand.muted}>0 km</text>
+        <text x={W - PR} y={H - 8} textAnchor="end" fontSize={9} fill={brand.muted}>{(totalDist / 1000).toFixed(2)} km</text>
+        <text x={(PL + W - PR) / 2} y={H - 8} textAnchor="middle" fontSize={9} fill={brand.faint}>hat başından mesafe</text>
+      </svg>
+      <p className="mt-2 text-xs" style={{ color: brand.muted }}>
+        <span style={{ color: brand.red }}>▬</span> tırmanış · <span style={{ color: DOWN }}>▬</span> iniş · <span style={{ color: CK.faint }}>▬</span> ~düz.
+        Düşey eksen <b>otomatik ölçekli (düşey abartılı)</b> — küçük yükseklik farkları görünür olsun diye; ‰ değerleri gerçektir. Durak yüksekliklerinden hesaplanır; &quot;hat üret&quot; gerekmez.
+      </p>
+    </div>
+  );
+}
+
+function HizProfilStrip({ profil }: { profil: HizProfil }) {
+  const W = 820, H = 200, PL = 52, PR = 18, PT = 22, PB = 58;
+  const iw = W - PL - PR, ih = H - PT - PB;
+  const { samples, cumDist, stopNames, totalDist, minKmh, maxKmh } = profil;
+  const vHi = Math.ceil((maxKmh + 5) / 10) * 10;
+  const x = (d: number) => PL + (totalDist ? (d / totalDist) * iw : 0);
+  const y = (v: number) => PT + (1 - v / vHi) * ih;
+  const speedCol = (v: number) => (v <= 20 ? brand.red : v <= 40 ? CK.amber : CK.good);
+
+  // Basamaklı (step) azami-hız çizgisi — OpenTrack v-s merdiveni
+  const stepPts: string[] = [];
+  samples.forEach((s, i) => {
+    const px = x(s.cum);
+    stepPts.push(`${px.toFixed(1)},${y(s.kmh).toFixed(1)}`);
+    if (i < samples.length - 1) stepPts.push(`${x(samples[i + 1].cum).toFixed(1)},${y(s.kmh).toFixed(1)}`);
+  });
+  const areaPath = stepPts.length
+    ? `M ${PL},${(PT + ih).toFixed(1)} L ${stepPts.join(" L ")} L ${(x(totalDist)).toFixed(1)},${(PT + ih).toFixed(1)} Z`
+    : "";
+  const yTicks = Array.from({ length: vHi / 20 + 1 }, (_, i) => i * 20);
+
+  return (
+    <div className="mt-4 rounded-lg border bg-white p-3" style={{ borderColor: brand.border }}>
+      <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+        <div className="field-label">Hız profili — kurp yarıçapından azami hız (v–s, &quot;hat üret&quot; gerekmez)</div>
+        <div className="text-xs" style={{ color: brand.muted }}>
+          aralık <b style={{ color: brand.ink }}>{minKmh}–{maxKmh} km/h</b> · yanal ivme 0,65 m/s²
+        </div>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Hız profili (kurp kısıtı)">
+        <rect x={0} y={0} width={W} height={H} fill="#F7F9FB" />
+        {/* hız ızgarası */}
+        {yTicks.map((v) => (
+          <g key={`vy${v}`}>
+            <line x1={PL} y1={y(v)} x2={W - PR} y2={y(v)} stroke="#E9EDF1" strokeWidth={1} />
+            <text x={PL - 6} y={y(v) + 3} textAnchor="end" fontSize={9} fill={brand.muted}>{v}</text>
+          </g>
+        ))}
+        {/* istasyon kılavuzları + adları (eğim profiliyle ortak eksen) */}
+        {cumDist.map((d, i) => (
+          <g key={`st${i}`}>
+            <line x1={x(d)} y1={PT} x2={x(d)} y2={PT + ih} stroke="#E3E8EE" strokeWidth={1} strokeDasharray="2 3" />
+            <text x={x(d)} y={PT + ih + 12} transform={`rotate(35 ${x(d)} ${PT + ih + 12})`} fontSize={8.5} fill={brand.inkSoft}>
+              {stopNames[i]}
+            </text>
+          </g>
+        ))}
+        {/* azami hız dolgu + merdiven */}
+        {areaPath && <path d={areaPath} fill={CK.good} opacity={0.08} />}
+        {samples.slice(0, -1).map((s, i) => {
+          const c = speedCol(s.kmh);
+          return (
+            <g key={`sp${i}`}>
+              <line x1={x(s.cum)} y1={y(s.kmh)} x2={x(samples[i + 1].cum)} y2={y(s.kmh)} stroke={c} strokeWidth={2.5} strokeLinecap="round" />
+              <line x1={x(samples[i + 1].cum)} y1={y(s.kmh)} x2={x(samples[i + 1].cum)} y2={y(samples[i + 1].kmh)} stroke={c} strokeWidth={1.2} opacity={0.5} />
+            </g>
+          );
+        })}
+        {/* mesafe ekseni */}
+        <line x1={PL} y1={PT + ih} x2={W - PR} y2={PT + ih} stroke={brand.borderStrong} strokeWidth={1} />
+        <text x={PL - 40} y={PT + ih / 2} transform={`rotate(-90 ${PL - 40} ${PT + ih / 2})`} textAnchor="middle" fontSize={9} fill={brand.muted}>km/h</text>
+      </svg>
+      <p className="mt-1 text-xs" style={{ color: brand.muted }}>
+        <span style={{ color: CK.good }}>▬</span> serbest · <span style={{ color: CK.amber }}>▬</span> yavaşlama · <span style={{ color: brand.red }}>▬</span> makas/keskin kurp rejimi.
+        Merdiven, shape&apos;in yerel kurp yarıçapından (v=√(a·R)) türetilir; yoğun/gerçek shape ne kadar iyiyse profil o kadar isabetli. Ana hat tavanı 70 km/h.
+      </p>
     </div>
   );
 }

@@ -290,6 +290,97 @@ export function tahminEtEgim(rings: DurakArasiRing[], stops: GeoStop[]): { ayarl
   return { ayarlanan: n, maxEgim: Math.round(maxAbs * 10) / 10 };
 }
 
+export interface EgimSegment { fromName: string; toName: string; dist: number; z0: number; z1: number; dz: number; grade: number; }
+export interface EgimProfil {
+  segments: EgimSegment[];  // durak-arası eğimler
+  cumDist: number[];        // her durağın hat başından mesafesi (m)
+  ele: number[];            // her durağın yüksekliği (m; yoksa NaN)
+  minEle: number; maxEle: number;
+  maxAbsGrade: number;      // en dik eğim (mutlak, ‰)
+  totalDist: number;        // toplam güzergah (m)
+}
+
+/**
+ * Durak yüksekliklerinden eğim PROFİLİ çıkarır (giriş/üretim gerekmez — veri yüklenince hazır).
+ * Mesafe: shape varsa shape boyu, yoksa büyük-çember. grade = Δz/mesafe×1000, ±80‰ ile sınırlı.
+ * Yükseklik yoksa null. Coğrafi haritanın altındaki her-zaman-görünür profil şeridi için.
+ */
+export function egimProfili(stops: GeoStop[], shapes: GeoShape[]): EgimProfil | null {
+  if (stops.length < 2 || !stops.some((s) => s.ele != null)) return null;
+  const cum = stopCumulative(stops, shapes); // shape varsa shape boyu, yoksa null
+  const dist: number[] = [];
+  for (let i = 0; i < stops.length - 1; i++) {
+    const ci = cum[i], cj = cum[i + 1];
+    const d = ci != null && cj != null ? Math.abs(cj - ci) : haversine(stops[i], stops[i + 1]);
+    dist.push(Math.max(1, Math.round(d)));
+  }
+  const cumDist = [0];
+  for (let i = 0; i < dist.length; i++) cumDist.push(cumDist[i] + dist[i]);
+  const ele = stops.map((s) => (s.ele != null && isFinite(s.ele) ? s.ele : NaN));
+  const segments: EgimSegment[] = [];
+  let maxAbsGrade = 0;
+  for (let i = 0; i < stops.length - 1; i++) {
+    const z0 = stops[i].ele, z1 = stops[i + 1].ele;
+    if (z0 == null || z1 == null || !isFinite(z0) || !isFinite(z1)) continue;
+    const dz = z1 - z0;
+    let g = (dz / dist[i]) * 1000; // ‰
+    g = Math.max(-80, Math.min(80, g));
+    g = Math.round(g * 10) / 10;
+    if (Math.abs(g) > maxAbsGrade) maxAbsGrade = Math.abs(g);
+    segments.push({ fromName: stops[i].name, toName: stops[i + 1].name, dist: dist[i], z0, z1, dz, grade: g });
+  }
+  const fin = ele.filter((e) => isFinite(e));
+  if (fin.length < 2) return null;
+  return {
+    segments, cumDist, ele,
+    minEle: Math.min(...fin), maxEle: Math.max(...fin),
+    maxAbsGrade: Math.round(maxAbsGrade * 10) / 10,
+    totalDist: cumDist[cumDist.length - 1],
+  };
+}
+
+export interface HizProfil {
+  samples: { cum: number; kmh: number }[]; // mesafe boyunca kurp-kısıtlı azami hız
+  cumDist: number[];                        // durak sınırları (m) — ortak eksen tikleri
+  stopNames: string[];
+  totalDist: number; minKmh: number; maxKmh: number;
+}
+
+/**
+ * Shape'in yerel kurp yarıçapından mesafe-boyu HIZ PROFİLİ (v–s) üretir — OpenTrack
+ * tarzı azami-hız merdiveni. v = √(a_lat·R), a_lat=0.65 m/s² (konforlu tramvay yanal
+ * ivmesi); ana hat hızıyla tavan, makas hızıyla taban. Giriş/üretim gerekmez.
+ * Yoğun shape yoksa (kurp geometrisi yok) null.
+ */
+export function hizProfili(stops: GeoStop[], shapes: GeoShape[]): HizProfil | null {
+  const sh = shapes.length ? shapes.reduce((a, b) => (b.points.length > a.points.length ? b : a)) : null;
+  if (!sh || sh.points.length < 4) return null;
+  const pts = sh.points;
+  const lat0 = pts[0].lat, lon0 = pts[0].lon;
+  const kx = Math.cos((lat0 * Math.PI) / 180) * 111320, ky = 111320;
+  const xy = pts.map((p) => ({ x: (p.lon - lon0) * kx, y: (p.lat - lat0) * ky }));
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + haversine(pts[i - 1], pts[i]));
+  const A_LAT = 0.65, CAP = BELGE.vAnahat, FLOOR = BELGE.vMakas;
+
+  const vAt = (i: number): number => {
+    if (i <= 0 || i >= xy.length - 1) return CAP;
+    const R = circumradius(xy[i - 1], xy[i], xy[i + 1]);
+    if (!isFinite(R)) return CAP;
+    return Math.max(FLOOR, Math.min(CAP, Math.sqrt(A_LAT * R)));
+  };
+  const samples = pts.map((_, i) => ({ cum: cum[i], kmh: Math.round((vAt(i) * 3.6) / 5) * 5 }));
+  const kmhs = samples.map((s) => s.kmh);
+  const stopCum = stopCumulative(stops, shapes);
+  return {
+    samples,
+    cumDist: stopCum.map((c, i) => (c ?? cum[Math.min(i, cum.length - 1)]) as number),
+    stopNames: stops.map((s) => s.name),
+    totalDist: cum[cum.length - 1],
+    minKmh: Math.min(...kmhs), maxKmh: Math.max(...kmhs),
+  };
+}
+
 /**
  * Durak yüksekliklerini shape'in her noktasına (kümülatif mesafeye göre) enterpole eder.
  * Coğrafi haritada renk-kodlu eğim için. Yükseklik yoksa null.
@@ -373,20 +464,37 @@ export function gtfsToRings(stops: GeoStop[], shapes: GeoShape[]): DurakArasiRin
 // ————————————————————————————————————————————————
 
 export const ornekGtfsStops = `stop_id,stop_name,stop_lat,stop_lon,stop_elevation
-1,Alaaddin,37.87200,32.49350,1020
-2,Hükümet,37.87030,32.49700,1019
-3,Mevlana,37.87090,32.50450,1018
-4,Mevlana Kültür Merkezi,37.87300,32.50800,1019
-5,Fetih Caddesi,37.87700,32.51150,1021
-6,Spor ve Kongre Merkezi,37.88200,32.51500,1023
-7,Karşehir Caddesi,37.88700,32.51850,1025
-8,Adliye,37.89250,32.52250,1027`;
+1,Alaaddin,37.87200,32.49350,1021
+2,Hükümet,37.87030,32.49700,1026
+3,Mevlana,37.87090,32.50450,1019
+4,Mevlana Kültür Merkezi,37.87300,32.50800,1016
+5,Fetih Caddesi,37.87700,32.51150,1024
+6,Spor ve Kongre Merkezi,37.88200,32.51500,1033
+7,Karşehir Caddesi,37.88700,32.51850,1029
+8,Adliye,37.89250,32.52250,1037`;
 
-// Güzergah shape: gerçek durakların poligonu (as-built kurp geometrisi gelince
-// sıklaştırılacak — o zaman kurp→hız tahmini de devreye girer).
+// Güzergah shape: durakları düz bağlamak yerine GERÇEKÇİ kurp geometrisi üretir
+// (her durak-arası yay, değişken keskinlikte → kurp→hız profili anlamlı çıkar).
+// As-built GTFS shapes.txt gelince bu deterministik demo onunla değiştirilir.
 export const ornekGtfsShapes = (() => {
   const s = parseStops(ornekGtfsStops);
   const rows = ["shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence"];
-  s.forEach((p, i) => rows.push(`H1,${p.lat.toFixed(6)},${p.lon.toFixed(6)},${i}`));
+  // Segment başına yay genliği (chord'a oran) — büyük = keskin kurp = düşük hız.
+  const bend = [0.05, 0.20, 0.09, 0.24, 0.07, 0.16, 0.11];
+  let seq = 0;
+  const push = (lat: number, lon: number) => rows.push(`H1,${lat.toFixed(6)},${lon.toFixed(6)},${seq++}`);
+  for (let i = 0; i < s.length - 1; i++) {
+    const a = s[i], b = s[i + 1];
+    const dLat = b.lat - a.lat, dLon = b.lon - a.lon;
+    const len = Math.hypot(dLat, dLon) || 1e-9;
+    const nLat = -dLon / len, nLon = dLat / len;         // dik birim vektör (derece uzayı)
+    const amp = len * (bend[i % bend.length] ?? 0.1) * (i % 2 === 0 ? 1 : -1);
+    const N = 12;
+    for (let k = i === 0 ? 0 : 1; k <= N; k++) {          // durakta tekrar noktası koyma
+      const t = k / N;
+      const off = Math.sin(Math.PI * t) * amp;            // uçlarda 0, ortada azami yay
+      push(a.lat + dLat * t + nLat * off, a.lon + dLon * t + nLon * off);
+    }
+  }
   return rows.join("\n");
 })();

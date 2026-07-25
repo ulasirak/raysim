@@ -97,6 +97,55 @@ function useAktifBolum(aktifMi: boolean): BolumSlug | null {
   return slug;
 }
 
+/**
+ * Sayfanın toplam dikey kaydırma ilerlemesini 0..1 arası döndürür. Metro-hattı
+ * navigasyonundaki "tren" bu değere göre rayda kesintisiz akar ve üstteki ince
+ * ilerleme çizgisini besler. Ana sayfa dışında pasif (0).
+ */
+function useKaydirmaIlerlemesi(aktifMi: boolean): number {
+  const [oran, setOran] = useState(0);
+  useEffect(() => {
+    if (!aktifMi) return;
+    let bekliyor = false;
+    const hesapla = () => {
+      bekliyor = false;
+      const kat = document.documentElement.scrollHeight - window.innerHeight;
+      setOran(kat > 0 ? Math.min(1, Math.max(0, window.scrollY / kat)) : 0);
+    };
+    const tetikle = () => {
+      if (bekliyor) return;
+      bekliyor = true;
+      requestAnimationFrame(hesapla);
+    };
+    hesapla();
+    window.addEventListener("scroll", tetikle, { passive: true });
+    window.addEventListener("resize", tetikle, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", tetikle);
+      window.removeEventListener("resize", tetikle);
+    };
+  }, [aktifMi]);
+  return oran;
+}
+
+/**
+ * Geniş ekran (≥1024px) olup olmadığını döndürür — metro-hattı ile kompakt ızgara
+ * navigasyonu arasında DETERMİNİSTİK geçiş için. (Tailwind responsive display
+ * sınıfları yerine JS breakpoint: araç zinciri/önbellek kaprislerinden bağımsız.)
+ * SSR'de false varsayılır (mobil-öncelikli), mount'ta gerçek değere geçer.
+ */
+function useGenisEkran(): boolean {
+  const [genis, setGenis] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const uygula = () => setGenis(mq.matches);
+    uygula();
+    mq.addEventListener("change", uygula);
+    return () => mq.removeEventListener("change", uygula);
+  }, []);
+  return genis;
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
@@ -123,30 +172,122 @@ function Govde({ children }: { children: React.ReactNode }) {
   const aktif = anaSayfa
     ? (MODULLER.find((m) => m.slug === aktifBolum) ?? MODULLER[0])
     : aktifModul(pathname);
+  const aktifIndex = Math.max(0, MODULLER.findIndex((m) => m.slug === aktif.slug));
+
+  // Rayda akan "tren": ana sayfada kesintisiz kaydırma ilerlemesi; eski derin
+  // rotalarda aktif istasyonun oransal konumu (durağan gösterim).
+  const kaydirma = useKaydirmaIlerlemesi(anaSayfa && icerikVar);
+  const ilerleme = anaSayfa ? kaydirma : aktifIndex / Math.max(1, MODULLER.length - 1);
+  const genisEkran = useGenisEkran();
 
   return (
     <>
       <Masthead belgeKodu={aktif.kod} rota={aktif.rota} />
 
-      {/* Modül navigasyonu — sistemin mantıksal iş akışı (soldan sağa boru hattı).
-          Ana sayfada tek-sayfa bölüm ankorlarına kaydırır; eski rotalarda sayfaya gider. */}
+      {/* Modül navigasyonu — sistemin mantıksal iş akışı bir METRO HATTI olarak:
+          yedi istasyon soldan sağa boru hattı; kaydırma ilerlemesi rayda akan bir
+          tren gibi kırmızı-altın çizgiyle ilerler. Ana sayfada bölüm ankorlarına
+          kaydırır; eski rotalarda ana sayfadaki bölüme döner. */}
       {icerikVar && (
-      <nav className="sticky top-0 z-20 border-b" style={{ background: "#0E2739", borderColor: "#1E3A50" }}>
-        {/* Butonlar sayfanın yatayına eşit yayılır: dar ekranda 2, orta ekranda 4, geniş ekranda 7 sütun */}
-        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-1 px-4 py-2 sm:grid-cols-4 lg:grid-cols-7">
+      <nav
+        className="sticky top-0 z-20 border-b backdrop-blur"
+        style={{
+          background: "linear-gradient(180deg, #0F2B40 0%, #0C2233 100%)",
+          borderColor: "#1E3A50",
+        }}
+      >
+        {/* Üst kenar ince ilerleme çizgisi — global kaydırma konumu (mobilde de görünür) */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[2px]" style={{ background: "#12314A" }}>
+          <div
+            className="h-full transition-[width] duration-150 ease-out"
+            style={{ width: `${ilerleme * 100}%`, background: `linear-gradient(90deg, ${brand.gold}, ${brand.red})` }}
+          />
+        </div>
+
+        {/* ── GENİŞ EKRAN (≥1024px): metro hattı ─────────────────────────── */}
+        <div className="relative mx-auto max-w-6xl px-8 pb-3 pt-5" style={{ display: genisEkran ? "block" : "none" }}>
+          {/* Ray tabanı: istasyon nokralarının merkezinden geçen sönük çizgi */}
+          <div className="pointer-events-none absolute left-8 right-8 top-[30px] h-[2px] rounded-full" style={{ background: "#1E3A50" }} />
+          {/* Kat edilen ray: baştan trene kadar kırmızı-altın */}
+          <div
+            className="pointer-events-none absolute left-8 top-[30px] h-[2px] rounded-full transition-[width] duration-150 ease-out"
+            style={{ width: `calc((100% - 4rem) * ${ilerleme})`, background: `linear-gradient(90deg, ${brand.gold}, ${brand.red})` }}
+          />
+
+          <ul className="relative flex items-start justify-between">
+            {MODULLER.map((m, i) => {
+              const on = m.slug === aktif.slug;
+              const gecildi = i < aktifIndex;
+              const href = anaSayfa ? `#${m.slug}` : `/#${m.slug}`;
+              // Nokra (istasyon) görünümü: aktif = kırmızı dolu + halka; geçilmiş =
+              // altın kenarlı dolu; gelecek = sönük kenar.
+              const nokra: React.CSSProperties = on
+                ? { background: brand.red, borderColor: brand.red, color: "#fff", boxShadow: `0 0 0 4px ${brand.red}33` }
+                : gecildi
+                ? { background: "#12314A", borderColor: brand.gold, color: "#E7D9B0" }
+                : { background: "#0C2233", borderColor: "#274A63", color: "#6E8091" };
+              return (
+                <li key={m.slug} className="flex min-w-0 flex-1 flex-col items-center px-1.5 text-center">
+                  <a href={href} className="group flex w-full flex-col items-center">
+                    {/* İstasyon nokrası — numara; rayı örtmek için dolu zemin */}
+                    <span
+                      className="relative z-10 flex h-[22px] w-[22px] items-center justify-center rounded-full border font-mono text-[0.68rem] font-semibold tabular-nums transition-all duration-200 group-hover:scale-110"
+                      style={nokra}
+                    >
+                      {i + 1}
+                    </span>
+                    <span
+                      className="mt-2.5 text-[0.78rem] font-medium leading-tight transition-colors"
+                      style={{ color: on ? "#fff" : gecildi ? "#AEBECB" : "#8494A3" }}
+                    >
+                      {m.ad}
+                    </span>
+                    <span
+                      className="mt-0.5 text-[0.6rem] leading-snug transition-colors"
+                      style={{ color: on ? "#E7A9B2" : "#5A6C7C" }}
+                    >
+                      {m.rol}
+                    </span>
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        {/* ── DAR/ORTA EKRAN (<1024px): kompakt istasyon ızgarası ─────────── */}
+        <div className="mx-auto max-w-6xl grid-cols-2 gap-1.5 px-3 pb-2.5 pt-3.5 sm:grid-cols-4" style={{ display: genisEkran ? "none" : "grid" }}>
           {MODULLER.map((m, i) => {
-            const on = anaSayfa ? m.slug === aktif.slug : m.href === aktif.href;
-            // Ana sayfada bölüme kaydır (#slug); başka rotadaysak ana sayfadaki
-            // bölüme dönmek için /#slug. Derin rota bağı yalnız uyumluluk içindir.
+            const on = m.slug === aktif.slug;
+            const gecildi = i < aktifIndex;
             const href = anaSayfa ? `#${m.slug}` : `/#${m.slug}`;
             return (
-              <a key={m.slug} href={href}
-                className="flex min-w-0 flex-col rounded-md px-2.5 py-1.5 leading-tight transition"
-                style={{ background: on ? brand.red : "transparent" }}>
-                <span className="text-[0.8rem] font-medium" style={{ color: on ? "#fff" : "#C7D2DC" }}>
-                  {i + 1}. {m.ad}
+              <a
+                key={m.slug}
+                href={href}
+                className="flex min-w-0 items-center gap-2 rounded-lg px-2 py-1.5 leading-tight transition-colors"
+                style={{ background: on ? brand.red : "#0F2B40", border: `1px solid ${on ? brand.red : "#1E3A50"}` }}
+              >
+                <span
+                  className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border font-mono text-[0.6rem] font-semibold tabular-nums"
+                  style={
+                    on
+                      ? { background: "#ffffff22", borderColor: "#ffffff55", color: "#fff" }
+                      : gecildi
+                      ? { background: "#12314A", borderColor: brand.gold, color: "#E7D9B0" }
+                      : { background: "#0C2233", borderColor: "#274A63", color: "#6E8091" }
+                  }
+                >
+                  {i + 1}
                 </span>
-                <span className="text-[0.62rem]" style={{ color: on ? "#ffffffb0" : "#6E8091" }}>{m.rol}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[0.72rem] font-medium" style={{ color: on ? "#fff" : "#C7D2DC" }}>
+                    {m.ad}
+                  </span>
+                  <span className="block truncate text-[0.56rem]" style={{ color: on ? "#ffffffb0" : "#6E8091" }}>
+                    {m.rol}
+                  </span>
+                </span>
               </a>
             );
           })}
