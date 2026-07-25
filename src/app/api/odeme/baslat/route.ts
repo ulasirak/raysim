@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
   let uid: string;
   try { uid = await istekUid(req); }
-  catch { return NextResponse.json({ hata: "Kimlik doğrulanamadı." }, { status: 401 }); }
+  catch (e) { return NextResponse.json({ hata: "Kimlik doğrulanamadı: " + (e instanceof Error ? e.message : String(e)) }, { status: 401 }); }
 
   let govde: { paketId?: string };
   try { govde = await req.json(); }

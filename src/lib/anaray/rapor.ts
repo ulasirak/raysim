@@ -453,10 +453,22 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   @page { size: A4; margin: 18mm 16mm 20mm; }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
-  body { font-family: "Spectral", Georgia, "Times New Roman", serif; color: ${INK}; font-size: 11pt; line-height: 1.5; background: #f0f2f4; }
+  body { font-family: "Spectral", Georgia, "Times New Roman", serif; color: ${INK}; font-size: 11pt; line-height: 1.5; background: #f0f2f4;
+    /* Spectral yüklenmezse Georgia'ya düşer; Georgia varsayılan olarak eski-stil (zıplayan)
+       rakamlar kullanır. Tüm belgede hizalı (lining) rakam zorla → sayılar taban çizgisinde durur. */
+    font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
+  /* Sayısal yüzeyler: hizalı + tabular (sütunlar dikey hizalanır, rakamlar eşit genişlikte). */
+  table, .kpi-v, .kpi-a, .pill, .cover .kunye td, .fig .cap {
+    font-variant-numeric: lining-nums tabular-nums; font-feature-settings: "lnum" 1, "tnum" 1; }
   .page { background: #fff; }
   @media screen { .sheet { max-width: 800px; margin: 24px auto; box-shadow: 0 4px 24px rgba(12,34,51,.14); padding: 40px 46px; } }
-  @media print { .sheet { padding: 0; } .noprint { display: none !important; } }
+  @media print {
+    .sheet { padding: 0; } .noprint { display: none !important; }
+    /* Tarayıcılar yazdırmada arka plan renklerini varsayılan olarak atar; koyu başlık
+       şeritleri, KPI kutuları, tablo başlıkları ve renkli grafik dolguları basılsın diye zorla. */
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   h1, h2, h3, h4 { font-family: "Spectral", Georgia, serif; margin: 0; }
   p { margin: 0 0 8px; }
   .muted { color: #6B7A8A; }
