@@ -478,9 +478,11 @@ export function useProje(): {
   patchMeta: (p: Partial<ProjeMeta>) => void;
   yazilabilir: boolean;
   yonetici: boolean;
+  /** Aktif hat verisi hâlâ yükleniyor mu? (rings=[] "boş hat" mı yoksa "henüz gelmedi" mi ayrımı) */
+  yukleniyor: boolean;
 } {
-  const { rings, setRings, sifirlaRings, meta, patchMeta, yazilabilir, yonetici } = useCtx();
-  return { rings, setRings, sifirlaRings, meta, patchMeta, yazilabilir, yonetici };
+  const { rings, setRings, sifirlaRings, meta, patchMeta, yazilabilir, yonetici, durum } = useCtx();
+  return { rings, setRings, sifirlaRings, meta, patchMeta, yazilabilir, yonetici, yukleniyor: durum === "yukleniyor" };
 }
 
 /** Oturum + proje yönetimi (kabuk/başlık için). */

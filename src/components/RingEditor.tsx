@@ -41,7 +41,7 @@ const OK = CK.good;
 
 export function RingEditor() {
   const { cfg } = useSimConfig();
-  const { rings, setRings, sifirlaRings, meta, yonetici } = useProje();
+  const { rings, setRings, sifirlaRings, meta, yonetici, yukleniyor } = useProje();
   const [kapali, setKapali] = useState(true);
   const [stock, setStock] = useState<RollingStock>(varsayilanArac);
   const [acik, setAcik] = useState<Record<string, boolean>>(() => (rings[0] ? { [rings[0].id]: true } : {}));
@@ -190,8 +190,19 @@ export function RingEditor() {
         </div>
       )}
 
-      {/* Hat boşsa: ilk adım burasıdır — kullanıcı hattını buradan kurmaya başlar */}
-      {rings.length === 0 && (
+      {/* Hat verisi yükleniyorken (girişli hesapta sayfa yenileme) rings henüz []'dir.
+          "Hattınız boş / ring ekle" davetini burada göstermek, veri gelince kaybolan
+          bir "aç-kapa" titremesine yol açıyordu; yükleme bitene kadar nötr bir yer
+          tutucu gösterip gerçek boşluk kararını veriye bırakıyoruz. */}
+      {yukleniyor && rings.length === 0 && (
+        <div className="mt-6 rounded-lg border-2 border-dashed px-6 py-8 text-center text-sm" style={{ borderColor: brand.border, color: brand.muted }}>
+          ⟳ Hat yükleniyor…
+        </div>
+      )}
+
+      {/* Hat boşsa: ilk adım burasıdır — kullanıcı hattını buradan kurmaya başlar.
+          Yalnız yükleme bittikten sonra ("gerçekten boş" olduğu kesinken) gösterilir. */}
+      {!yukleniyor && rings.length === 0 && (
         <div className="mt-6 rounded-lg border-2 border-dashed px-6 py-8 text-center" style={{ borderColor: brand.border }}>
           <div className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>Hattınız boş</div>
           <p className="mx-auto mt-1 max-w-lg text-sm leading-relaxed" style={{ color: brand.muted }}>
