@@ -11,6 +11,9 @@ import { isIyzicoConfigured, odemeBaslat } from "@/lib/iyzico";
 import { paketBul } from "@/lib/cuzdan";
 import crypto from "crypto";
 
+// firebase-admin + crypto Node.js gerektirir — Edge'e düşmesin.
+export const runtime = "nodejs";
+
 export async function POST(req: Request) {
   if (!isAdminConfigured() || !isIyzicoConfigured()) {
     return NextResponse.json({ hata: "Ödeme altyapısı henüz yapılandırılmadı (sunucu anahtarları eksik)." }, { status: 503 });

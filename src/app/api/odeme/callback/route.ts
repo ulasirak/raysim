@@ -10,6 +10,9 @@ import { isAdminConfigured } from "@/lib/firebaseAdmin";
 import { odemeDogrula } from "@/lib/iyzico";
 import { odemeKaydiGetir, odemeKaydiDurum, krediEkle } from "@/lib/cuzdanServer";
 
+// firebase-admin Node.js gerektirir — Edge'e düşmesin.
+export const runtime = "nodejs";
+
 function siteUrl() {
   return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 }

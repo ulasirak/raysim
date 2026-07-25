@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: import.meta.dirname,
   },
+  // firebase-admin (ve bağımlılıkları: gRPC vb.) sunucu paketine BUNDLE EDİLMEZ;
+  // Node'un kendi require'ıyla yüklenir. Bundle edilince Vercel serverless'ta
+  // yüklenemeyip route'lar 500 veriyordu.
+  serverExternalPackages: ["firebase-admin"],
 };
 
 export default nextConfig;
