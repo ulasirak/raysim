@@ -12,6 +12,31 @@ import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "./firebaseAdmin";
 import type { HareketTuru } from "./cuzdan";
 
+/** Bekleyen ödeme kaydı — initialize sırasında yazılır, callback'te okunur. */
+export interface OdemeKaydi {
+  uid: string;
+  kredi: number;
+  tl: number;
+  durum: "beklemede" | "tamam" | "basarisiz";
+}
+
+export async function odemeKaydiOlustur(id: string, k: OdemeKaydi): Promise<void> {
+  await adminDb().collection("odeme").doc(id).set({
+    ...k, olusturma: FieldValue.serverTimestamp(),
+  });
+}
+
+export async function odemeKaydiGetir(id: string): Promise<OdemeKaydi | null> {
+  const snap = await adminDb().collection("odeme").doc(id).get();
+  if (!snap.exists) return null;
+  const d = snap.data() as Record<string, unknown>;
+  return { uid: String(d.uid), kredi: Number(d.kredi), tl: Number(d.tl), durum: (d.durum as OdemeKaydi["durum"]) ?? "beklemede" };
+}
+
+export async function odemeKaydiDurum(id: string, durum: OdemeKaydi["durum"]): Promise<void> {
+  await adminDb().collection("odeme").doc(id).set({ durum, guncelleme: FieldValue.serverTimestamp() }, { merge: true });
+}
+
 export class KrediYetersizError extends Error {
   constructor(public gereken: number, public mevcut: number) {
     super(`Yetersiz kredi: ${gereken} gerekli, ${mevcut} mevcut.`);

@@ -13,6 +13,7 @@ import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { useHesap } from "@/components/SimConfigProvider";
 import { useCuzdan } from "@/components/CuzdanProvider";
+import { KREDI_PAKETLERI } from "@/lib/cuzdan";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 
@@ -20,12 +21,13 @@ export function HesapCubugu() {
   const { user, hazir, yapilandirildi, cikisYap } = useAuth();
   const {
     demoMu, paylasimGorunumu, paylasimdanCik, durum, hataMetni, projeler, aktifId, aktifAd,
-    paylasimAcik, kota, kotaDoldu,
+    paylasimAcik, kota, kotaDoldu, yonetici,
     projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle, paylasimDegistir,
   } = useHesap();
 
-  const { bakiye } = useCuzdan();
+  const { bakiye, krediSatinAl, krediHarca } = useCuzdan();
   const [yeniAcik, setYeniAcik] = useState(false);
+  const [odemeHata, setOdemeHata] = useState<string | null>(null);
   const [yeniAd, setYeniAd] = useState("");
   const [adTaslak, setAdTaslak] = useState<string | null>(null);
   const [kopyalandi, setKopyalandi] = useState(false);
@@ -37,6 +39,21 @@ export function HesapCubugu() {
   const sar = (p: Promise<unknown>, ad: string) => {
     setIsBasi(ad);
     p.catch(() => { /* durum context'te gösteriliyor */ }).finally(() => setIsBasi(null));
+  };
+
+  // Yeni hat = ücretli (proje yükleme). Önce SUNUCUDA kredi düşülür; yeterliyse
+  // hat açılır. Yönetici muaftır. Yetersizse kredi al uyarısı gösterilir.
+  const yeniHatKredili = async (ad: string) => {
+    if (!yonetici) {
+      const r = await krediHarca("projeYukleme");
+      if (!r.tamam) {
+        setOdemeHata(r.yetersiz
+          ? `Yeni hat ${r.gereken} kredi ister; ${r.mevcut} krediniz var. Yukarıdan kredi alın.`
+          : (r.hata ?? "Kredi düşülemedi."));
+        throw new Error("kredi-yok");
+      }
+    }
+    await projeYeni(ad);
   };
 
   // — Salt-okunur paylaşım görünümü —
@@ -97,9 +114,9 @@ export function HesapCubugu() {
         {yeniAcik ? (
           <>
             <input value={yeniAd} onChange={(e) => setYeniAd(e.target.value)} placeholder="Yeni hat adı" autoFocus
-              onKeyDown={(e) => { if (e.key === "Enter") { sar(projeYeni(yeniAd.trim()), "yeni"); setYeniAd(""); setYeniAcik(false); } if (e.key === "Escape") setYeniAcik(false); }}
+              onKeyDown={(e) => { if (e.key === "Enter") { setOdemeHata(null); sar(yeniHatKredili(yeniAd.trim()), "yeni"); setYeniAd(""); setYeniAcik(false); } if (e.key === "Escape") setYeniAcik(false); }}
               className="rounded border px-2 py-1 text-xs" style={{ borderColor: brand.borderStrong, color: brand.ink }} />
-            <button onClick={() => { sar(projeYeni(yeniAd.trim()), "yeni"); setYeniAd(""); setYeniAcik(false); }} disabled={isBasi === "yeni"}
+            <button onClick={() => { setOdemeHata(null); sar(yeniHatKredili(yeniAd.trim()), "yeni"); setYeniAd(""); setYeniAcik(false); }} disabled={isBasi === "yeni"}
               className="rounded px-2 py-1 font-medium disabled:opacity-50" style={{ background: brand.ink, color: "#fff" }}>Oluştur</button>
             <button onClick={() => setYeniAcik(false)} className="rounded px-2 py-1" style={{ color: brand.muted }}>Vazgeç</button>
           </>
@@ -121,6 +138,11 @@ export function HesapCubugu() {
           {durum === "hazir" && "✓ kaydedildi"}
           {durum === "hata" && `⚠ ${hataMetni ?? "kayıt hatası"}`}
         </span>
+
+        {/* Kredi/ödeme uyarısı (yeni hat için yetersiz kredi vb.) */}
+        {odemeHata && (
+          <span className="max-w-xs truncate" title={odemeHata} style={{ color: brand.red }}>⚠ {odemeHata}</span>
+        )}
 
         {/* Sağ blok: kredi bakiyesi + ⋮ menüsü + çıkış */}
         <div className="relative ml-auto flex items-center gap-2">
@@ -150,7 +172,28 @@ export function HesapCubugu() {
                   <div style={{ color: brand.ink }}>{user.email}</div>
                   <div className="mt-0.5 text-[0.7rem]" style={{ color: kotaDoldu ? brand.red : brand.muted }}>
                     {kota === null ? `${projeler.length} hat · sınırsız` : `${projeler.length}/${kota} hat`}
+                    {"  ·  "}
+                    <span style={{ color: bakiye === 0 ? brand.red : brand.muted }}>
+                      {bakiye === null ? "kredi —" : `${bakiye} kredi`}
+                    </span>
                   </div>
+                </div>
+
+                {/* Kredi satın alma — ücretli rapor/proje yükleme bu krediden düşer */}
+                <div className="border-b px-3 py-2" style={{ borderColor: brand.border }}>
+                  <div className="field-label mb-1" style={{ color: brand.faint }}>KREDİ AL</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {KREDI_PAKETLERI.map((p) => (
+                      <button key={p.id}
+                        onClick={async () => { setOdemeHata(null); const r = await krediSatinAl(p.id); if (r.hata) setOdemeHata(r.hata); }}
+                        title={`${p.kredi} kredi — ${p.tl} TL`}
+                        className="rounded border px-2 py-1 text-xs font-medium transition hover:bg-slate-50"
+                        style={{ borderColor: brand.border, color: brand.ink }}>
+                        {p.kredi} kredi<span style={{ color: brand.muted }}> · {p.tl}₺</span>
+                      </button>
+                    ))}
+                  </div>
+                  {odemeHata && <div className="mt-1 text-[0.7rem]" style={{ color: brand.red }}>{odemeHata}</div>}
                 </div>
 
                 <MenuOge onClick={() => { setAdTaslak(aktifAd); menuKapat(); }}

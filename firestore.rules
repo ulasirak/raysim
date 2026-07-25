@@ -77,7 +77,13 @@ service cloud.firestore {
       allow write: if false; // yalnız Admin SDK
     }
 
-    // odemeOlay/{id} = ham ödeme webhook olayı (idempotency + denetim).
+    // odeme/{id} = bekleyen ödeme kaydı (initialize → callback eşleşmesi).
+    // Tamamen sunucuya ait — istemci ne okur ne yazar.
+    match /odeme/{id} {
+      allow read, write: if false; // yalnız Admin SDK
+    }
+
+    // odemeOlay/{id} = işlenmiş ödeme (idempotency + denetim).
     // İstemci ne okur ne yazar; tamamen sunucuya ait.
     match /odemeOlay/{id} {
       allow read, write: if false; // yalnız Admin SDK

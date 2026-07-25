@@ -21,6 +21,23 @@ export const KREDI_BEDELI = {
 
 export type KrediEylemi = keyof typeof KREDI_BEDELI;
 
+/**
+ * Satın alınabilir kredi paketleri. Fiyatlar (TL) SUNUCUDA sabittir; istemci
+ * fiyat yollayamaz, yalnız paket id seçer. Fiyatları netleştirince güncelle.
+ * (Placeholder değerler — gerçek fiyatlandırmayı belirle.)
+ */
+export const KREDI_PAKETLERI = [
+  { id: "p10", kredi: 10, tl: 100 },
+  { id: "p50", kredi: 50, tl: 450 },
+  { id: "p100", kredi: 100, tl: 800 },
+] as const;
+
+export type PaketId = (typeof KREDI_PAKETLERI)[number]["id"];
+
+export function paketBul(id: string) {
+  return KREDI_PAKETLERI.find((p) => p.id === id);
+}
+
 /** Kredi hareketinin türü (denetim izi). */
 export type HareketTuru = "satinalma" | "rapor" | "projeYukleme" | "duzeltme";
 

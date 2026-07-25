@@ -16,10 +16,12 @@ import { loopDenge, olceklenme, ringChallenge, ringDogrula, loopTamMi } from "@/
 import { bolgeSeed } from "@/lib/anaray/interlocking";
 import { wordUret, excelUret, indir } from "@/lib/anaray/dokuman";
 import { raporHTML, yazdirRapor, type RaporDil } from "@/lib/anaray/rapor";
+import { useCuzdan } from "@/components/CuzdanProvider";
 
 export function Belgeler() {
   const { cfg } = useSimConfig();
-  const { rings, meta, patchMeta, yazilabilir } = useProje();
+  const { rings, meta, patchMeta, yazilabilir, yonetici } = useProje();
+  const { krediHarca } = useCuzdan();
   const stock = varsayilanArac;
   const [durum, setDurum] = useState<{ tip: "ok" | "err" | "info"; metin: string } | null>(null);
   const [mesgul, setMesgul] = useState<"" | "word" | "excel" | "rapor" | "html">("");
@@ -53,10 +55,26 @@ export function Belgeler() {
 
   const dosyaAdi = (ext: string) => `${meta.dokumanNo || "raysim"}_${(meta.hatAdi || "hat").replace(/\s+/g, "_")}.${ext}`;
 
-  const raporUret = () => {
+  // PDF rapor ÜCRETLİDİR (yönetici muaf). Önce SUNUCUDA kredi düşülür; yeterliyse
+  // rapor yazdırılır. Word/Excel/HTML ham veri sayılıp ücretsizdir.
+  // Not: pencere popup engeline takılmasın diye HTML'i kredi düşmeden ÖNCE
+  // hazırlıyoruz; açma işlemi kredi onayından hemen sonra yapılıyor.
+  const raporUret = async () => {
     setMesgul("rapor"); setDurum(null);
     try {
       const html = raporHTML(meta, cfg, rings, stock, dil);
+      if (!yonetici) {
+        const r = await krediHarca("rapor", meta.dokumanNo || undefined);
+        if (!r.tamam) {
+          setDurum({
+            tip: "err",
+            metin: r.yetersiz
+              ? `PDF rapor ${r.gereken} kredi ister; ${r.mevcut} krediniz var. Hesap çubuğundaki “Kredi al”dan yükleyin.`
+              : (r.hata ?? "Kredi düşülemedi."),
+          });
+          return;
+        }
+      }
       yazdirRapor(html);
       setDurum({ tip: "ok", metin: "Rapor yeni sekmede açıldı — yazdırma diyalogunda “Hedef: PDF olarak kaydet”i seçin." });
     } catch (e) {

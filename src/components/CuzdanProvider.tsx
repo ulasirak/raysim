@@ -18,6 +18,8 @@ interface CuzdanCtx {
   yenile: () => Promise<void>;
   /** Ücretli eylem için krediyi sunucuda düşer. Dönüş: {tamam, bakiye, gereken?, mevcut?}. */
   krediHarca: (eylem: KrediEylemi, ref?: string) => Promise<HarcamaSonuc>;
+  /** Kredi paketi satın almayı başlatır; iyzico ödeme sayfasına yönlendirir. */
+  krediSatinAl: (paketId: string) => Promise<{ hata?: string }>;
 }
 
 export interface HarcamaSonuc {
@@ -81,7 +83,41 @@ export function CuzdanProvider({ children }: { children: React.ReactNode }) {
     return { tamam: false, hata: veri.hata ?? `Hata (${yanit.status}).` };
   }, []);
 
-  return <Ctx.Provider value={{ bakiye, yenile, krediHarca }}>{children}</Ctx.Provider>;
+  const krediSatinAl = useCallback(async (paketId: string): Promise<{ hata?: string }> => {
+    const a = getAuthInstance();
+    if (!a?.currentUser) return { hata: "Oturum yok." };
+    const token = await a.currentUser.getIdToken();
+    const yanit = await fetch("/api/odeme/baslat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ paketId }),
+    });
+    const veri = await yanit.json().catch(() => ({}));
+    if (yanit.ok && veri.odemeUrl) {
+      window.location.href = veri.odemeUrl; // iyzico ödeme sayfası
+      return {};
+    }
+    return { hata: veri.hata ?? `Ödeme başlatılamadı (${yanit.status}).` };
+  }, []);
+
+  // Ödeme dönüşü: /?odeme=basarili → bakiyeyi tazele (kredi eklenmiş olur).
+  useEffect(() => {
+    let iptal = false;
+    (async () => {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        if (p.get("odeme") !== "basarili") return;
+        if (!iptal) await yenile(); // setState microtask'ta (effect gövdesinde senkron değil)
+        p.delete("odeme");
+        const u = new URL(window.location.href);
+        u.search = p.toString();
+        window.history.replaceState(null, "", u.pathname + (u.search ? u.search : "") + u.hash);
+      } catch { /* sessiz */ }
+    })();
+    return () => { iptal = true; };
+  }, [yenile]);
+
+  return <Ctx.Provider value={{ bakiye, yenile, krediHarca, krediSatinAl }}>{children}</Ctx.Provider>;
 }
 
 export function useCuzdan(): CuzdanCtx {
