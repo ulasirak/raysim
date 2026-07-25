@@ -1,13 +1,12 @@
 // raysim — resmî künye başlığı (masthead).
-// Koyu mürekkep zemin + amblem (ray rozeti) + Spectral marka + aktif hat künyesi.
-// Tek sayfa stüdyoda modül-bazlı belge kodu anlamını yitirdiği için künyede yalnız
-// o an işlenen AKTİF HAT gösterilir. Aktif hat yokken (girişsiz/login ekranı) sağdaki
-// künye bloğu HİÇ çizilmez — ortada hat bağlamı olmadığı için yalnız marka kalır.
+// Koyu mürekkep zemin + amblem (ray rozeti) + Spectral marka. Sağ tarafta bir
+// SLOT (`sag`) taşır: girişliyken hesap/hat kontrolleri (HesapKontrolleri) buraya
+// gömülür; girişsizken slot boştur ve header yalnız marka ile sade kalır.
 
-export function Masthead({ rota, rotaEtiketi = "Rota", hatAktif = false }: { rota: string; rotaEtiketi?: string; hatAktif?: boolean }) {
+export function Masthead({ sag }: { sag?: React.ReactNode }) {
   return (
     <header className="border-b-2" style={{ background: "#0C2233", borderColor: "#C8102E" }}>
-      <div className="mx-auto flex max-w-6xl items-center gap-4 px-6 py-5">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-3 px-6 py-4">
         {/* Amblem: iki rayın ufka doğru birleşmesi (mühür) */}
         <span className="shrink-0" aria-hidden="true">
           <svg width="46" height="46" viewBox="0 0 46 46" fill="none">
@@ -22,7 +21,7 @@ export function Masthead({ rota, rotaEtiketi = "Rota", hatAktif = false }: { rot
         </span>
 
         {/* Marka + alt başlık */}
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 shrink-0">
           <div className="font-brand text-2xl font-semibold leading-none tracking-[0.15em] text-white">
             RaySim
           </div>
@@ -31,15 +30,10 @@ export function Masthead({ rota, rotaEtiketi = "Rota", hatAktif = false }: { rot
           </div>
         </div>
 
-        {/* Aktif hat künyesi — yalnız aktif hat varken çizilir (girişsizken gizli) */}
-        {hatAktif && (
-          <div className="hidden shrink-0 items-center gap-3 border-l border-white/15 pl-4 sm:flex">
-            {/* Küçük durum noktası: aktif hattı vurgular */}
-            <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: "#E7B84B" }} aria-hidden="true" />
-            <div className="text-right">
-              <div className="text-[0.6rem] uppercase tracking-[0.18em] text-slate-400">{rotaEtiketi}</div>
-              <div className="max-w-[15rem] truncate text-sm font-medium text-white">{rota}</div>
-            </div>
+        {/* Sağ slot: hesap/hat kontrolleri (girişsizken boş) */}
+        {sag && (
+          <div className="ml-auto flex min-w-0 items-center justify-end border-l border-white/15 pl-4">
+            {sag}
           </div>
         )}
       </div>

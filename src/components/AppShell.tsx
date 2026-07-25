@@ -8,9 +8,9 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Masthead } from "@/components/Masthead";
-import { SimConfigProvider, useHesap } from "@/components/SimConfigProvider";
+import { SimConfigProvider } from "@/components/SimConfigProvider";
 import { AuthProvider } from "@/components/AuthProvider";
-import { HesapCubugu } from "@/components/HesapCubugu";
+import { HesapKontrolleri, HesapBildirimleri } from "@/components/HesapCubugu";
 import { CuzdanProvider } from "@/components/CuzdanProvider";
 import { Kapi, useErisim } from "@/components/Kapi";
 import { BOLUM_SLUG, type BolumSlug } from "@/components/TekSayfa";
@@ -166,8 +166,6 @@ function Govde({ children }: { children: React.ReactNode }) {
   // ziyaretçiyi doğrudan giriş/kayıt ekranıyla karşılar.
   const erisim = useErisim();
   const icerikVar = erisim === "acik";
-  // O an seçili hattın adı (çok kiracılı hesap çubuğuyla aynı kaynak).
-  const { aktifAd } = useHesap();
 
   // Ana sayfada aktif bölüm kaydırmayla belirlenir; eski derin rotalarda yola göre.
   const aktifBolum = useAktifBolum(anaSayfa && icerikVar);
@@ -182,15 +180,10 @@ function Govde({ children }: { children: React.ReactNode }) {
   const ilerleme = anaSayfa ? kaydirma : aktifIndex / Math.max(1, MODULLER.length - 1);
   const genisEkran = useGenisEkran();
 
-  // Masthead künyesi: giriş yapılıp bir hat aktifse "AKTİF HAT" + hattın adı
-  // (hesap çubuğuyla tutarlı); aksi halde modülün statik rota adı ("Rota").
-  const hatAktif = icerikVar && Boolean(aktifAd) && aktifAd !== "—";
-  const rotaEtiketi = hatAktif ? "AKTİF HAT" : "Rota";
-  const rotaDeger = hatAktif ? aktifAd : aktif.rota;
-
   return (
     <>
-      <Masthead rota={rotaDeger} rotaEtiketi={rotaEtiketi} hatAktif={hatAktif} />
+      {/* Header: marka + sağ slotta hesap/hat kontrolleri (girişsizken slot boş → sade) */}
+      <Masthead sag={<HesapKontrolleri />} />
 
       {/* Modül navigasyonu — sistemin mantıksal iş akışı bir METRO HATTI olarak:
           yedi istasyon soldan sağa boru hattı; kaydırma ilerlemesi rayda akan bir
@@ -303,8 +296,10 @@ function Govde({ children }: { children: React.ReactNode }) {
       </nav>
       )}
 
-      {/* Hesap & aktif hat şeridi — hangi kiracının hangi hattı işlendiğini gösterir */}
-      {icerikVar && <HesapCubugu />}
+      {/* Bağlamsal bildirim şeritleri (ödeme sonucu · salt-okunur paylaşım) —
+          hesap/hat kontrolleri artık header'a taşındı; burada yalnız tam-genişlik
+          bildirimler kalır (kendi içinde koşullu; yoksa hiçbir şey çizmez). */}
+      <HesapBildirimleri />
 
       <main className="flex-1" style={{ background: brand.paper }}>
         <Kapi>{children}</Kapi>
