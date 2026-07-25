@@ -349,9 +349,10 @@ function StudioIc() {
         </Panel>
       </div>
 
-      {/* Hat şeması */}
+      {/* Hat şeması — statik topoloji (rota dışı kollar). Canlı Ağ zaten hattı
+          gösterdiği için katlanır detay olarak tutulur. */}
       <div className="mt-6">
-        <Panel baslik="Hat Şeması" aciklama="Seçili rota (kalın); istasyon adları üstte, kilometre altta. Rota dışı kollar (varsa) soluk çizilir.">
+        <Panel katlanir baslik="Hat Şeması (statik topoloji)" aciklama="Seçili rota (kalın); istasyon adları üstte, kilometre altta. Rota dışı kollar (varsa) soluk çizilir.">
           <NetworkDiagram network={network} route={route} line={line} />
         </Panel>
       </div>
@@ -380,21 +381,20 @@ function StudioIc() {
         </Panel>
       </section>
 
-      {/* Grafikler + animasyon */}
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="flex flex-col gap-6 lg:col-span-2">
-          <Panel baslik="Mesafe–Zaman Diyagramı" aciklama="Çizginin eğimi hızı, düz kısımlar durakta beklemeyi gösterir.">
-            <TimeDistanceChart line={line} result={result} />
-          </Panel>
-          <Panel baslik="Hız Profili" aciklama="Hat boyunca fiili hız (mürekkep) ve hız limiti (kırmızı kesikli).">
-            <SpeedProfileChart line={line} result={result} />
-          </Panel>
-        </div>
-        <div className="lg:col-span-1">
-          <Panel baslik="Canlı Animasyon" aciklama="Treni hat üzerinde oynatın.">
-            <TrainAnimation line={line} result={result} stock={stock} />
-          </Panel>
-        </div>
+      {/* Ana grafik: Hız Profili (tam genişlik). Mesafe–Zaman ve Canlı Animasyon
+          örtüşen (Bildfahrplan / Canlı Ağ'ın alt kümesi) → katlanır detaylara alındı. */}
+      <div className="mt-6">
+        <Panel baslik="Hız Profili" aciklama="Hat boyunca fiili hız (mürekkep) ve hız limiti (kırmızı kesikli).">
+          <SpeedProfileChart line={line} result={result} />
+        </Panel>
+      </div>
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Panel katlanir baslik="Mesafe–Zaman Diyagramı" aciklama="Tek tren: çizginin eğimi hızı, düz kısımlar durakta beklemeyi gösterir. (Çok trenli hâli aşağıdaki Bildfahrplan'da.)">
+          <TimeDistanceChart line={line} result={result} />
+        </Panel>
+        <Panel katlanir baslik="Canlı Animasyon" aciklama="Tek treni hat üzerinde oynatın. (Tüm trenlerin canlı hâli yukarıdaki Canlı Ağ Simülasyonu'nda.)">
+          <TrainAnimation line={line} result={result} stock={stock} />
+        </Panel>
       </div>
 
       {/* Sefer sıklığı, sinyalizasyon & kapasite */}
@@ -833,7 +833,24 @@ function Satir({ ad, konum, varis, kalkis, dwell }: { ad: string; konum: string;
   );
 }
 
-function Panel({ baslik, aciklama, children }: { baslik: string; aciklama?: string; children: React.ReactNode }) {
+function Panel({ baslik, aciklama, children, katlanir = false }: { baslik: string; aciklama?: string; children: React.ReactNode; katlanir?: boolean }) {
+  // Katlanır panel: örtüşen/ikincil görünümler (kapsamlı olanın alt kümesi)
+  // varsayılan kapalı durur — akış sadeleşir, bilgi kaybı olmaz (açınca tam görünür).
+  if (katlanir) {
+    return (
+      <details className="group rounded-lg border bg-white" style={{ borderColor: brand.border }}>
+        <summary className="flex cursor-pointer select-none items-baseline gap-2 p-5">
+          <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
+          <h2 className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{baslik}</h2>
+          <span className="ml-auto text-xs" style={{ color: brand.muted }}>detay <span className="group-open:hidden">▸</span><span className="hidden group-open:inline">▾</span></span>
+        </summary>
+        <div className="px-5 pb-5">
+          {aciklama && <p className="mb-4 text-xs" style={{ color: brand.muted }}>{aciklama}</p>}
+          {children}
+        </div>
+      </details>
+    );
+  }
   return (
     <div className="rounded-lg border bg-white p-5" style={{ borderColor: brand.border }}>
       <div className="mb-4 flex items-baseline gap-2">
