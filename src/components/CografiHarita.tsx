@@ -303,16 +303,11 @@ export function CografiHarita() {
         </p>
       </div>
 
-      {/* Eğim profili — giriş/üretim gerekmeden, yükseklik verisi yüklenince görünür */}
-      {egim ? (
-        <EgimProfilStrip profil={egim} />
-      ) : (
-        <div className="mt-4 rounded-lg border border-dashed bg-white p-4 text-xs" style={{ borderColor: brand.border, color: brand.muted }}>
-          <b>Eğim profili yok</b> — yüklediğin <code>stops.txt</code> dosyasında <code>stop_elevation</code> (veya <code>elevation</code>/<code>ele</code>) sütunu bulunamadı. Bu sütunu eklersen eğim burada, &quot;hat üret&quot;e basmadan çıkar. Demo verisinde bu sütun vardır.
-        </div>
-      )}
+      {/* Eğim profili — YALNIZ yükseklik verisi (stop_elevation) varsa çizilir;
+          yoksa hiç yer kaplamaz (düz/verisiz hatta gereksiz placeholder gösterilmez). */}
+      {egim && <EgimProfilStrip profil={egim} />}
 
-      {/* Hız profili — kurp yarıçapından, shape varsa; giriş/üretim gerekmez */}
+      {/* Hız profili — kurp yarıçapından, shape varsa; yoksa gösterilmez. */}
       {hiz && <HizProfilStrip profil={hiz} />}
 
       <footer className="mt-10 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
