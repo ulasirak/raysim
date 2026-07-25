@@ -75,18 +75,19 @@ export function RingEditor() {
     setAcik({});
   };
 
-  // Ekleme fonksiyonları opsiyonel KONUM alır (şeritten tıklayınca o konuma;
-  // menüden eklerken varsayılan orana).
-  const makasEkle = (rid: string, tip: MakasTip, konum?: number) =>
-    setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, makaslar: [...r.makaslar, yeniMakas(tip, konum ?? Math.round(r.uzunluk * 0.85))] } : r)));
+  // Ekleme fonksiyonları opsiyonel KONUM + EKSTRA parametre alır. Şeritten tıkla-
+  // ekle akışı önce el kitabı varsayılanlı bir form açar, kullanıcı süre-etkileyen
+  // alanları (motor süresi, route release, hız…) ayarlayınca bu ekstra ile ekler.
+  const makasEkle = (rid: string, tip: MakasTip, konum?: number, ekstra?: Partial<DurakArasiRing["makaslar"][number]>) =>
+    setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, makaslar: [...r.makaslar, { ...yeniMakas(tip, konum ?? Math.round(r.uzunluk * 0.85)), ...ekstra }] } : r)));
   const makasSil = (rid: string, mid: string) =>
     setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, makaslar: r.makaslar.filter((m) => m.id !== mid) } : r)));
-  const hzEkle = (rid: string, tip: HemzeminTip, konum?: number) =>
-    setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, hemzeminler: [...r.hemzeminler, yeniHemzemin(tip, konum ?? Math.round(r.uzunluk * 0.5))] } : r)));
+  const hzEkle = (rid: string, tip: HemzeminTip, konum?: number, ekstra?: Partial<DurakArasiRing["hemzeminler"][number]>) =>
+    setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, hemzeminler: [...r.hemzeminler, { ...yeniHemzemin(tip, konum ?? Math.round(r.uzunluk * 0.5)), ...ekstra }] } : r)));
   const hzSil = (rid: string, hid: string) =>
     setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, hemzeminler: r.hemzeminler.filter((h) => h.id !== hid) } : r)));
-  const tnEkle = (rid: string, konum?: number) =>
-    setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, tehlikeNoktalari: [...r.tehlikeNoktalari, yeniTehlike(konum ?? Math.round(r.uzunluk * 0.7))] } : r)));
+  const tnEkle = (rid: string, konum?: number, ekstra?: Partial<DurakArasiRing["tehlikeNoktalari"][number]>) =>
+    setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, tehlikeNoktalari: [...r.tehlikeNoktalari, { ...yeniTehlike(konum ?? Math.round(r.uzunluk * 0.7)), ...ekstra }] } : r)));
   const tnSil = (rid: string, tid: string) =>
     setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, tehlikeNoktalari: r.tehlikeNoktalari.filter((t) => t.id !== tid) } : r)));
 
@@ -228,13 +229,13 @@ export function RingEditor() {
             onToggle={() => setAcik((a) => ({ ...a, [r.id]: !a[r.id] }))}
             onPatch={(p) => patch(r.id, p)}
             onSil={() => ringSil(r.id)}
-            onMakasEkle={(tip, konum) => makasEkle(r.id, tip, konum)}
+            onMakasEkle={(tip, konum, ekstra) => makasEkle(r.id, tip, konum, ekstra)}
             onMakasSil={(mid) => makasSil(r.id, mid)}
             onMakasPatch={(mid, p) => patchMakas(r.id, mid, p)}
-            onHzEkle={(tip, konum) => hzEkle(r.id, tip, konum)}
+            onHzEkle={(tip, konum, ekstra) => hzEkle(r.id, tip, konum, ekstra)}
             onHzSil={(hid) => hzSil(r.id, hid)}
             onHzPatch={(hid, p) => patchHz(r.id, hid, p)}
-            onTnEkle={(konum) => tnEkle(r.id, konum)}
+            onTnEkle={(konum, ekstra) => tnEkle(r.id, konum, ekstra)}
             onTnSil={(tid) => tnSil(r.id, tid)}
             onTnPatch={(tid, p) => patchTn(r.id, tid, p)}
           />
@@ -265,13 +266,13 @@ interface KartProps {
   onToggle: () => void;
   onPatch: (p: Partial<DurakArasiRing>) => void;
   onSil: () => void;
-  onMakasEkle: (tip: MakasTip, konum?: number) => void;
+  onMakasEkle: (tip: MakasTip, konum?: number, ekstra?: Partial<DurakArasiRing["makaslar"][number]>) => void;
   onMakasSil: (mid: string) => void;
   onMakasPatch: (mid: string, p: Partial<DurakArasiRing["makaslar"][number]>) => void;
-  onHzEkle: (tip: HemzeminTip, konum?: number) => void;
+  onHzEkle: (tip: HemzeminTip, konum?: number, ekstra?: Partial<DurakArasiRing["hemzeminler"][number]>) => void;
   onHzSil: (hid: string) => void;
   onHzPatch: (hid: string, p: Partial<DurakArasiRing["hemzeminler"][number]>) => void;
-  onTnEkle: (konum?: number) => void;
+  onTnEkle: (konum?: number, ekstra?: Partial<DurakArasiRing["tehlikeNoktalari"][number]>) => void;
   onTnSil: (tid: string) => void;
   onTnPatch: (tid: string, p: Partial<DurakArasiRing["tehlikeNoktalari"][number]>) => void;
 }
@@ -293,6 +294,9 @@ function RingKart(p: KartProps) {
 
   // Görsel şerit: ekleme modu + sürükle-taşı/tıkla-ekle köprüsü.
   const [ekleTuru, setEkleTuru] = useState<EkleTur | null>(null);
+  // Şeride tıklanınca hemen eklemek yerine, süre-etkileyen parametreleri el kitabı
+  // varsayılanıyla soran bir form açılır (bkz. EkleFormu).
+  const [bekleyen, setBekleyen] = useState<{ tur: EkleTur; konum: number } | null>(null);
   const seritTasi = (tur: KisitTur, id: string, konum: number) => {
     if (tur === "makas") p.onMakasPatch(id, { konum });
     else if (tur === "hemzemin") p.onHzPatch(id, { konum });
@@ -300,10 +304,16 @@ function RingKart(p: KartProps) {
   };
   const seritEkle = (konum: number) => {
     if (!ekleTuru) return;
-    if (ekleTuru.kind === "makas") p.onMakasEkle(ekleTuru.tip, konum);
-    else if (ekleTuru.kind === "hemzemin") p.onHzEkle(ekleTuru.tip, konum);
-    else p.onTnEkle(konum);
-    setEkleTuru(null); // tek ekleme sonrası modu kapat
+    setBekleyen({ tur: ekleTuru, konum }); // form aç
+    setEkleTuru(null);
+  };
+  const ekleOnayla = (konum: number, ekstra: Record<string, unknown>) => {
+    if (!bekleyen) return;
+    const t = bekleyen.tur;
+    if (t.kind === "makas") p.onMakasEkle((ekstra.tip as MakasTip) ?? t.tip, konum, ekstra);
+    else if (t.kind === "hemzemin") p.onHzEkle(t.tip, konum, ekstra);
+    else p.onTnEkle(konum, ekstra);
+    setBekleyen(null);
   };
 
   return (
@@ -395,6 +405,19 @@ function RingKart(p: KartProps) {
 
             <KisitSeridi ring={ring} kisitlar={kisitlar} konumSuresi={konumSuresi}
               onTasi={seritTasi} ekleTuru={ekleTuru} onSeritEkle={seritEkle} />
+
+            {/* Ekleme parametre formu — süre-etkileyen alanlar el kitabı değeriyle ön-dolu */}
+            {bekleyen && (
+              <EkleFormu
+                tur={bekleyen.tur}
+                konum={bekleyen.konum}
+                uzunluk={ring.uzunluk}
+                konumSuresi={konumSuresi}
+                sureKonumu={sureKonumu}
+                onIptal={() => setBekleyen(null)}
+                onEkle={ekleOnayla}
+              />
+            )}
 
             {kisitlar.length === 0 ? (
               <p className="mt-6 text-xs" style={{ color: brand.faint }}>Ringde makas/hemzemin/tehlike kısıtı yok — kesintisiz seyir. Yukarıdan bir tür seçip şeride tıklayarak ekleyin.</p>
@@ -639,6 +662,84 @@ function KisitSeridi({ ring, kisitlar, konumSuresi, onTasi, ekleTuru, onSeritEkl
             </button>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Ekleme parametre formu: şeride tıklanınca açılır. Kısıtın SÜRE-ETKİLEYEN
+ * alanları (makas motoru/adım süresi, route release, geçiş hızı; geçit/fren hızı)
+ * el kitabı (MAZ-VA-AKS-001) varsayılanıyla ÖN-DOLU gelir; kullanıcı ayarlayıp
+ * onaylayınca eklenir. Konum metre↔saniye çift yönlü.
+ */
+function EkleFormu({ tur, konum: konum0, uzunluk, konumSuresi, sureKonumu, onIptal, onEkle }: {
+  tur: EkleTur;
+  konum: number;
+  uzunluk: number;
+  konumSuresi: (k: number) => number;
+  sureKonumu: (s: number) => number;
+  onIptal: () => void;
+  onEkle: (konum: number, ekstra: Record<string, unknown>) => void;
+}) {
+  const [konum, setKonum] = useState(Math.round(konum0));
+  // Makas varsayılanları el kitabından (yeniMakas → BELGE değerleri)
+  const mBasla = tur.kind === "makas" ? tur.tip : "headway";
+  const [mtip, setMtip] = useState<MakasTip>(mBasla);
+  const mv0 = yeniMakas(mBasla, konum0);
+  const [gecisHizi, setGecisHizi] = useState(Math.round(kmh(mv0.gecisHizi)));
+  const [makasSayisi, setMakasSayisi] = useState(mv0.makasSayisi);
+  const [adim, setAdim] = useState(mv0.makasAdimSuresi);
+  const [release, setRelease] = useState(mv0.routeRelease);
+  // Geçit / fren hızı varsayılanı
+  const hizVars = tur.kind === "hemzemin"
+    ? Math.round(kmh(yeniHemzemin(tur.tip, konum0).hiz))
+    : Math.round(kmh(yeniTehlike(konum0).hiz));
+  const [hiz, setHiz] = useState(hizVars);
+
+  const baslik = tur.kind === "makas" ? "Makas bölgesi ekle"
+    : tur.kind === "hemzemin" ? `${tur.tip === "yaya" ? "Yaya" : "Karayolu"} geçidi ekle`
+    : "Acil frenleme noktası ekle";
+
+  const kaydet = () => {
+    if (tur.kind === "makas") {
+      onEkle(konum, { tip: mtip, gecisHizi: gecisHizi * KMH, makasSayisi, makasAdimSuresi: adim, routeRelease: release, tccZorunlu: tccGerekli(mtip) });
+    } else {
+      onEkle(konum, { hiz: hiz * KMH });
+    }
+  };
+
+  return (
+    <div className="mt-3 rounded-lg border-2 p-3" style={{ borderColor: brand.red, background: "#FDF6F7" }}>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-1">
+        <span className="font-brand text-sm font-semibold" style={{ color: brand.ink }}>{baslik}</span>
+        <span className="text-[0.65rem]" style={{ color: brand.muted }}>süreler el kitabından (MAZ-VA-AKS-001) ön-dolu · ayarlayıp ekleyin</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <Num label="Konum" suffix="m" step={10} value={konum} onChange={(v) => setKonum(Math.max(0, Math.min(uzunluk, v)))} hata={konum < 0 || konum > uzunluk} />
+        <Num label="Süre (≈)" suffix="s" step={1} value={Math.round(konumSuresi(konum))} onChange={(v) => setKonum(Math.round(sureKonumu(v)))} />
+        {tur.kind === "makas" ? (
+          <>
+            <label className="flex flex-col">
+              <span className="field-label">Makas tipi</span>
+              <select value={mtip}
+                onChange={(e) => { const t = e.target.value as MakasTip; setMtip(t); const nv = yeniMakas(t, konum); setGecisHizi(Math.round(kmh(nv.gecisHizi))); setMakasSayisi(nv.makasSayisi); setAdim(nv.makasAdimSuresi); setRelease(nv.routeRelease); }}
+                className="mt-1 rounded border px-1.5 py-1 text-xs" style={{ borderColor: brand.border, color: brand.ink }}>
+                {(Object.keys(MAKAS_TIP_AD) as MakasTip[]).map((t) => (<option key={t} value={t}>{MAKAS_TIP_AD[t]}</option>))}
+              </select>
+            </label>
+            <Num label="Geçiş hızı" suffix="km/h" step={1} value={gecisHizi} onChange={setGecisHizi} />
+            <Num label="Makas sayısı" suffix="ad" step={1} value={makasSayisi} onChange={(v) => setMakasSayisi(Math.max(1, Math.round(v)))} />
+            <Num label="Motor/adım süresi" suffix="s" step={1} value={adim} onChange={setAdim} />
+            <Num label="Route release" suffix="s" step={1} value={release} onChange={setRelease} />
+          </>
+        ) : (
+          <Num label={tur.kind === "hemzemin" ? "Yavaşlama hızı" : "Acil hız"} suffix="km/h" step={1} value={hiz} onChange={setHiz} />
+        )}
+      </div>
+      <div className="mt-3 flex justify-end gap-2 text-xs">
+        <button onClick={onIptal} className="rounded px-3 py-1 font-medium" style={{ color: brand.muted }}>İptal</button>
+        <button onClick={kaydet} className="rounded px-3 py-1 font-medium text-white" style={{ background: brand.red }}>Ekle</button>
       </div>
     </div>
   );
