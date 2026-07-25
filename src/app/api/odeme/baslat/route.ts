@@ -5,7 +5,7 @@
 // tutar yollayamaz. Kimlik imzalı token'dan gelir.
 
 import { NextResponse } from "next/server";
-import { istekUid, isAdminConfigured, adminAuth } from "@/lib/firebaseAdmin";
+import { istekKimlik, isAdminConfigured } from "@/lib/firebaseAdmin";
 import { odemeKaydiOlustur } from "@/lib/cuzdanServer";
 import { isIyzicoConfigured, odemeBaslat } from "@/lib/iyzico";
 import { paketBul } from "@/lib/cuzdan";
@@ -17,8 +17,9 @@ export async function POST(req: Request) {
   }
 
   let uid: string;
-  try { uid = await istekUid(req); }
-  catch (e) { return NextResponse.json({ hata: "Kimlik doğrulanamadı: " + (e instanceof Error ? e.message : String(e)) }, { status: 401 }); }
+  let eposta = "";
+  try { const k = await istekKimlik(req); uid = k.uid; eposta = k.email ?? ""; }
+  catch { return NextResponse.json({ hata: "Kimlik doğrulanamadı." }, { status: 401 }); }
 
   let govde: { paketId?: string };
   try { govde = await req.json(); }
@@ -29,10 +30,7 @@ export async function POST(req: Request) {
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
   const conversationId = crypto.randomUUID();
-
-  // Alıcı e-postası imzalı hesaptan (istemciye güvenmeden).
-  let eposta = "";
-  try { eposta = (await (await adminAuth()).getUser(uid)).email ?? ""; } catch { /* opsiyonel */ }
+  // Alıcı e-postası imzalı token'dan gelir (istemciye güvenmeden).
 
   await odemeKaydiOlustur(conversationId, { uid, kredi: paket.kredi, tl: paket.tl, durum: "beklemede" });
 

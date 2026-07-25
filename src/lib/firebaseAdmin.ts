@@ -14,9 +14,17 @@
 
 import type { App } from "firebase-admin/app";
 import type { Firestore } from "firebase-admin/firestore";
-import type { Auth } from "firebase-admin/auth";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 
 let cachedApp: App | null = null;
+
+// Firebase ID token doğrulaması için Google'ın açık anahtar seti (JWKS).
+// firebase-admin'in verifyIdToken'ı yerine BUNU kullanıyoruz: firebase-admin/auth
+// içten jwks-rsa→jose'yi require() ile yüklüyor ve Vercel/Turbopack'ta
+// ERR_REQUIRE_ESM veriyordu. jose'yi doğrudan ESM import edince sorun yok.
+const FIREBASE_JWKS = createRemoteJWKSet(
+  new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"),
+);
 
 /** Hizmet hesabı yapılandırıldı mı? (route'lar buna göre 503 döndürür.) */
 export function isAdminConfigured(): boolean {
@@ -55,21 +63,29 @@ export async function adminDb(): Promise<Firestore> {
   return getFirestore(await adminApp());
 }
 
-export async function adminAuth(): Promise<Auth> {
-  const { getAuth } = await import("firebase-admin/auth");
-  return getAuth(await adminApp());
-}
-
 /**
- * İstek başlığındaki Firebase ID token'ını doğrular ve uid döndürür.
- * İstemci `Authorization: Bearer <idToken>` gönderir; kimlik SÖZE değil imzalı
- * token'a göre belirlenir (kullanıcı başkası adına işlem yapamaz).
+ * İstek başlığındaki Firebase ID token'ını jose ile DOĞRUDAN doğrular; uid ve
+ * (varsa) e-postayı döndürür. İstemci `Authorization: Bearer <idToken>` gönderir;
+ * kimlik SÖZE değil, Google'ın imzasıyla doğrulanmış token'a göre belirlenir
+ * (kullanıcı başkası adına işlem yapamaz). Kontroller: imza (JWKS), issuer, audience.
  */
-export async function istekUid(req: Request): Promise<string> {
+export async function istekKimlik(req: Request): Promise<{ uid: string; email: string | null }> {
   const baslik = req.headers.get("authorization") || "";
   const token = baslik.startsWith("Bearer ") ? baslik.slice(7) : "";
   if (!token) throw new Error("Kimlik doğrulanmadı (token yok).");
-  const auth = await adminAuth();
-  const cozulen = await auth.verifyIdToken(token);
-  return cozulen.uid;
+
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  if (!projectId) throw new Error("Proje kimliği (NEXT_PUBLIC_FIREBASE_PROJECT_ID) tanımlı değil.");
+
+  const { payload } = await jwtVerify(token, FIREBASE_JWKS, {
+    issuer: `https://securetoken.google.com/${projectId}`,
+    audience: projectId,
+  });
+  if (!payload.sub) throw new Error("Token'da kullanıcı kimliği (sub) yok.");
+  return { uid: payload.sub, email: (payload.email as string | undefined) ?? null };
+}
+
+/** Geriye dönük uyumluluk: yalnız uid gerekiyorsa. */
+export async function istekUid(req: Request): Promise<string> {
+  return (await istekKimlik(req)).uid;
 }
