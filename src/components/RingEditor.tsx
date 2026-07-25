@@ -364,15 +364,16 @@ function RingKart(p: KartProps) {
                 <Num label="Sahasal azami" suffix="km/h" step={5} value={Math.round(kmh(ring.vmax))} onChange={(v) => p.onPatch({ vmax: v * KMH })} />
                 <Num label="Varış durak bekleme" suffix="s" step={5} value={ring.dwell} onChange={(v) => p.onPatch({ dwell: v })} />
               </div>
-              {/* Eğim ikincil: tramvay hatları genelde düz (varsayılan 0). Gerekirse
-                  burada girilir ya da Coğrafi modülünde GTFS yüksekliğinden otomatik gelir. */}
-              <details className="mt-2">
+              {/* Eğim ikincil (varsayılan 0). Hatta göre değişir — düz güzergahta 0,
+                  eğimli güzergahta buradan girilir ya da Coğrafi modülünde GTFS
+                  yüksekliğinden otomatik gelir. Fizik/enerji/fren hesabında kullanılır. */}
+              <details className="mt-2" open={Boolean(ring.egim)}>
                 <summary className="field-label cursor-pointer select-none" style={{ color: brand.faint }}>
-                  Gelişmiş · eğim {ring.egim ? `(${ring.egim}‰)` : "(düz)"}
+                  Gelişmiş · eğim {ring.egim ? `(${ring.egim}‰)` : "(0 — düz)"}
                 </summary>
                 <div className="mt-1 w-40">
                   <Num label="Eğim" suffix="‰" step={1} value={ring.egim} onChange={(v) => p.onPatch({ egim: v })} allowNeg />
-                  <p className="mt-1 text-[0.62rem]" style={{ color: brand.faint }}>Tramvayda çoğunlukla 0. Coğrafi modülünde GTFS yüksekliği varsa otomatik hesaplanır.</p>
+                  <p className="mt-1 text-[0.62rem]" style={{ color: brand.faint }}>Eğimli güzergahta girin; Coğrafi modülünde GTFS yüksekliği varsa otomatik hesaplanır. Hızlanma/fren/enerjiyi etkiler.</p>
                 </div>
               </details>
             </div>
