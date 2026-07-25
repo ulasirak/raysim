@@ -13,9 +13,6 @@ import { istekUid, isAdminConfigured } from "@/lib/firebaseAdmin";
 import { krediDus, KrediYetersizError } from "@/lib/cuzdanServer";
 import { KREDI_BEDELI, type KrediEylemi } from "@/lib/cuzdan";
 
-// firebase-admin Node.js gerektirir — Edge'e düşmesin.
-export const runtime = "nodejs";
-
 export async function POST(req: Request) {
   if (!isAdminConfigured()) {
     return NextResponse.json(
