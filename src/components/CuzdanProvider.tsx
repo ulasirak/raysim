@@ -20,6 +20,9 @@ interface CuzdanCtx {
   krediHarca: (eylem: KrediEylemi, ref?: string) => Promise<HarcamaSonuc>;
   /** Kredi paketi satın almayı başlatır; iyzico ödeme sayfasına yönlendirir. */
   krediSatinAl: (paketId: string) => Promise<{ hata?: string }>;
+  /** Ödeme dönüşü sonucu (iyzico callback'ten): kullanıcıya banner gösterilir. */
+  odemeSonucu: "basarili" | "hata" | null;
+  odemeSonucuTemizle: () => void;
 }
 
 export interface HarcamaSonuc {
@@ -36,6 +39,8 @@ const Ctx = createContext<CuzdanCtx | null>(null);
 export function CuzdanProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [bakiye, setBakiye] = useState<number | null>(null);
+  const [odemeSonucu, setOdemeSonucu] = useState<"basarili" | "hata" | null>(null);
+  const odemeSonucuTemizle = useCallback(() => setOdemeSonucu(null), []);
 
   const yenile = useCallback(async () => {
     if (!user || !isFirebaseConfigured()) { setBakiye(null); return; }
@@ -100,14 +105,19 @@ export function CuzdanProvider({ children }: { children: React.ReactNode }) {
     return { hata: veri.hata ?? `Ödeme başlatılamadı (${yanit.status}).` };
   }, []);
 
-  // Ödeme dönüşü: /?odeme=basarili → bakiyeyi tazele (kredi eklenmiş olur).
+  // Ödeme dönüşü: /?odeme=basarili|hata → banner göster; başarılıysa bakiyeyi tazele.
   useEffect(() => {
     let iptal = false;
     (async () => {
       try {
         const p = new URLSearchParams(window.location.search);
-        if (p.get("odeme") !== "basarili") return;
-        if (!iptal) await yenile(); // setState microtask'ta (effect gövdesinde senkron değil)
+        const od = p.get("odeme");
+        if (od !== "basarili" && od !== "hata") return;
+        if (!iptal) {
+          setOdemeSonucu(od);
+          if (od === "basarili") await yenile(); // kredi eklendi — bakiyeyi güncelle
+        }
+        // Adresteki ?odeme= parametresini temizle (yenilemede tekrar tetiklenmesin).
         p.delete("odeme");
         const u = new URL(window.location.href);
         u.search = p.toString();
@@ -117,7 +127,11 @@ export function CuzdanProvider({ children }: { children: React.ReactNode }) {
     return () => { iptal = true; };
   }, [yenile]);
 
-  return <Ctx.Provider value={{ bakiye, yenile, krediHarca, krediSatinAl }}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={{ bakiye, yenile, krediHarca, krediSatinAl, odemeSonucu, odemeSonucuTemizle }}>
+      {children}
+    </Ctx.Provider>
+  );
 }
 
 export function useCuzdan(): CuzdanCtx {

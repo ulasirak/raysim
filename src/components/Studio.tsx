@@ -80,7 +80,10 @@ function StudioIc() {
   const [selEdge, setSelEdge] = useState<string>("");
   const [headwayDk, setHeadwayDk] = useState(() => Math.round((cfg.headway / 60) * 2) / 2);
   const [seferSayisi, setSeferSayisi] = useState(6);
-  const [blockLen, setBlockLen] = useState(() => cfg.blokMaxUzunluk);
+  // MODEL KURALI: her durak arası TEK sinyal bloğudur. makeBlocks'a sonsuz blok
+  // uzunluğu verilir → istasyon sınırları dışında alt bölme yapılmaz (blok = durak
+  // arası). Böylece canlı sim, grafikler ve kapasite/headway tek blok modeliyle tutarlı.
+  const BLOK_MAXLEN = Infinity;
   const [turnaroundDk, setTurnaroundDk] = useState(3);
   const [ariza, setAriza] = useState<number[]>([]); // dispatcher: arızalı bloklar (gidiş hattı)
   const [yon, setYon] = useState<"gidis" | "donus" | "ikisi">("gidis");
@@ -101,13 +104,13 @@ function StudioIc() {
   const reverseLine = useMemo(() => flattenRoute(network, reverseRoute(route)), [network, route]);
 
   const gidisSim = useMemo(
-    () => simulateSignalled(line, stock, { headway: headwayDk * 60, count: seferSayisi, maxBlockLen: blockLen, blocked: ariza }),
-    [line, stock, headwayDk, seferSayisi, blockLen, ariza]
+    () => simulateSignalled(line, stock, { headway: headwayDk * 60, count: seferSayisi, maxBlockLen: BLOK_MAXLEN, blocked: ariza }),
+    [line, stock, headwayDk, seferSayisi, ariza]
   );
   const arizaToggle = (i: number) => setAriza((a) => (a.includes(i) ? a.filter((x) => x !== i) : [...a, i]));
   const donusSim = useMemo(
-    () => simulateSignalled(reverseLine, stock, { headway: headwayDk * 60, count: seferSayisi, maxBlockLen: blockLen }),
-    [reverseLine, stock, headwayDk, seferSayisi, blockLen]
+    () => simulateSignalled(reverseLine, stock, { headway: headwayDk * 60, count: seferSayisi, maxBlockLen: BLOK_MAXLEN }),
+    [reverseLine, stock, headwayDk, seferSayisi]
   );
   const filo = useMemo(
     () => fleetSize(gidisSim.baseTime, donusSim.baseTime, turnaroundDk * 60, headwayDk * 60),

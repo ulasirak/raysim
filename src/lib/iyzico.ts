@@ -14,20 +14,6 @@ export function isIyzicoConfigured(): boolean {
   return Boolean(process.env.IYZICO_API_KEY && process.env.IYZICO_SECRET_KEY);
 }
 
-/** GEÇİCİ TEŞHİS: anahtarların ŞEKLİNİ raporlar (değeri sızdırmaz). Sonra sil. */
-export function iyzicoTeshis() {
-  const apiKey = process.env.IYZICO_API_KEY?.trim() ?? "";
-  const secretKey = process.env.IYZICO_SECRET_KEY?.trim() ?? "";
-  return {
-    apiKeyUzunluk: apiKey.length,
-    apiKeySandboxPrefix: apiKey.startsWith("sandbox-"),
-    apiKeyBas: apiKey.slice(0, 12),   // ne girildiğini görmek için (sandbox key, düşük risk)
-    secretUzunluk: secretKey.length,
-    secretSandboxPrefix: secretKey.startsWith("sandbox-"),
-    base: (process.env.IYZICO_BASE_URL || "https://sandbox-api.iyzipay.com").trim(),
-  };
-}
-
 function anahtarlar() {
   // trim: Vercel'e yapıştırırken sona eklenen boşluk/yeni satır imzayı bozar.
   const apiKey = process.env.IYZICO_API_KEY?.trim();

@@ -13,7 +13,7 @@ import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { useHesap } from "@/components/SimConfigProvider";
 import { useCuzdan } from "@/components/CuzdanProvider";
-import { KREDI_PAKETLERI } from "@/lib/cuzdan";
+import { KREDI_PAKETLERI, hareketleriGetir, type KrediHareket } from "@/lib/cuzdan";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 
@@ -25,7 +25,7 @@ export function HesapCubugu() {
     projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle, paylasimDegistir,
   } = useHesap();
 
-  const { bakiye, krediSatinAl, krediHarca } = useCuzdan();
+  const { bakiye, krediSatinAl, krediHarca, odemeSonucu, odemeSonucuTemizle } = useCuzdan();
   const [yeniAcik, setYeniAcik] = useState(false);
   const [odemeHata, setOdemeHata] = useState<string | null>(null);
   const [yeniAd, setYeniAd] = useState("");
@@ -33,6 +33,8 @@ export function HesapCubugu() {
   const [kopyalandi, setKopyalandi] = useState(false);
   const [menuAcik, setMenuAcik] = useState(false);
   const [isBasi, setIsBasi] = useState<string | null>(null);
+  const [gecmisAcik, setGecmisAcik] = useState(false);
+  const [hareketler, setHareketler] = useState<KrediHareket[]>([]);
 
   if (!yapilandirildi) return null; // Firebase yoksa çubuk anlamsız (yerel geliştirme)
 
@@ -40,6 +42,18 @@ export function HesapCubugu() {
     setIsBasi(ad);
     p.catch(() => { /* durum context'te gösteriliyor */ }).finally(() => setIsBasi(null));
   };
+
+  // Kredi geçmişini aç/kapa; açarken son hareketleri yükler.
+  const gecmisiDegistir = async () => {
+    const yeni = !gecmisAcik;
+    setGecmisAcik(yeni);
+    if (yeni && user) {
+      try { setHareketler(await hareketleriGetir(user.uid, 12)); } catch { setHareketler([]); }
+    }
+  };
+
+  const hareketAdi = (t: KrediHareket["tur"]) =>
+    t === "satinalma" ? "Kredi alımı" : t === "rapor" ? "PDF rapor" : t === "projeYukleme" ? "Yeni hat" : "Düzeltme";
 
   // Yeni hat = ücretli (proje yükleme). Önce SUNUCUDA kredi düşülür; yeterliyse
   // hat açılır. Yönetici muaftır. Yetersizse kredi al uyarısı gösterilir.
@@ -83,6 +97,23 @@ export function HesapCubugu() {
   const menuKapat = () => setMenuAcik(false);
 
   return (
+    <>
+      {/* Ödeme dönüşü bildirimi (iyzico callback sonrası) */}
+      {odemeSonucu && (
+        <div className="border-b" style={{
+          background: odemeSonucu === "basarili" ? CK.goodBg : CK.amberBg,
+          borderColor: odemeSonucu === "basarili" ? CK.good : CK.amber,
+        }}>
+          <div className="mx-auto flex max-w-6xl items-center gap-2 px-6 py-2 text-xs" style={{ color: brand.ink }}>
+            {odemeSonucu === "basarili"
+              ? <span>✓ <b>Ödeme başarılı</b> — krediniz hesabınıza eklendi.</span>
+              : <span>⚠ <b>Ödeme tamamlanamadı</b> — kredi eklenmedi. Tekrar deneyebilirsiniz.</span>}
+            <button onClick={odemeSonucuTemizle} className="ml-auto rounded px-2 py-0.5 font-medium"
+              style={{ color: brand.muted }}>kapat ✕</button>
+          </div>
+        </div>
+      )}
+
     <div className="border-b" style={{ background: brand.surface, borderColor: brand.border }}>
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-6 py-2 text-xs">
         <span className="field-label" style={{ color: brand.faint }}>AKTİF HAT</span>
@@ -192,6 +223,29 @@ export function HesapCubugu() {
                   {odemeHata && <div className="mt-1 text-[0.7rem]" style={{ color: brand.red }}>{odemeHata}</div>}
                 </div>
 
+                {/* Kredi geçmişi — satın alma + harcama hareketleri (denetim) */}
+                <div className="border-b" style={{ borderColor: brand.border }}>
+                  <MenuOge onClick={() => { void gecmisiDegistir(); }}
+                    ad={gecmisAcik ? "Kredi geçmişi ▲" : "Kredi geçmişi ▼"}
+                    alt="Kredi alımları ve harcamalarınız" />
+                  {gecmisAcik && (
+                    <div className="max-h-40 overflow-auto px-3 pb-2">
+                      {hareketler.length === 0 ? (
+                        <div className="text-[0.7rem]" style={{ color: brand.muted }}>Henüz hareket yok.</div>
+                      ) : hareketler.map((h) => (
+                        <div key={h.id} className="flex items-center justify-between border-t py-1 text-[0.72rem]"
+                          style={{ borderColor: brand.border }}>
+                          <span style={{ color: brand.inkSoft }}>{hareketAdi(h.tur)}</span>
+                          <span className="font-medium tabular-nums"
+                            style={{ color: h.miktar > 0 ? CK.good : brand.red }}>
+                            {h.miktar > 0 ? "+" : ""}{h.miktar}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <MenuOge onClick={() => { setAdTaslak(aktifAd); menuKapat(); }}
                   ad="Adı değiştir" alt="Bu projenin adını düzenle" />
 
@@ -225,6 +279,7 @@ export function HesapCubugu() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
