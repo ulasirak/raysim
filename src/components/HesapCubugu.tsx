@@ -19,15 +19,16 @@ import { KREDI_PAKETLERI, hareketleriGetir, type KrediHareket } from "@/lib/cuzd
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 
-// Koyu header zeminine (#0C2233) göre kontrol paleti — translüsan yüzey + açık
-// metin. Vurgu (birincil eylem) marka kırmızısıdır; koyu mürekkep zeminde görünür.
+// Koyu header zeminine (#0C2233) göre kontrol paleti. Dolgu SAYDAM DEĞİL, görünür
+// bir lacivert (#16324A) — böylece butonlar koyu mürekkeple karışmaz, düşük kontrastlı
+// ekranlarda da net okunur. Kenar/metin parlak; vurgu (birincil eylem) marka kırmızısı.
 const koyu = {
-  yuzey: "rgba(255,255,255,0.06)",
-  kenar: "rgba(255,255,255,0.20)",
-  kenarGuclu: "rgba(255,255,255,0.34)",
-  metin: "#EAF1F7",
-  metinYumusak: "#C7D2DC",
-  etiket: "#8FA0B1",
+  yuzey: "#16324A",                   // görünür lacivert dolgu (header'dan belirgin ayrışır)
+  kenar: "rgba(255,255,255,0.30)",
+  kenarGuclu: "rgba(255,255,255,0.46)",
+  metin: "#F1F6FB",
+  metinYumusak: "#D5DFE8",
+  etiket: "#9DB0C1",
   iyi: "#7BD88F",   // yeşil (kaydedildi) — koyu zeminde okunur ton
   kotu: "#FF8A9B",  // kırmızı (hata / 0 kredi) — koyu zeminde okunur ton
 };
