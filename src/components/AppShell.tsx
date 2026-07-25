@@ -14,6 +14,7 @@ import { HesapKontrolleri, HesapBildirimleri } from "@/components/HesapCubugu";
 import { CuzdanProvider } from "@/components/CuzdanProvider";
 import { Kapi, useErisim } from "@/components/Kapi";
 import { BOLUM_SLUG, type BolumSlug } from "@/components/TekSayfa";
+import { BasaDonButonu } from "@/components/BasaDonButonu";
 import { brand } from "@/lib/anaray/brand";
 
 interface Modul {
@@ -304,6 +305,10 @@ function Govde({ children }: { children: React.ReactNode }) {
       <main className="flex-1" style={{ background: brand.paper }}>
         <Kapi>{children}</Kapi>
       </main>
+
+      {/* Sağ-alt "başa dön" düğmesi — uzun tek sayfada bir anda en üste döner
+          (kısa sayfalarda kendini gizler) */}
+      <BasaDonButonu />
 
       {/* Global footer — sol: dürüst metodoloji notu · orta: amblem · sağ: künye */}
       <footer className="border-t-2" style={{ background: "#0C2233", borderColor: "#C8102E" }}>
