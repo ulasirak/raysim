@@ -5,12 +5,19 @@
 // bir denetim hareketi (krediHareket) yazılır — böylece eşzamanlı iki istek
 // bakiyeyi bozamaz (çift harcama / çift ekleme olmaz).
 //
-// İstemci buraya erişemez; yalnız API route'ları (istekUid ile kimliği
-// doğrulanmış) çağırır.
+// firebase-admin/firestore LAZY DİNAMİK import edilir (FieldValue dahil): statik
+// import Vercel serverless'ta modül yüklerken 500 veriyordu (bkz. firebaseAdmin.ts).
+//
+// İstemci buraya erişemez; yalnız API route'ları (kimliği doğrulanmış) çağırır.
 
-import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "./firebaseAdmin";
 import type { HareketTuru } from "./cuzdan";
+
+/** FieldValue'yu dinamik yükler (statik import 500 veriyordu). */
+async function alanDegeri() {
+  const { FieldValue } = await import("firebase-admin/firestore");
+  return FieldValue;
+}
 
 /** Bekleyen ödeme kaydı — initialize sırasında yazılır, callback'te okunur. */
 export interface OdemeKaydi {
@@ -21,20 +28,23 @@ export interface OdemeKaydi {
 }
 
 export async function odemeKaydiOlustur(id: string, k: OdemeKaydi): Promise<void> {
-  await adminDb().collection("odeme").doc(id).set({
-    ...k, olusturma: FieldValue.serverTimestamp(),
-  });
+  const db = await adminDb();
+  const FieldValue = await alanDegeri();
+  await db.collection("odeme").doc(id).set({ ...k, olusturma: FieldValue.serverTimestamp() });
 }
 
 export async function odemeKaydiGetir(id: string): Promise<OdemeKaydi | null> {
-  const snap = await adminDb().collection("odeme").doc(id).get();
+  const db = await adminDb();
+  const snap = await db.collection("odeme").doc(id).get();
   if (!snap.exists) return null;
   const d = snap.data() as Record<string, unknown>;
   return { uid: String(d.uid), kredi: Number(d.kredi), tl: Number(d.tl), durum: (d.durum as OdemeKaydi["durum"]) ?? "beklemede" };
 }
 
 export async function odemeKaydiDurum(id: string, durum: OdemeKaydi["durum"]): Promise<void> {
-  await adminDb().collection("odeme").doc(id).set({ durum, guncelleme: FieldValue.serverTimestamp() }, { merge: true });
+  const db = await adminDb();
+  const FieldValue = await alanDegeri();
+  await db.collection("odeme").doc(id).set({ durum, guncelleme: FieldValue.serverTimestamp() }, { merge: true });
 }
 
 export class KrediYetersizError extends Error {
@@ -49,14 +59,10 @@ interface HareketDetay {
   ref?: string;
 }
 
-/** Cüzdan dokümanına referans (id = uid). */
-function cuzdanRef(uid: string) {
-  return adminDb().collection("cuzdan").doc(uid);
-}
-
 /** Güncel bakiye (cüzdan yoksa 0). Sunucu içi kullanım. */
 export async function bakiyeOku(uid: string): Promise<number> {
-  const snap = await cuzdanRef(uid).get();
+  const db = await adminDb();
+  const snap = await db.collection("cuzdan").doc(uid).get();
   return snap.exists ? Number(snap.data()?.bakiye ?? 0) : 0;
 }
 
@@ -66,9 +72,10 @@ export async function bakiyeOku(uid: string): Promise<number> {
  */
 export async function krediDus(uid: string, miktar: number, detay: HareketDetay): Promise<number> {
   if (miktar <= 0) throw new Error("Düşülecek miktar pozitif olmalı.");
-  const db = adminDb();
+  const db = await adminDb();
+  const FieldValue = await alanDegeri();
   return db.runTransaction(async (tx) => {
-    const ref = cuzdanRef(uid);
+    const ref = db.collection("cuzdan").doc(uid);
     const snap = await tx.get(ref);
     const mevcut = snap.exists ? Number(snap.data()?.bakiye ?? 0) : 0;
     if (mevcut < miktar) throw new KrediYetersizError(miktar, mevcut);
@@ -95,13 +102,14 @@ export async function krediEkle(
   detay: HareketDetay = { tur: "satinalma" },
 ): Promise<number> {
   if (miktar <= 0) throw new Error("Eklenecek miktar pozitif olmalı.");
-  const db = adminDb();
+  const db = await adminDb();
+  const FieldValue = await alanDegeri();
   return db.runTransaction(async (tx) => {
     // İdempotency kilidi: odemeOlay/{odemeId} zaten varsa bu ödeme işlenmiş demektir.
     const olayRef = db.collection("odemeOlay").doc(odemeId);
     const olay = await tx.get(olayRef);
 
-    const ref = cuzdanRef(uid);
+    const ref = db.collection("cuzdan").doc(uid);
     const snap = await tx.get(ref);
     const mevcut = snap.exists ? Number(snap.data()?.bakiye ?? 0) : 0;
 

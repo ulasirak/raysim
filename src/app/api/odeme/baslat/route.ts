@@ -32,7 +32,7 @@ export async function POST(req: Request) {
 
   // Alıcı e-postası imzalı hesaptan (istemciye güvenmeden).
   let eposta = "";
-  try { eposta = (await adminAuth().getUser(uid)).email ?? ""; } catch { /* opsiyonel */ }
+  try { eposta = (await (await adminAuth()).getUser(uid)).email ?? ""; } catch { /* opsiyonel */ }
 
   await odemeKaydiOlustur(conversationId, { uid, kredi: paket.kredi, tl: paket.tl, durum: "beklemede" });
 

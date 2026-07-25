@@ -1,19 +1,20 @@
 // raysim — SUNUCU tarafı Firebase (Admin SDK).
 //
-// Admin SDK güvenlik kurallarını BAYPAS eder; bu yüzden yalnız sunucuda (API
-// route'ları) kullanılır ve ASLA istemciye sızdırılmaz. Para bağlı her yazma
-// (cüzdan bakiyesi, kredi hareketi, ödeme olayı) buradan geçer — istemci bu
-// koleksiyonlara yazamaz (bkz. firestore.rules).
+// Admin SDK güvenlik kurallarını BAYPAS eder; yalnız sunucuda (API route'ları)
+// kullanılır, ASLA istemciye sızdırılmaz. Para bağlı her yazma buradan geçer.
 //
-// Yetki: bir hizmet hesabı (service account) anahtarı gerekir. Vercel'de tek
-// ortam değişkeni olarak saklanır:
-//   FIREBASE_SERVICE_ACCOUNT = {...}  (Firebase Console → Proje Ayarları →
-//   Hizmet hesapları → "Yeni özel anahtar oluştur" ile inen JSON'un TAMAMI)
-// Bu değişken NEXT_PUBLIC_ DEĞİLDİR: tarayıcıya gönderilmez.
+// ÖNEMLİ: firebase-admin STATİK top-level import edilirse Vercel serverless'ta
+// modül yüklenirken 500 patlıyor (Turbopack production paketleme). Bu yüzden tüm
+// firebase-admin değer import'ları LAZY DİNAMİK (`await import`) — yalnız gerçekten
+// çağrıldığında yüklenir. Tipler `import type` ile alınır (bundle'a girmez).
+//
+// Yetki: FIREBASE_SERVICE_ACCOUNT = hizmet hesabı JSON'unun tamamı (Firebase
+// Console → Proje Ayarları → Hizmet hesapları → Yeni özel anahtar). NEXT_PUBLIC_
+// DEĞİLDİR: tarayıcıya gönderilmez.
 
-import { getApps, getApp, initializeApp, cert, type App } from "firebase-admin/app";
-import { getFirestore, type Firestore } from "firebase-admin/firestore";
-import { getAuth, type Auth } from "firebase-admin/auth";
+import type { App } from "firebase-admin/app";
+import type { Firestore } from "firebase-admin/firestore";
+import type { Auth } from "firebase-admin/auth";
 
 let cachedApp: App | null = null;
 
@@ -22,8 +23,9 @@ export function isAdminConfigured(): boolean {
   return Boolean(process.env.FIREBASE_SERVICE_ACCOUNT);
 }
 
-function adminApp(): App {
+async function adminApp(): Promise<App> {
   if (cachedApp) return cachedApp;
+  const { getApps, getApp, initializeApp, cert } = await import("firebase-admin/app");
   if (getApps().length) { cachedApp = getApp(); return cachedApp; }
 
   const ham = process.env.FIREBASE_SERVICE_ACCOUNT;
@@ -48,23 +50,26 @@ function adminApp(): App {
   return cachedApp;
 }
 
-export function adminDb(): Firestore {
-  return getFirestore(adminApp());
+export async function adminDb(): Promise<Firestore> {
+  const { getFirestore } = await import("firebase-admin/firestore");
+  return getFirestore(await adminApp());
 }
 
-export function adminAuth(): Auth {
-  return getAuth(adminApp());
+export async function adminAuth(): Promise<Auth> {
+  const { getAuth } = await import("firebase-admin/auth");
+  return getAuth(await adminApp());
 }
 
 /**
  * İstek başlığındaki Firebase ID token'ını doğrular ve uid döndürür.
- * İstemci `Authorization: Bearer <idToken>` gönderir; sunucu kime ait olduğunu
- * SÖZE değil, imzalı token'a göre belirler (kullanıcı başkası adına işlem yapamaz).
+ * İstemci `Authorization: Bearer <idToken>` gönderir; kimlik SÖZE değil imzalı
+ * token'a göre belirlenir (kullanıcı başkası adına işlem yapamaz).
  */
 export async function istekUid(req: Request): Promise<string> {
   const baslik = req.headers.get("authorization") || "";
   const token = baslik.startsWith("Bearer ") ? baslik.slice(7) : "";
   if (!token) throw new Error("Kimlik doğrulanmadı (token yok).");
-  const cozulen = await adminAuth().verifyIdToken(token);
+  const auth = await adminAuth();
+  const cozulen = await auth.verifyIdToken(token);
   return cozulen.uid;
 }
