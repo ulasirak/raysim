@@ -57,7 +57,7 @@ export interface OdemeBaslatGirdi {
 }
 
 /** Checkout Form başlatır; ödeme sayfası URL'i döner. */
-export async function odemeBaslat(g: OdemeBaslatGirdi): Promise<{ paymentPageUrl?: string; token?: string; status: string; errorMessage?: string }> {
+export async function odemeBaslat(g: OdemeBaslatGirdi): Promise<{ paymentPageUrl?: string; token?: string; status: string; errorMessage?: string; errorCode?: string }> {
   const fiyat = g.fiyatTl.toFixed(2);
   const [ad, ...kalan] = (g.aliciAdSoyad || "RaySim Kullanıcı").split(" ");
   const soyad = kalan.join(" ") || "-";
