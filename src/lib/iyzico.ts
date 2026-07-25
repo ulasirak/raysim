@@ -14,10 +14,24 @@ export function isIyzicoConfigured(): boolean {
   return Boolean(process.env.IYZICO_API_KEY && process.env.IYZICO_SECRET_KEY);
 }
 
+/** GEÇİCİ TEŞHİS: anahtarların ŞEKLİNİ raporlar (değeri sızdırmaz). Sonra sil. */
+export function iyzicoTeshis() {
+  const apiKey = process.env.IYZICO_API_KEY?.trim() ?? "";
+  const secretKey = process.env.IYZICO_SECRET_KEY?.trim() ?? "";
+  return {
+    apiKeyUzunluk: apiKey.length,
+    apiKeySandboxPrefix: apiKey.startsWith("sandbox-"),
+    secretUzunluk: secretKey.length,
+    secretSandboxPrefix: secretKey.startsWith("sandbox-"),
+    base: (process.env.IYZICO_BASE_URL || "https://sandbox-api.iyzipay.com").trim(),
+  };
+}
+
 function anahtarlar() {
-  const apiKey = process.env.IYZICO_API_KEY;
-  const secretKey = process.env.IYZICO_SECRET_KEY;
-  const base = process.env.IYZICO_BASE_URL || "https://sandbox-api.iyzipay.com";
+  // trim: Vercel'e yapıştırırken sona eklenen boşluk/yeni satır imzayı bozar.
+  const apiKey = process.env.IYZICO_API_KEY?.trim();
+  const secretKey = process.env.IYZICO_SECRET_KEY?.trim();
+  const base = (process.env.IYZICO_BASE_URL || "https://sandbox-api.iyzipay.com").trim();
   if (!apiKey || !secretKey) throw new Error("iyzico anahtarları tanımlı değil.");
   return { apiKey, secretKey, base };
 }

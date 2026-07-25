@@ -7,7 +7,7 @@
 import { NextResponse } from "next/server";
 import { istekKimlik, isAdminConfigured } from "@/lib/firebaseAdmin";
 import { odemeKaydiOlustur } from "@/lib/cuzdanServer";
-import { isIyzicoConfigured, odemeBaslat } from "@/lib/iyzico";
+import { isIyzicoConfigured, odemeBaslat, iyzicoTeshis } from "@/lib/iyzico";
 import { paketBul } from "@/lib/cuzdan";
 import crypto from "crypto";
 
@@ -46,7 +46,10 @@ export async function POST(req: Request) {
     });
     if (sonuc.status !== "success" || !sonuc.paymentPageUrl) {
       return NextResponse.json(
-        { hata: `iyzico: ${sonuc.errorMessage ?? "başlatılamadı"}${sonuc.errorCode ? ` (kod ${sonuc.errorCode})` : ""}` },
+        {
+          hata: `iyzico: ${sonuc.errorMessage ?? "başlatılamadı"}${sonuc.errorCode ? ` (kod ${sonuc.errorCode})` : ""}`,
+          teshis: iyzicoTeshis(),
+        },
         { status: 502 },
       );
     }
