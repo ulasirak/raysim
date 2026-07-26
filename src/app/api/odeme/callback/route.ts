@@ -45,6 +45,13 @@ export async function POST(req: Request) {
       await odemeKaydiDurum(dogrulama.conversationId, "basarisiz");
       return yonlendir("hata");
     }
+    // Para birimi güvencesi: initialize TRY zorlar; retrieve TRY dışı bildirirse
+    // (sayısal eşit ama farklı birim) krediyi YÜKLEME. Birim yoksa tutar+TRY-init
+    // yeterli sayılır (eski kayıtları bozmamak için fail-closed değil).
+    if (dogrulama.paraBirimi && dogrulama.paraBirimi !== "TRY") {
+      await odemeKaydiDurum(dogrulama.conversationId, "basarisiz");
+      return yonlendir("hata");
+    }
 
     // İdempotent: krediEkle odemeOlay/{conversationId} ile çift eklemeyi önler.
     await krediEkle(kayit.uid, kayit.kredi, dogrulama.conversationId, { tur: "satinalma", ref: dogrulama.conversationId });

@@ -69,7 +69,7 @@ export async function adminDb(): Promise<Firestore> {
  * kimlik SÖZE değil, Google'ın imzasıyla doğrulanmış token'a göre belirlenir
  * (kullanıcı başkası adına işlem yapamaz). Kontroller: imza (JWKS), issuer, audience.
  */
-export async function istekKimlik(req: Request): Promise<{ uid: string; email: string | null }> {
+export async function istekKimlik(req: Request): Promise<{ uid: string; email: string | null; emailDogrulandi: boolean }> {
   const baslik = req.headers.get("authorization") || "";
   const token = baslik.startsWith("Bearer ") ? baslik.slice(7) : "";
   if (!token) throw new Error("Kimlik doğrulanmadı (token yok).");
@@ -82,7 +82,15 @@ export async function istekKimlik(req: Request): Promise<{ uid: string; email: s
     audience: projectId,
   });
   if (!payload.sub) throw new Error("Token'da kullanıcı kimliği (sub) yok.");
-  return { uid: payload.sub, email: (payload.email as string | undefined) ?? null };
+  // email_verified: Firebase e-posta/şifre kaydı e-postayı DOĞRULAMAZ. Ücret
+  // muafiyeti gibi hassas kapılar bu bayrağı kontrol etmeli (aksi halde saldırgan
+  // kayıtsız bir yönetici e-postasıyla kayıt olup muafiyet kazanabilir). E-posta
+  // yine döner (ör. iyzico alıcı bilgisi için) ama "doğrulandı" bilgisi ayrı.
+  return {
+    uid: payload.sub,
+    email: (payload.email as string | undefined) ?? null,
+    emailDogrulandi: payload.email_verified === true,
+  };
 }
 
 /** Geriye dönük uyumluluk: yalnız uid gerekiyorsa. */

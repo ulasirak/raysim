@@ -10,7 +10,7 @@
 import { NextResponse } from "next/server";
 import { istekKimlik, isAdminConfigured, adminDb } from "@/lib/firebaseAdmin";
 import { KREDI_BEDELI } from "@/lib/cuzdan";
-import { yoneticiMi } from "@/lib/anaray/yetki";
+import { yoneticiMi, yoneticiUidMi } from "@/lib/anaray/yetki";
 import { varsayilanConfig, varsayilanMeta } from "@/lib/anaray/config";
 
 export const runtime = "nodejs";
@@ -21,15 +21,19 @@ export async function POST(req: Request) {
   }
 
   let uid: string;
-  let email: string | null;
-  try { const k = await istekKimlik(req); uid = k.uid; email = k.email; }
+  let yonetici: boolean;
+  try {
+    const k = await istekKimlik(req);
+    uid = k.uid;
+    // Ücret muafiyeti: uid allowlist VEYA DOĞRULANMIŞ yönetici e-postası.
+    yonetici = yoneticiUidMi(k.uid) || (k.emailDogrulandi && yoneticiMi(k.email));
+  }
   catch { return NextResponse.json({ hata: "Kimlik doğrulanamadı." }, { status: 401 }); }
 
   let govde: { ad?: string };
   try { govde = await req.json(); } catch { return NextResponse.json({ hata: "Geçersiz istek." }, { status: 400 }); }
 
   const ad = (govde.ad || "Yeni hat").toString().trim().slice(0, 120) || "Yeni hat";
-  const yonetici = yoneticiMi(email);
   const bedel = KREDI_BEDELI.projeYukleme;
   const bosVeriJson = JSON.stringify({ rings: [], cfg: varsayilanConfig, meta: varsayilanMeta });
 

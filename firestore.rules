@@ -59,7 +59,11 @@ service cloud.firestore {
     // Eski paylaşılan senaryo vitrini (Sefer modülü anlık görüntüleri)
     match /senaryolar/{doc} {
       allow read: if true;
+      // Yazma yalnız DOĞRULANMIŞ yönetici e-postasına. email_verified şartı,
+      // doğrulanmamış e-posta claim'iyle taklit edilmeyi önler (sunucu tarafındaki
+      // uid/email_verified sıkılaştırmasının kural karşılığı).
       allow write: if girisli()
+                   && request.auth.token.email_verified == true
                    && request.auth.token.email == "ulasirak073@gmail.com";
     }
 

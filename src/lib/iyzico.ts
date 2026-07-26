@@ -104,7 +104,7 @@ export async function odemeBaslat(g: OdemeBaslatGirdi): Promise<{ paymentPageUrl
 }
 
 /** Callback'te ödeme sonucunu doğrular. Kullanıcı kartını sakladıysa cardUserKey döner. */
-export async function odemeDogrula(token: string): Promise<{ basarili: boolean; conversationId?: string; odenenTl?: number; cardUserKey?: string; ham: Record<string, unknown> }> {
+export async function odemeDogrula(token: string): Promise<{ basarili: boolean; conversationId?: string; odenenTl?: number; paraBirimi?: string; cardUserKey?: string; ham: Record<string, unknown> }> {
   const y = await iyzicoPost("/payment/iyzipos/checkoutform/auth/ecom/detail", {
     locale: "tr", token,
   });
@@ -113,6 +113,7 @@ export async function odemeDogrula(token: string): Promise<{ basarili: boolean; 
     basarili,
     conversationId: y.conversationId as string | undefined,
     odenenTl: y.paidPrice ? Number(y.paidPrice) : undefined,
+    paraBirimi: y.currency as string | undefined, // ödemenin para birimi (TRY beklenir)
     cardUserKey: y.cardUserKey as string | undefined, // "kartımı sakla" seçildiyse dolu gelir
     ham: y,
   };
