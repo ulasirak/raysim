@@ -142,7 +142,7 @@ export function Belgeler() {
         <div className="field-label">Teknik Belgeler — Word & Excel Üretimi</div>
         <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>Sinyalizasyon Tasarım Dokümantasyonu</h1>
         <p className="mt-2 max-w-3xl text-sm" style={{ color: brand.inkSoft }}>
-          Proje künyeni gir; mevcut hat (ringler) ve parametrelerden profesyonel <b>Tasarım El Kitabı (.docx)</b> ve <b>çalışma kitabı (.xlsx)</b> üretilir. İçerik tamamen senin projenden türer — herhangi bir hat için çalışır.
+          Proje künyeni gir; mevcut hat (ringler) ve parametrelerden profesyonel <b>Tasarım El Kitabı (.docx)</b> ve <b>çalışma kitabı (.xlsx)</b> üretilir. Hat şeması, ringler, hız/eğim profili, kapasite ve blocking-time bölümleri <b>senin projenden türer</b>; makas bölgesi anklaşman senaryoları ve çakışma matriksleri ise el kitabı MAZ-VA-AKS-001’in <b>referans standardını</b> kullanır (hat geometrinden otomatik türetilmez).
         </p>
       </div>
 

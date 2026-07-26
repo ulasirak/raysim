@@ -104,7 +104,10 @@ export function SistemMerkezi() {
           <MiniStat etiket={`${cfg.headway} s'de tren`} deger={`${olcek.maxTrenHedefHeadway}`} alt={olcek.headwayUygun ? "uygun ✓" : "ihlal ⚠"} vurgu={olcek.headwayUygun ? OK : brand.red} />
           <MiniStat etiket="Denge" deger={denge.dengeli ? "Dengeli" : `%${denge.sapmaYuzde.toFixed(0)} sapma`} vurgu={denge.dengeli ? OK : brand.red} />
         </div>
-        <div className="mt-3 overflow-x-auto">
+        <div className="mt-3 text-xs" style={{ color: brand.faint }}>
+          Makas bölgeleri, el kitabı MAZ-VA-AKS-001 <b>referans topolojilerinden</b> çözülür (hattınızın makas geometrisinden türetilmez); mevcut parametrelerle canlı işletilir.
+        </div>
+        <div className="mt-2 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left" style={{ borderColor: brand.borderStrong, color: brand.muted }}>

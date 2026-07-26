@@ -98,11 +98,11 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
       {/* Model ↔ hat bağı */}
       <div className="mb-4 rounded-md border-l-4 px-4 py-2 text-xs" style={{ background: brand.surface, borderColor: kullananlar.length ? CK.good : CK.amber, color: brand.inkSoft }}>
         {kullananlar.length > 0 ? (
-          <>Bu model <b>proje hattında {kullananlar.length} bölgede</b> kullanılıyor:{" "}
-            {kullananlar.map((k) => k.ad).join(" · ")}. Hücreleri{" "}
+          <>Bu <b>referans</b> anklaşman modeli (el kitabı MAZ-VA-AKS-001), proje hattındaki <b>{kullananlar.length} benzer-tipli makas bölgesine</b> karşılık geliyor:{" "}
+            {kullananlar.map((k) => k.ad).join(" · ")}. Topoloji, rotalar ve çakışma matriksi standarttan gelir (hat geometrinizden türetilmez); makas yerleşimini{" "}
             <Link href="/ringler" className="underline" style={{ color: brand.red }}>Ringler</Link> modülünden düzenleyin.</>
         ) : (
-          <>▲ Bu model şu an proje hattındaki hiçbir makas bölgesine bağlı değil — referans topoloji olarak inceleniyor.</>
+          <>▲ Bu model şu an proje hattındaki hiçbir makas bölgesine bağlı değil — el kitabı MAZ-VA-AKS-001 <b>referans topolojisi</b> olarak inceleniyor (hat geometrinizden türetilmez).</>
         )}
       </div>
 

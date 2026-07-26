@@ -147,6 +147,7 @@ export async function wordUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakAras
   // 3. Makas bölgesi senaryoları
   cocuklar.push(h1("3. Makas Bölgesi Operasyon Senaryoları ve Çakışma Matriksleri"));
   cocuklar.push(p("Her makas bölgesi bağımsız SIL4 anklaşman birimidir. Rotalar NEREDEN→NEREYE tanımlı; çakışma matriksi (X = birlikte kurulabilir, 0 = mümkün değil) hangi rotaların eşzamanlı işletilebileceğini belirler."));
+  cocuklar.push(p("Not: aşağıdaki bölge topolojisi, rotalar ve çakışma matriksleri MAZ-VA-AKS-001 el kitabının referans standardından gelir; hattınızın makas geometrisinden otomatik türetilmez.", { size: 18 }));
   for (const z of zones) {
     cocuklar.push(h2(`Bölge ${z.id} — ${z.ad}`));
     cocuklar.push(wordTablo(["Rota", "Nereden", "Nereye", "Bloklar", "TCC"], z.rotalar.map((r) => [r.id, r.nereden, r.nereye, r.bloklar.join(", "), r.tccGerekli ? "Evet" : "Hayır"])));
