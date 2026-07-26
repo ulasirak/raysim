@@ -16,3 +16,16 @@ export function sure(sec: number): string {
 
 /** saniye → "mm:ss" mutlak saat (00:00'dan itibaren) */
 export const saat = (sec: number) => sure(sec);
+
+/** Blob'u tarayıcıda indirir (dosya adıyla). Ağır belge kütüphanelerine bağlı
+ *  değildir — bu yüzden dokuman.ts yerine hafif format modülünde durur. */
+export function indir(blob: Blob, adSoyad: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = adSoyad;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}

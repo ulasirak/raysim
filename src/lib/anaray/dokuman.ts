@@ -307,13 +307,5 @@ export async function excelUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakAra
 // İndirme yardımcısı
 // ————————————————————————————————————————————————
 
-export function indir(blob: Blob, adSoyad: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = adSoyad;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
-}
+// `indir` artık format.ts'te (hafif) — Belgeler HTML akışı docx/exceljs çekmeden
+// indirebilsin ve Word/Excel üreticileri yalnız tıklamada tembel yüklensin.

@@ -39,7 +39,9 @@ export async function POST(req: Request) {
     if (!kayit) return yonlendir("hata");
 
     // Tutar doğrulama: iyzico'nun bildirdiği ödenen tutar, kayıtlı fiyatla eşleşmeli.
-    if (dogrulama.odenenTl != null && Math.abs(dogrulama.odenenTl - kayit.tl) > 0.01) {
+    // FAIL-CLOSED: başarı yanıtında paidPrice hiç gelmediyse (odenenTl == null) tutar
+    // doğrulanamaz → krediyi YÜKLEME. Aksi halde yanlış/eksik tutarla kredi yüklenebilirdi.
+    if (dogrulama.odenenTl == null || Math.abs(dogrulama.odenenTl - kayit.tl) > 0.01) {
       await odemeKaydiDurum(dogrulama.conversationId, "basarisiz");
       return yonlendir("hata");
     }

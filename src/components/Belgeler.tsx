@@ -8,13 +8,14 @@
 import { useMemo, useState } from "react";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
-import { sure } from "@/lib/anaray/format";
+import { sure, indir } from "@/lib/anaray/format";
 import { useSimConfig, useProje } from "@/components/SimConfigProvider";
 import { PROJE_META_ALANLAR } from "@/lib/anaray/config";
 import { varsayilanArac } from "@/lib/anaray/vehicles";
 import { loopDenge, olceklenme, ringChallenge, ringDogrula, loopTamMi } from "@/lib/anaray/ring";
 import { bolgeSeed } from "@/lib/anaray/interlocking";
-import { wordUret, excelUret, indir } from "@/lib/anaray/dokuman";
+// wordUret/excelUret ağır (docx + exceljs ~1MB) — statik import etmiyoruz; yalnız
+// ilgili buton tıklandığında await import() ile tembel yüklenir (indir hafif, format'ta).
 import { type RaporDil } from "@/lib/anaray/rapor";
 import { useCuzdan } from "@/components/CuzdanProvider";
 import { getAuthInstance } from "@/lib/firebase";
@@ -114,6 +115,7 @@ export function Belgeler() {
   const wordIndir = async () => {
     setMesgul("word"); setDurum(null);
     try {
+      const { wordUret } = await import("@/lib/anaray/dokuman");
       const blob = await wordUret(meta, cfg, rings, stock);
       indir(blob, dosyaAdi("docx"));
       setDurum({ tip: "ok", metin: `Word belgesi üretildi: ${dosyaAdi("docx")}` });
@@ -125,6 +127,7 @@ export function Belgeler() {
   const excelIndir = async () => {
     setMesgul("excel"); setDurum(null);
     try {
+      const { excelUret } = await import("@/lib/anaray/dokuman");
       const blob = await excelUret(meta, cfg, rings, stock);
       indir(blob, dosyaAdi("xlsx"));
       setDurum({ tip: "ok", metin: `Excel çalışma kitabı üretildi: ${dosyaAdi("xlsx")}` });

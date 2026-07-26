@@ -34,7 +34,13 @@ service cloud.firestore {
 
     // Kullanıcı projeleri (çok kiracılı)
     match /projeler/{id} {
-      allow read: if sahip() || paylasimaAcik();
+      // get (tek doküman, doğrudan link): sahip VEYA paylaşıma açık → salt-okunur
+      // paylaşım linki çalışır.
+      allow get: if sahip() || paylasimaAcik();
+      // list (koleksiyon sorgusu): YALNIZ sahip. Aksi halde biri
+      // `where(paylasim.acik==true)` ile TÜM kiracıların paylaşılan projelerini
+      // toplu çekebilirdi. Uygulama zaten yalnız sahip-filtreli sorgu yapar.
+      allow list: if sahip();
 
       // Proje oluşturma YALNIZCA sunucudadır (Admin SDK): ilk/ücretsiz hat
       // /api/proje/ilk, ücretli hatlar /api/proje/olustur (atomik kredi düşme).
