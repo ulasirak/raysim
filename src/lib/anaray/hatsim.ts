@@ -143,6 +143,8 @@ export interface HatSonuc {
   blocks: number[];
   ringBounds: number[];
   zones: MakasZon[];
+  gecerli: boolean; // false → araç bu hatta kalkış yapamıyor (aşağıdaki metrikler geçersiz)
+  stallUyari: string | null; // kalkış-stall açıklaması (varsa)
   trains: HatTren[];
   zoneTimeline: Record<string, ZonOlay[]>;
   zoneStats: ZonIstatistik[];
@@ -170,6 +172,7 @@ interface TrenDurum {
   points: { t: number; s: number }[];
   girisT: number;
   cikisT: number;
+  stall: number; // ilerlemek İSTEDİĞİ hâlde kımıldayamadığı ardışık adım sayısı
 }
 
 /**
@@ -189,10 +192,21 @@ export function simuleHat(
   const headway = opts.headway;
   const movingBlock = !!opts.movingBlock;
 
-  const baseTime = coreRun(line, zones, bounds, stock, 1e9, 1, dt, null, false).trains[0]?.turSure ?? 0;
+  // Tek tren referans koşusu — saf fizik (interlocking çekişmesi yok). Araç bu hatta
+  // kalkamıyorsa (dik eğim / yetersiz çekiş) stall bayrağı burada en net yakalanır.
+  const base = coreRun(line, zones, bounds, stock, 1e9, 1, dt, null, false);
+  const baseTime = base.trains[0]?.turSure ?? 0;
 
   // Animasyon/metrikler SEÇİLİ modda koşar
   const res = coreRun(line, zones, bounds, stock, headway, count, dt, opts.captureFrames ? {} : null, movingBlock);
+
+  // Kalkış-stall: tek-tren ya da çok-tren koşusunda bir tren fiziksel olarak ilerleyemedi.
+  // Bu durumda süre/headway/kapasite sayıları anlamsızdır → sonucu geçersiz işaretle.
+  const stallInfo = base.stallInfo ?? res.stallInfo;
+  const gecerli = !stallInfo;
+  const stallUyari = stallInfo
+    ? `Araç bu hatta kalkış yapamıyor: ~${(stallInfo.pos / 1000).toFixed(2)} km noktasında çekiş kuvveti eğimi/direnci yenemedi ve tren durdu. Eğim profilini, aracın çekiş gücünü (power) veya kalkış çekiş kuvvetini (startingTractiveEffort) kontrol edin. Aşağıdaki süre ve kapasite değerleri bu nedenle geçersizdir.`
+    : null;
 
   // metrikler — headway ÇIKIŞ noktasında ölçülür (servis hızı)
   const tMax = Math.max(dt, ...res.trains.map((t) => t.cikisT || 0));
@@ -250,6 +264,8 @@ export function simuleHat(
     blocks: bounds,
     ringBounds,
     zones,
+    gecerli,
+    stallUyari,
     trains: res.trains,
     zoneTimeline: res.timeline,
     zoneStats,
@@ -272,6 +288,7 @@ interface CoreOut {
   zoneDurum: ZonDurum[];
   timeline: Record<string, ZonOlay[]>;
   maxEsGecis: number;
+  stallInfo: { train: number; pos: number } | null; // bir tren kalkamadıysa (fizik)
 }
 
 function coreRun(
@@ -298,7 +315,7 @@ function coreRun(
   const brakeDist = (stock.maxSpeed * stock.maxSpeed) / (2 * b);
 
   const trains: TrenDurum[] = Array.from({ length: count }, (_, k) => ({
-    k, s: 0, v: 0, started: false, done: false, ns: firstStop, dwellUntil: -1, points: [], girisT: -1, cikisT: 0,
+    k, s: 0, v: 0, started: false, done: false, ns: firstStop, dwellUntil: -1, points: [], girisT: -1, cikisT: 0, stall: 0,
   }));
 
   const zd: ZonDurum[] = zones.map((z) => ({ z, faz: "bos", sahip: -1, timer: 0, busy: 0, gecis: 0, bekletme: 0 }));
@@ -313,10 +330,18 @@ function coreRun(
 
   let t = 0;
   let maxEsGecis = 0;
+  let stallInfo: { train: number; pos: number } | null = null;
   const maxT = 1e9; // güvenli üst sınır coreRun içinde bitiş koşuluyla
   const hardT = Math.max(3600, count * Math.max(1, headway) + 4000);
+  // Mutlak iterasyon freni (sim.ts ile aynı mantık). hardT tek-tren referans
+  // koşusunda ~1e9 olabildiği için, kalkamayan bir tren döngüyü sonsuza kilitlerdi;
+  // bu sayaç her koşulda tarayıcının donmasını engeller.
+  const maxIter = 2_000_000;
+  const STALL_LIMIT = 40; // ~20 s (dt=0.5) ilerleyememe → fiziksel kalkış-stall
+  let iter = 0;
 
   while (trains.some((tr) => !tr.done) && t < Math.min(maxT, hardT)) {
+    if (++iter > maxIter) break;
     // 1) Zon fazlarını ilerlet
     let esGecis = 0;
     zd.forEach((z, i) => {
@@ -472,6 +497,23 @@ function coreRun(
         vNew = 0;
       }
 
+      // Kalkış-stall tespiti: tren durakta/sinyalde DEĞİL (redStop yok) ve önünde
+      // gidilecek yol varken durgun hızdan hiç ilerleyemiyorsa (dik eğim + yetersiz
+      // çekiş → net kuvvet ≤ 0), fiziksel olarak kalkamıyor demektir. Sinyalde
+      // meşru bekleyen tren redStop ile ayrışır; yavaş tırmanan tren ilerleme (>1 mm)
+      // gösterip sayaç sıfırlanır. Sadece gerçekten donan tren eşiği aşar.
+      const gidilecekYol = !redStop && nsPos - tr.s > 1e-3;
+      if (gidilecekYol && tr.v < 0.1 && vNew < 0.1 && sNew - tr.s < 1e-3) {
+        tr.stall += 1;
+        if (tr.stall >= STALL_LIMIT) {
+          if (!stallInfo) stallInfo = { train: tr.k, pos: tr.s };
+          tr.done = true; // treni bitir → döngü sonsuza kilitlenmesin
+          continue;
+        }
+      } else {
+        tr.stall = 0;
+      }
+
       tr.s = sNew;
       tr.v = vNew;
       tr.points.push({ t: t + dt, s: sNew });
@@ -504,5 +546,6 @@ function coreRun(
     zoneDurum: zd,
     timeline,
     maxEsGecis,
+    stallInfo,
   };
 }

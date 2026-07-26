@@ -202,6 +202,14 @@ function HatSimIc() {
       </svg>
       )}
 
+      {/* Kalkış-stall uyarısı — araç bu hatta fiziksel olarak kalkamıyor */}
+      {!sonuc.gecerli && sonuc.stallUyari && (
+        <div className="rounded-md border-l-4 px-4 py-3 text-sm" style={{ background: CK.badBg, borderColor: brand.red }}>
+          <div className="font-semibold" style={{ color: brand.red }}>⚠ Sefer gerçekleştirilemiyor</div>
+          <div className="mt-0.5" style={{ color: brand.inkSoft }}>{sonuc.stallUyari}</div>
+        </div>
+      )}
+
       {/* Oynatma kontrolleri */}
       <div className="flex flex-wrap items-center gap-3">
         <button onClick={oynatDurdur} className="rounded-md px-4 py-1.5 text-sm font-medium text-white transition hover:opacity-90" style={{ background: brand.red }}>
