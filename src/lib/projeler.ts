@@ -13,10 +13,10 @@
 // Firestore doküman yapısı sabit kalır, iç içe dizi kısıtları hiç devreye girmez.
 
 import {
-  collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc,
+  collection, getDocs, getDoc, doc, updateDoc, deleteDoc,
   serverTimestamp, query, where, type Timestamp,
 } from "firebase/firestore";
-import { getDb } from "./firebase";
+import { getDb, getAuthInstance } from "./firebase";
 import type { SimConfig, ProjeMeta } from "./anaray/config";
 import type { DurakArasiRing } from "./anaray/ring";
 
@@ -86,44 +86,30 @@ export async function projeleriListele(uid: string): Promise<ProjeOzet[]> {
     .sort((a, b) => (b.guncelleme ?? 0) - (a.guncelleme ?? 0));
 }
 
-export async function projeOlustur(uid: string, ad: string, veri: ProjeVerisi): Promise<string> {
-  const ref = await addDoc(collection(db(), COL), {
-    sahipUid: uid,
-    ad,
-    veri: JSON.stringify(veri),
-    paylasim: { acik: false },
-    olusturma: serverTimestamp(),
-    guncelleme: serverTimestamp(),
-  });
-  return ref.id;
-}
-
 /**
- * İLK proje — doküman kimliği uid'den TÜRETİLİR (`ilk_<uid>`), rastgele değil.
+ * İLK proje — SUNUCUDA seed edilir (`/api/proje/ilk`, Admin SDK, ücretsiz).
  *
- * Neden: kayıt olduktan sonra sayfa yeniden yükleniyor; yeni JS bağlamında
- * bellekteki "kurulum sürüyor" kilidi sıfırlanıyor, liste hâlâ boş görünüyor ve
- * hesaba İKİNCİ bir proje açılıyordu. Sabit kimlikle iki eşzamanlı deneme aynı
- * dokümanda birleşir.
+ * Neden sunucu: `projeler` create kuralı istemciye açık kaldığı sürece kötü
+ * niyetli kullanıcı /api/proje/olustur ücretlendirmesini baypas edip sınırsız
+ * ücretsiz proje açabiliyordu. İlk projeyi de sunucuya taşıyınca kural
+ * `create: if false` yapılıp bu kapı kapanır (bkz. firestore.rules).
  *
- * ÖNCE OKUMA YAPILMAZ — bilerek: kurallarda var olmayan bir dokümanın `get`i
- * `resource == null` olduğu için "permission-denied" ATAR, "yok" dönmez; varlık
- * kontrolü ilk girişi tamamen kırardı. Ezme riski yok, çünkü bu işlev yalnız
- * sunucu "bu hesapta hiç proje yok" dedikten sonra çağrılır ve eşzamanlı iki
- * çağrı da AYNI tohum veriyi yazar.
+ * Doküman kimliği yine uid'den türetilir (`ilk_<uid>`): kayıttan sonra sayfa
+ * yeniden yüklenip bellekteki "kurulum sürüyor" kilidi sıfırlansa bile iki
+ * eşzamanlı deneme aynı dokümanda birleşir; sunucu tarafı transaction mevcut
+ * veriyi ezmez (idempotent).
  */
-export async function ilkProjeOlustur(uid: string, ad: string, veri: ProjeVerisi): Promise<string> {
-  const id = `ilk_${uid}`;
-  const ref = doc(db(), COL, id);
-  await setDoc(ref, {
-    sahipUid: uid,
-    ad,
-    veri: JSON.stringify(veri),
-    paylasim: { acik: false },
-    olusturma: serverTimestamp(),
-    guncelleme: serverTimestamp(),
+export async function ilkProjeOlustur(ad: string, veri: ProjeVerisi): Promise<string> {
+  const token = await getAuthInstance()?.currentUser?.getIdToken();
+  if (!token) throw new Error("Oturum bulunamadı.");
+  const yanit = await fetch("/api/proje/ilk", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ ad, veriJson: JSON.stringify(veri) }),
   });
-  return id;
+  const veriYanit = await yanit.json().catch(() => ({}));
+  if (!yanit.ok) throw new Error(veriYanit.hata ?? "İlk hat oluşturulamadı.");
+  return veriYanit.id as string;
 }
 
 export interface ProjeKaydi extends ProjeOzet {

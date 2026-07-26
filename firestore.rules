@@ -36,11 +36,11 @@ service cloud.firestore {
     match /projeler/{id} {
       allow read: if sahip() || paylasimaAcik();
 
-      allow create: if girisli()
-                    && request.resource.data.sahipUid == request.auth.uid
-                    && request.resource.data.ad is string
-                    && request.resource.data.veri is string
-                    && request.resource.data.veri.size() < 900000; // doküman sınırı payı
+      // Proje oluşturma YALNIZCA sunucudadır (Admin SDK): ilk/ücretsiz hat
+      // /api/proje/ilk, ücretli hatlar /api/proje/olustur (atomik kredi düşme).
+      // İstemciye açık create, kredi ücretini baypas edip sınırsız ücretsiz proje
+      // açmaya izin verirdi — bu yüzden tamamen kapalı.
+      allow create: if false;
 
       allow update: if sahip()
                     && request.resource.data.sahipUid == resource.data.sahipUid // sahiplik sabit

@@ -232,7 +232,7 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
           let soz = ilkKurulum.get(user.uid);
           if (!soz) {
             // Sabit kimlik (`ilk_<uid>`): eşzamanlı iki deneme tek dokümanda birleşir.
-            soz = ilkProjeOlustur(user.uid, ilkAd, ilkVeri);
+            soz = ilkProjeOlustur(ilkAd, ilkVeri);
             // Başarısızsa kilidi bırak, sonraki deneme yeniden kurabilsin.
             soz.catch(() => ilkKurulum.delete(user.uid));
             ilkKurulum.set(user.uid, soz);
