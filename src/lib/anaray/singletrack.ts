@@ -8,22 +8,10 @@
 // Karşı yönler ancak geçiş istasyonlarında karşılaşır.
 
 import type { Line, RollingStock } from "./types";
+// Fizik yardımcıları tek kaynaktan (signalling.ts) — kopya sürüklenmesini önler.
+import { allowedSpeed, segAt } from "./signalling";
 
 const G = 9.81;
-
-function segAt(line: Line, s: number) {
-  for (const seg of line.segments) if (s >= seg.start && s < seg.end) return seg;
-  return line.segments[line.segments.length - 1];
-}
-
-function allowedSpeed(line: Line, stock: RollingStock, s: number, stopTarget: number, b: number): number {
-  if (stopTarget <= s) return 0;
-  let vc = Math.min(stock.maxSpeed, segAt(line, s).vmax);
-  for (const seg of line.segments) {
-    if (seg.start > s && seg.start <= stopTarget) vc = Math.min(vc, Math.sqrt(seg.vmax * seg.vmax + 2 * b * (seg.start - s)));
-  }
-  return Math.min(vc, Math.sqrt(2 * b * (stopTarget - s)));
-}
 
 export interface STTrain {
   index: number;

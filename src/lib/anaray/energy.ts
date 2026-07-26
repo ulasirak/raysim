@@ -7,16 +7,13 @@
 // Yardımcı (iç/hotel) yük süre boyunca eklenir.
 
 import type { Line, RollingStock, SimResult } from "./types";
+// segAt tek kaynaktan (signalling.ts) — kopya sürüklenmesini önler.
+import { segAt } from "./signalling";
 
 const G = 9.81;
 const EFF_TR = 0.85; // çekiş zinciri verimi
 const EFF_REGEN = 0.3; // rejeneratif frenle geri kazanılan oran
 const AUX_W = 15000; // yardımcı yük (aydınlatma/iklim), W
-
-function segAt(line: Line, s: number) {
-  for (const seg of line.segments) if (s >= seg.start && s < seg.end) return seg;
-  return line.segments[line.segments.length - 1];
-}
 
 export interface EnergyResult {
   tractionKWh: number;

@@ -183,6 +183,9 @@ export function simuleEtAnklasman(
   const aktif: Surec[] = [];
   const sonuclar: RotaSonuc[] = [];
   const kareler: AnklasmanKare[] = [];
+  // Rota bazında son kabul zamanı — headway timeout (aynı rotaya ardışık iki tren
+  // arasındaki min aralık) için. headwayTimeout=0 iken bu kapı hiç kısıtlamaz.
+  const sonKabul = new Map<string, number>();
 
   const tanzimSuresi = (r: AnklasmanRota) =>
     Math.max(1, r.makaslar.length) * cfg.makasAdimMax; // sıralı makas adımları
@@ -211,9 +214,13 @@ export function simuleEtAnklasman(
       }
       // Emniyet: aktif hiçbir rota ile çakışmamalı + release'teki rotayla da çakışmamalı (makas kilitli)
       const cakisan = [...mesgulIds, ...releaseIds].filter((id) => id !== rota.id && !birlikteOlur(topo, rota.id, id));
-      const headwayOK = !rota.headwayGerekli || headwayTimeout <= (t - (talep.t - talep.t)); // basit: timeout sağlandı say
+      // Headway kapısı: bu rotaya son kabulden bu yana geçen süre timeout'u karşılamalı.
+      // İlk talepte (önceki kabul yok) veya headwayTimeout=0 iken daima geçer → mevcut davranış korunur.
+      const oncekiKabul = sonKabul.get(rota.id);
+      const headwayOK = !rota.headwayGerekli || oncekiKabul === undefined || t - oncekiKabul >= headwayTimeout;
       if (cakisan.length === 0 && headwayOK) {
         aktif.push({ talep, rota, faz: "tanzim", faartim: 0, kabulT: t, yesilT: -1, cikisT: -1 });
+        if (rota.headwayGerekli) sonKabul.set(rota.id, t);
         mesgulIds.add(rota.id);
         sirIdx++;
       } else {

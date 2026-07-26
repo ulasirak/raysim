@@ -74,7 +74,7 @@ export function loopToHat(rings: DurakArasiRing[], kapali = true, cfg: SimConfig
         merkez,
         start: Math.max(offset, merkez - W / 2),
         end: Math.min(offset + L, merkez + W / 2),
-        gecisHizi: m.gecisHizi,
+        gecisHizi: Math.max(0.1, m.gecisHizi), // 0 girilirse çevrim (dongu) hesabı Infinity olmasın
         setupSure: Math.max(1, m.makasSayisi) * m.makasAdimSuresi,
         releaseSure: m.routeRelease,
       });
@@ -303,7 +303,7 @@ function coreRun(
   movingBlock: boolean
 ): CoreOut {
   const meff = stock.mass * (1 + stock.rotatingMassFactor);
-  const b = stock.maxBraking;
+  const b = Math.max(0.1, stock.maxBraking); // 0 girilirse brakeDist=Infinity ve kalıcı stall olmasın
   const EPS = 1;
   const nb = bounds.length - 1;
   const L = line.length;

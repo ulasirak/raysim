@@ -78,7 +78,7 @@ export function blockingTimeHesap(model: HatModel, stock: RollingStock, cfg: Sim
   const bounds = makeBlocks(line, cfg.blokMaxUzunluk);
   const res = simulate(line, stock, 0.5);
   const pts = res.points;
-  const b = stock.maxBraking;
+  const b = Math.max(0.1, stock.maxBraking); // 0 girilirse brakeDist=Infinity olmasın
   const brakeDist = (stock.maxSpeed * stock.maxSpeed) / (2 * b);
 
   const makasOverlap = (s0: number, s1: number) =>
