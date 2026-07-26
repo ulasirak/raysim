@@ -25,7 +25,7 @@ export interface SimConfig {
   routeReleaseAnahat: number;
   routeReleaseDepo: number;
   makasAdimMax: number;
-  acilRotaKilidi: number;
+  acilRotaKilidi: number; // REZERVE — henüz hiçbir motor okumuyor; kullanıcı editöründen çıkarıldı (ölü param olmasın)
   // Blok / geometri (m)
   kisitGenisligi: number; // makas/geçit kısıt bölgesi genişliği
   blokMaxUzunluk: number; // sinyal bloğu azami uzunluğu
@@ -80,7 +80,6 @@ export const PARAM_META: ParamMeta[] = [
   { key: "routeReleaseAnahat", ad: "Route release (ana hat)", grup: "Zamanlayıcılar", tur: "sure", kaynak: "Ek L", etkiler: "Ana hat makas rota serbest bırakma", moduller: ["anklasman", "ringler"], min: 1, max: 20, step: 1 },
   { key: "routeReleaseDepo", ad: "Route release (depo)", grup: "Zamanlayıcılar", tur: "sure", kaynak: "Ek L", etkiler: "Depo manevra rota serbest bırakma", moduller: ["anklasman"], min: 1, max: 30, step: 1 },
   { key: "makasAdimMax", ad: "Makas adım süresi", grup: "Zamanlayıcılar", tur: "sure", kaynak: "Ek Ö", etkiler: "Her makas hareketi (tanzim) süresi", moduller: ["anklasman", "ringler"], min: 1, max: 12, step: 1 },
-  { key: "acilRotaKilidi", ad: "Acil rota kilidi", grup: "Zamanlayıcılar", tur: "sure", kaynak: "Ek M", etkiler: "Acil rota iptali emniyet kilidi", moduller: ["anklasman"], min: 30, max: 240, step: 10 },
   { key: "kisitGenisligi", ad: "Kısıt bölge genişliği", grup: "Blok", tur: "mesafe", kaynak: "türetme", etkiler: "Makas/geçit hız-kısıt bölgesi uzunluğu", moduller: ["ringler"], min: 10, max: 120, step: 5 },
   { key: "blokMaxUzunluk", ad: "Sinyal bloğu azami", grup: "Blok", tur: "mesafe", kaynak: "2.1", etkiler: "Blok sayısı + gecikmesiz aralık", moduller: ["sefer"], min: 100, max: 1500, step: 50 },
 ];

@@ -58,7 +58,7 @@ function maxAllowedSpeed(
 
 export function simulate(line: Line, stock: RollingStock, dt = 0.5): SimResult {
   const meff = stock.mass * (1 + stock.rotatingMassFactor);
-  const b = stock.maxBraking;
+  const b = Math.max(0.1, stock.maxBraking); // negatif/0 fren → sqrt(2·b·d) NaN olmasın (hatsim/blockingtime ile tutarlı)
 
   const points: TrajectoryPoint[] = [];
   const stationEvents: SimResult["stationEvents"] = [];

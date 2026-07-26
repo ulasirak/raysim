@@ -47,5 +47,6 @@ export function computeEnergy(line: Line, stock: RollingStock, result: SimResult
   const regenKWh = (Wbr * EFF_REGEN) / J;
   const auxKWh = (AUX_W * result.totalTime) / J;
   const netKWh = tractionKWh - regenKWh + auxKWh;
-  return { tractionKWh, regenKWh, auxKWh, netKWh, perKm: netKWh / (line.length / 1000) };
+  const km = line.length / 1000;
+  return { tractionKWh, regenKWh, auxKWh, netKWh, perKm: km > 0 ? netKWh / km : 0 };
 }

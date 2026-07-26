@@ -55,7 +55,7 @@ export function simulateSingleTrack(
   opts: { headway: number; upCount: number; downCount: number; passing: number[]; dt?: number }
 ): SingleTrackResult {
   const dt = opts.dt ?? 0.5;
-  const b = stock.maxBraking;
+  const b = Math.max(0.1, stock.maxBraking); // negatif/0 fren → NaN yörünge olmasın (hatsim/blockingtime ile tutarlı)
   const meff = stock.mass * (1 + stock.rotatingMassFactor);
   const L = forwardLine.length;
 

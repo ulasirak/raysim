@@ -52,10 +52,12 @@ export function stepMotion(
 
 /** Blok sınırları: istasyonlar + her kesimi maxBlockLen'i aşmayacak şekilde böl. */
 export function makeBlocks(line: Line, maxBlockLen: number): number[] {
-  const set = new Set<number>([0, line.length]);
+  // Sıfır/negatif uzunlukta en az iki sınır garantile → blockOf dejenere (-1) dönmesin.
+  const L = Math.max(line.length, 1e-6);
+  const set = new Set<number>([0, L]);
   for (const st of line.stations) set.add(st.position);
   const bounds = Array.from(set).sort((a, c) => a - c);
-  const out: number[] = [bounds[0]];
+  const out: number[] = [bounds[0] ?? 0];
   for (let i = 1; i < bounds.length; i++) {
     const a = bounds[i - 1];
     const c = bounds[i];
@@ -115,7 +117,7 @@ function runTrains(
   blocked?: Set<number> // kalıcı arızalı bloklar (dispatcher modu) — hep dolu sayılır
 ): SignalTrain[] {
   const meff = stock.mass * (1 + stock.rotatingMassFactor);
-  const b = stock.maxBraking;
+  const b = Math.max(0.1, stock.maxBraking); // negatif/0 fren → NaN yörünge olmasın (hatsim/blockingtime ile tutarlı)
   const stops = line.stations.map((s) => ({ pos: s.position, dwell: s.dwell }));
   const EPS = 1; // kırmızı sinyalde 1 m geride dur (temiz blok işgali)
   const nb = bounds.length - 1;
