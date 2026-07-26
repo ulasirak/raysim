@@ -14,8 +14,8 @@ import type {
   Regime,
   TrackSegment,
 } from "./types";
-
-const G = 9.81;
+// Hareket adımı fiziği tek kaynaktan (signalling.ts) — kopya sürüklenmesini önler.
+import { stepMotion } from "./signalling";
 
 /** s konumunu içeren segmenti döndürür. */
 function segmentAt(line: Line, s: number): TrackSegment {
@@ -83,33 +83,14 @@ export function simulate(line: Line, stock: RollingStock, dt = 0.5): SimResult {
     const nextStopPos = nextStop ? nextStop.position : null;
     const vAllowed = maxAllowedSpeed(line, stock, s, nextStopPos, b);
 
-    let a: number;
-    let regime: Regime;
-    let vNew: number;
-
-    if (v > vAllowed + 0.05) {
-      // Fren
-      a = -b;
-      vNew = Math.max(0, v - b * dt);
-      regime = "yavaslama";
-    } else if (v < vAllowed - 0.05) {
-      // Hızlanma: çekiş kuvveti − direnç − eğim
-      const seg = segmentAt(line, s);
-      const Ftr = Math.min(stock.startingTractiveEffort, stock.power / Math.max(v, 0.5));
-      const R = stock.davisA + stock.davisB * v + stock.davisC * v * v;
-      const Fgrad = stock.mass * G * (seg.gradient / 1000);
-      a = (Ftr - R - Fgrad) / meff;
-      // Net kuvvet negatifse (dik yokuş / yetersiz güç) tren gerçekte
-      // hızlanamaz; sahte ivme eklemeyiz. Yavaşladıkça P/v ile çekiş
-      // kuvveti artar, tren yokuşta doğal bir denge hızına oturur.
-      vNew = Math.max(0, Math.min(v + a * dt, vAllowed));
-      regime = a >= 0 ? "hizlanma" : "yavaslama";
-    } else {
-      // Seyir (limitte sabit)
-      a = 0;
-      vNew = vAllowed;
-      regime = "seyir";
-    }
+    // Hareket adımı (çekiş/fren/seyir) tek kaynaktan; rejim etiketi sim'e özel çıktı.
+    const mot = stepMotion(stock, v, vAllowed, segmentAt(line, s).gradient, dt, meff, b);
+    const a = mot.a;
+    let vNew = mot.vNew;
+    const regime: Regime =
+      v > vAllowed + 0.05 ? "yavaslama"
+        : v < vAllowed - 0.05 ? (a >= 0 ? "hizlanma" : "yavaslama")
+          : "seyir";
 
     let sNew = s + ((v + vNew) / 2) * dt;
     t += dt;

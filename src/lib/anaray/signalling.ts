@@ -28,6 +28,28 @@ export function allowedSpeed(line: Line, stock: RollingStock, s: number, stopTar
   return vc;
 }
 
+/**
+ * Ortak hareket adımı — v → vNew (+ ivme a). TÜM motorlar bunu kullanır (tek kaynak
+ * fizik): çekiş Ftr=min(ST, P/max(v,0.5)); direnç R=davisA+B·v+C·v²; eğim
+ * Fg=m·g·grad/1000; a=(Ftr−R−Fg)/meff. Fren rejiminde vNew=max(0, v−b·dt) (a=−b),
+ * seyirde vNew=vAllowed (a=0). vNew her zaman [0, vAllowed] aralığında.
+ * Not: net kuvvet negatifse (dik yokuş/yetersiz güç) sahte ivme eklenmez — tren
+ * denge hızına oturur ya da (kalkışta) durur (kalkış-stall coreRun'da yakalanır).
+ */
+export function stepMotion(
+  stock: RollingStock, v: number, vAllowed: number, gradient: number, dt: number, meff: number, b: number
+): { vNew: number; a: number } {
+  if (v > vAllowed + 0.05) return { vNew: Math.max(0, v - b * dt), a: -b };
+  if (v < vAllowed - 0.05) {
+    const Ftr = Math.min(stock.startingTractiveEffort, stock.power / Math.max(v, 0.5));
+    const R = stock.davisA + stock.davisB * v + stock.davisC * v * v;
+    const Fg = stock.mass * G * (gradient / 1000);
+    const a = (Ftr - R - Fg) / meff;
+    return { vNew: Math.max(0, Math.min(v + a * dt, vAllowed)), a };
+  }
+  return { vNew: vAllowed, a: 0 };
+}
+
 /** Blok sınırları: istasyonlar + her kesimi maxBlockLen'i aşmayacak şekilde böl. */
 export function makeBlocks(line: Line, maxBlockLen: number): number[] {
   const set = new Set<number>([0, line.length]);
@@ -149,19 +171,7 @@ function runTrains(
       const target = Math.min(MA, nsPos);
 
       const vAllowed = allowedSpeed(line, stock, tr.s, target, b);
-      let vNew: number;
-      if (tr.v > vAllowed + 0.05) {
-        vNew = Math.max(0, tr.v - b * dt);
-      } else if (tr.v < vAllowed - 0.05) {
-        const seg = segAt(line, tr.s);
-        const Ftr = Math.min(stock.startingTractiveEffort, stock.power / Math.max(tr.v, 0.5));
-        const R = stock.davisA + stock.davisB * tr.v + stock.davisC * tr.v * tr.v;
-        const Fg = stock.mass * G * (seg.gradient / 1000);
-        const a = (Ftr - R - Fg) / meff;
-        vNew = Math.max(0, Math.min(tr.v + a * dt, vAllowed));
-      } else {
-        vNew = vAllowed;
-      }
+      let vNew = stepMotion(stock, tr.v, vAllowed, segAt(line, tr.s).gradient, dt, meff, b).vNew;
 
       let sNew = tr.s + ((tr.v + vNew) / 2) * dt;
 

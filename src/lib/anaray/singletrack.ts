@@ -9,9 +9,7 @@
 
 import type { Line, RollingStock } from "./types";
 // Fizik yardımcıları tek kaynaktan (signalling.ts) — kopya sürüklenmesini önler.
-import { allowedSpeed, segAt } from "./signalling";
-
-const G = 9.81;
+import { allowedSpeed, segAt, stepMotion } from "./signalling";
 
 export interface STTrain {
   index: number;
@@ -137,18 +135,7 @@ export function simulateSingleTrack(
       const target = Math.min(boundary, nsPos);
 
       const vA = allowedSpeed(tr.line, stock, tr.s, target, b);
-      let vN: number;
-      if (tr.v > vA + 0.05) {
-        vN = Math.max(0, tr.v - b * dt);
-      } else if (tr.v < vA - 0.05) {
-        const g = segAt(tr.line, tr.s);
-        const Ft = Math.min(stock.startingTractiveEffort, stock.power / Math.max(tr.v, 0.5));
-        const R = stock.davisA + stock.davisB * tr.v + stock.davisC * tr.v * tr.v;
-        const Fg = stock.mass * G * (g.gradient / 1000);
-        vN = Math.max(0, Math.min(tr.v + ((Ft - R - Fg) / meff) * dt, vA));
-      } else {
-        vN = vA;
-      }
+      const vN = stepMotion(stock, tr.v, vA, segAt(tr.line, tr.s).gradient, dt, meff, b).vNew;
       let sN = tr.s + ((tr.v + vN) / 2) * dt;
 
       if (sN >= target - 1e-6) {

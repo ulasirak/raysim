@@ -15,9 +15,8 @@
 import type { Line, RollingStock, Station } from "./types";
 import type { SimConfig } from "./config";
 import { BELGE, type DurakArasiRing, type MakasTip, ringToLine } from "./ring";
-import { allowedSpeed, blockOf, makeBlocks, occupiedBlocks, segAt } from "./signalling";
+import { allowedSpeed, blockOf, makeBlocks, occupiedBlocks, segAt, stepMotion } from "./signalling";
 
-const G = 9.81;
 const MB_MARGIN = 20; // m — hareketli blok emniyet payı (lider kuyruğunun gerisinde)
 
 // ————————————————————————————————————————————————
@@ -459,19 +458,7 @@ function coreRun(
       const target = Math.min(blockTarget, nsPos);
 
       const vAllowed = allowedSpeed(line, stock, tr.s, target, b);
-      let vNew: number;
-      if (tr.v > vAllowed + 0.05) {
-        vNew = Math.max(0, tr.v - b * dt);
-      } else if (tr.v < vAllowed - 0.05) {
-        const seg = segAt(line, tr.s);
-        const Ftr = Math.min(stock.startingTractiveEffort, stock.power / Math.max(tr.v, 0.5));
-        const R = stock.davisA + stock.davisB * tr.v + stock.davisC * tr.v * tr.v;
-        const Fg = stock.mass * G * (seg.gradient / 1000);
-        const a = (Ftr - R - Fg) / meff;
-        vNew = Math.max(0, Math.min(tr.v + a * dt, vAllowed));
-      } else {
-        vNew = vAllowed;
-      }
+      let vNew = stepMotion(stock, tr.v, vAllowed, segAt(line, tr.s).gradient, dt, meff, b).vNew;
 
       let sNew = tr.s + ((tr.v + vNew) / 2) * dt;
 
