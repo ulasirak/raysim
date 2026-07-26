@@ -4,7 +4,7 @@
 // Ağ + araç düzenlenir; her değişiklikte flattenRoute→simulate→paneller anında güncellenir.
 // Senaryolar Firestore'a kaydedilir/yüklenir. İstasyon ekle/sil grafı düzenler.
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { RailNetwork, RollingStock, RailEdge, Route } from "@/lib/anaray/types";
 import { flattenRoute, ringlerdenSebeke } from "@/lib/anaray/network";
@@ -17,9 +17,7 @@ import { araclar, varsayilanArac } from "@/lib/anaray/vehicles";
 import { kmh, km, sure, saat } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
-import { isFirebaseConfigured, getAuthInstance } from "@/lib/firebase";
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from "firebase/auth";
-import { saveScenario, listScenarios, loadScenario, deleteScenario, type ScenarioMeta } from "@/lib/scenarios";
+import { isFirebaseConfigured } from "@/lib/firebase";
 import { useSimConfig, useProje } from "@/components/SimConfigProvider";
 import { BosHat } from "@/components/BosHat";
 import { LiveNetwork } from "@/components/LiveNetwork";
@@ -235,11 +233,6 @@ function StudioIc() {
           </div>
         )}
       </Panel>
-
-      {/* Senaryolar (Firebase) */}
-      <div className="mt-6" />
-      <SenaryoPaneli network={network} stock={stock} route={route}
-        onLoad={(d) => { setDuzenlendi(true); setNetwork(d.network); setStock(d.stock); setRoute(d.route); }} />
 
       {/* EDİTÖR */}
       <div className="mt-6">
@@ -562,200 +555,6 @@ function StudioIc() {
       </footer>
     </div>
   );
-}
-
-// ————— Firebase senaryo paneli —————
-function SenaryoPaneli({
-  network, stock, route, onLoad,
-}: {
-  network: RailNetwork; stock: RollingStock; route: Route;
-  onLoad: (d: { network: RailNetwork; stock: RollingStock; route: Route }) => void;
-}) {
-  const configured = isFirebaseConfigured();
-  // Vitrin (salt-okunur) modu: canlıda kural yazmayı engellediği için Kaydet/Sil
-  // gizlenir → ziyaretçi "izin yok" hatası görmez, sadece kayıtlı senaryoları yükler.
-  const vitrin = process.env.NEXT_PUBLIC_VITRIN === "1";
-  const [ad, setAd] = useState("");
-  const [liste, setListe] = useState<ScenarioMeta[]>([]);
-  const [mesaj, setMesaj] = useState<{ tip: "ok" | "err" | "info"; metin: string } | null>(null);
-  const [mesgul, setMesgul] = useState(false);
-  // Yönetici girişi: vitrin modunda yalnız giriş yapan yönetici yazabilir/silebilir.
-  const [user, setUser] = useState<User | null>(null);
-  const [girisAcik, setGirisAcik] = useState(false);
-  const [eposta, setEposta] = useState("");
-  const [sifre, setSifre] = useState("");
-  const yazabilir = !vitrin || !!user; // yerelde (vitrin kapalı) hep; canlıda yalnız giriş yapınca
-
-  useEffect(() => {
-    const auth = getAuthInstance();
-    if (!auth) return;
-    return onAuthStateChanged(auth, (u) => setUser(u));
-  }, []);
-
-  const girisYap = async () => {
-    const auth = getAuthInstance();
-    if (!auth) return;
-    setMesgul(true); setMesaj(null);
-    try {
-      await signInWithEmailAndPassword(auth, eposta.trim(), sifre);
-      setGirisAcik(false); setSifre("");
-      setMesaj({ tip: "ok", metin: "Yönetici girişi yapıldı — kaydet/sil açık." });
-    } catch (e) {
-      setMesaj({ tip: "err", metin: hataMetni(e) });
-    } finally { setMesgul(false); }
-  };
-  const cikisYap = async () => {
-    const auth = getAuthInstance();
-    if (auth) await signOut(auth);
-  };
-
-  const yenile = async () => {
-    try {
-      setListe(await listScenarios());
-    } catch (e) {
-      setMesaj({ tip: "err", metin: hataMetni(e) });
-    }
-  };
-
-  useEffect(() => {
-    // Bağlıysa kayıtlı senaryoları mount'ta bir kez getir. Harici sistemden
-    // (Firebase) okuma; setState await sonrası olur, kademeli render tetiklemez.
-    if (!configured) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    yenile();
-  }, [configured]);
-
-  const kaydet = async () => {
-    if (!ad.trim()) { setMesaj({ tip: "info", metin: "Önce bir senaryo adı girin." }); return; }
-    setMesgul(true); setMesaj(null);
-    try {
-      await saveScenario(ad.trim(), { network, stock, route });
-      setMesaj({ tip: "ok", metin: `"${ad.trim()}" kaydedildi.` });
-      setAd("");
-      await yenile();
-    } catch (e) {
-      setMesaj({ tip: "err", metin: hataMetni(e) });
-    } finally { setMesgul(false); }
-  };
-
-  const yukle = async (id: string, nm: string) => {
-    setMesgul(true); setMesaj(null);
-    try {
-      const d = await loadScenario(id);
-      onLoad(d);
-      setMesaj({ tip: "ok", metin: `"${nm}" yüklendi.` });
-    } catch (e) {
-      setMesaj({ tip: "err", metin: hataMetni(e) });
-    } finally { setMesgul(false); }
-  };
-
-  const sil = async (id: string) => {
-    setMesgul(true); setMesaj(null);
-    try {
-      await deleteScenario(id);
-      await yenile();
-    } catch (e) {
-      setMesaj({ tip: "err", metin: hataMetni(e) });
-    } finally { setMesgul(false); }
-  };
-
-  // Vitrinde yayınlanmış senaryo yoksa ve yönetici oturumu da yoksa panelin ziyaretçi
-  // için hiçbir anlamı kalmaz ("boş liste + giriş kutusu") → yalnız iğneucu bir
-  // yönetici girişi bırakılır, tıklanınca tam panel açılır.
-  const bosVitrin = configured && vitrin && liste.length === 0 && !user;
-  if (bosVitrin && !girisAcik) {
-    return (
-      <div className="mt-6 flex justify-end">
-        <button onClick={() => setGirisAcik(true)} className="text-xs transition hover:opacity-70" style={{ color: brand.faint }}>
-          🔑 Yönetici girişi
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <Panel baslik="Senaryolar" aciklama={vitrin ? "Kayıtlı senaryoları yükle (vitrin — salt okunur)." : "Mevcut hattı Firebase'e kaydet, kayıtlıları yükle."}>
-      {!configured ? (
-        <p className="text-sm" style={{ color: brand.muted }}>
-          Firebase yapılandırılmadı — <span className="font-mono">.env.local</span> değerlerini girince kaydet/yükle açılır.
-        </p>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {yazabilir && (
-            <div className="flex flex-wrap items-center gap-2">
-              <input value={ad} onChange={(e) => setAd(e.target.value)} placeholder="Senaryo adı (ör. 3 dk arayla)"
-                className="min-w-0 flex-1 rounded border px-2 py-1.5 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
-              <button onClick={kaydet} disabled={mesgul}
-                className="rounded-md px-4 py-1.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: brand.ink }}>
-                {mesgul ? "…" : "Kaydet"}
-              </button>
-            </div>
-          )}
-
-          {liste.length > 0 && (
-            <ul className="divide-y rounded border" style={{ borderColor: brand.border }}>
-              {liste.map((s) => (
-                <li key={s.id} className="flex items-center gap-2 px-3 py-2 text-sm" style={{ borderColor: brand.border }}>
-                  <span className="min-w-0 flex-1 truncate" style={{ color: brand.ink }}>{s.name}</span>
-                  <button onClick={() => yukle(s.id, s.name)} disabled={mesgul} className="rounded px-2 py-1 text-xs font-medium transition hover:opacity-90 disabled:opacity-50" style={{ background: CK.track, color: brand.inkSoft }}>Yükle</button>
-                  {yazabilir && (
-                    <button onClick={() => sil(s.id)} disabled={mesgul} title="Sil" className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {vitrin && liste.length === 0 && (
-            <p className="text-sm" style={{ color: brand.muted }}>Henüz yayınlanmış senaryo yok.</p>
-          )}
-
-          {mesaj && (
-            <p className="text-xs" style={{ color: mesaj.tip === "err" ? brand.red : mesaj.tip === "ok" ? CK.good : brand.muted }}>
-              {mesaj.metin}
-              {mesaj.tip === "err" && (
-                <span style={{ color: brand.muted }}> — Firestore Database etkin mi ve kurallar okuma/yazmaya izin veriyor mu?</span>
-              )}
-            </p>
-          )}
-
-          {/* Yönetici girişi — yalnız vitrin modunda anlamlı (yerelde zaten tam yetki) */}
-          {vitrin && (
-            <div className="mt-1 border-t pt-2" style={{ borderColor: brand.border }}>
-              {user ? (
-                <div className="flex items-center justify-between text-xs" style={{ color: brand.muted }}>
-                  <span>Yönetici: <span className="font-medium" style={{ color: brand.ink }}>{user.email}</span> — kaydet/sil açık</span>
-                  <button onClick={cikisYap} className="rounded px-2 py-1 font-medium transition hover:bg-slate-50" style={{ color: brand.inkSoft }}>Çıkış</button>
-                </div>
-              ) : girisAcik ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <input type="email" value={eposta} onChange={(e) => setEposta(e.target.value)} placeholder="E-posta"
-                    className="min-w-0 flex-1 rounded border px-2 py-1.5 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
-                  <input type="password" value={sifre} onChange={(e) => setSifre(e.target.value)} placeholder="Şifre"
-                    onKeyDown={(e) => { if (e.key === "Enter") girisYap(); }}
-                    className="min-w-0 flex-1 rounded border px-2 py-1.5 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
-                  <button onClick={girisYap} disabled={mesgul}
-                    className="rounded-md px-3 py-1.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: brand.ink }}>
-                    {mesgul ? "…" : "Giriş"}
-                  </button>
-                  <button onClick={() => setGirisAcik(false)} className="rounded px-2 py-1.5 text-xs transition hover:bg-slate-50" style={{ color: brand.muted }}>Vazgeç</button>
-                </div>
-              ) : (
-                <button onClick={() => setGirisAcik(true)} className="text-xs font-medium transition hover:underline" style={{ color: brand.muted }}>
-                  🔑 Yönetici girişi (senaryo yayınlamak için)
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-    </Panel>
-  );
-}
-
-function hataMetni(e: unknown): string {
-  const m = e instanceof Error ? e.message : String(e);
-  return `Hata: ${m}`;
 }
 
 // ————— ortak yardımcılar —————
