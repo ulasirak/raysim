@@ -219,47 +219,12 @@ export function SistemMerkezi() {
         </div>
       </Panel>
 
-      {/* Bilgi / challenge referansı */}
-      <Panel baslik="Sistemin Karşıladığı Durumlar (Challenge Kataloğu)" aciklama="Belge kabullerinden türeyen gerçek-hayat arıza/istisna durumları ve sistemin tepkisi — parametreler değiştikçe bu davranışlar korunur.">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left" style={{ borderColor: brand.borderStrong, color: brand.muted }}>
-                <th className="py-2 pr-3 font-medium">Durum</th>
-                <th className="py-2 pr-3 font-medium">Sistem tepkisi</th>
-                <th className="py-2 font-medium">İlgili parametre</th>
-              </tr>
-            </thead>
-            <tbody>
-              {CHALLENGE.map((c, i) => (
-                <tr key={i} className="border-b align-top" style={{ borderColor: brand.border }}>
-                  <td className="py-2 pr-3 font-medium" style={{ color: brand.ink }}>{c[0]}</td>
-                  <td className="py-2 pr-3" style={{ color: brand.inkSoft }}>{c[1]}</td>
-                  <td className="py-2 font-mono text-xs" style={{ color: brand.muted }}>{c[2]}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Panel>
-
       <footer className="mt-10 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
         RaySim · Sistem Merkezi — parametreler tek kaynaktır; Sefer / Ringler / Anklaşman modülleri buradan okur. Değerler tarayıcıda saklanır (localStorage). Referans hızlar: {kmh(cfg.vAnahat).toFixed(0)}/{kmh(cfg.vSahasal).toFixed(0)}/{kmh(cfg.vMakas).toFixed(0)}/{kmh(cfg.vHemzemin).toFixed(0)} km/h.
       </footer>
     </div>
   );
 }
-
-const CHALLENGE: string[][] = [
-  ["Aks sayıcı arızası (sahte meşguliyet)", "Elektriksel makas komutu bloke → manuel makas + süpervizör blok sıfırlama", "route release"],
-  ["TCC–saha haberleşme kaybı", "Makas bölgeleri kırmızı; duraklar arası headway sürer (tüm hat sönmez)", "headway"],
-  ["Kırmızı ihlali / kurtarma treni", "Yalnız ilgili lokal bölge sinyalleri söner", "—"],
-  ["Kritik donanım arızası", "Fail-safe SÖNÜK (blanking) — en katı dur", "—"],
-  ["Çoklu (S-)makas eşzamanlı tanzim", "Sıralı tanzim, her adım ≤ makas adım süresi", "makasAdimMax"],
-  ["Tren sayısı artışı", "En yavaş ring darboğaz; makas bölgesi çakışma kuyruğu", "headway · blok"],
-  ["Yakın durak / kısa mesafe (best-case)", "Durak-çiftleri eşit şart → headway kararlı", "worst/best mesafe"],
-  ["Tercihsiz (ters) yön", "Sınırlı nokta + tam blok; dinamik arka release, ön kilitli", "route release"],
-];
 
 // ————— yardımcılar —————
 function round(n: number, d = 0) {

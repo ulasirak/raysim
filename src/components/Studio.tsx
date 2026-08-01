@@ -11,10 +11,9 @@ import { flattenRoute, ringlerdenSebeke } from "@/lib/anaray/network";
 import { addStationOnEdge, addTerminalStation, removeStation } from "@/lib/anaray/edit";
 import { simulate } from "@/lib/anaray/sim";
 import { simulateSignalled, reverseRoute, fleetSize, monteCarlo, planDepotDispatch, type MonteCarloResult } from "@/lib/anaray/signalling";
-import { simulateSingleTrack } from "@/lib/anaray/singletrack";
 import { computeEnergy } from "@/lib/anaray/energy";
 import { araclar } from "@/lib/anaray/vehicles";
-import { kmh, km, sure, saat } from "@/lib/anaray/format";
+import { kmh, km, sure } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { isFirebaseConfigured } from "@/lib/firebase";
@@ -22,8 +21,6 @@ import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimCon
 import { BosHat } from "@/components/BosHat";
 import { LiveNetwork } from "@/components/LiveNetwork";
 import { NetworkDiagram } from "@/components/NetworkDiagram";
-import { TimeDistanceChart } from "@/components/TimeDistanceChart";
-import { TrainAnimation } from "@/components/TrainAnimation";
 import { TrainGraphChart } from "@/components/TrainGraphChart";
 
 const KMH = 1 / 3.6;
@@ -89,15 +86,15 @@ function StudioIc() {
   const setSeferSayisi = (v: number) => patchIsletme({ seferSayisi: v });
   const turnaroundDk = isletme.turnaroundDk;
   const setTurnaroundDk = (v: number) => patchIsletme({ turnaroundDk: v });
-  // null = varsayılan (tüm ara istasyonlar kruvasman); hat değişince kendini uyarlar.
-  const passingIds = isletme.passingIds;
-  const setPassingIds = (v: string[] | null) => patchIsletme({ passingIds: v });
   const [ariza, setAriza] = useState<number[]>([]); // dispatcher: arızalı bloklar (gidiş hattı) — geçici what-if
   const [yon, setYon] = useState<"gidis" | "donus" | "ikisi">("gidis");
   const [meanEntry, setMeanEntry] = useState(30);
   const [meanDwell, setMeanDwell] = useState(5);
   const [mc, setMc] = useState<MonteCarloResult | null>(null);
   const [mcRunning, setMcRunning] = useState(false);
+  // Hat Şeması sefer saatleri: başlangıç saati girilir, buton istasyon istasyon gösterir.
+  const [baslangicSaati, setBaslangicSaati] = useState("08:00");
+  const [saatlerGoster, setSaatlerGoster] = useState(false);
 
   const { line, result } = useMemo(() => {
     const l = flattenRoute(network, route);
@@ -133,18 +130,6 @@ function StudioIc() {
     () => fleetSize(gidisSim.baseTime, donusSim.baseTime, turnaroundDk * 60, headwayDk * 60),
     [gidisSim.baseTime, donusSim.baseTime, turnaroundDk, headwayDk]
   );
-
-  const passingEff = useMemo(
-    () => passingIds ?? line.stations.slice(1, -1).map((s) => s.id),
-    [passingIds, line]
-  );
-
-  const stSim = useMemo(() => {
-    const passing = line.stations.filter((s) => passingEff.includes(s.id)).map((s) => s.position);
-    return simulateSingleTrack(line, reverseLine, stock, {
-      headway: headwayDk * 60, upCount: seferSayisi, downCount: seferSayisi, passing,
-    });
-  }, [line, reverseLine, stock, headwayDk, seferSayisi, passingEff]);
 
   const monteCarloCalistir = () => {
     setMcRunning(true);
@@ -217,6 +202,11 @@ function StudioIc() {
   const durusSuresi = line.stations.reduce((a, s) => a + s.dwell, 0);
   const teknikHiz = line.length / (result.totalTime - durusSuresi || 1);
   const stationById = Object.fromEntries(line.stations.map((s) => [s.id, s]));
+  // Girilen "SS:DD" başlangıç saatini saniyeye çevir (sefer saatleri bunun üstüne eklenir).
+  const baslangicSn = (() => {
+    const [h, m] = baslangicSaati.split(":").map((x) => parseInt(x, 10));
+    return (Number.isFinite(h) ? h : 0) * 3600 + (Number.isFinite(m) ? m : 0) * 60;
+  })();
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
@@ -408,6 +398,49 @@ function StudioIc() {
       <div className="mt-6">
         <Panel katlanir baslik="Hat Şeması (statik topoloji)" aciklama="Seçili rota (kalın); istasyon adları üstte, kilometre altta. Rota dışı kollar (varsa) soluk çizilir.">
           <NetworkDiagram network={network} route={route} line={line} />
+
+          {/* Sefer saatleri — başlangıç saati girilir, buton istasyon istasyon saatleri gösterir */}
+          <div className="mt-5 flex flex-wrap items-center gap-3 border-t pt-4" style={{ borderColor: brand.border }}>
+            <label className="flex items-center gap-2 text-sm" style={{ color: brand.inkSoft }}>
+              <span className="field-label">Başlangıç saati</span>
+              <input type="time" value={baslangicSaati} onChange={(e) => setBaslangicSaati(e.target.value)}
+                className="rounded border px-2 py-1 text-sm tabular-nums" style={{ borderColor: brand.border, color: brand.ink }} />
+            </label>
+            <button onClick={() => setSaatlerGoster((v) => !v)}
+              className="rounded-md px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90" style={{ background: brand.ink }}>
+              {saatlerGoster ? "Saatleri gizle" : "🕐 Saatleri göster"}
+            </button>
+            <span className="text-xs" style={{ color: brand.muted }}>
+              Simülasyondan hesaplanan varış / kalkış saatleri — girilen başlangıç saatinden itibaren.
+            </span>
+          </div>
+          {saatlerGoster && (
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left" style={{ borderColor: brand.borderStrong, color: brand.muted }}>
+                    <th className="py-2 font-medium">İstasyon</th>
+                    <th className="py-2 font-medium">Kilometre</th>
+                    <th className="py-2 font-medium">Varış</th>
+                    <th className="py-2 font-medium">Kalkış</th>
+                    <th className="py-2 font-medium">Bekleme</th>
+                  </tr>
+                </thead>
+                <tbody className="font-mono tabular-nums">
+                  <Satir ad={line.stations[0].name} konum={km(0)} varis="—" kalkis={saatBicim(baslangicSn)} dwell={0} />
+                  {result.stationEvents.map((ev) => {
+                    const st = stationById[ev.stationId];
+                    return (
+                      <Satir key={ev.stationId} ad={st.name} konum={km(st.position)}
+                        varis={saatBicim(baslangicSn + ev.arrival)}
+                        kalkis={saatBicim(baslangicSn + ev.departure)}
+                        dwell={st.dwell} />
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Panel>
       </div>
 
@@ -434,17 +467,6 @@ function StudioIc() {
           </div>
         </Panel>
       </section>
-
-      {/* Mesafe–Zaman ve Canlı Animasyon örtüşen (Bildfahrplan / Canlı Ağ'ın alt
-          kümesi) → katlanır detaylara alındı. */}
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Panel katlanir baslik="Mesafe–Zaman Diyagramı" aciklama="Tek tren: çizginin eğimi hızı, düz kısımlar durakta beklemeyi gösterir. (Çok trenli hâli aşağıdaki Bildfahrplan'da.)">
-          <TimeDistanceChart line={line} result={result} />
-        </Panel>
-        <Panel katlanir baslik="Canlı Animasyon" aciklama="Tek treni hat üzerinde oynatın. (Tüm trenlerin canlı hâli yukarıdaki Canlı Ağ Simülasyonu'nda.)">
-          <TrainAnimation line={line} result={result} stock={stock} />
-        </Panel>
-      </div>
 
       {/* Sefer sıklığı, sinyalizasyon & kapasite */}
       <section className="mt-6">
@@ -497,45 +519,6 @@ function StudioIc() {
         </Panel>
       </section>
 
-      {/* Tek hat işletmesi (kruvasman) */}
-      <section className="mt-6">
-        <Panel baslik="Tek Hat İşletmesi (Kruvasman)" aciklama="Tek ray iki yönde paylaşılır; karşı yönler yalnızca kruvasman (geçiş) istasyonlarında karşılaşır. Geçiş istasyonları arası kesimde aynı anda tek tren bulunur.">
-          <div className="mb-3">
-            <div className="field-label mb-2">Kruvasman (geçiş) istasyonları — uçlar daima geçiş</div>
-            <div className="flex flex-wrap gap-2">
-              {line.stations.slice(1, -1).map((st) => {
-                const on = passingEff.includes(st.id);
-                return (
-                  <button key={st.id}
-                    onClick={() => setPassingIds(on ? passingEff.filter((x) => x !== st.id) : [...passingEff, st.id])}
-                    className="rounded-full px-3 py-1 text-xs font-medium transition"
-                    style={on ? { background: brand.ink, color: "#fff" } : { background: CK.track, color: brand.inkSoft }}>
-                    {on ? "⊕ " : ""}{st.name}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <MiniStat etiket="Kesim Sayısı" deger={`${stSim.sections.length - 1}`} alt="geçişler arası" />
-            <MiniStat etiket="Karşılaşan Tren" deger={`${stSim.waited}`} alt="bekleyerek geçen" />
-            <MiniStat etiket="İşletme Süresi" deger={sure(stSim.tMax)} alt={`${seferSayisi}↑ ${seferSayisi}↓`} />
-            <MiniStat etiket="Durum" deger={stSim.deadlock ? "KİLİTLENME" : "Sorunsuz"} />
-          </div>
-          {stSim.deadlock && (
-            <p className="mb-3 text-xs" style={{ color: brand.red }}>
-              ⚠ Bu kruvasman düzeni ve tren sayısıyla trafik kilitlendi — daha fazla geçiş istasyonu ekleyin veya sefer sayısını azaltın.
-            </p>
-          )}
-
-          <TrainGraphChart line={line} blocks={stSim.sections} gidis={stSim.up} donus={stSim.down} tMax={stSim.tMax} />
-          <p className="mt-2 text-xs" style={{ color: brand.muted }}>
-            <span style={{ color: CK.blue }}>■</span> Gidiş (Merkez → Terminal) · <span style={{ color: CK.orange }}>■</span> Dönüş — çizgilerin kesiştiği nokta = kruvasman (karşılaşma). Kalın yatay çizgiler geçiş istasyonlarıdır.
-          </p>
-        </Panel>
-      </section>
-
       {/* Monte-Carlo gecikme analizi */}
       <section className="mt-6">
         <Panel baslik="Monte-Carlo Gecikme Analizi (Robustluk)" aciklama="Rastgele giriş gecikmesi + durak sapmalarıyla çok sayıda sefer simüle edilir; birincil gecikmelerin sonraki trenlere yayılımı ölçülür.">
@@ -576,32 +559,6 @@ function StudioIc() {
         </Panel>
       </section>
 
-      {/* Sefer tarifesi */}
-      <section className="mt-6">
-        <Panel baslik="Sefer Tarifesi" aciklama="Simülasyondan hesaplanan varış / kalkış saatleri (00:00 = hareket).">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left" style={{ borderColor: brand.borderStrong, color: brand.muted }}>
-                <th className="py-2 font-medium">İstasyon</th>
-                <th className="py-2 font-medium">Kilometre</th>
-                <th className="py-2 font-medium">Varış</th>
-                <th className="py-2 font-medium">Kalkış</th>
-                <th className="py-2 font-medium">Bekleme</th>
-              </tr>
-            </thead>
-            <tbody className="font-mono tabular-nums">
-              <Satir ad={line.stations[0].name} konum={km(0)} varis="—" kalkis={saat(0)} dwell={0} />
-              {result.stationEvents.map((ev) => {
-                const st = stationById[ev.stationId];
-                return (
-                  <Satir key={ev.stationId} ad={st.name} konum={km(st.position)} varis={saat(ev.arrival)} kalkis={ev.departure > ev.arrival ? saat(ev.departure) : "—"} dwell={st.dwell} />
-                );
-              })}
-            </tbody>
-          </table>
-        </Panel>
-      </section>
-
       <footer className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
         <span className="flex items-center gap-3">
           <span>RaySim · Demiryolu Ağı Simülasyon Sistemi</span>
@@ -617,6 +574,14 @@ function StudioIc() {
 function round(n: number, d = 0) {
   const f = Math.pow(10, d);
   return Math.round(n * f) / f;
+}
+
+/** Toplam saniyeyi (başlangıç saati + geçen süre) "SS:DD" 24-saat gösterimine çevirir. */
+function saatBicim(totalSec: number): string {
+  const s = Math.max(0, Math.round(totalSec));
+  const h = Math.floor(s / 3600) % 24;
+  const m = Math.floor((s % 3600) / 60);
+  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
 }
 
 function Num({ label, value, onChange, step, suffix }: { label: string; value: number; onChange: (v: number) => void; step: number; suffix: string }) {

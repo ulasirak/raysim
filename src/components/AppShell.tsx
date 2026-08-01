@@ -33,7 +33,6 @@ const MODULLER: Modul[] = [
   { href: "/", slug: "sefer", ad: "Sefer Simülasyonu", rol: "Ağ · fizik · headway · kapasite", kod: "SR-0001", rota: "Ana Hat Sefer Analizi" },
   { href: "/ringler", slug: "ringler", ad: "Durak Arası Ringler", rol: "İşletim hücreleri · worst/best · loop", kod: "SR-0002", rota: "Durak Arası Ring Şartları" },
   { href: "/anklasman", slug: "anklasman", ad: "Makas Bölgesi Anklaşman", rol: "Interlocking · çakışma matriksi · aspekt", kod: "SR-0003", rota: "Makas Bölgesi Anklaşman" },
-  { href: "/hat", slug: "tam-hat", ad: "Tam Hat Simülasyonu", rol: "Ring + anklaşman · çok tren · darboğaz", kod: "SR-0005", rota: "Tam Hat Çok-Tren Canlı Simülasyon" },
   { href: "/sistem", slug: "sistem", ad: "Sistem Merkezi", rol: "Parametreler · canlı durum · bilgi", kod: "SR-0004", rota: "Simülasyon Parametreleri & Durum" },
   { href: "/cografi", slug: "cografi", ad: "Coğrafi Güzergah", rol: "GTFS · gerçek koordinat · harita", kod: "SR-0007", rota: "Gerçek Koordinatlı Hat Haritası" },
   { href: "/belgeler", slug: "belgeler", ad: "Teknik Belgeler", rol: "Ücretli PDF rapor · tasarım el kitabı", kod: "SR-0006", rota: "Teknik Dokümantasyon Üretimi" },
@@ -187,7 +186,7 @@ function Govde({ children }: { children: React.ReactNode }) {
       <Masthead sag={<HesapKontrolleri />} />
 
       {/* Modül navigasyonu — sistemin mantıksal iş akışı bir METRO HATTI olarak:
-          yedi istasyon soldan sağa boru hattı; kaydırma ilerlemesi rayda akan bir
+          altı istasyon soldan sağa boru hattı; kaydırma ilerlemesi rayda akan bir
           tren gibi kırmızı-altın çizgiyle ilerler. Ana sayfada bölüm ankorlarına
           kaydırır; eski rotalarda ana sayfadaki bölüme döner. */}
       {icerikVar && (
