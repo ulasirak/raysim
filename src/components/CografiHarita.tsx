@@ -11,8 +11,8 @@ import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { useProje } from "@/components/SimConfigProvider";
 import {
-  parseStops, parseShapes, makeProjector, polylineLength, gtfsToRings, tahminEtKisitlar, tahminEtHiz, tahminEtEgim, shapeElevations, egimProfili, hizProfili,
-  ornekGtfsStops, ornekGtfsShapes, type GeoStop, type GeoShape, type EgimProfil, type HizProfil,
+  parseStops, parseShapes, makeProjector, polylineLength, gtfsToRings, tahminEtKisitlar, tahminEtHiz, tahminEtEgim, shapeElevations, hizProfili,
+  ornekGtfsStops, ornekGtfsShapes, type GeoStop, type GeoShape, type HizProfil,
 } from "@/lib/anaray/gtfs";
 
 const VBW = 820, VBH = 460, PAD = 40;
@@ -70,7 +70,6 @@ export function CografiHarita() {
     }
     return out;
   }, [mainShape]);
-  const egim = useMemo(() => egimProfili(stops, shapes), [stops, shapes]);
   const hiz = useMemo(() => hizProfili(stops, shapes), [stops, shapes]);
 
   const uzunluk = useMemo(() => {
@@ -303,96 +302,12 @@ export function CografiHarita() {
         </p>
       </div>
 
-      {/* Eğim profili — YALNIZ yükseklik verisi (stop_elevation) varsa çizilir;
-          yoksa hiç yer kaplamaz (düz/verisiz hatta gereksiz placeholder gösterilmez). */}
-      {egim && <EgimProfilStrip profil={egim} />}
-
       {/* Hız profili — kurp yarıçapından, shape varsa; yoksa gösterilmez. */}
       {hiz && <HizProfilStrip profil={hiz} />}
 
       <footer className="mt-10 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
         RaySim · Coğrafi Güzergah — GTFS stops/shapes içe aktarımı. Bu modül güzergahı gerçek koordinatlarda gösterir; simülasyon modeli (ring/anklaşman) ayrı Sefer/Ringler modüllerinden yürür.
       </footer>
-    </div>
-  );
-}
-
-function EgimProfilStrip({ profil }: { profil: EgimProfil }) {
-  const W = 820, H = 180, PL = 52, PR = 18, PT = 24, PB = 40;
-  const iw = W - PL - PR, ih = H - PT - PB;
-  const { cumDist, ele, minEle, maxEle, totalDist, maxAbsGrade } = profil;
-  const ePad = Math.max(1, maxEle - minEle) * 0.18;
-  const eLo = minEle - ePad, eHi = maxEle + ePad;
-  const x = (d: number) => PL + (totalDist ? (d / totalDist) * iw : 0);
-  const y = (e: number) => PT + (1 - (e - eLo) / (eHi - eLo)) * ih;
-  const col = (g: number) => (g > 0.5 ? brand.red : g < -0.5 ? DOWN : CK.faint);
-
-  // Sıralı geçerli (yükseklikli) durak indeksleri
-  const idx = cumDist.map((_, i) => i).filter((i) => isFinite(ele[i]));
-  const areaPts = idx.map((i) => `${x(cumDist[i]).toFixed(1)},${y(ele[i]).toFixed(1)}`);
-  const areaPath = areaPts.length
-    ? `M ${x(cumDist[idx[0]]).toFixed(1)},${(PT + ih).toFixed(1)} L ${areaPts.join(" L ")} L ${x(cumDist[idx[idx.length - 1]]).toFixed(1)},${(PT + ih).toFixed(1)} Z`
-    : "";
-
-  return (
-    <div className="mt-4 rounded-lg border bg-white p-3" style={{ borderColor: brand.border }}>
-      <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
-        <div className="field-label">Eğim profili — yükseklik / mesafe (&quot;hat üret&quot; gerekmez)</div>
-        <div className="text-xs" style={{ color: brand.muted }}>
-          en dik <b style={{ color: maxAbsGrade >= 40 ? brand.red : brand.ink }}>±{maxAbsGrade}‰</b> · yükseklik {minEle.toFixed(0)}–{maxEle.toFixed(0)} m · {(totalDist / 1000).toFixed(2)} km
-        </div>
-      </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Eğim profili">
-        <rect x={0} y={0} width={W} height={H} fill="#F7F9FB" />
-        {/* yatay ızgara + yükseklik ekseni */}
-        {[0, 0.5, 1].map((f, i) => {
-          const e = eLo + (eHi - eLo) * (1 - f);
-          const yy = PT + f * ih;
-          return (
-            <g key={`ax${i}`}>
-              <line x1={PL} y1={yy} x2={W - PR} y2={yy} stroke="#E9EDF1" strokeWidth={1} />
-              <text x={PL - 6} y={yy + 3} textAnchor="end" fontSize={9} fill={brand.muted}>{e.toFixed(0)}</text>
-            </g>
-          );
-        })}
-        {/* istasyon kılavuz çizgileri (hız profiliyle ortak eksen) */}
-        {cumDist.map((d, i) => (
-          <line key={`sg${i}`} x1={x(d)} y1={PT} x2={x(d)} y2={PT + ih} stroke="#EDF1F5" strokeWidth={1} />
-        ))}
-        {/* dolgu */}
-        {areaPath && <path d={areaPath} fill={brand.route} opacity={0.05} />}
-        {/* eğime göre renkli segmentler + ‰ etiketi */}
-        {cumDist.slice(0, -1).map((_, i) => {
-          if (!isFinite(ele[i]) || !isFinite(ele[i + 1])) return null;
-          const dx = cumDist[i + 1] - cumDist[i];
-          const g = dx ? Math.round(((ele[i + 1] - ele[i]) / dx) * 1000 * 10) / 10 : 0;
-          const x1 = x(cumDist[i]), y1 = y(ele[i]), x2 = x(cumDist[i + 1]), y2 = y(ele[i + 1]);
-          const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
-          return (
-            <g key={`seg${i}`}>
-              <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={col(g)} strokeWidth={3.5} strokeLinecap="round" />
-              {cumDist.length <= 16 && (
-                <text x={mx} y={my - 6} textAnchor="middle" fontSize={9} fontWeight={600} fill={col(g)}>
-                  {g > 0 ? "+" : ""}{g}‰
-                </text>
-              )}
-            </g>
-          );
-        })}
-        {/* durak işaretleri */}
-        {cumDist.map((d, i) => (isFinite(ele[i]) ? (
-          <circle key={`p${i}`} cx={x(d)} cy={y(ele[i])} r={3.2} fill={brand.surface} stroke={brand.ink} strokeWidth={1.6} />
-        ) : null))}
-        {/* mesafe ekseni */}
-        <line x1={PL} y1={PT + ih} x2={W - PR} y2={PT + ih} stroke={brand.borderStrong} strokeWidth={1} />
-        <text x={PL} y={H - 8} fontSize={9} fill={brand.muted}>0 km</text>
-        <text x={W - PR} y={H - 8} textAnchor="end" fontSize={9} fill={brand.muted}>{(totalDist / 1000).toFixed(2)} km</text>
-        <text x={(PL + W - PR) / 2} y={H - 8} textAnchor="middle" fontSize={9} fill={brand.faint}>hat başından mesafe</text>
-      </svg>
-      <p className="mt-2 text-xs" style={{ color: brand.muted }}>
-        <span style={{ color: brand.red }}>▬</span> tırmanış · <span style={{ color: DOWN }}>▬</span> iniş · <span style={{ color: CK.faint }}>▬</span> ~düz.
-        Düşey eksen <b>otomatik ölçekli (düşey abartılı)</b> — küçük yükseklik farkları görünür olsun diye; ‰ değerleri gerçektir. Durak yüksekliklerinden hesaplanır; &quot;hat üret&quot; gerekmez.
-      </p>
     </div>
   );
 }

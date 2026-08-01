@@ -23,7 +23,6 @@ import { BosHat } from "@/components/BosHat";
 import { LiveNetwork } from "@/components/LiveNetwork";
 import { NetworkDiagram } from "@/components/NetworkDiagram";
 import { TimeDistanceChart } from "@/components/TimeDistanceChart";
-import { SpeedProfileChart } from "@/components/SpeedProfileChart";
 import { TrainAnimation } from "@/components/TrainAnimation";
 import { TrainGraphChart } from "@/components/TrainGraphChart";
 
@@ -381,7 +380,7 @@ function StudioIc() {
 
             {/* Segmentler */}
             <div>
-              <SubBaslik>Hız Limiti & Eğim</SubBaslik>
+              <SubBaslik>Hız Limiti</SubBaslik>
               <div className="flex flex-col gap-2">
                 {routeEdges.map((e) => (
                   <div key={e.id} className="rounded border p-2" style={{ borderColor: brand.border }}>
@@ -394,9 +393,6 @@ function StudioIc() {
                         <input type="number" step={5} value={round(kmh(s.vmax))} onChange={(ev) => patchSegment(e.id, i, { vmax: (parseFloat(ev.target.value) || 0) * KMH })}
                           className="w-16 rounded border px-1 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
                         <span className="text-xs" style={{ color: brand.muted }}>km/h</span>
-                        <input type="number" step={1} value={round(s.gradient)} onChange={(ev) => patchSegment(e.id, i, { gradient: parseFloat(ev.target.value) || 0 })}
-                          className="ml-auto w-16 rounded border px-1 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
-                        <span className="text-xs" style={{ color: brand.muted }}>‰</span>
                       </div>
                     ))}
                   </div>
@@ -439,13 +435,8 @@ function StudioIc() {
         </Panel>
       </section>
 
-      {/* Ana grafik: Hız Profili (tam genişlik). Mesafe–Zaman ve Canlı Animasyon
-          örtüşen (Bildfahrplan / Canlı Ağ'ın alt kümesi) → katlanır detaylara alındı. */}
-      <div className="mt-6">
-        <Panel baslik="Hız Profili" aciklama="Hat boyunca fiili hız (mürekkep) ve hız limiti (kırmızı kesikli).">
-          <SpeedProfileChart line={line} result={result} />
-        </Panel>
-      </div>
+      {/* Mesafe–Zaman ve Canlı Animasyon örtüşen (Bildfahrplan / Canlı Ağ'ın alt
+          kümesi) → katlanır detaylara alındı. */}
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Panel katlanir baslik="Mesafe–Zaman Diyagramı" aciklama="Tek tren: çizginin eğimi hızı, düz kısımlar durakta beklemeyi gösterir. (Çok trenli hâli aşağıdaki Bildfahrplan'da.)">
           <TimeDistanceChart line={line} result={result} />
