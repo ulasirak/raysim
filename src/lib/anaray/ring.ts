@@ -11,7 +11,7 @@
 // Kaynak kabuller: Tasarım El Kitabı MAZ-VA-AKS-001 v6.0 (s.16–17, 3.4.8.2).
 // Fizik motoru (sim.ts) yeniden kullanılır — sayılar el kitabıyla tutarlıdır.
 
-import type { Line, RollingStock, Station, TrackSegment } from "./types";
+import type { Line, RollingStock, Station, TrackSegment, RailNetwork, Route, RailNode, RailEdge } from "./types";
 import { simulate } from "./sim";
 import { varsayilanConfig, type SimConfig } from "./config";
 
@@ -483,6 +483,109 @@ export function dengeOnerisi(rings: DurakArasiRing[], stock: RollingStock, cfg: 
 /** Tüm ringler eksiksiz mi? (loop kurmak için zorunlu şart) */
 export function loopTamMi(rings: DurakArasiRing[]): boolean {
   return rings.length > 0 && rings.every((r) => ringDogrula(r).length === 0);
+}
+
+// ————————————————————————————————————————————————
+// Graf şebekesi → Ring modeli (Sefer editörü düzenlemelerini KALICIYA yaz)
+// ————————————————————————————————————————————————
+//
+// `ringlerdenSebeke` (network.ts) ileri çevrimin tersidir. Sefer modülünde
+// istasyon adı/dwell/depot, durak-arası mesafe, sahasal hız ve eğim düzenlenip
+// "Projeye kaydet" denince graf tekrar ring zincirine indirgenir ve `setRings`
+// ile projeye (Firestore) yazılır.
+//
+// KORUNAN VERİ: makas/hemzemin/tehlike bölgeleri ve worst/best mesafe köşeleri
+// Sefer modülünde düzenlenmez → eski ring'den taşınır (yalnızca konumları yeni
+// uzunluğa kırpılır). Bu kısıtlar Ringler editöründe düzenlenir. Sefer'de bir
+// segmentin base hızı yükseltilirse ring.vmax güncellenir; kısıt bölgesindeki
+// (makas/geçit) düşük hız bir sonraki üretimde eski kısıttan yeniden uygulanır.
+export function sebekedenRingler(
+  net: RailNetwork,
+  route: Route,
+  oncekiRings: DurakArasiRing[],
+  cfg: SimConfig = BELGE,
+): DurakArasiRing[] {
+  const nodeById = new Map(net.nodes.map((n) => [n.id, n]));
+  const edgeById = new Map(net.edges.map((e) => [e.id, e]));
+  const edges = route.edgeIds.map((id) => edgeById.get(id)).filter(Boolean) as RailEdge[];
+  if (edges.length === 0) return oncekiRings;
+
+  // Rotayı sırayla gez → düğüm dizisi [N0..Nn] + her kenarın yönü (edit.ts
+  // değişmezi kenarları ileri tutar; yine de güvenli tarafta kalmak için yönü ölç).
+  let current = route.startNodeId ?? edges[0].from;
+  const nodes: RailNode[] = [];
+  const yonler: boolean[] = [];
+  const ilk = nodeById.get(current);
+  if (ilk) nodes.push(ilk);
+  for (const e of edges) {
+    const forward = e.from === current;
+    const next = forward ? e.to : e.from;
+    yonler.push(forward);
+    const nd = nodeById.get(next);
+    if (nd) nodes.push(nd);
+    current = next;
+  }
+  if (nodes.length !== edges.length + 1) return oncekiRings; // kopuk rota — dokunma
+
+  // En uzun segmentin eğimi ringi en iyi temsil eder (ring başına eğim tekdüzedir).
+  const ringEgim = (e: RailEdge): number => {
+    let best = e.segments[0] ?? { start: 0, end: 0, gradient: 0 };
+    for (const s of e.segments) if (s.end - s.start > best.end - best.start) best = s;
+    return best.gradient ?? 0;
+  };
+
+  const sameShape = oncekiRings.length === edges.length;
+  const rings: DurakArasiRing[] = edges.map((e, i) => {
+    const fromN = nodes[i];
+    const toN = nodes[i + 1];
+    const uzunluk = Math.max(1, e.length);
+    const baseV = e.segments.length ? Math.max(...e.segments.map((s) => s.vmax)) : 0;
+    const grad = ringEgim(e) * (yonler[i] ? 1 : -1);
+    // Eski ring: yapı değişmediyse index; değiştiyse (ekle/sil) ad çiftiyle eşle.
+    const eski = sameShape
+      ? oncekiRings[i]
+      : oncekiRings.find((r) => r.fromAd === fromN.name && r.toAd === toN.name);
+    const taban = eski ?? yeniRing(fromN.name, toN.name);
+    const worst = Math.max(uzunluk, eski?.worstUzunluk ?? Math.max(uzunluk, cfg.enUzunHeadwayMesafesi));
+    const best = clamp(eski?.bestUzunluk ?? Math.min(300, uzunluk), 50, uzunluk);
+    const kirp = <T extends { konum: number }>(x: T): T => ({ ...x, konum: clamp(x.konum, 0, uzunluk) });
+    return {
+      ...taban,
+      id: eski?.id ?? yeniId("RING"),
+      ad: eski ? taban.ad : `${fromN.name} → ${toN.name}`,
+      fromStationId: taban.fromStationId,
+      toStationId: taban.toStationId,
+      fromAd: fromN.name,
+      toAd: toN.name,
+      uzunluk,
+      worstUzunluk: worst,
+      bestUzunluk: best,
+      vmax: baseV > 0 ? baseV : taban.vmax,
+      egim: grad,
+      dwell: Math.max(0, toN.dwell ?? 0),
+      depot: toN.depot,
+      queued: toN.queued,
+      fromDepot: undefined,
+      fromQueued: undefined,
+      makaslar: (eski?.makaslar ?? []).map(kirp),
+      hemzeminler: (eski?.hemzeminler ?? []).map(kirp),
+      tehlikeNoktalari: (eski?.tehlikeNoktalari ?? []).map(kirp),
+    };
+  });
+
+  // Başlangıç durağı deposu YALNIZ ilk ringde taşınır (origin'in kendi ringi yok).
+  if (rings.length > 0) {
+    rings[0].fromDepot = nodes[0].depot;
+    rings[0].fromQueued = nodes[0].queued;
+  }
+
+  // Id benzersizliği (ad-çifti eşleşmesi aynı eski ringi iki kez seçmiş olabilir).
+  const gorulen = new Set<string>();
+  for (const r of rings) {
+    while (gorulen.has(r.id)) r.id = yeniId("RING");
+    gorulen.add(r.id);
+  }
+  return rings;
 }
 
 // ————————————————————————————————————————————————

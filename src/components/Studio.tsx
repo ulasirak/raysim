@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { RailNetwork, RailEdge, Route } from "@/lib/anaray/types";
 import { flattenRoute, ringlerdenSebeke } from "@/lib/anaray/network";
+import { sebekedenRingler } from "@/lib/anaray/ring";
 import { addStationOnEdge, addTerminalStation, removeStation } from "@/lib/anaray/edit";
 import { simulate } from "@/lib/anaray/sim";
 import { simulateSignalled, reverseRoute, fleetSize, monteCarlo, planDepotDispatch, type MonteCarloResult } from "@/lib/anaray/signalling";
@@ -52,7 +53,7 @@ export function Studio() {
 
 function StudioIc() {
   const { cfg } = useSimConfig();
-  const { rings, meta } = useProje();
+  const { rings, meta, setRings, yazilabilir } = useProje();
   // Araç ve işletme parametreleri KALICI (projeye kayıtlı) — tek kaynak, uçucu değil.
   const { arac: stock, patchArac, setArac } = useArac();
   const { isletme, patchIsletme } = useIsletme();
@@ -190,6 +191,14 @@ function StudioIc() {
       setRoute(proje.route);
     }
   };
+  /** Yerel istasyon/mesafe/hız düzenlemelerini KALICI ring modeline yaz → projeye
+   *  (Firestore) kaydedilir; artık göstermelik değil. Makas/hemzemin/tehlike kısıtları
+   *  eski ring'den korunur (bunlar Ringler editöründe düzenlenir). */
+  const projeyeKaydet = () => {
+    if (!yazilabilir) return;
+    setRings(sebekedenRingler(network, route, rings, cfg));
+    setDuzenlendi(false); // proje yeniden üretilince güncel hat otomatik yansır
+  };
 
   const nodeById = Object.fromEntries(network.nodes.map((n) => [n.id, n]));
   const routeEdges = route.edgeIds
@@ -217,14 +226,22 @@ function StudioIc() {
           <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>{network.name}</h1>
           <div className="mt-1 text-xs" style={{ color: brand.muted }}>
             {duzenlendi
-              ? <span style={{ color: CK.amber }}>▲ Yerel senaryo denemesi — proje hattından ayrıldı.</span>
-              : <>Kaynak: <b>paylaşılan proje hattı</b> ({line.stations.length} durak · {km(line.length)} km) — <Link href="/ringler" className="underline">Ringler</Link> modülünden düzenlenir.</>}
+              ? <span style={{ color: CK.amber }}>▲ Kaydedilmemiş düzenleme — proje hattından ayrıldı. {yazilabilir ? "“Projeye kaydet” ile kalıcı yap veya “Geri al” ile at." : "Bu görünüm salt-okunur; düzenleme kaydedilemez."}</span>
+              : <>Kaynak: <b>paylaşılan proje hattı</b> ({line.stations.length} durak · {km(line.length)} km) — buradan düzenleyip <b>Projeye kaydet</b> diyebilir ya da <Link href="/ringler" className="underline">Ringler</Link> modülünden düzenleyebilirsiniz.</>}
           </div>
         </div>
         {duzenlendi && (
-          <button onClick={sifirla} className="rounded-md border px-3 py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
-            ↺ Proje hattına dön
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            {yazilabilir && (
+              <button onClick={projeyeKaydet} title="Yerel düzenlemeleri kalıcı ring modeline yazar (Firestore'a kaydedilir)"
+                className="rounded-md px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90" style={{ background: brand.red }}>
+                ✓ Projeye kaydet
+              </button>
+            )}
+            <button onClick={sifirla} className="rounded-md border px-3 py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
+              ↺ Geri al
+            </button>
+          </div>
         )}
       </div>
 
@@ -294,13 +311,14 @@ function StudioIc() {
                       <div className="flex items-center gap-2">
                         <input value={st.name} onChange={(e) => patchNode(st.id, { name: e.target.value })}
                           className="min-w-0 flex-1 rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
-                        <span className="font-mono text-xs" style={{ color: brand.faint }}>{km(st.position)}</span>
+                        <span className="font-mono text-xs" style={{ color: brand.faint }}
+                          title="Hat başından uzaklık (kilometraj) — durak konumundan gelir, düzenlenemez">{km(st.position)}<span className="ml-0.5" style={{ color: brand.faint }}>km</span></span>
                         {istasyon ? (
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1" title="Durakta bekleme (dwell) süresi — düzenlenebilir">
                             <input type="number" value={st.dwell} min={0} step={5}
                               onChange={(e) => patchNode(st.id, { dwell: Math.max(0, parseFloat(e.target.value) || 0) })}
                               className="w-14 rounded border px-1 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
-                            <span className="text-xs" style={{ color: brand.muted }}>sn</span>
+                            <span className="text-xs" style={{ color: brand.muted }}>sn bekleme</span>
                           </div>
                         ) : (
                           <span className="text-xs" style={{ color: brand.faint }}>hat başı</span>
