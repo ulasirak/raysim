@@ -48,7 +48,7 @@ export function flattenRoute(net: RailNetwork, route: Route): Line {
   const addStationIfAny = (nodeId: string, pos: number) => {
     const n = nodeById.get(nodeId);
     if (n && n.type === "istasyon") {
-      stations.push({ id: n.id, name: n.name, position: pos, dwell: n.dwell ?? 0 });
+      stations.push({ id: n.id, name: n.name, position: pos, dwell: n.dwell ?? 0, depot: n.depot, queued: n.queued });
     }
   };
 
@@ -95,6 +95,8 @@ export function flattenRoute(net: RailNetwork, route: Route): Line {
       name: son?.name ?? "Son",
       position: cursor,
       dwell: son?.dwell ?? 0,
+      depot: son?.depot,
+      queued: son?.queued,
     });
   }
 

@@ -114,21 +114,23 @@ function runTrains(
   dt: number,
   baseTime: number,
   pert?: Perturb,
-  blocked?: Set<number> // kalıcı arızalı bloklar (dispatcher modu) — hep dolu sayılır
+  blocked?: Set<number>, // kalıcı arızalı bloklar (dispatcher modu) — hep dolu sayılır
+  origins?: number[] // tren başına çıkış konumu (m); verilmezse 0 (hat başı). Depo çıkışı.
 ): SignalTrain[] {
   const meff = stock.mass * (1 + stock.rotatingMassFactor);
   const b = Math.max(0.1, stock.maxBraking); // negatif/0 fren → NaN yörünge olmasın (hatsim/blockingtime ile tutarlı)
   const stops = line.stations.map((s) => ({ pos: s.position, dwell: s.dwell }));
   const EPS = 1; // kırmızı sinyalde 1 m geride dur (temiz blok işgali)
   const nb = bounds.length - 1;
-  // İlk durak: konumu 0'dan büyük ilk istasyon (origin s=0'da duruş sayılmaz).
-  const firstStop = (() => {
-    const i = stops.findIndex((s) => s.pos > 1e-6);
+  const org = (k: number) => Math.max(0, Math.min(line.length, origins?.[k] ?? 0));
+  // İlk durak: çıkış konumundan SONRAKİ ilk istasyon (çıkış konumundaki duruş sayılmaz).
+  const firstStopFrom = (pos: number) => {
+    const i = stops.findIndex((s) => s.pos > pos + 1e-6);
     return i < 0 ? stops.length : i;
-  })();
+  };
 
   type St = { k: number; s: number; v: number; started: boolean; done: boolean; ns: number; dwellUntil: number; points: { t: number; s: number }[]; arr: number };
-  const trains: St[] = Array.from({ length: count }, (_, k) => ({ k, s: 0, v: 0, started: false, done: false, ns: firstStop, dwellUntil: -1, points: [], arr: 0 }));
+  const trains: St[] = Array.from({ length: count }, (_, k) => ({ k, s: org(k), v: 0, started: false, done: false, ns: firstStopFrom(org(k)), dwellUntil: -1, points: [], arr: 0 }));
 
   let t = 0;
   const maxT = baseTime * 3 + count * headway + 1200;
@@ -147,12 +149,14 @@ function runTrains(
       if (tr.done) continue;
 
       if (!tr.started) {
+        const s0 = org(tr.k);
+        const startBlk = blockOf(bounds, s0);
         const ready = t + 1e-9 >= tr.k * headway + (pert?.entry[tr.k] ?? 0);
-        if (ready && (occ[0] === -1 || occ[0] === tr.k)) {
+        if (ready && (occ[startBlk] === -1 || occ[startBlk] === tr.k)) {
           tr.started = true;
-          tr.points.push({ t, s: 0 });
+          tr.points.push({ t, s: s0 });
         } else {
-          if (ready) tr.points.push({ t, s: 0 }); // origin'de bekliyor
+          if (ready) tr.points.push({ t, s: s0 }); // depoda/çıkışta bekliyor
           continue;
         }
       }
@@ -212,14 +216,14 @@ function runTrains(
 export function simulateSignalled(
   line: Line,
   stock: RollingStock,
-  opts: { headway: number; count: number; maxBlockLen: number; dt?: number; blocked?: number[] }
+  opts: { headway: number; count: number; maxBlockLen: number; dt?: number; blocked?: number[]; origins?: number[] }
 ): SignalResult {
   const dt = opts.dt ?? 0.5;
   const bounds = makeBlocks(line, opts.maxBlockLen);
   const baseTime = runTrains(line, stock, bounds, 1e9, 1, dt, 600)[0].arr;
 
   const blocked = opts.blocked && opts.blocked.length ? new Set(opts.blocked) : undefined;
-  const runs = runTrains(line, stock, bounds, opts.headway, Math.max(1, opts.count), dt, baseTime, undefined, blocked);
+  const runs = runTrains(line, stock, bounds, opts.headway, Math.max(1, opts.count), dt, baseTime, undefined, blocked, opts.origins);
   const trains = runs.map((tr) => ({ ...tr, delay: Math.max(0, tr.arr - (tr.index * opts.headway + baseTime)) }));
   const maxDelay = Math.max(0, ...trains.map((t) => t.delay));
   const tMax = Math.max(...trains.map((t) => t.arr));
@@ -233,6 +237,43 @@ export function simulateSignalled(
   }
 
   return { trains, blocks: bounds, anyDelay: maxDelay > 2, maxDelay, minHeadway, tMax, baseTime };
+}
+
+// ————————————————————————————————————————————————
+// Depo (parklanma) çıkış planı
+// ————————————————————————————————————————————————
+
+export interface DepotInfo {
+  id: string;
+  name: string;
+  position: number;    // m (hat başından)
+  queued: number;      // çıkışa hazır bekleyen tren sayısı
+  releaseTimes: number[]; // her bekleyen trenin planlanan çıkış anı (s)
+}
+
+/**
+ * Depo (parklanma) istasyonlarından gidiş servis planı üretir. Her deponun
+ * kuyruğu, hat başına yakın depo önce olacak şekilde headway aralığıyla tek
+ * kuyruğa dizilir → trenler depolarından SIRAYLA çıkar. `origins` doğrudan
+ * runTrains'e verilir (tren başına çıkış konumu). Hattın sonundaki depo gidişe
+ * tren veremez (gidecek yer yok) → dışlanır.
+ */
+export function planDepotDispatch(line: Line, headway: number): { origins: number[]; depots: DepotInfo[]; total: number } {
+  const depotStops = line.stations
+    .filter((s) => s.depot && Math.floor(s.queued ?? 0) > 0 && s.position < line.length - 1e-6)
+    .sort((a, c) => a.position - c.position);
+  const origins: number[] = [];
+  const depots: DepotInfo[] = [];
+  for (const s of depotStops) {
+    const q = Math.floor(s.queued ?? 0);
+    const releaseTimes: number[] = [];
+    for (let i = 0; i < q; i++) {
+      releaseTimes.push(origins.length * headway); // küresel çıkış sırası × headway
+      origins.push(s.position);
+    }
+    depots.push({ id: s.id, name: s.name, position: s.position, queued: q, releaseTimes });
+  }
+  return { origins, depots, total: origins.length };
 }
 
 /** Rotayı ters çevirir (dönüş yönü). flatten bunu diğer uçtan gezer, eğim işareti döner. */

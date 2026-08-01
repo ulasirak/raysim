@@ -10,7 +10,7 @@ import type { RailNetwork, RollingStock, RailEdge, Route } from "@/lib/anaray/ty
 import { flattenRoute, ringlerdenSebeke } from "@/lib/anaray/network";
 import { addStationOnEdge, removeStation } from "@/lib/anaray/edit";
 import { simulate } from "@/lib/anaray/sim";
-import { simulateSignalled, reverseRoute, fleetSize, monteCarlo, type MonteCarloResult } from "@/lib/anaray/signalling";
+import { simulateSignalled, reverseRoute, fleetSize, monteCarlo, planDepotDispatch, type MonteCarloResult } from "@/lib/anaray/signalling";
 import { simulateSingleTrack } from "@/lib/anaray/singletrack";
 import { computeEnergy } from "@/lib/anaray/energy";
 import { araclar, varsayilanArac } from "@/lib/anaray/vehicles";
@@ -107,6 +107,18 @@ function StudioIc() {
     [line, stock, headwayDk, seferSayisi, ariza]
   );
   const arizaToggle = (i: number) => setAriza((a) => (a.includes(i) ? a.filter((x) => x !== i) : [...a, i]));
+  // Depo (parklanma) planı: depo istasyonlarındaki bekleyen trenler gidiş servisini
+  // besler. Depo tanımlıysa Canlı Ağ gidiş sim'i trenleri depolardan SIRAYLA çıkarır
+  // (origins); depo yoksa bugünkü davranış (seferSayisi tren, hat başından) korunur.
+  // Yalnız Canlı Ağ etkilenir; kapasite/tek-hat/Monte-Carlo panelleri seferSayisi'yle kalır.
+  const depotPlan = useMemo(() => planDepotDispatch(line, headwayDk * 60), [line, headwayDk]);
+  const canliGidis = useMemo(
+    () =>
+      depotPlan.total > 0
+        ? simulateSignalled(line, stock, { headway: headwayDk * 60, count: depotPlan.total, maxBlockLen: BLOK_MAXLEN, blocked: ariza, origins: depotPlan.origins })
+        : gidisSim,
+    [depotPlan, gidisSim, line, stock, headwayDk, ariza]
+  );
   const donusSim = useMemo(
     () => simulateSignalled(reverseLine, stock, { headway: headwayDk * 60, count: seferSayisi, maxBlockLen: BLOK_MAXLEN }),
     [reverseLine, stock, headwayDk, seferSayisi]
@@ -146,7 +158,7 @@ function StudioIc() {
   // Hattı yerel olarak değiştiren her işlem "senaryo denemesi" sayılır: proje hattı
   // sonradan değişse bile üzerine yazılmaz (kullanıcı ↺ ile geri döner).
   const patchStock = (p: Partial<RollingStock>) => { setDuzenlendi(true); setStock((s) => ({ ...s, ...p })); };
-  const patchNode = (id: string, p: Partial<{ name: string; dwell: number }>) => {
+  const patchNode = (id: string, p: Partial<{ name: string; dwell: number; depot: boolean; queued: number }>) => {
     setDuzenlendi(true);
     setNetwork((n) => ({ ...n, nodes: n.nodes.map((nd) => (nd.id === id ? { ...nd, ...p } : nd)) }));
   };
@@ -222,10 +234,10 @@ function StudioIc() {
       )}
 
       {/* Canlı ağ simülasyonu (kahraman) */}
-      <Panel baslik="Canlı Ağ Simülasyonu" aciklama="Tüm trenler (gidiş + dönüş) aynı anda hat üzerinde hareket eder; işgal edilen bloklar canlı kırmızıya döner. Dispatcher: gidiş şeridindeki bir sinyale tıkla → o blok arızalanır, trenler arkasında kuyruklanır. Oynat ▶">
-        <LiveNetwork network={network} route={route} line={line} blocks={gidisSim.blocks}
-          up={gidisSim.trains} down={donusSim.trains} tMax={Math.max(gidisSim.tMax, donusSim.tMax)} trainLen={stock.length}
-          faultBlocks={ariza} onBlockClick={arizaToggle} />
+      <Panel baslik="Canlı Ağ Simülasyonu" aciklama="Tüm trenler (gidiş + dönüş) aynı anda hat üzerinde hareket eder; işgal edilen bloklar canlı kırmızıya döner. Dispatcher: gidiş şeridindeki bir sinyale tıkla → o blok arızalanır, trenler arkasında kuyruklanır. Parklanma alanı (🅿) tanımlı istasyonlarda bekleyen trenler sırayla servise çıkar. Oynat ▶">
+        <LiveNetwork network={network} route={route} line={line} blocks={canliGidis.blocks}
+          up={canliGidis.trains} down={donusSim.trains} tMax={Math.max(canliGidis.tMax, donusSim.tMax)} trainLen={stock.length}
+          faultBlocks={ariza} onBlockClick={arizaToggle} depots={depotPlan.depots} />
         {ariza.length > 0 && (
           <div className="mt-2 flex items-center gap-3 text-xs">
             <span style={{ color: brand.red }}>⚠ {ariza.length} blok arızalı (gidiş) — trenler kuyruklanıyor.</span>
@@ -272,27 +284,49 @@ function StudioIc() {
                   const node = nodeById[st.id];
                   const istasyon = node?.type === "istasyon";
                   const silinebilir = i > 0 && i < line.stations.length - 1;
+                  const depo = !!st.depot;
+                  const sonIstasyon = i === line.stations.length - 1;
                   return (
-                    <div key={st.id} className="flex items-center gap-2">
-                      <input value={st.name} onChange={(e) => patchNode(st.id, { name: e.target.value })}
-                        className="min-w-0 flex-1 rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
-                      <span className="font-mono text-xs" style={{ color: brand.faint }}>{km(st.position)}</span>
-                      {istasyon ? (
-                        <div className="flex items-center gap-1">
-                          <input type="number" value={st.dwell} min={0} step={5}
-                            onChange={(e) => patchNode(st.id, { dwell: Math.max(0, parseFloat(e.target.value) || 0) })}
-                            className="w-14 rounded border px-1 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
-                          <span className="text-xs" style={{ color: brand.muted }}>sn</span>
-                        </div>
-                      ) : (
-                        <span className="text-xs" style={{ color: brand.faint }}>hat başı</span>
-                      )}
-                      {silinebilir ? (
-                        <button onClick={() => istasyonSil(st.id)} title="İstasyonu sil"
-                          className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
-                      ) : (
-                        <span className="w-6" />
-                      )}
+                    <div key={st.id} className="rounded border p-2" style={{ borderColor: depo ? brand.borderStrong : brand.border, background: depo ? CK.track : "transparent" }}>
+                      <div className="flex items-center gap-2">
+                        <input value={st.name} onChange={(e) => patchNode(st.id, { name: e.target.value })}
+                          className="min-w-0 flex-1 rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+                        <span className="font-mono text-xs" style={{ color: brand.faint }}>{km(st.position)}</span>
+                        {istasyon ? (
+                          <div className="flex items-center gap-1">
+                            <input type="number" value={st.dwell} min={0} step={5}
+                              onChange={(e) => patchNode(st.id, { dwell: Math.max(0, parseFloat(e.target.value) || 0) })}
+                              className="w-14 rounded border px-1 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+                            <span className="text-xs" style={{ color: brand.muted }}>sn</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs" style={{ color: brand.faint }}>hat başı</span>
+                        )}
+                        {silinebilir ? (
+                          <button onClick={() => istasyonSil(st.id)} title="İstasyonu sil"
+                            className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
+                        ) : (
+                          <span className="w-6" />
+                        )}
+                      </div>
+                      {/* Parklanma (depo) — çıkışa hazır bekleyen tren girdisi */}
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                        <button onClick={() => patchNode(st.id, { depot: !depo, queued: !depo && !st.queued ? 1 : st.queued })}
+                          className="rounded px-2 py-0.5 text-xs font-medium transition"
+                          style={depo ? { background: brand.ink, color: "#fff" } : { background: "transparent", color: brand.muted, border: `1px solid ${brand.border}` }}>
+                          🅿 Parklanma alanı
+                        </button>
+                        {depo && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs" style={{ color: brand.muted }}>bekleyen</span>
+                            <input type="number" value={st.queued ?? 0} min={0} step={1}
+                              onChange={(e) => patchNode(st.id, { queued: Math.max(0, Math.round(parseFloat(e.target.value) || 0)) })}
+                              className="w-14 rounded border px-1 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+                            <span className="text-xs" style={{ color: brand.muted }}>tren</span>
+                            {sonIstasyon && <span className="text-xs" style={{ color: CK.amber }} title="Hattın sonundaki depo gidiş yönünde tren veremez (gidecek yer yok)">⚠ uç istasyon</span>}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -312,6 +346,12 @@ function StudioIc() {
                   ＋ Ortasına istasyon ekle
                 </button>
               </div>
+              {depotPlan.total > 0 && (
+                <div className="mt-2 rounded-md px-2 py-1.5 text-xs" style={{ background: CK.track, color: brand.inkSoft }}>
+                  🅿 <b>{depotPlan.total} tren</b> {depotPlan.depots.length} parklanma alanından sırayla servise çıkacak
+                  ({headwayDk} dk aralıkla). Canlı Ağ gidiş servisi bu depolardan besleniyor.
+                </div>
+              )}
             </div>
 
             {/* Segmentler */}

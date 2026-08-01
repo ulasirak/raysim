@@ -14,6 +14,10 @@ export interface Station {
   position: number;
   /** Durakta bekleme süresi (s). */
   dwell: number;
+  /** Parklanma (depo/stabling) alanı mı? Trenler burada servise çıkmaya hazır bekler. */
+  depot?: boolean;
+  /** Depoysa: çıkışa hazır bekleyen tren sayısı (sırayla headway aralığıyla çıkar). */
+  queued?: number;
 }
 
 /** Hattın bir parçası: sabit hız limiti ve eğim taşır. */
@@ -113,6 +117,10 @@ export interface RailNode {
   y: number;
   /** İstasyon düğümü için durak bekleme süresi (s). */
   dwell?: number;
+  /** İstasyon düğümü parklanma (depo) alanı mı? */
+  depot?: boolean;
+  /** Depoysa: çıkışa hazır bekleyen tren sayısı. */
+  queued?: number;
 }
 
 /** Bir kenar üzerindeki yerel parça: sabit hız limiti + eğim. */
