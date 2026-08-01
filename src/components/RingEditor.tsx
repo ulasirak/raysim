@@ -381,18 +381,6 @@ function RingKart(p: KartProps) {
                   onToggle={(v) => p.onPatch({ depot: v, queued: v && !ring.queued ? 1 : ring.queued })}
                   onQueued={(n) => p.onPatch({ queued: n })} />
               </div>
-              {/* Eğim ikincil (varsayılan 0). Hatta göre değişir — düz güzergahta 0,
-                  eğimli güzergahta buradan girilir ya da Coğrafi modülünde GTFS
-                  yüksekliğinden otomatik gelir. Fizik/enerji/fren hesabında kullanılır. */}
-              <details className="mt-2" open={Boolean(ring.egim)}>
-                <summary className="field-label cursor-pointer select-none" style={{ color: brand.faint }}>
-                  Gelişmiş · eğim {ring.egim ? `(${ring.egim}‰)` : "(0 — düz)"}
-                </summary>
-                <div className="mt-1 w-40">
-                  <Num label="Eğim" suffix="‰" step={1} value={ring.egim} onChange={(v) => p.onPatch({ egim: v })} allowNeg />
-                  <p className="mt-1 text-[0.62rem]" style={{ color: brand.faint }}>Eğimli güzergahta girin; Coğrafi modülünde GTFS yüksekliği varsa otomatik hesaplanır. Hızlanma/fren/enerjiyi etkiler.</p>
-                </div>
-              </details>
             </div>
 
             {/* Senaryo çıktısı */}
