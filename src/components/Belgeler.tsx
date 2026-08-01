@@ -9,9 +9,8 @@ import { useMemo, useState } from "react";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { sure, indir } from "@/lib/anaray/format";
-import { useSimConfig, useProje } from "@/components/SimConfigProvider";
+import { useSimConfig, useProje, useArac } from "@/components/SimConfigProvider";
 import { PROJE_META_ALANLAR } from "@/lib/anaray/config";
-import { varsayilanArac } from "@/lib/anaray/vehicles";
 import { loopDenge, olceklenme, ringChallenge, ringDogrula, loopTamMi } from "@/lib/anaray/ring";
 import { bolgeSeed } from "@/lib/anaray/interlocking";
 // wordUret/excelUret ağır (docx + exceljs ~1MB) — statik import etmiyoruz; yalnız
@@ -24,7 +23,7 @@ export function Belgeler() {
   const { cfg } = useSimConfig();
   const { rings, meta, patchMeta, yazilabilir } = useProje();
   const { yenile } = useCuzdan();
-  const stock = varsayilanArac;
+  const { arac: stock } = useArac();
   const [durum, setDurum] = useState<{ tip: "ok" | "err" | "info"; metin: string } | null>(null);
   const [mesgul, setMesgul] = useState<"" | "word" | "excel" | "rapor" | "html">("");
   const [dil, setDil] = useState<RaporDil>("tr");
@@ -68,7 +67,7 @@ export function Belgeler() {
     const yanit = await fetch("/api/rapor", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ veri: { rings, cfg, meta }, dil }),
+      body: JSON.stringify({ veri: { rings, cfg, meta, arac: stock }, dil }),
     });
     if (!yanit.ok) {
       const v = await yanit.json().catch(() => ({}));

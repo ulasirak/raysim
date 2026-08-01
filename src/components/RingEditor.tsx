@@ -10,9 +10,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RollingStock } from "@/lib/anaray/types";
 import { makasBolgeId } from "@/lib/anaray/interlocking";
-import { useSimConfig, useProje } from "@/components/SimConfigProvider";
+import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import type { SimConfig } from "@/lib/anaray/config";
-import { araclar, varsayilanArac } from "@/lib/anaray/vehicles";
+import { araclar } from "@/lib/anaray/vehicles";
 import { brand } from "@/lib/anaray/brand";
 import { CK, SERI } from "@/lib/anaray/chartkit";
 import { kmh, sure } from "@/lib/anaray/format";
@@ -42,8 +42,11 @@ const OK = CK.good;
 export function RingEditor() {
   const { cfg } = useSimConfig();
   const { rings, setRings, sifirlaRings, meta, yonetici, yukleniyor } = useProje();
-  const [kapali, setKapali] = useState(true);
-  const [stock, setStock] = useState<RollingStock>(varsayilanArac);
+  // Araç ve işletme parametreleri KALICI (projeye kayıtlı) — tek kaynak.
+  const { arac: stock, setArac } = useArac();
+  const { isletme, patchIsletme } = useIsletme();
+  const kapali = isletme.kapali;
+  const setKapali = (v: boolean) => patchIsletme({ kapali: v });
   const [acik, setAcik] = useState<Record<string, boolean>>(() => (rings[0] ? { [rings[0].id]: true } : {}));
 
   const denge = useMemo(() => loopDenge(rings, stock, cfg), [rings, stock, cfg]);
@@ -117,7 +120,7 @@ export function RingEditor() {
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <select
             value={araclar.some((a) => a.id === stock.id) ? stock.id : ""}
-            onChange={(e) => { const v = araclar.find((a) => a.id === e.target.value); if (v) setStock({ ...v }); }}
+            onChange={(e) => { const v = araclar.find((a) => a.id === e.target.value); if (v) setArac({ ...v }); }}
             className="rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }}>
             {araclar.map((a) => (<option key={a.id} value={a.id}>{a.name}</option>))}
           </select>

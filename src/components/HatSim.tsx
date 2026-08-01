@@ -9,9 +9,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loopToHat, simuleHat, type ZonFaz } from "@/lib/anaray/hatsim";
 import { blockingTimeRing } from "@/lib/anaray/blockingtime";
-import { useSimConfig, useProje } from "@/components/SimConfigProvider";
+import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { BosHat } from "@/components/BosHat";
-import { varsayilanArac } from "@/lib/anaray/vehicles";
 import { saat, sure } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
 import { CK, SERI, ASPEKT } from "@/lib/anaray/chartkit";
@@ -63,9 +62,15 @@ export function HatSim() {
 function HatSimIc() {
   const { cfg } = useSimConfig();
   const { rings } = useProje();
-  const [headway, setHeadway] = useState(120);
-  const [count, setCount] = useState(8);
-  const [movingBlock, setMovingBlock] = useState(false);
+  const { arac } = useArac();
+  const { isletme, patchIsletme } = useIsletme();
+  // Kalıcı işletme parametreleri (projeye kayıtlı) — yerel state yerine context.
+  const headway = isletme.hatHeadwaySn;
+  const setHeadway = (v: number) => patchIsletme({ hatHeadwaySn: v });
+  const count = isletme.hatCount;
+  const setCount = (v: number) => patchIsletme({ hatCount: v });
+  const movingBlock = isletme.movingBlock;
+  const setMovingBlock = (v: boolean) => patchIsletme({ movingBlock: v });
   const [t, setT] = useState(0);
   const [oynat, setOynat] = useState(false);
   const [hiz, setHiz] = useState(15);
@@ -75,11 +80,11 @@ function HatSimIc() {
 
   const model = useMemo(() => loopToHat(rings, true, cfg), [rings, cfg]);
   const sonuc = useMemo(
-    () => simuleHat(model, varsayilanArac, { headway, count, maxBlockLen: cfg.blokMaxUzunluk, captureFrames: true, movingBlock }),
-    [model, headway, count, cfg.blokMaxUzunluk, movingBlock]
+    () => simuleHat(model, arac, { headway, count, maxBlockLen: cfg.blokMaxUzunluk, captureFrames: true, movingBlock }),
+    [model, arac, headway, count, cfg.blokMaxUzunluk, movingBlock]
   );
   // Analitik kapasite (blocking-time teorisi) — simülasyonla mutabakat için
-  const bt = useMemo(() => blockingTimeRing(rings, varsayilanArac, cfg), [rings, cfg]);
+  const bt = useMemo(() => blockingTimeRing(rings, arac, cfg), [rings, arac, cfg]);
 
   const L = model.line.length;
   const T = sonuc.tMax || 1;

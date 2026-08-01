@@ -6,19 +6,19 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import type { RailNetwork, RollingStock, RailEdge, Route } from "@/lib/anaray/types";
+import type { RailNetwork, RailEdge, Route } from "@/lib/anaray/types";
 import { flattenRoute, ringlerdenSebeke } from "@/lib/anaray/network";
 import { addStationOnEdge, addTerminalStation, removeStation } from "@/lib/anaray/edit";
 import { simulate } from "@/lib/anaray/sim";
 import { simulateSignalled, reverseRoute, fleetSize, monteCarlo, planDepotDispatch, type MonteCarloResult } from "@/lib/anaray/signalling";
 import { simulateSingleTrack } from "@/lib/anaray/singletrack";
 import { computeEnergy } from "@/lib/anaray/energy";
-import { araclar, varsayilanArac } from "@/lib/anaray/vehicles";
+import { araclar } from "@/lib/anaray/vehicles";
 import { kmh, km, sure, saat } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { isFirebaseConfigured } from "@/lib/firebase";
-import { useSimConfig, useProje } from "@/components/SimConfigProvider";
+import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { BosHat } from "@/components/BosHat";
 import { LiveNetwork } from "@/components/LiveNetwork";
 import { NetworkDiagram } from "@/components/NetworkDiagram";
@@ -57,6 +57,9 @@ export function Studio() {
 function StudioIc() {
   const { cfg } = useSimConfig();
   const { rings, meta } = useProje();
+  // Araç ve işletme parametreleri KALICI (projeye kayıtlı) — tek kaynak, uçucu değil.
+  const { arac: stock, patchArac, setArac } = useArac();
+  const { isletme, patchIsletme } = useIsletme();
 
   // Sefer modülünün hattı = PAYLAŞILAN proje hattı (Ringler/Tam Hat/Belgeler ile
   // aynı kaynak). Ring zinciri graf şebekesine çevrilir; ayrı örnek şebeke yok.
@@ -66,7 +69,6 @@ function StudioIc() {
   );
 
   const [network, setNetwork] = useState<RailNetwork>(() => proje?.network ?? BOS_SEBEKE);
-  const [stock, setStock] = useState<RollingStock>(varsayilanArac);
   const [route, setRoute] = useState<Route>(() => proje?.route ?? BOS_ROTA);
   // Yerel düzenleme yapıldıysa proje hattı değişince üzerine yazma (senaryo denemesi
   // korunur); yapılmadıysa yeni hat otomatik yansısın.
@@ -81,17 +83,22 @@ function StudioIc() {
     }
   }
   const [selEdge, setSelEdge] = useState<string>("");
-  const [headwayDk, setHeadwayDk] = useState(() => Math.round((cfg.headway / 60) * 2) / 2);
-  const [seferSayisi, setSeferSayisi] = useState(6);
-  const [turnaroundDk, setTurnaroundDk] = useState(3);
-  const [ariza, setAriza] = useState<number[]>([]); // dispatcher: arızalı bloklar (gidiş hattı)
+  // Kalıcı sefer parametreleri (context → projeye kayıtlı).
+  const headwayDk = isletme.seferHeadwayDk;
+  const setHeadwayDk = (v: number) => patchIsletme({ seferHeadwayDk: v });
+  const seferSayisi = isletme.seferSayisi;
+  const setSeferSayisi = (v: number) => patchIsletme({ seferSayisi: v });
+  const turnaroundDk = isletme.turnaroundDk;
+  const setTurnaroundDk = (v: number) => patchIsletme({ turnaroundDk: v });
+  // null = varsayılan (tüm ara istasyonlar kruvasman); hat değişince kendini uyarlar.
+  const passingIds = isletme.passingIds;
+  const setPassingIds = (v: string[] | null) => patchIsletme({ passingIds: v });
+  const [ariza, setAriza] = useState<number[]>([]); // dispatcher: arızalı bloklar (gidiş hattı) — geçici what-if
   const [yon, setYon] = useState<"gidis" | "donus" | "ikisi">("gidis");
   const [meanEntry, setMeanEntry] = useState(30);
   const [meanDwell, setMeanDwell] = useState(5);
   const [mc, setMc] = useState<MonteCarloResult | null>(null);
   const [mcRunning, setMcRunning] = useState(false);
-  // null = varsayılan (tüm ara istasyonlar kruvasman); hat değişince kendini uyarlar.
-  const [passingIds, setPassingIds] = useState<string[] | null>(null);
 
   const { line, result } = useMemo(() => {
     const l = flattenRoute(network, route);
@@ -157,7 +164,8 @@ function StudioIc() {
   // — güncelleyiciler —
   // Hattı yerel olarak değiştiren her işlem "senaryo denemesi" sayılır: proje hattı
   // sonradan değişse bile üzerine yazılmaz (kullanıcı ↺ ile geri döner).
-  const patchStock = (p: Partial<RollingStock>) => { setDuzenlendi(true); setStock((s) => ({ ...s, ...p })); };
+  // Araç düzenlemesi artık YEREL senaryo değil — projeye kalıcı yazılır (patchArac).
+  const patchStock = patchArac;
   const patchNode = (id: string, p: Partial<{ name: string; dwell: number; depot: boolean; queued: number }>) => {
     setDuzenlendi(true);
     setNetwork((n) => ({ ...n, nodes: n.nodes.map((nd) => (nd.id === id ? { ...nd, ...p } : nd)) }));
@@ -189,11 +197,10 @@ function StudioIc() {
     setNetwork(r.network);
     setRoute(r.route);
   };
-  /** Yerel denemeyi bırak, paylaşılan proje hattına dön. */
+  /** Yerel HAT denemesini bırak, paylaşılan proje hattına dön. Araç/sefer/kruvasman
+   *  artık KALICI proje verisidir (senaryo değil) → burada sıfırlanmaz. */
   const sifirla = () => {
     setDuzenlendi(false);
-    setStock(varsayilanArac);
-    setPassingIds(null);
     if (proje) {
       setNetwork(proje.network);
       setRoute(proje.route);
@@ -263,7 +270,7 @@ function StudioIc() {
                 value={araclar.some((a) => a.id === stock.id) ? stock.id : ""}
                 onChange={(e) => {
                   const v = araclar.find((a) => a.id === e.target.value);
-                  if (v) setStock({ ...v });
+                  if (v) setArac({ ...v });
                 }}
                 className="mb-3 w-full rounded border px-2 py-1 text-sm"
                 style={{ borderColor: brand.border, color: brand.ink }}

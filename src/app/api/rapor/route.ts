@@ -17,6 +17,7 @@ import { raporHTML, type RaporDil } from "@/lib/anaray/rapor";
 import { varsayilanArac } from "@/lib/anaray/vehicles";
 import { varsayilanConfig, varsayilanMeta, type SimConfig, type ProjeMeta } from "@/lib/anaray/config";
 import type { DurakArasiRing } from "@/lib/anaray/ring";
+import type { RollingStock } from "@/lib/anaray/types";
 
 export const runtime = "nodejs";
 
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
   }
   catch { return NextResponse.json({ hata: "Kimlik doğrulanamadı." }, { status: 401 }); }
 
-  let govde: { veri?: { rings?: DurakArasiRing[]; cfg?: Partial<SimConfig>; meta?: Partial<ProjeMeta> }; dil?: string };
+  let govde: { veri?: { rings?: DurakArasiRing[]; cfg?: Partial<SimConfig>; meta?: Partial<ProjeMeta>; arac?: RollingStock }; dil?: string };
   try { govde = await req.json(); } catch { return NextResponse.json({ hata: "Geçersiz istek." }, { status: 400 }); }
 
   const rings = govde.veri?.rings;
@@ -50,12 +51,13 @@ export async function POST(req: Request) {
   }
   const cfg: SimConfig = { ...varsayilanConfig, ...(govde.veri?.cfg ?? {}) };
   const meta: ProjeMeta = { ...varsayilanMeta, ...(govde.veri?.meta ?? {}) };
+  const arac: RollingStock = govde.veri?.arac ?? varsayilanArac; // projenin aracı (yoksa varsayılan)
   const dil: RaporDil = govde.dil === "en" ? "en" : "tr";
 
   // 1) Raporu ÜRET (başarısızsa kredi düşülmez).
   let html: string;
   try {
-    html = raporHTML(meta, cfg, rings, varsayilanArac, dil);
+    html = raporHTML(meta, cfg, rings, arac, dil);
   } catch (e) {
     return NextResponse.json({ hata: `Rapor üretilemedi: ${e instanceof Error ? e.message : String(e)}` }, { status: 500 });
   }

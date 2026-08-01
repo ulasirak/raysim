@@ -17,8 +17,10 @@
 // hazır bulur; başka her hesap SIFIRDAN BOŞ hatla başlar ve kendi verisini girer.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { varsayilanConfig, varsayilanMeta, konyaMeta, type SimConfig, type ProjeMeta } from "@/lib/anaray/config";
+import { varsayilanConfig, varsayilanMeta, konyaMeta, varsayilanIsletme, type SimConfig, type ProjeMeta, type Isletme } from "@/lib/anaray/config";
 import { konya2EtapSeed, type DurakArasiRing } from "@/lib/anaray/ring";
+import { varsayilanArac } from "@/lib/anaray/vehicles";
+import type { RollingStock } from "@/lib/anaray/types";
 import { yoneticiMi } from "@/lib/anaray/yetki";
 import { useAuth } from "@/components/AuthProvider";
 import { getAuthInstance } from "@/lib/firebase";
@@ -45,6 +47,11 @@ interface Ctx {
   sifirlaRings: () => void;
   meta: ProjeMeta;
   patchMeta: (p: Partial<ProjeMeta>) => void;
+  arac: RollingStock;
+  patchArac: (p: Partial<RollingStock>) => void;
+  setArac: (s: RollingStock) => void;
+  isletme: Isletme;
+  patchIsletme: (p: Partial<Isletme>) => void;
   // — hesap / proje —
   yazilabilir: boolean;
   /** Bu hesap vitrin (Konya) hattının sahibi mi? Yalnız tohum/etiket kararı. */
@@ -96,6 +103,8 @@ function eskiYerelTaslak(): ProjeVerisi | null {
       rings,
       cfg: { ...varsayilanConfig, ...(hc ? (JSON.parse(hc) as Partial<SimConfig>) : {}) },
       meta: { ...varsayilanMeta, ...(hm ? (JSON.parse(hm) as Partial<ProjeMeta>) : {}) },
+      arac: varsayilanArac,
+      isletme: varsayilanIsletme,
     };
   } catch {
     return null;
@@ -104,12 +113,12 @@ function eskiYerelTaslak(): ProjeVerisi | null {
 
 /** Sıfırdan başlayan hesap: hat BOŞ, künye nötr. Kullanıcı kendi verisini girer. */
 function bosVeri(): ProjeVerisi {
-  return { rings: [], cfg: varsayilanConfig, meta: varsayilanMeta };
+  return { rings: [], cfg: varsayilanConfig, meta: varsayilanMeta, arac: varsayilanArac, isletme: varsayilanIsletme };
 }
 
 /** Yönetici vitrini: Konya Tramvay 2. Etap taslağı hazır gelir. */
 function vitrinVerisi(): ProjeVerisi {
-  return { rings: vitrinRings(), cfg: varsayilanConfig, meta: konyaMeta };
+  return { rings: vitrinRings(), cfg: varsayilanConfig, meta: konyaMeta, arac: varsayilanArac, isletme: varsayilanIsletme };
 }
 
 export function SimConfigProvider({ children }: { children: React.ReactNode }) {
@@ -121,6 +130,8 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
   // Başlangıç BOŞ: hiçbir hat, oturum çözülmeden ekrana düşmez.
   const [rings, setRingsRaw] = useState<DurakArasiRing[]>([]);
   const [meta, setMeta] = useState<ProjeMeta>(varsayilanMeta);
+  const [arac, setAracRaw] = useState<RollingStock>(varsayilanArac);
+  const [isletme, setIsletmeRaw] = useState<Isletme>(varsayilanIsletme);
 
   const [projeler, setProjeler] = useState<ProjeOzet[]>([]);
   const [aktifId, setAktifId] = useState<string | null>(null);
@@ -148,10 +159,19 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
   const yazilabilir = Boolean(user) && !paylasimGorunumu && aktifId !== null;
 
   const veriUygula = useCallback((v: ProjeVerisi) => {
+    // Eksik alanlar (eski kayıt) varsayılanla doldurulur → geriye dönük güvenli.
+    const nCfg = { ...varsayilanConfig, ...v.cfg };
+    const nMeta = { ...varsayilanMeta, ...v.meta };
+    const nArac = v.arac ?? varsayilanArac;
+    const nIsletme = { ...varsayilanIsletme, ...v.isletme };
     setRingsRaw(v.rings);
-    setCfg({ ...varsayilanConfig, ...v.cfg });
-    setMeta({ ...varsayilanMeta, ...v.meta });
-    imzaRef.current = JSON.stringify(v);
+    setCfg(nCfg);
+    setMeta(nMeta);
+    setAracRaw(nArac);
+    setIsletmeRaw(nIsletme);
+    // İmza NORMALİZE edilmiş halden üretilir (otomatik-kayıtla birebir aynı sıra) →
+    // eksik alanlı eski kayıt açılınca gereksiz "kaydediliyor" tetiklenmez.
+    imzaRef.current = JSON.stringify({ rings: v.rings, cfg: nCfg, meta: nMeta, arac: nArac, isletme: nIsletme });
   }, []);
 
   // Paylaşım görünümünden çıkış. ADRESTEKİ `?proje=` DE SİLİNİR: aksi halde
@@ -276,7 +296,7 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
   // 3) Otomatik kayıt (geciktirmeli) — yalnız yazılabilir durumda ve gerçek değişimde
   useEffect(() => {
     if (!yazilabilir || !aktifId || durum === "yukleniyor") return;
-    const veri: ProjeVerisi = { rings, cfg, meta };
+    const veri: ProjeVerisi = { rings, cfg, meta, arac, isletme };
     const imza = JSON.stringify(veri);
     if (imza === imzaRef.current) return;
 
@@ -311,7 +331,7 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
     }, 1200);
 
     return () => { if (zamanlayiciRef.current) clearTimeout(zamanlayiciRef.current); };
-  }, [rings, cfg, meta, yazilabilir, aktifId, durum]);
+  }, [rings, cfg, meta, arac, isletme, yazilabilir, aktifId, durum]);
 
   // — yazma sarmalayıcıları —
   // Salt-okunur modda (demo / paylaşım linki) yazma SESSİZCE yok sayılır. Arayüz
@@ -342,6 +362,22 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
   const patchMeta = useCallback((p: Partial<ProjeMeta>) => {
     if (!yazilabilir) return;
     setMeta((m) => ({ ...m, ...p }));
+  }, [yazilabilir]);
+
+  // Proje aracı (RollingStock) — tek kaynak. patchArac kısmi alan, setArac tam değiştirir.
+  const patchArac = useCallback((p: Partial<RollingStock>) => {
+    if (!yazilabilir) return;
+    setAracRaw((s) => ({ ...s, ...p }));
+  }, [yazilabilir]);
+  const setArac = useCallback((s: RollingStock) => {
+    if (!yazilabilir) return;
+    setAracRaw(s);
+  }, [yazilabilir]);
+
+  // İşletme parametreleri (sefer sayısı, kruvasman, sinyal modu vb.).
+  const patchIsletme = useCallback((p: Partial<Isletme>) => {
+    if (!yazilabilir) return;
+    setIsletmeRaw((s) => ({ ...s, ...p }));
   }, [yazilabilir]);
 
   // — proje yönetimi —
@@ -456,11 +492,13 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
 
   const deger = useMemo<Ctx>(() => ({
     cfg, patch, sifirla, rings, setRings, sifirlaRings, meta, patchMeta,
+    arac, patchArac, setArac, isletme, patchIsletme,
     yazilabilir, yonetici, demoMu, paylasimGorunumu, paylasimdanCik, durum, hataMetni,
     projeler, aktifId, aktifAd, paylasimAcik, kota, kotaDoldu,
     projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle, paylasimDegistir,
   }), [
     cfg, patch, sifirla, rings, setRings, sifirlaRings, meta, patchMeta,
+    arac, patchArac, setArac, isletme, patchIsletme,
     yazilabilir, yonetici, demoMu, paylasimGorunumu, paylasimdanCik, durum, hataMetni,
     projeler, aktifId, aktifAd, paylasimAcik, kota, kotaDoldu,
     projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle, paylasimDegistir,
@@ -502,8 +540,20 @@ export function useProje(): {
   return { rings, setRings, sifirlaRings, meta, patchMeta, yazilabilir, yonetici, yukleniyor: durum === "yukleniyor" };
 }
 
+/** Projenin çeken aracı — tek kaynak (Sefer/Ringler/Tam Hat/Sistem hepsi bunu okur). */
+export function useArac(): { arac: RollingStock; patchArac: (p: Partial<RollingStock>) => void; setArac: (s: RollingStock) => void; yazilabilir: boolean } {
+  const { arac, patchArac, setArac, yazilabilir } = useCtx();
+  return { arac, patchArac, setArac, yazilabilir };
+}
+
+/** İşletme/sefer parametreleri — projeye kaydedilir. */
+export function useIsletme(): { isletme: Isletme; patchIsletme: (p: Partial<Isletme>) => void; yazilabilir: boolean } {
+  const { isletme, patchIsletme, yazilabilir } = useCtx();
+  return { isletme, patchIsletme, yazilabilir };
+}
+
 /** Oturum + proje yönetimi (kabuk/başlık için). */
-export function useHesap(): Omit<Ctx, "cfg" | "patch" | "sifirla" | "rings" | "setRings" | "sifirlaRings" | "meta" | "patchMeta"> {
+export function useHesap(): Omit<Ctx, "cfg" | "patch" | "sifirla" | "rings" | "setRings" | "sifirlaRings" | "meta" | "patchMeta" | "arac" | "patchArac" | "setArac" | "isletme" | "patchIsletme"> {
   const c = useCtx();
   return {
     yazilabilir: c.yazilabilir, yonetici: c.yonetici, demoMu: c.demoMu, paylasimGorunumu: c.paylasimGorunumu,

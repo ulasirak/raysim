@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import { brand } from "@/lib/anaray/brand";
 import { sure } from "@/lib/anaray/format";
 import Link from "next/link";
-import { useSimConfig, useProje } from "@/components/SimConfigProvider";
+import { useSimConfig, useProje, useIsletme } from "@/components/SimConfigProvider";
 import {
   bolgeSeed,
   cakismaMatriksi,
@@ -40,8 +40,12 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
     [rings, bolgeId]
   );
 
-  const [trenSayisi, setTrenSayisi] = useState(4);
-  const [headwaySn, setHeadwaySn] = useState(20);
+  // Kalıcı talep parametreleri (projeye kayıtlı).
+  const { isletme, patchIsletme } = useIsletme();
+  const trenSayisi = isletme.anklasmanTren;
+  const setTrenSayisi = (v: number) => patchIsletme({ anklasmanTren: v });
+  const headwaySn = isletme.anklasmanHeadwaySn;
+  const setHeadwaySn = (v: number) => patchIsletme({ anklasmanHeadwaySn: v });
   const [faultOn, setFaultOn] = useState(false);
   const [faultAt, setFaultAt] = useState(30);
 

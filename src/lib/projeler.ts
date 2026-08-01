@@ -17,8 +17,9 @@ import {
   serverTimestamp, query, where, type Timestamp,
 } from "firebase/firestore";
 import { getDb, getAuthInstance } from "./firebase";
-import type { SimConfig, ProjeMeta } from "./anaray/config";
+import type { SimConfig, ProjeMeta, Isletme } from "./anaray/config";
 import type { DurakArasiRing } from "./anaray/ring";
+import type { RollingStock } from "./anaray/types";
 
 const COL = "projeler";
 
@@ -38,11 +39,17 @@ export function veriBoyutu(json: string): number {
   return new TextEncoder().encode(json).length;
 }
 
-/** Bir projenin taşıdığı tüm simülasyon durumu. */
+/** Bir projenin taşıdığı tüm simülasyon durumu.
+ *  `arac` ve `isletme` OPSİYONELDİR: eski (şema öncesi) kayıtlarda bulunmaz →
+ *  okunurken varsayılanla doldurulur (bkz. SimConfigProvider.veriUygula). */
 export interface ProjeVerisi {
   rings: DurakArasiRing[];
   cfg: SimConfig;
   meta: ProjeMeta;
+  /** Projenin çeken aracı (tüm modüller tek kaynaktan okur). */
+  arac?: RollingStock;
+  /** İşletme/sefer parametreleri (sefer sayısı, kruvasman, sinyal modu vb.). */
+  isletme?: Isletme;
 }
 
 /** Proje listesi satırı (ağır `veri` alanı olmadan). */

@@ -99,6 +99,46 @@ export function birim(tur: ParamTur): string {
 }
 
 // ————————————————————————————————————————————————
+// İşletme parametreleri (KALICI — projeye kaydedilir)
+// ————————————————————————————————————————————————
+// Simülasyonu TANIMLAYAN ama cfg (fiziksel sabitler) ve rings (hat) dışında kalan
+// işletme girdileri: sefer sayısı, dönüş bekleme, kruvasman, sinyal modu vb. Her
+// modül bunları context'ten okur/yazar → projeyle kaydedilir, yenilemede kalır.
+// (headway ayrı DEĞİL: tek kaynak cfg.headway'dir — Sefer ve Tam Hat onu kullanır.)
+
+export interface Isletme {
+  // Sefer simülasyonu (Studio)
+  seferSayisi: number;          // tren adedi
+  seferHeadwayDk: number;       // sefer aralığı (dk) — simüle dispatch aralığı
+  turnaroundDk: number;         // dönüş bekleme (dk)
+  passingIds: string[] | null;  // tek-hat kruvasman (geçiş) istasyon id'leri; null = varsayılan (tüm ara istasyonlar)
+  // Tam hat çok-tren simülasyonu (HatSim)
+  hatCount: number;             // tren adedi
+  hatHeadwaySn: number;         // sefer aralığı (s)
+  movingBlock: boolean;         // sinyal modu: false = sabit blok, true = hareketli blok (CBTC)
+  // Anklaşman talep senaryosu (AnklasmanSim)
+  anklasmanTren: number;        // talep tren adedi
+  anklasmanHeadwaySn: number;   // rota isteği aralığı (s)
+  // Ring/ölçeklenme
+  kapali: boolean;              // kapalı hat (loop) mı, açık uçlu hat mı
+}
+
+// Not: cfg.headway (sözleşme hedef headway'i) AYRIDIR — ring uygunluk eşiği için
+// kullanılır; buradaki aralıklar simülasyonların denenen dispatch aralığıdır.
+export const varsayilanIsletme: Isletme = {
+  seferSayisi: 6,
+  seferHeadwayDk: 4,
+  turnaroundDk: 3,
+  passingIds: null,
+  hatCount: 8,
+  hatHeadwaySn: 120,
+  movingBlock: false,
+  anklasmanTren: 4,
+  anklasmanHeadwaySn: 20,
+  kapali: true,
+};
+
+// ————————————————————————————————————————————————
 // Proje künyesi (GENEL — herhangi bir hat/karşı taraf için)
 // ————————————————————————————————————————————————
 // Belge üretiminde (Word/Excel) kapak + künye buradan gelir. Konya'ya bağlı

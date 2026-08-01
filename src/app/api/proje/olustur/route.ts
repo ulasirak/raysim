@@ -11,7 +11,8 @@ import { NextResponse } from "next/server";
 import { istekKimlik, isAdminConfigured, adminDb } from "@/lib/firebaseAdmin";
 import { KREDI_BEDELI } from "@/lib/cuzdan";
 import { yoneticiMi, yoneticiUidMi } from "@/lib/anaray/yetki";
-import { varsayilanConfig, varsayilanMeta } from "@/lib/anaray/config";
+import { varsayilanConfig, varsayilanMeta, varsayilanIsletme } from "@/lib/anaray/config";
+import { varsayilanArac } from "@/lib/anaray/vehicles";
 
 export const runtime = "nodejs";
 
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
 
   const ad = (govde.ad || "Yeni hat").toString().trim().slice(0, 120) || "Yeni hat";
   const bedel = KREDI_BEDELI.projeYukleme;
-  const bosVeriJson = JSON.stringify({ rings: [], cfg: varsayilanConfig, meta: varsayilanMeta });
+  const bosVeriJson = JSON.stringify({ rings: [], cfg: varsayilanConfig, meta: varsayilanMeta, arac: varsayilanArac, isletme: varsayilanIsletme });
 
   const db = await adminDb();
   const { FieldValue } = await import("firebase-admin/firestore");

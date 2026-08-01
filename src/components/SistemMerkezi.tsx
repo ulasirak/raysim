@@ -10,9 +10,8 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { brand } from "@/lib/anaray/brand";
 import { sure, kmh } from "@/lib/anaray/format";
-import { useSimConfig, useProje } from "@/components/SimConfigProvider";
+import { useSimConfig, useProje, useArac } from "@/components/SimConfigProvider";
 import { PARAM_META, paramGoster, paramSI, birim, type ParamMeta, type ParamModul } from "@/lib/anaray/config";
-import { varsayilanArac } from "@/lib/anaray/vehicles";
 import { loopDenge, olceklenme, ringSenaryo } from "@/lib/anaray/ring";
 import { bolgeSeed, simuleEtAnklasman } from "@/lib/anaray/interlocking";
 import { blockingTimeRing } from "@/lib/anaray/blockingtime";
@@ -31,7 +30,7 @@ const BT_PARCA: [string, string][] = [
 export function SistemMerkezi() {
   const { cfg, patch, sifirla } = useSimConfig();
   const { rings } = useProje();
-  const stock = varsayilanArac;
+  const { arac: stock } = useArac();
 
   // Canlı durum — mevcut cfg + paylaşılan hat (ringler) ile çözülür
   const denge = useMemo(() => loopDenge(rings, stock, cfg), [rings, stock, cfg]);
