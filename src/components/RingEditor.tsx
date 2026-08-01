@@ -364,6 +364,20 @@ function RingKart(p: KartProps) {
                 <Num label="Sahasal azami" suffix="km/h" step={5} value={Math.round(kmh(ring.vmax))} onChange={(v) => p.onPatch({ vmax: v * KMH })} />
                 <Num label="Varış durak bekleme" suffix="s" step={5} value={ring.dwell} onChange={(v) => p.onPatch({ dwell: v })} />
               </div>
+              {/* Parklanma (depo) alanları — KALICI proje verisi. Depoysa bekleyen
+                  trenler Canlı Ağ'da sırayla servise çıkar. İlk ringde ayrıca
+                  başlangıç durağı (origin) deposu girilir. */}
+              <div className="mt-2 rounded border p-2" style={{ borderColor: brand.border }}>
+                <div className="field-label mb-1">🅿 Parklanma (depo) alanı — çıkışa hazır bekleyen tren</div>
+                {index === 0 && (
+                  <DepoSatir ad={ring.fromAd} on={!!ring.fromDepot} queued={ring.fromQueued ?? 0}
+                    onToggle={(v) => p.onPatch({ fromDepot: v, fromQueued: v && !ring.fromQueued ? 1 : ring.fromQueued })}
+                    onQueued={(n) => p.onPatch({ fromQueued: n })} />
+                )}
+                <DepoSatir ad={ring.toAd} on={!!ring.depot} queued={ring.queued ?? 0}
+                  onToggle={(v) => p.onPatch({ depot: v, queued: v && !ring.queued ? 1 : ring.queued })}
+                  onQueued={(n) => p.onPatch({ queued: n })} />
+              </div>
               {/* Eğim ikincil (varsayılan 0). Hatta göre değişir — düz güzergahta 0,
                   eğimli güzergahta buradan girilir ya da Coğrafi modülünde GTFS
                   yüksekliğinden otomatik gelir. Fizik/enerji/fren hesabında kullanılır. */}
@@ -835,6 +849,27 @@ function Text({ label, value, onChange }: { label: string; value: string; onChan
 
 function SubBaslik({ children }: { children: React.ReactNode }) {
   return <div className="field-label border-b pb-1" style={{ borderColor: brand.border }}>{children}</div>;
+}
+
+/** Bir durağın parklanma (depo) girdisi: aç/kapa + bekleyen tren sayısı. */
+function DepoSatir({ ad, on, queued, onToggle, onQueued }: { ad: string; on: boolean; queued: number; onToggle: (v: boolean) => void; onQueued: (n: number) => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 py-0.5">
+      <button onClick={() => onToggle(!on)} className="rounded px-2 py-0.5 text-xs font-medium transition"
+        style={on ? { background: brand.ink, color: "#fff" } : { background: "transparent", color: brand.muted, border: `1px solid ${brand.border}` }}>
+        🅿 {ad || "durak"}
+      </button>
+      {on && (
+        <span className="flex items-center gap-1 text-xs" style={{ color: brand.muted }}>
+          bekleyen
+          <input type="number" min={0} step={1} value={queued}
+            onChange={(e) => onQueued(Math.max(0, Math.round(parseFloat(e.target.value) || 0)))}
+            className="w-14 rounded border px-1 py-0.5 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+          tren
+        </span>
+      )}
+    </div>
+  );
 }
 
 function MiniStat({ etiket, deger, alt, vurgu }: { etiket: string; deger: string; alt?: string; vurgu?: string }) {

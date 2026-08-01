@@ -94,6 +94,15 @@ export interface DurakArasiRing {
   vmax: number; // m/s — bu ringde sahasal azami (vars. 40 km/h)
   egim: number; // ‰
   dwell: number; // varış durağı bekleme süresi (s)
+  /** Varış (to) durağı parklanma (depo/stabling) alanı mı? */
+  depot?: boolean;
+  /** Varış durağı depoysa: çıkışa hazır bekleyen tren sayısı. */
+  queued?: number;
+  /** YALNIZ ilk ringde anlamlı: başlangıç (from) durağı parklanma alanı mı?
+   *  (Origin istasyonun kendi ringi yoktur; bu yüzden ilk ringde taşınır.) */
+  fromDepot?: boolean;
+  /** İlk ringde: başlangıç durağı depoysa bekleyen tren sayısı. */
+  fromQueued?: number;
   makaslar: MakasBolgesi[];
   hemzeminler: Hemzemin[];
   tehlikeNoktalari: TehlikeNoktasi[];

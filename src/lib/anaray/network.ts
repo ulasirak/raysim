@@ -140,19 +140,21 @@ export function ringlerdenSebeke(
   // DEĞİL: komşu iki ring aynı durağı paylaşsa bile ayrı id taşıyabilir
   // (`yeniRing` her hücreye taze id verir) → id'ye güvenilirse zincir kopar.
   const dugumId = (i: number) => `dg${i}`;
-  const dugumEkle = (i: number, ad: string, dwell: number, konum: number) => {
+  const dugumEkle = (i: number, ad: string, dwell: number, konum: number, depot?: boolean, queued?: number) => {
     nodes.push({
       id: dugumId(i), name: ad, type: "istasyon",
-      x: X0 + (X1 - X0) * (toplam > 0 ? konum / toplam : 0), y: Y, dwell,
+      x: X0 + (X1 - X0) * (toplam > 0 ? konum / toplam : 0), y: Y, dwell, depot, queued,
     });
   };
 
-  dugumEkle(0, rings[0].fromAd, 0, 0);
+  // Başlangıç durağı deposu ilk ringde (fromDepot/fromQueued) taşınır — origin'in
+  // kendi ringi yoktur. Diğer duraklar, kendilerine VARAN ringin depot/queued'ıyla.
+  dugumEkle(0, rings[0].fromAd, 0, 0, rings[0].fromDepot, rings[0].fromQueued);
   let kumul = 0;
   rings.forEach((ring, i) => {
     const alt = ringToLine(ring, "nominal", cfg); // uzunluk + segment kısıtları
     kumul += alt.length;
-    dugumEkle(i + 1, ring.toAd, ring.dwell, kumul);
+    dugumEkle(i + 1, ring.toAd, ring.dwell, kumul, ring.depot, ring.queued);
     edges.push({
       id: `rg${i + 1}`,
       from: dugumId(i),
