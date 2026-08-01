@@ -93,8 +93,3 @@ export function smoothPath(pts: { x: number; y: number }[]): string {
   }
   return d;
 }
-
-/** Diverging eğim rengi: + tırmanış (kırmızı) / − iniş (mavi) / ~düz (gri). */
-export function egimRenk(g: number): string {
-  return g > 0.3 ? CK.red : g < -0.3 ? CK.blue : CK.baseline;
-}
