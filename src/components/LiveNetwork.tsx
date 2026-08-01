@@ -25,8 +25,12 @@ const HIZLAR = [1, 5, 15, 30, 60];
 const UP_COL = CK.blue;
 const DOWN = CK.orange;
 const GAP = 9; // şeritlerin merkez hattından dik ofseti (px)
-const UP_SIDE = -1; // gidiş üst şerit (SVG'de -y yukarı)
-const DOWN_SIDE = 1; // dönüş alt şerit
+// YÖN 180° ÇEVRİK (geometri/normaller OLDUĞU GİBİ — ayna YOK): gidiş ALT şeritte
+// (fp=s → ekranda sol→sağ), dönüş ÜST şeritte (fp=L-s → sağ→sol). İstasyon adları
+// daima FİZİKSEL üst şeridin (UST=-1) üstüne yazılır → raylar arasına düşmez.
+const UP_SIDE = 1;    // gidiş → alt şerit
+const DOWN_SIDE = -1; // dönüş → üst şerit
+const UST = -1;       // fiziksel üst şerit (etiket/leader yerleşimi için)
 
 function sampleS(points: { t: number; s: number }[], t: number): { s: number; active: boolean; v: number } {
   if (points.length === 0) return { s: 0, active: false, v: 0 };
@@ -94,15 +98,7 @@ export function LiveNetwork({
   }, []);
 
   // Rota istasyonlarının ekran koordinatı (arc-length taban noktaları).
-  // YATAY AYNA: düğüm x'leri aynalanır → tüm çizim (istasyon, tren, sinyal, depo)
-  // tek noktadan ters döner; gidiş fiziksel s:0→L korunur ama ekranda sağ→sol
-  // görünür. Metinler aynalanmaz (konumları taşınır, okunur kalır).
-  const nodeById = useMemo(() => {
-    const xs = network.nodes.map((n) => n.x);
-    const lo = Math.min(...xs), hi = Math.max(...xs);
-    const flip = (x: number) => hi + lo - x;
-    return Object.fromEntries(network.nodes.map((n) => [n.id, { ...n, x: flip(n.x) }]));
-  }, [network]);
+  const nodeById = useMemo(() => Object.fromEntries(network.nodes.map((n) => [n.id, n])), [network]);
   const basePts = useMemo(
     () => line.stations.map((st) => ({ fp: st.position, x: nodeById[st.id]?.x ?? 0, y: nodeById[st.id]?.y ?? 0 })),
     [line, nodeById]
@@ -169,9 +165,9 @@ export function LiveNetwork({
     basePts.map((p, i) => `${(p.x + side * GAP * vertexN[i].nx).toFixed(1)},${(p.y + side * GAP * vertexN[i].ny).toFixed(1)}`).join(" ");
 
   // Anlık tren konumları (ileri koordinat fp)
-  // Fiziksel fp korunur (gidiş s:0→L, dönüş L→0). Ekrandaki 180° yön çevirme
-  // GEOMETRİ AYNASIYLA yapılır (nodeById x mirror) → istasyon/dwell/sinyal/depo
-  // hizası bozulmadan gidiş sağ→sol görünür.
+  // Fiziksel fp korunur (gidiş s:0→L, dönüş L→0). 180° yön çevirme ŞERİT
+  // ATAMASIYLA yapılır (gidiş=alt UP_SIDE, dönüş=üst DOWN_SIDE) → geometri/normaller
+  // olduğu gibi, istasyon adları üstte, hiza bozulmaz.
   const upNow = up.map((tr) => { const r = sampleS(tr.points, t); return { tr, active: r.active, fp: r.s, up: true, v: r.v }; }).filter((x) => x.active);
   const downNow = down.map((tr) => { const r = sampleS(tr.points, t); return { tr, active: r.active, fp: L - r.s, up: false, v: r.v }; }).filter((x) => x.active);
   const aktifSayi = upNow.length + downNow.length;
@@ -215,7 +211,7 @@ export function LiveNetwork({
     const side = x.up ? UP_SIDE : DOWN_SIDE;
     const pos = laneAt(x.fp, side);
     const col = x.up ? UP_COL : DOWN;
-    // yön: gidiş +tangent, dönüş -tangent (geometri aynası ekranda sağ→sol yapar)
+    // yön: gidiş +tangent (alt şerit sol→sağ), dönüş -tangent (üst şerit sağ→sol)
     const deg = (pos.ang * 180) / Math.PI + (x.up ? 0 : 180);
     const no = `${x.tr.index + 1}`;
     const wpx = cars * CAR_PX, half = wpx / 2;
@@ -237,8 +233,8 @@ export function LiveNetwork({
     );
   };
 
-  // Depo (parklanma) — gidiş şeridinin üstünde bir yard kutusu: bekleyen trenler
-  // dolu (mavi), çıkanlar soluk. Zaman ilerledikçe kuyruk boşalır (releaseTimes>t).
+  // Depo (parklanma) — gidiş (alt) şeridinin yanında bir yard kutusu: bekleyen
+  // trenler dolu (mavi), çıkanlar soluk. Zaman ilerledikçe kuyruk boşalır (releaseTimes>t).
   const depotBekleyen = (d: DepotInfo) => d.releaseTimes.filter((rt) => rt > t + 1e-6).length;
   const depotMark = (d: DepotInfo) => {
     const waiting = depotBekleyen(d);
@@ -336,6 +332,7 @@ export function LiveNetwork({
           const c = segAt(st.position);
           const u = laneAt(st.position, UP_SIDE);
           const d = laneAt(st.position, DOWN_SIDE);
+          const top = laneAt(st.position, UST); // etiket DAİMA fiziksel üst şeridin üstünde
           // Gerçek durak adları uzundur ("Mevlana Kültür Merkezi") → komşu etiketler
           // çakışmasın diye iki kademeye şaşırtmalı yerleştirilir.
           const dy = i % 2 === 0 ? -10 : -23;
@@ -344,14 +341,14 @@ export function LiveNetwork({
               <line x1={u.x} y1={u.y} x2={d.x} y2={d.y} stroke={brand.ink} strokeWidth={2.5} strokeLinecap="round" />
               <circle cx={c.x} cy={c.y} r={4} fill={brand.surface} stroke={brand.ink} strokeWidth={2} />
               {i % 2 !== 0 && (
-                <line x1={u.x} y1={u.y - 6} x2={u.x} y2={u.y - 17} stroke={CK.faint} strokeWidth={0.8} />
+                <line x1={top.x} y1={top.y - 6} x2={top.x} y2={top.y - 17} stroke={CK.faint} strokeWidth={0.8} />
               )}
-              <text x={u.x} y={u.y + dy} fill={brand.muted} fontSize={9.5} textAnchor="middle">{st.name}</text>
+              <text x={top.x} y={top.y + dy} fill={brand.muted} fontSize={9.5} textAnchor="middle">{st.name}</text>
             </g>
           );
         })}
 
-        {/* Depolar (parklanma alanları) — gidiş şeridinin üstünde */}
+        {/* Depolar (parklanma alanları) — gidiş (alt) şeridinin yanında */}
         {depots.map(depotMark)}
 
         {/* Trenler */}
@@ -368,9 +365,9 @@ export function LiveNetwork({
         {depoToplam > 0 && (
           <text x={VBW - 10} y={38} fill={brand.inkSoft} fontSize={10} textAnchor="end">🅿 {depoBekleyenToplam}/{depoToplam} depoda çıkışa hazır</text>
         )}
-        {/* Şerit etiketleri */}
-        <text x={10} y={VBH - 30} fill={UP_COL} fontSize={10} fontWeight={600}>▲ Gidiş (üst şerit)</text>
-        <text x={10} y={VBH - 12} fill={DOWN} fontSize={10} fontWeight={600}>▼ Dönüş (alt şerit)</text>
+        {/* Şerit etiketleri — üst = Dönüş (sağ→sol), alt = Gidiş (sol→sağ) */}
+        <text x={10} y={VBH - 30} fill={DOWN} fontSize={10} fontWeight={600}>◀ Dönüş (üst şerit)</text>
+        <text x={10} y={VBH - 12} fill={UP_COL} fontSize={10} fontWeight={600}>Gidiş (alt şerit) ▶</text>
       </svg>
 
       {/* Kontroller */}
@@ -391,7 +388,7 @@ export function LiveNetwork({
         <span className="font-mono text-xs" style={{ color: brand.muted }}>{saat(t)} / {saat(T)}</span>
       </div>
       <p className="text-xs" style={{ color: brand.muted }}>
-        <span style={{ color: UP_COL }}>▬</span> Üst şerit: Gidiş · <span style={{ color: DOWN }}>▬</span> Alt şerit: Dönüş · <span style={{ color: CK.red }}>▬</span> işgal edilen blok.
+        <span style={{ color: DOWN }}>▬</span> Üst şerit: Dönüş (sağ→sol) · <span style={{ color: UP_COL }}>▬</span> Alt şerit: Gidiş (sol→sağ) · <span style={{ color: CK.red }}>▬</span> işgal edilen blok.
         {" "}Sinyal: <span style={{ color: ASPEKT.yesil }}>●</span> yeşil (serbest) · <span style={{ color: ASPEKT.sari }}>●</span> sarı (dikkat) · <span style={{ color: ASPEKT.kirmizi }}>●</span> kırmızı (dur). Sabit blok 3-fener mantığı canlı akıyor.
         {depoToplam > 0 && <> · 🅿 <b>Depo (parklanma):</b> bekleyen trenler sırayla headway aralığıyla servise çıkar; kutudaki dolu kareler çıkışa hazır, soluk kareler çıkmış trenlerdir.</>}
       </p>
