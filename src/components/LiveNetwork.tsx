@@ -160,8 +160,9 @@ export function LiveNetwork({
     basePts.map((p, i) => `${(p.x + side * GAP * vertexN[i].nx).toFixed(1)},${(p.y + side * GAP * vertexN[i].ny).toFixed(1)}`).join(" ");
 
   // Anlık tren konumları (ileri koordinat fp)
-  const upNow = up.map((tr) => { const r = sampleS(tr.points, t); return { tr, active: r.active, fp: r.s, up: true, v: r.v }; }).filter((x) => x.active);
-  const downNow = down.map((tr) => { const r = sampleS(tr.points, t); return { tr, active: r.active, fp: L - r.s, up: false, v: r.v }; }).filter((x) => x.active);
+  // Yön 180° çevrildi: üst şerit (gidiş) sağ→sol, alt şerit (dönüş) sol→sağ.
+  const upNow = up.map((tr) => { const r = sampleS(tr.points, t); return { tr, active: r.active, fp: L - r.s, up: true, v: r.v }; }).filter((x) => x.active);
+  const downNow = down.map((tr) => { const r = sampleS(tr.points, t); return { tr, active: r.active, fp: r.s, up: false, v: r.v }; }).filter((x) => x.active);
   const aktifSayi = upNow.length + downNow.length;
 
   // Blok işgali — her şerit ayrı
@@ -203,8 +204,8 @@ export function LiveNetwork({
     const side = x.up ? UP_SIDE : DOWN_SIDE;
     const pos = laneAt(x.fp, side);
     const col = x.up ? UP_COL : DOWN;
-    // yön: gidiş +tangent, dönüş -tangent
-    const deg = (pos.ang * 180) / Math.PI + (x.up ? 0 : 180);
+    // yön (180° çevrik): gidiş -tangent (sağ→sol), dönüş +tangent (sol→sağ)
+    const deg = (pos.ang * 180) / Math.PI + (x.up ? 180 : 0);
     const no = `${x.tr.index + 1}`;
     const wpx = cars * CAR_PX, half = wpx / 2;
     const kmh = Math.round(x.v * 3.6);
@@ -280,7 +281,7 @@ export function LiveNetwork({
           const arizali = faultBlocks.includes(i);
           return (
             <circle key={`su${i}`} cx={p.x} cy={p.y} r={onBlockClick ? 3.6 : 3.1}
-              fill={arizali ? "#7A0A1C" : asp(occUp, i, i + 1)} stroke="#fff" strokeWidth={1}
+              fill={arizali ? "#7A0A1C" : asp(occUp, i - 1, i - 2)} stroke="#fff" strokeWidth={1}
               style={{ transition: "fill 0.35s ease", cursor: onBlockClick ? "pointer" : "default" }}
               onClick={onBlockClick ? () => onBlockClick(i) : undefined}>
               {onBlockClick && <title>{`Blok ${i} — tıkla: arıza aç/kapat`}</title>}
@@ -290,7 +291,7 @@ export function LiveNetwork({
         {Array.from({ length: nb }).map((_, k) => {
           const i = k + 1;
           const p = offsetAt(blocks[i], GAP + 6, DOWN_SIDE);
-          return <circle key={`sd${i}`} cx={p.x} cy={p.y} r={3.1} fill={asp(occDown, i - 1, i - 2)} stroke="#fff" strokeWidth={1} style={{ transition: "fill 0.35s ease" }} />;
+          return <circle key={`sd${i}`} cx={p.x} cy={p.y} r={3.1} fill={asp(occDown, i, i + 1)} stroke="#fff" strokeWidth={1} style={{ transition: "fill 0.35s ease" }} />;
         })}
 
         {/* İstasyonlar (peron = iki şeridi kesen dik marka) */}
