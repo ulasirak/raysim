@@ -8,7 +8,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { RailNetwork, RollingStock, RailEdge, Route } from "@/lib/anaray/types";
 import { flattenRoute, ringlerdenSebeke } from "@/lib/anaray/network";
-import { addStationOnEdge, removeStation } from "@/lib/anaray/edit";
+import { addStationOnEdge, addTerminalStation, removeStation } from "@/lib/anaray/edit";
 import { simulate } from "@/lib/anaray/sim";
 import { simulateSignalled, reverseRoute, fleetSize, monteCarlo, planDepotDispatch, type MonteCarloResult } from "@/lib/anaray/signalling";
 import { simulateSingleTrack } from "@/lib/anaray/singletrack";
@@ -177,6 +177,12 @@ function StudioIc() {
     setNetwork(r.network);
     setRoute(r.route);
   };
+  const ucEkle = (where: "start" | "end") => {
+    const r = addTerminalStation(network, route, where, where === "start" ? "Yeni Başlangıç" : "Yeni Son");
+    setDuzenlendi(true);
+    setNetwork(r.network);
+    setRoute(r.route);
+  };
   const istasyonSil = (nodeId: string) => {
     const r = removeStation(network, route, nodeId);
     setDuzenlendi(true);
@@ -283,7 +289,8 @@ function StudioIc() {
                 {line.stations.map((st, i) => {
                   const node = nodeById[st.id];
                   const istasyon = node?.type === "istasyon";
-                  const silinebilir = i > 0 && i < line.stations.length - 1;
+                  // Uç dahil her durak silinebilir; en az iki durak kalmalı.
+                  const silinebilir = line.stations.length > 2;
                   const depo = !!st.depot;
                   const sonIstasyon = i === line.stations.length - 1;
                   return (
@@ -344,6 +351,17 @@ function StudioIc() {
                 <button onClick={() => secili && istasyonEkle(secili)}
                   className="rounded-md px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90" style={{ background: brand.ink }}>
                   ＋ Ortasına istasyon ekle
+                </button>
+              </div>
+              {/* Başa / sona durak (hattı uzatır) */}
+              <div className="mt-2 flex items-center gap-2">
+                <button onClick={() => ucEkle("start")}
+                  className="flex-1 rounded-md border px-3 py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.ink }}>
+                  ⇤ Başa durak ekle
+                </button>
+                <button onClick={() => ucEkle("end")}
+                  className="flex-1 rounded-md border px-3 py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.ink }}>
+                  Sona durak ekle ⇥
                 </button>
               </div>
               {depotPlan.total > 0 && (

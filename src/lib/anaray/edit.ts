@@ -72,12 +72,17 @@ export function addStationOnEdge(
   };
 }
 
-/** Ara istasyonu siler (etrafındaki iki kenarı birleştirir). Uç düğümler silinemez. */
+/**
+ * İstasyon siler. İç istasyon → iki komşu kenarı birleştirir (hat boyu korunur).
+ * Uç istasyon (baş/son) → o kenarı düşürür (hat o kadar kısalır). En az iki durak
+ * kalmalı (route ≥1 kenar), aksi halde işlem yapılmaz.
+ */
 export function removeStation(
   net: RailNetwork,
   route: Route,
   nodeId: string
 ): { network: RailNetwork; route: Route } {
+  // — İç istasyon: iki kenarı birleştir —
   for (let i = 1; i < route.edgeIds.length; i++) {
     const e1 = net.edges.find((e) => e.id === route.edgeIds[i - 1]);
     const e2 = net.edges.find((e) => e.id === route.edgeIds[i]);
@@ -99,5 +104,72 @@ export function removeStation(
       return { network: { ...net, nodes, edges }, route: { ...route, edgeIds: newEdgeIds } };
     }
   }
+
+  // — Uç istasyon: baştaki/sondaki kenarı düşür (en az bir kenar kalmalı) —
+  if (route.edgeIds.length >= 2) {
+    const firstEdge = net.edges.find((e) => e.id === route.edgeIds[0]);
+    const lastEdge = net.edges.find((e) => e.id === route.edgeIds[route.edgeIds.length - 1]);
+    const startNode = route.startNodeId ?? firstEdge?.from;
+    // Baş uç: startNode = firstEdge.from (ileri zincir) → düşür, yeni başlangıç firstEdge.to
+    if (firstEdge && startNode === nodeId && firstEdge.from === nodeId) {
+      return {
+        network: { ...net, nodes: net.nodes.filter((n) => n.id !== nodeId), edges: net.edges.filter((e) => e.id !== firstEdge.id) },
+        route: { ...route, edgeIds: route.edgeIds.slice(1), startNodeId: firstEdge.to },
+      };
+    }
+    // Son uç: lastEdge.to = son düğüm → düşür
+    if (lastEdge && lastEdge.to === nodeId) {
+      return {
+        network: { ...net, nodes: net.nodes.filter((n) => n.id !== nodeId), edges: net.edges.filter((e) => e.id !== lastEdge.id) },
+        route: { ...route, edgeIds: route.edgeIds.slice(0, -1) },
+      };
+    }
+  }
   return { network: net, route };
+}
+
+/**
+ * Hattın başına ("start") veya sonuna ("end") yeni bir uç istasyon ekler → hattı
+ * uzatır. Yeni kenar, komşu uç kenarın uzunluğu/hız limitini örnek alır (eğim 0).
+ * İleri-yön değişmezliği korunur: başa eklerken yeni→eskiBaş, sona eklerken eskiSon→yeni.
+ */
+export function addTerminalStation(
+  net: RailNetwork,
+  route: Route,
+  where: "start" | "end",
+  name: string
+): { network: RailNetwork; route: Route } {
+  if (route.edgeIds.length === 0) return { network: net, route };
+  const newId = uid("st", new Set(net.nodes.map((n) => n.id)));
+  const newEdgeId = uid("e", new Set(net.edges.map((e) => e.id)));
+
+  if (where === "start") {
+    const firstEdge = net.edges.find((e) => e.id === route.edgeIds[0]);
+    if (!firstEdge) return { network: net, route };
+    const startNode = net.nodes.find((n) => n.id === (route.startNodeId ?? firstEdge.from));
+    const secondNode = net.nodes.find((n) => n.id === firstEdge.to);
+    if (!startNode || !secondNode) return { network: net, route };
+    const len = firstEdge.length || 1000;
+    const seg = firstEdge.segments[0];
+    const newNode: RailNode = { id: newId, name, type: "istasyon", x: 2 * startNode.x - secondNode.x, y: startNode.y, dwell: 20 };
+    const newEdge: RailEdge = { id: newEdgeId, from: newId, to: startNode.id, length: len, segments: [{ start: 0, end: len, vmax: seg?.vmax ?? 22, gradient: 0 }] };
+    return {
+      network: { ...net, nodes: [...net.nodes, newNode], edges: [...net.edges, newEdge] },
+      route: { ...route, edgeIds: [newEdgeId, ...route.edgeIds], startNodeId: newId },
+    };
+  }
+
+  const lastEdge = net.edges.find((e) => e.id === route.edgeIds[route.edgeIds.length - 1]);
+  if (!lastEdge) return { network: net, route };
+  const lastNode = net.nodes.find((n) => n.id === lastEdge.to);
+  const prevNode = net.nodes.find((n) => n.id === lastEdge.from);
+  if (!lastNode || !prevNode) return { network: net, route };
+  const len = lastEdge.length || 1000;
+  const seg = lastEdge.segments[lastEdge.segments.length - 1];
+  const newNode: RailNode = { id: newId, name, type: "istasyon", x: 2 * lastNode.x - prevNode.x, y: lastNode.y, dwell: 20 };
+  const newEdge: RailEdge = { id: newEdgeId, from: lastNode.id, to: newId, length: len, segments: [{ start: 0, end: len, vmax: seg?.vmax ?? 22, gradient: 0 }] };
+  return {
+    network: { ...net, nodes: [...net.nodes, newNode], edges: [...net.edges, newEdge] },
+    route: { ...route, edgeIds: [...route.edgeIds, newEdgeId] },
+  };
 }
