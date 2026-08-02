@@ -42,7 +42,7 @@ const OK = CK.good;
 
 export function RingEditor() {
   const { cfg } = useSimConfig();
-  const { rings, setRings, sifirlaRings, meta, yukleniyor } = useProje();
+  const { rings, setRings, sifirlaRings, meta, yukleniyor, yazilabilir } = useProje();
   // Araç ve işletme parametreleri KALICI (projeye kayıtlı) — tek kaynak.
   const { arac: stock } = useArac();
   const { patchIsletme } = useIsletme();
@@ -353,6 +353,7 @@ export function RingEditor() {
             stock={stock}
             acik={!!acik[r.id]}
             cfg={cfg}
+            duzenlenebilir={yazilabilir}
             onToggle={() => setAcik((a) => ({ ...a, [r.id]: !a[r.id] }))}
             onPatch={(p) => patch(r.id, p)}
             onSil={() => ringSil(r.id)}
@@ -411,6 +412,8 @@ interface KartProps {
   onToggle: () => void;
   onPatch: (p: Partial<DurakArasiRing>) => void;
   onSil: () => void;
+  /** Salt-okunur (demo/paylaşım) modda false → şerit tıkla-ekle/sürükle kapalı. */
+  duzenlenebilir: boolean;
   onMakasEkle: (tip: MakasTip, konum?: number, ekstra?: Partial<DurakArasiRing["makaslar"][number]>) => void;
   onMakasSil: (mid: string) => void;
   onMakasPatch: (mid: string, p: Partial<DurakArasiRing["makaslar"][number]>) => void;
@@ -443,17 +446,18 @@ function RingKart(p: KartProps) {
   // varsayılanıyla soran bir form açılır (bkz. EkleFormu).
   const [bekleyen, setBekleyen] = useState<{ tur: EkleTur; konum: number } | null>(null);
   const seritTasi = (tur: KisitTur, id: string, konum: number) => {
+    if (!p.duzenlenebilir) return; // salt-okunur: sürükle-taşı kapalı
     if (tur === "makas") p.onMakasPatch(id, { konum });
     else if (tur === "hemzemin") p.onHzPatch(id, { konum });
     else p.onTnPatch(id, { konum });
   };
   const seritEkle = (konum: number) => {
-    if (!ekleTuru) return;
+    if (!p.duzenlenebilir || !ekleTuru) return; // salt-okunur: tıkla-ekle kapalı
     setBekleyen({ tur: ekleTuru, konum }); // form aç
     setEkleTuru(null);
   };
   const ekleOnayla = (konum: number, ekstra: Record<string, unknown>) => {
-    if (!bekleyen) return;
+    if (!p.duzenlenebilir || !bekleyen) return;
     const t = bekleyen.tur;
     if (t.kind === "makas") p.onMakasEkle((ekstra.tip as MakasTip) ?? t.tip, konum, ekstra);
     else if (t.kind === "hemzemin") p.onHzEkle(t.tip, konum, ekstra);
