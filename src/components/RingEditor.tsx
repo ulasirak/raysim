@@ -240,6 +240,8 @@ export function RingEditor() {
             cfg={cfg}
             onToggle={() => setAcik((a) => ({ ...a, [r.id]: !a[r.id] }))}
             onPatch={(p) => patch(r.id, p)}
+            onFromAd={(v) => setRings((rs) => durakAdiDegistir(rs, i, v))}
+            onToAd={(v) => setRings((rs) => durakAdiDegistir(rs, i + 1, v))}
             onSil={() => ringSil(r.id)}
             onMakasEkle={(tip, konum, ekstra) => makasEkle(r.id, tip, konum, ekstra)}
             onMakasSil={(mid) => makasSil(r.id, mid)}
@@ -295,6 +297,9 @@ interface KartProps {
   cfg: SimConfig;
   onToggle: () => void;
   onPatch: (p: Partial<DurakArasiRing>) => void;
+  /** Durak adı — paylaşılan durak komşu ringde SENKRON güncellenir (üst panelle aynı). */
+  onFromAd: (v: string) => void;
+  onToAd: (v: string) => void;
   onSil: () => void;
   onMakasEkle: (tip: MakasTip, konum?: number, ekstra?: Partial<DurakArasiRing["makaslar"][number]>) => void;
   onMakasSil: (mid: string) => void;
@@ -372,8 +377,8 @@ function RingKart(p: KartProps) {
             <div>
               <SubBaslik>Duraklar & Mesafe (worst/best = en kötü/en iyi köşesi)</SubBaslik>
               <div className="grid grid-cols-2 gap-2">
-                <Text label="Başlangıç durağı" value={ring.fromAd} onChange={(v) => p.onPatch({ fromAd: v })} />
-                <Text label="Bitiş durağı" value={ring.toAd} onChange={(v) => p.onPatch({ toAd: v })} />
+                <Text label="Başlangıç durağı" value={ring.fromAd} onChange={(v) => p.onFromAd(v)} />
+                <Text label="Bitiş durağı" value={ring.toAd} onChange={(v) => p.onToAd(v)} />
               </div>
               <div className="mt-2">
                 <label className="field-label flex items-center justify-between">
