@@ -25,7 +25,6 @@ import {
   tccGerekli,
   yeniHemzemin,
   yeniMakas,
-  yeniRing,
   yeniTehlike,
   ringDuraklari,
   durakAdiDegistir,
@@ -66,12 +65,6 @@ export function RingEditor() {
   const patchTn = (rid: string, tid: string, p: Partial<DurakArasiRing["tehlikeNoktalari"][number]>) =>
     setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, tehlikeNoktalari: r.tehlikeNoktalari.map((t) => (t.id === tid ? { ...t, ...p } : t)) } : r)));
 
-  const ringEkle = () => {
-    const son = rings[rings.length - 1];
-    const r = yeniRing(son ? son.toAd : "Durak A", "Yeni Durak");
-    setRings((rs) => [...rs, r]);
-    setAcik((a) => ({ ...a, [r.id]: true }));
-  };
   const ringSil = (id: string) => setRings((rs) => rs.filter((r) => r.id !== id));
   const sifirla = () => {
     sifirlaRings();
@@ -130,13 +123,27 @@ export function RingEditor() {
         </button>
       </div>
 
-      {/* DURAKLAR & MESAFELER — hızlı durak editörü (Sefer'den taşındı, ring modeline
-          doğrudan yazar). Durak zinciri: adları/beklemeyi düzenle, aralara mesafe/hız
-          gir, BAŞA · ORTAYA · SONA durak ekle. Detaylı hücre şartları (worst/best,
-          makas, hemzemin, tehlike, depo) aşağıdaki ring kartlarında. */}
-      {rings.length > 0 && (
+      {/* DURAKLAR & MESAFELER — hattın GİRİŞ NOKTASI. Boş hatta da görünür: müşteri
+          önce buradan durak/mesafe/hız girer, ring hücreleri buradan doğar. Detaylı
+          hücre şartları (worst/best, makas, hemzemin, tehlike, depo) alttaki kartlarda.
+          Yükleme sırasında gizli (aşağıdaki "Hat yükleniyor…" gösterilir). */}
+      {!yukleniyor && (
         <div className="mt-4">
-          <Panel baslik="Duraklar & Mesafeler" aciklama="Hattın durak zinciri — başa, ortaya, sona durak ekle; adları ve durak-arası mesafe/hız değerlerini gir. Değişiklikler anında kaydedilir; detaylı hücre şartları aşağıdaki ring kartlarında.">
+          <Panel baslik="Duraklar & Mesafeler" aciklama="Hattın başladığı yer: durakları ve aralarındaki mesafe/hızları buradan gir. Başa · ortaya · sona durak ekle, adları düzenle. Her durak-arası bir işletim hücresi (ring) oluşturur — detaylı şartlar aşağıdaki kartlarda. Değişiklikler anında kaydedilir.">
+            {duraklar.length === 0 ? (
+              <div className="rounded-md border-2 border-dashed px-6 py-8 text-center" style={{ borderColor: brand.border }}>
+                <div className="font-brand text-base font-semibold" style={{ color: brand.ink }}>Hattınız boş — buradan başlayın</div>
+                <p className="mx-auto mt-1 max-w-lg text-xs leading-relaxed" style={{ color: brand.muted }}>
+                  İlk durak-arasını ekleyin: iki durak arasında bir işletim hücresi (ring) oluşur. Sonra başa/ortaya/sona
+                  durak ekleyip mesafe ve hızları girin; diğer modüller aynı anda bu hatta göre hesaplamaya başlar.
+                </p>
+                <button onClick={() => setRings(durakEkleSon)}
+                  className="mt-4 inline-block rounded-md px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: brand.red }}>
+                  ＋ İlk durak-arasını ekle
+                </button>
+              </div>
+            ) : (
+            <>
             <button onClick={() => setRings(durakEkleBas)}
               className="mb-2 w-full rounded-md border-2 border-dashed py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
               ⇤ Başa durak ekle
@@ -192,6 +199,8 @@ export function RingEditor() {
               className="mt-2 w-full rounded-md border-2 border-dashed py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
               Sona durak ekle ⇥
             </button>
+            </>
+            )}
           </Panel>
         </div>
       )}
@@ -217,18 +226,6 @@ export function RingEditor() {
         </div>
       )}
 
-      {/* Hat boşsa: ilk adım burasıdır — kullanıcı hattını buradan kurmaya başlar.
-          Yalnız yükleme bittikten sonra ("gerçekten boş" olduğu kesinken) gösterilir. */}
-      {!yukleniyor && rings.length === 0 && (
-        <div className="mt-6 rounded-lg border-2 border-dashed px-6 py-8 text-center" style={{ borderColor: brand.border }}>
-          <div className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>Hattınız boş</div>
-          <p className="mx-auto mt-1 max-w-lg text-sm leading-relaxed" style={{ color: brand.muted }}>
-            Her <b>ring</b>, iki durak arasındaki işletim hücresidir: mesafe, duruş süresi, üzerindeki
-            makaslar, hemzemin geçitler ve tehlike noktaları. Ringleri sırayla ekleyerek hattı kurun —
-            diğer altı modül aynı anda bu hatta göre hesaplamaya başlar.
-          </p>
-        </div>
-      )}
 
       {/* Ring kartları — her biri `ring-<id>` ankoru taşır (Sistem Merkezi teşhis
           butonu buraya kaydırır); scroll-mt sticky nav altında kalmasını önler. */}
@@ -258,9 +255,8 @@ export function RingEditor() {
         ))}
       </div>
 
-      <button onClick={ringEkle} className="mt-4 w-full rounded-lg border-2 border-dashed py-3 text-sm font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
-        ＋ Durak arası ring (hücre) ekle
-      </button>
+      {/* Ring ekleme artık ÜSTTEKİ "Duraklar & Mesafeler" panelinden (durak zinciri) —
+          tek ekleme yeri, çift buton karmaşası yok. */}
 
       {/* Eşit şartlar — durak-çiftleri dengeleme önerisi. Hattın ALTINDA: önce hattı
           gör/kur, sonra iyileştirme tavsiyesi (dolu hatta sayfa artık öneriyle açılmaz). */}
