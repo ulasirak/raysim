@@ -17,8 +17,8 @@
 // hazır bulur; başka her hesap SIFIRDAN BOŞ hatla başlar ve kendi verisini girer.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { varsayilanConfig, varsayilanMeta, konyaMeta, varsayilanIsletme, type SimConfig, type ProjeMeta, type Isletme } from "@/lib/anaray/config";
-import { konya2EtapSeed, type DurakArasiRing } from "@/lib/anaray/ring";
+import { varsayilanConfig, varsayilanMeta, varsayilanIsletme, type SimConfig, type ProjeMeta, type Isletme } from "@/lib/anaray/config";
+import { type DurakArasiRing } from "@/lib/anaray/ring";
 import { varsayilanArac } from "@/lib/anaray/vehicles";
 import type { RollingStock } from "@/lib/anaray/types";
 import { yoneticiMi } from "@/lib/anaray/yetki";
@@ -79,10 +79,6 @@ interface Ctx {
 
 const SimConfigCtx = createContext<Ctx | null>(null);
 
-function vitrinRings(): DurakArasiRing[] {
-  return konya2EtapSeed().rings;
-}
-
 // İlk giriş kurulumu kilidi (uid → süren oluşturma sözü). Aynı sayfa yüklemesi
 // içinde effect iki kez koşarsa ikinci çağrı aynı sözü bekler.
 // DİKKAT: bu kilit yalnız TEK bir JS bağlamını korur — kayıt sonrası sayfa
@@ -114,11 +110,6 @@ function eskiYerelTaslak(): ProjeVerisi | null {
 /** Sıfırdan başlayan hesap: hat BOŞ, künye nötr. Kullanıcı kendi verisini girer. */
 function bosVeri(): ProjeVerisi {
   return { rings: [], cfg: varsayilanConfig, meta: varsayilanMeta, arac: varsayilanArac, isletme: varsayilanIsletme };
-}
-
-/** Yönetici vitrini: Konya Tramvay 2. Etap taslağı. */
-function vitrinVerisi(): ProjeVerisi {
-  return { rings: vitrinRings(), cfg: varsayilanConfig, meta: konyaMeta, arac: varsayilanArac, isletme: varsayilanIsletme };
 }
 
 export function SimConfigProvider({ children }: { children: React.ReactNode }) {
@@ -240,15 +231,11 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
         if (bayat()) return;
 
         if (liste.length === 0) {
-          // İlk giriş. Yönetici → vitrin hattı (varsa tarayıcıdaki eski taslağı taşı).
-          // Diğer herkes → SIFIRDAN boş hat; verisini kendisi girer.
-          const taslak = yonetici ? eskiYerelTaslak() : null;
-          const ilkVeri = taslak ?? (yonetici ? vitrinVerisi() : bosVeri());
-          const ilkAd = taslak
-            ? "Taşınan taslak"
-            : yonetici
-              ? konyaMeta.hatAdi
-              : "İlk hattım";
+          // İlk giriş — HERKES (yönetici dahil) SIFIRDAN boş hatla başlar; gömülü
+          // örnek hat yok. Tarayıcıda eski tek-kullanıcılı taslak varsa taşınır.
+          const taslak = eskiYerelTaslak();
+          const ilkVeri = taslak ?? bosVeri();
+          const ilkAd = taslak ? "Taşınan taslak" : "İlk hattım";
           let soz = ilkKurulum.get(user.uid);
           if (!soz) {
             // Sabit kimlik (`ilk_<uid>`): eşzamanlı iki deneme tek dokümanda birleşir.
@@ -352,12 +339,11 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
     setCfg(varsayilanConfig);
   }, [yazilabilir]);
 
-  // "Sıfırla": yöneticide vitrin hattına döner, diğer hesaplarda hattı BOŞALTIR
-  // (kimseye başka bir projenin verisi tohumlanmaz).
+  // "Hattı temizle": herkeste hattı BOŞALTIR (gömülü örnek hat yok).
   const sifirlaRings = useCallback(() => {
     if (!yazilabilir) return;
-    setRingsRaw(yonetici ? vitrinRings() : []);
-  }, [yazilabilir, yonetici]);
+    setRingsRaw([]);
+  }, [yazilabilir]);
 
   const patchMeta = useCallback((p: Partial<ProjeMeta>) => {
     if (!yazilabilir) return;

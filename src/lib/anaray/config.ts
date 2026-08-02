@@ -164,14 +164,6 @@ export const varsayilanMeta: ProjeMeta = {
   onaylayan: "Firma Yetkilisi",
 };
 
-/** Vitrin (yönetici) hattının künyesi — Konya Tramvay 2. Etap taslağı. */
-export const konyaMeta: ProjeMeta = {
-  ...varsayilanMeta,
-  projeAdi: "Konya Tramvay 2. Etap Sinyalizasyon Projesi",
-  dokumanNo: "TR-VA-AKS-001",
-  hatAdi: "Alaaddin – Adliye (TASLAK)",
-};
-
 export interface ProjeMetaAlan {
   key: keyof ProjeMeta;
   ad: string;

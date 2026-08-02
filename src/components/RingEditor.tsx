@@ -42,7 +42,7 @@ const OK = CK.good;
 
 export function RingEditor() {
   const { cfg } = useSimConfig();
-  const { rings, setRings, sifirlaRings, meta, yonetici, yukleniyor } = useProje();
+  const { rings, setRings, sifirlaRings, meta, yukleniyor } = useProje();
   // Araç ve işletme parametreleri KALICI (projeye kayıtlı) — tek kaynak.
   const { arac: stock } = useArac();
   const { patchIsletme } = useIsletme();
@@ -78,6 +78,21 @@ export function RingEditor() {
   const [ekMesafe, setEkMesafe] = useState(1000);
   const [bolRing, setBolRing] = useState<string | null>(null);
   const [bolKonum, setBolKonum] = useState(500);
+
+  // Parklanma (depo) — durak i'nin deposu: origin (i=0) → ring0.fromDepot,
+  // diğerleri → o durağa GELEN ring'in depot'u. (Eski Sefer editöründeki gibi durak satırında.)
+  const depoDurum = (i: number) => (i === 0
+    ? { on: !!rings[0]?.fromDepot, q: rings[0]?.fromQueued ?? 0 }
+    : { on: !!rings[i - 1]?.depot, q: rings[i - 1]?.queued ?? 0 });
+  const depoAyarla = (i: number, on: boolean) => {
+    if (i === 0) { const r = rings[0]; if (r) patch(r.id, { fromDepot: on, fromQueued: on && !r.fromQueued ? 1 : r.fromQueued }); }
+    else { const r = rings[i - 1]; if (r) patch(r.id, { depot: on, queued: on && !r.queued ? 1 : r.queued }); }
+  };
+  const depoQueued = (i: number, n: number) => {
+    const q = Math.max(0, Math.round(n));
+    if (i === 0) { const r = rings[0]; if (r) patch(r.id, { fromQueued: q }); }
+    else { const r = rings[i - 1]; if (r) patch(r.id, { queued: q }); }
+  };
 
   // — güncelleyiciler —
   const patch = (id: string, p: Partial<DurakArasiRing>) =>
@@ -139,11 +154,11 @@ export function RingEditor() {
         </div>
         <button
           onClick={() => {
-            if (!yonetici && rings.length > 0 && !confirm("Bu hattın tüm ringleri silinsin mi? (geri alınamaz)")) return;
+            if (rings.length > 0 && !confirm("Bu hattın tüm ringleri silinsin mi? (geri alınamaz)")) return;
             sifirla();
           }}
           className="rounded-md border px-3 py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
-          {yonetici ? "↺ Vitrin hattına dön" : "🗑 Hattı temizle"}
+          🗑 Hattı temizle
         </button>
       </div>
 
@@ -234,6 +249,22 @@ export function RingEditor() {
                         className="shrink-0 rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
                     ) : (<span className="w-6 shrink-0" />)}
                   </div>
+                  {/* Parklanma (depo) alanı — bu durakta çıkışa hazır bekleyen tren (Canlı Ağ besler) */}
+                  <div className="ml-6 flex flex-wrap items-center gap-2 py-0.5 pl-2 text-xs">
+                    <button onClick={() => depoAyarla(i, !depoDurum(i).on)}
+                      className="rounded px-2 py-0.5 font-medium transition"
+                      style={depoDurum(i).on ? { background: brand.ink, color: "#fff" } : { background: "transparent", color: brand.muted, border: `1px solid ${brand.border}` }}>
+                      🅿 Parklanma
+                    </button>
+                    {depoDurum(i).on && (
+                      <span className="flex items-center gap-1" style={{ color: brand.muted }}>
+                        bekleyen
+                        <input type="number" min={0} step={1} value={depoDurum(i).q} onChange={(e) => depoQueued(i, parseFloat(e.target.value) || 0)}
+                          className="w-14 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /> tren
+                        {i === duraklar.length - 1 && <span style={{ color: CK.amber }} title="Hattın sonundaki depo gidiş yönünde tren veremez (gidecek yer yok)">⚠ uç</span>}
+                      </span>
+                    )}
+                  </div>
                   {/* Durak-arası (ring i) — mesafe + hız + ortaya ekle */}
                   {i < rings.length && (
                     <div className="ml-6 flex flex-wrap items-center gap-2 py-1 pl-2 text-xs" style={{ color: brand.muted }}>
@@ -313,8 +344,6 @@ export function RingEditor() {
             cfg={cfg}
             onToggle={() => setAcik((a) => ({ ...a, [r.id]: !a[r.id] }))}
             onPatch={(p) => patch(r.id, p)}
-            onFromAd={(v) => setRings((rs) => durakAdiDegistir(rs, i, v))}
-            onToAd={(v) => setRings((rs) => durakAdiDegistir(rs, i + 1, v))}
             onSil={() => ringSil(r.id)}
             onMakasEkle={(tip, konum, ekstra) => makasEkle(r.id, tip, konum, ekstra)}
             onMakasSil={(mid) => makasSil(r.id, mid)}
@@ -370,9 +399,6 @@ interface KartProps {
   cfg: SimConfig;
   onToggle: () => void;
   onPatch: (p: Partial<DurakArasiRing>) => void;
-  /** Durak adı — paylaşılan durak komşu ringde SENKRON güncellenir (üst panelle aynı). */
-  onFromAd: (v: string) => void;
-  onToAd: (v: string) => void;
   onSil: () => void;
   onMakasEkle: (tip: MakasTip, konum?: number, ekstra?: Partial<DurakArasiRing["makaslar"][number]>) => void;
   onMakasSil: (mid: string) => void;
@@ -448,43 +474,14 @@ function RingKart(p: KartProps) {
           {/* Duraklar + mesafe köşeleri */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div>
-              <SubBaslik>Duraklar & Mesafe (worst/best = en kötü/en iyi köşesi)</SubBaslik>
+              <SubBaslik>Mesafe Köşeleri (worst/best = en kötü/en iyi)</SubBaslik>
+              <div className="mb-2 text-xs" style={{ color: brand.muted }}>
+                <b style={{ color: brand.ink }}>{ring.fromAd} → {ring.toAd}</b> · nominal <b style={{ color: brand.ink }}>{Math.round(ring.uzunluk)} m</b>
+                <div className="mt-0.5 text-[0.65rem]" style={{ color: brand.faint }}>Ad · mesafe · hız · bekleme · parklanma → üstteki <b>“Duraklar &amp; Mesafeler”</b> panelinde. Burada yalnız worst/best köşeleri + kısıtlar.</div>
+              </div>
               <div className="grid grid-cols-2 gap-2">
-                <Text label="Başlangıç durağı" value={ring.fromAd} onChange={(v) => p.onFromAd(v)} />
-                <Text label="Bitiş durağı" value={ring.toAd} onChange={(v) => p.onToAd(v)} />
-              </div>
-              <div className="mt-2">
-                <label className="field-label flex items-center justify-between">
-                  <span>Nominal mesafe</span>
-                  <span className="font-mono" style={{ color: brand.ink }}>{Math.round(ring.uzunluk)} m</span>
-                </label>
-                <input type="range" min={100} max={2000} step={10} value={ring.uzunluk}
-                  onChange={(e) => p.onPatch({ uzunluk: parseInt(e.target.value) })}
-                  className="mt-1 w-full" style={{ accentColor: brand.red }} />
-                <div className="mt-1 flex justify-between text-[0.65rem]" style={{ color: brand.faint }}>
-                  <span>best {Math.round(ring.bestUzunluk)} m</span>
-                  <span>worst {Math.round(ring.worstUzunluk)} m</span>
-                </div>
-              </div>
-              <div className="mt-2 grid grid-cols-2 gap-2">
                 <Num label="Best-case (en iyi) mesafe" suffix="m" step={50} value={ring.bestUzunluk} onChange={(v) => p.onPatch({ bestUzunluk: v })} />
                 <Num label="Worst-case (en kötü) mesafe" suffix="m" step={50} value={ring.worstUzunluk} onChange={(v) => p.onPatch({ worstUzunluk: v })} />
-                <Num label="Sahasal azami" suffix="km/h" step={5} value={Math.round(kmh(ring.vmax))} onChange={(v) => p.onPatch({ vmax: v * KMH })} />
-                <Num label="Varış durak bekleme" suffix="s" step={5} value={ring.dwell} onChange={(v) => p.onPatch({ dwell: v })} />
-              </div>
-              {/* Parklanma (depo) alanları — KALICI proje verisi. Depoysa bekleyen
-                  trenler Canlı Ağ'da sırayla servise çıkar. İlk ringde ayrıca
-                  başlangıç durağı (origin) deposu girilir. */}
-              <div className="mt-2 rounded border p-2" style={{ borderColor: brand.border }}>
-                <div className="field-label mb-1">🅿 Parklanma (depo) alanı — çıkışa hazır bekleyen tren</div>
-                {index === 0 && (
-                  <DepoSatir ad={ring.fromAd} on={!!ring.fromDepot} queued={ring.fromQueued ?? 0}
-                    onToggle={(v) => p.onPatch({ fromDepot: v, fromQueued: v && !ring.fromQueued ? 1 : ring.fromQueued })}
-                    onQueued={(n) => p.onPatch({ fromQueued: n })} />
-                )}
-                <DepoSatir ad={ring.toAd} on={!!ring.depot} queued={ring.queued ?? 0}
-                  onToggle={(v) => p.onPatch({ depot: v, queued: v && !ring.queued ? 1 : ring.queued })}
-                  onQueued={(n) => p.onPatch({ queued: n })} />
               </div>
             </div>
 
@@ -930,38 +927,8 @@ function Num({ label, value, onChange, step, suffix, hata, allowNeg }: { label: 
   );
 }
 
-function Text({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <label className="block">
-      <span className="field-label" style={{ fontSize: "0.6rem" }}>{label}</span>
-      <input value={value} onChange={(e) => onChange(e.target.value)} className="mt-0.5 w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
-    </label>
-  );
-}
-
 function SubBaslik({ children }: { children: React.ReactNode }) {
   return <div className="field-label border-b pb-1" style={{ borderColor: brand.border }}>{children}</div>;
-}
-
-/** Bir durağın parklanma (depo) girdisi: aç/kapa + bekleyen tren sayısı. */
-function DepoSatir({ ad, on, queued, onToggle, onQueued }: { ad: string; on: boolean; queued: number; onToggle: (v: boolean) => void; onQueued: (n: number) => void }) {
-  return (
-    <div className="flex flex-wrap items-center gap-2 py-0.5">
-      <button onClick={() => onToggle(!on)} className="rounded px-2 py-0.5 text-xs font-medium transition"
-        style={on ? { background: brand.ink, color: "#fff" } : { background: "transparent", color: brand.muted, border: `1px solid ${brand.border}` }}>
-        🅿 {ad || "durak"}
-      </button>
-      {on && (
-        <span className="flex items-center gap-1 text-xs" style={{ color: brand.muted }}>
-          bekleyen
-          <input type="number" min={0} step={1} value={queued}
-            onChange={(e) => onQueued(Math.max(0, Math.round(parseFloat(e.target.value) || 0)))}
-            className="w-14 rounded border px-1 py-0.5 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
-          tren
-        </span>
-      )}
-    </div>
-  );
 }
 
 function MiniStat({ etiket, deger, alt, vurgu }: { etiket: string; deger: string; alt?: string; vurgu?: string }) {
