@@ -331,9 +331,19 @@ export function RingEditor() {
       )}
 
 
+      {/* RİNG EDİTÖRÜ başlığı — alttaki kartlar durak zincirinin İLERİ şartlarıdır
+          (worst/best köşeleri + makas/hemzemin/tehlike). Üst paneldan görsel olarak ayrık. */}
+      {rings.length > 0 && (
+        <div className="mt-8 mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b-2 pb-2" style={{ borderColor: brand.ink }}>
+          <span className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>Ring Editörü</span>
+          <span className="rounded-full px-2 py-0.5 text-[0.65rem] font-semibold" style={{ background: CK.badBgSoft, color: brand.red }}>{rings.length} hücre</span>
+          <span className="text-xs" style={{ color: brand.muted }}>— her durak-arası hücrenin ileri şartları: worst/best köşeleri · makas · hemzemin · tehlike. Yukarıda kurduğun zinciri burada detaylandır.</span>
+        </div>
+      )}
+
       {/* Ring kartları — her biri `ring-<id>` ankoru taşır (Sistem Merkezi teşhis
           butonu buraya kaydırır); scroll-mt sticky nav altında kalmasını önler. */}
-      <div className="mt-6 flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         {rings.map((r, i) => (
           <div key={r.id} id={`ring-${r.id}`} className="scroll-mt-28">
           <RingKart
@@ -451,10 +461,10 @@ function RingKart(p: KartProps) {
   };
 
   return (
-    <div className="overflow-hidden rounded-lg border bg-white" style={{ borderColor: tam ? brand.border : brand.red }}>
-      {/* Başlık satırı */}
+    <div className="overflow-hidden rounded-lg border bg-white" style={{ borderColor: tam ? brand.border : brand.red, borderLeftWidth: 4, borderLeftColor: tam ? brand.gold : brand.red }}>
+      {/* Başlık satırı — üstteki durak satırlarından AYRIK: kare "R#" rozet + altın kenar. */}
       <div className="flex items-center gap-3 px-4 py-3" style={{ background: tam ? "#FBFCFD" : "#FDF2F4" }}>
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white" style={{ background: brand.ink }}>{index + 1}</span>
+        <span className="flex shrink-0 items-center justify-center rounded-md px-1.5 py-0.5 font-mono text-xs font-bold" style={{ background: CK.badBgSoft, color: brand.red }}>R{index + 1}</span>
         <button onClick={p.onToggle} className="min-w-0 flex-1 text-left">
           <div className="truncate font-brand text-sm font-semibold" style={{ color: brand.ink }}>{ring.fromAd} → {ring.toAd}</div>
           <div className="text-xs" style={{ color: brand.muted }}>
