@@ -17,6 +17,7 @@ import { raporHTML, type RaporDil } from "@/lib/anaray/rapor";
 import { varsayilanArac } from "@/lib/anaray/vehicles";
 import { varsayilanConfig, varsayilanMeta, type SimConfig, type ProjeMeta } from "@/lib/anaray/config";
 import type { DurakArasiRing } from "@/lib/anaray/ring";
+import type { MakasBolgeTopolojisi } from "@/lib/anaray/interlocking";
 import type { RollingStock } from "@/lib/anaray/types";
 
 export const runtime = "nodejs";
@@ -37,7 +38,7 @@ export async function POST(req: Request) {
   }
   catch { return NextResponse.json({ hata: "Kimlik doğrulanamadı." }, { status: 401 }); }
 
-  let govde: { veri?: { rings?: DurakArasiRing[]; cfg?: Partial<SimConfig>; meta?: Partial<ProjeMeta>; arac?: RollingStock; turnaroundSn?: number }; dil?: string };
+  let govde: { veri?: { rings?: DurakArasiRing[]; cfg?: Partial<SimConfig>; meta?: Partial<ProjeMeta>; arac?: RollingStock; turnaroundSn?: number; bolgeler?: MakasBolgeTopolojisi[] }; dil?: string };
   try { govde = await req.json(); } catch { return NextResponse.json({ hata: "Geçersiz istek." }, { status: 400 }); }
 
   const rings = govde.veri?.rings;
@@ -56,11 +57,14 @@ export async function POST(req: Request) {
   // Dönüş bekleme (s) → çevrim/filo hesabı. Geçersiz/negatif/aşırı değerler nötrlenir.
   const ts = Number(govde.veri?.turnaroundSn);
   const turnaroundSn = Number.isFinite(ts) ? Math.min(3600, Math.max(0, ts)) : 0;
+  // Makas bölgeleri (Anklaşman modülünden) — belgedeki bölge senaryoları buradan gelir.
+  // Kötüye kullanım freni: aşırı bölge sayısını kırp (gerçek hatlar ~onlarca bölge).
+  const bolgeler: MakasBolgeTopolojisi[] = Array.isArray(govde.veri?.bolgeler) ? govde.veri.bolgeler.slice(0, 200) : [];
 
   // 1) Raporu ÜRET (başarısızsa kredi düşülmez).
   let html: string;
   try {
-    html = raporHTML(meta, cfg, rings, arac, dil, turnaroundSn);
+    html = raporHTML(meta, cfg, rings, arac, dil, turnaroundSn, bolgeler);
   } catch (e) {
     return NextResponse.json({ hata: `Rapor üretilemedi: ${e instanceof Error ? e.message : String(e)}` }, { status: 500 });
   }

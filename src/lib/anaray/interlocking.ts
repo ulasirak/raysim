@@ -370,8 +370,51 @@ export function bolge51(): MakasBolgeTopolojisi {
   };
 }
 
-export function bolgeSeed(): MakasBolgeTopolojisi[] {
+/** Konya referans seti (yalnız vitrin/yönetici hattı için — el kitabı adları). */
+export function bolgeSeedKonya(): MakasBolgeTopolojisi[] {
   return [bolge1(), bolge2(), bolge51()];
+}
+
+/**
+ * GENEL başlangıç şablonları (anonim çok-kiracılı): aynı kanonik topolojiler ama
+ * NÖTR adlarla ve `esZamanli` olmadan → çakışma matriksi rotalardan otomatik
+ * türer (`rotaCakisir`). Her yeni kiracı bunlarla başlar, sonra kendi bölgelerini
+ * düzenler. Hiçbir gerçek hattın (Konya) adı sızmaz.
+ */
+export function bolgeSablonlari(): MakasBolgeTopolojisi[] {
+  const notr = (z: MakasBolgeTopolojisi, ad: string): MakasBolgeTopolojisi => ({ ...z, ad, esZamanli: undefined });
+  return [
+    notr(bolge1(), "1. Makas Bölgesi — Karşılaşmalı (şablon)"),
+    notr(bolge2(), "2. Makas Bölgesi — Headway / U-dönüş (şablon)"),
+    notr(bolge51(), "5.1 Barınma / S-Makas Bölgesi (şablon)"),
+  ];
+}
+
+// ————————————————————————————————————————————————
+// Kiracı düzenleme yardımcıları (bölge = kalıcı proje verisi)
+// ————————————————————————————————————————————————
+
+/** Boş bir bölge iskeleti (editörde "Bölge ekle"). */
+export function bosBolge(id: string, ad: string, tip: BolgeTip = "karsilasmali"): MakasBolgeTopolojisi {
+  return { id, ad, tip, bloklar: [], makaslar: [], sinyaller: [], rotalar: [], uzunluk: 100 };
+}
+
+/** Boş bir rota iskeleti. */
+export function yeniRota(id: string): AnklasmanRota {
+  return { id, nereden: "A", nereye: "B", sinyal: "SG_A", bloklar: [], makaslar: [], headwayGerekli: false, tccGerekli: false };
+}
+
+/**
+ * Bölgeyi tutarlı hale getirir: blok/makas/sinyal listelerini ROTALARDAN türetir
+ * ve `esZamanli`yi siler (matriks daima rotalardan otomatik türesin). Editör her
+ * değişiklikte bunu uygular → görselleştirme (kareUret bloklar/makaslar/sinyaller
+ * okur) ve çakışma matriksi girilen rotalarla birebir tutarlı kalır.
+ */
+export function bolgeNormalize(z: MakasBolgeTopolojisi): MakasBolgeTopolojisi {
+  const bloklar = [...new Set(z.rotalar.flatMap((r) => r.bloklar))];
+  const makaslar = [...new Set(z.rotalar.flatMap((r) => r.makaslar.map((m) => m.id)))];
+  const sinyaller = [...new Set(z.rotalar.map((r) => r.sinyal))];
+  return { ...z, bloklar, makaslar, sinyaller, esZamanli: undefined };
 }
 
 /**

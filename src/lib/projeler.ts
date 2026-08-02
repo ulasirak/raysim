@@ -19,6 +19,7 @@ import {
 import { getDb, getAuthInstance } from "./firebase";
 import type { SimConfig, ProjeMeta, Isletme } from "./anaray/config";
 import type { DurakArasiRing } from "./anaray/ring";
+import type { MakasBolgeTopolojisi } from "./anaray/interlocking";
 import type { RollingStock } from "./anaray/types";
 
 const COL = "projeler";
@@ -50,6 +51,9 @@ export interface ProjeVerisi {
   arac?: RollingStock;
   /** İşletme/sefer parametreleri (sefer sayısı, kruvasman, sinyal modu vb.). */
   isletme?: Isletme;
+  /** Kiracının makas bölgesi anklaşman topolojileri (Anklaşman modülü + Belgeler
+   *  bunları okur). Eski kayıtlarda yoktur → okunurken şablonlarla doldurulur. */
+  bolgeler?: MakasBolgeTopolojisi[];
 }
 
 /** Proje listesi satırı (ağır `veri` alanı olmadan). */

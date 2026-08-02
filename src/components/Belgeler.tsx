@@ -9,10 +9,9 @@ import { useMemo, useState } from "react";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { sure, indir } from "@/lib/anaray/format";
-import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
+import { useSimConfig, useProje, useArac, useIsletme, useBolgeler } from "@/components/SimConfigProvider";
 import { PROJE_META_ALANLAR } from "@/lib/anaray/config";
 import { loopDenge, olceklenme, ringChallenge, ringDogrula, loopTamMi } from "@/lib/anaray/ring";
-import { bolgeSeed } from "@/lib/anaray/interlocking";
 // wordUret/excelUret ağır (docx + exceljs ~1MB) — statik import etmiyoruz; yalnız
 // ilgili buton tıklandığında await import() ile tembel yüklenir (indir hafif, format'ta).
 import { type RaporDil } from "@/lib/anaray/rapor";
@@ -25,6 +24,7 @@ export function Belgeler() {
   const { yenile } = useCuzdan();
   const { arac: stock } = useArac();
   const { isletme } = useIsletme();
+  const { bolgeler } = useBolgeler();
   const turnaroundSn = Math.max(0, isletme.turnaroundDk) * 60; // dönüş bekleme → çevrim/filo hesabı
   const [durum, setDurum] = useState<{ tip: "ok" | "err" | "info"; metin: string } | null>(null);
   const [mesgul, setMesgul] = useState<"" | "word" | "excel" | "rapor" | "html">("");
@@ -33,7 +33,7 @@ export function Belgeler() {
   const ozet = useMemo(() => {
     const olcek = olceklenme(rings, stock, true, cfg);
     const denge = loopDenge(rings, stock, cfg);
-    const zones = bolgeSeed();
+    const zones = bolgeler;
     const chSayi = rings.reduce((n, r) => n + ringChallenge(r, stock, cfg).length, 0);
     const kritik = rings.reduce((n, r) => n + ringChallenge(r, stock, cfg).filter((c) => c.seviye === "kritik").length, 0);
     return {
@@ -46,7 +46,7 @@ export function Belgeler() {
       headwayUygun: olcek.headwayUygun,
       chSayi, kritik,
     };
-  }, [rings, stock, cfg]);
+  }, [rings, stock, cfg, bolgeler]);
 
   // Belge geçerlilik kapısı: zorunlu şartları eksik bir hattan RESMÎ tasarım belgesi
   // üretmek yanıltıcı olur (karşı taraf onu doğru sanır). Eksikler açıkça listelenir.
@@ -69,7 +69,7 @@ export function Belgeler() {
     const yanit = await fetch("/api/rapor", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ veri: { rings, cfg, meta, arac: stock, turnaroundSn }, dil }),
+      body: JSON.stringify({ veri: { rings, cfg, meta, arac: stock, turnaroundSn, bolgeler }, dil }),
     });
     if (!yanit.ok) {
       const v = await yanit.json().catch(() => ({}));
@@ -117,7 +117,7 @@ export function Belgeler() {
     setMesgul("word"); setDurum(null);
     try {
       const { wordUret } = await import("@/lib/anaray/dokuman");
-      const blob = await wordUret(meta, cfg, rings, stock, turnaroundSn);
+      const blob = await wordUret(meta, cfg, rings, stock, turnaroundSn, bolgeler);
       indir(blob, dosyaAdi("docx"));
       setDurum({ tip: "ok", metin: `Word belgesi üretildi: ${dosyaAdi("docx")}` });
     } catch (e) {
@@ -129,7 +129,7 @@ export function Belgeler() {
     setMesgul("excel"); setDurum(null);
     try {
       const { excelUret } = await import("@/lib/anaray/dokuman");
-      const blob = await excelUret(meta, cfg, rings, stock, turnaroundSn);
+      const blob = await excelUret(meta, cfg, rings, stock, turnaroundSn, bolgeler);
       indir(blob, dosyaAdi("xlsx"));
       setDurum({ tip: "ok", metin: `Excel çalışma kitabı üretildi: ${dosyaAdi("xlsx")}` });
     } catch (e) {
@@ -143,7 +143,7 @@ export function Belgeler() {
         <div className="field-label">Teknik Belgeler — Word & Excel Üretimi</div>
         <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>Sinyalizasyon Tasarım Dokümantasyonu</h1>
         <p className="mt-2 max-w-3xl text-sm" style={{ color: brand.inkSoft }}>
-          Proje künyeni gir; mevcut hat (ringler) ve parametrelerden profesyonel <b>Tasarım El Kitabı (.docx)</b> ve <b>çalışma kitabı (.xlsx)</b> üretilir. Hat şeması, ringler, kapasite ve blocking-time bölümleri <b>senin projenden türer</b>; makas bölgesi anklaşman senaryoları ve çakışma matriksleri ise el kitabı MAZ-VA-AKS-001’in <b>referans standardını</b> kullanır (hat geometrinden otomatik türetilmez).
+          Proje künyeni gir; mevcut hat (ringler) ve parametrelerden profesyonel <b>Tasarım El Kitabı (.docx)</b> ve <b>çalışma kitabı (.xlsx)</b> üretilir. Hat şeması, ringler, kapasite ve blocking-time bölümleri <b>senin projenden türer</b>; makas bölgesi anklaşman senaryoları ve çakışma matriksleri ise <b>Anklaşman modülünde tanımladığın bölgelerden</b> gelir (çakışma matriksi rotalardan otomatik türetilir).
         </p>
       </div>
 

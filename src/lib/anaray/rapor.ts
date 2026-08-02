@@ -18,7 +18,7 @@ import {
   ringSenaryo, ringChallenge, ringKisitDizisi, loopDenge, olceklenme,
   type DurakArasiRing,
 } from "./ring";
-import { bolgeSeed, cakismaMatriksi } from "./interlocking";
+import { cakismaMatriksi, type MakasBolgeTopolojisi } from "./interlocking";
 import { blockingTimeRing } from "./blockingtime";
 import { loopToHat } from "./hatsim";
 import { simulate } from "./sim";
@@ -235,7 +235,7 @@ function rDil(lang: RaporDil) {
     s21: "2.1 Ring Bazında Kısıt ve Risk (Challenge) Analizi",
     thKisit: ["Kısıt", "Konum (m)", "Detay"], noKisit: "Kısıt yok — kesintisiz seyir.",
     pillOk: "UYGUN", pillBad: "İHLAL",
-    s3: "Makas Bölgesi Operasyon Senaryoları ve Çakışma Matriksleri", s3i: "Her makas bölgesi bağımsız SIL4 anklaşman birimidir. Rotalar NEREDEN→NEREYE tanımlıdır; çakışma matriksi hangi rotaların eşzamanlı kurulabileceğini belirler. Not: bu bölümdeki bölge topolojisi, rotalar ve çakışma matriksleri MAZ-VA-AKS-001 el kitabının REFERANS standardından gelir; hattınızın makas geometrisinden otomatik türetilmez.",
+    s3: "Makas Bölgesi Operasyon Senaryoları ve Çakışma Matriksleri", s3i: "Her makas bölgesi bağımsız SIL4 anklaşman birimidir. Rotalar NEREDEN→NEREYE tanımlıdır; çakışma matriksi hangi rotaların eşzamanlı kurulabileceğini belirler. Bu bölümdeki bölge topolojileri, rotalar ve çakışma matriksleri projenizin Anklaşman modülünde tanımlıdır; çakışma matriksi girilen rotalardan otomatik türetilir.",
     thRota: ["Rota", "Nereden", "Nereye", "Bloklar", "TCC"], evet: "Evet", hayir: "Hayır",
     bolge: "Bölge", matris: "Çakışma Matriksi", matrisYes: "birlikte kurulabilir", matrisNo: "mümkün değil",
     s4: "Kapasite ve Blocking-Time Analizi", s4i: "En yüksek blocking-time'lı blok minimum tren aralığını (headway) belirler; UIC 406 doluluk oranı bu değerin hedef headway'e bölümüdür. Her bloğun rezerve süresi altı bileşenden oluşur.",
@@ -268,7 +268,7 @@ function rDil(lang: RaporDil) {
     s21: "2.1 Per-cell Constraint & Risk (Challenge) Analysis",
     thKisit: ["Constraint", "Position (m)", "Detail"], noKisit: "No constraints — uninterrupted run.",
     pillOk: "OK", pillBad: "VIOLATION",
-    s3: "Switch Zone Operation Scenarios and Conflict Matrices", s3i: "Each switch zone is an independent SIL4 interlocking unit. Routes are defined FROM→TO; the conflict matrix determines which routes may be set simultaneously. Note: the zone topology, routes and conflict matrices in this section come from the REFERENCE standard of handbook MAZ-VA-AKS-001; they are not auto-derived from your line's switch geometry.",
+    s3: "Switch Zone Operation Scenarios and Conflict Matrices", s3i: "Each switch zone is an independent SIL4 interlocking unit. Routes are defined FROM→TO; the conflict matrix determines which routes may be set simultaneously. The zone topologies, routes and conflict matrices in this section are defined in your project's Interlocking module; the conflict matrix is auto-derived from the routes you enter.",
     thRota: ["Route", "From", "To", "Blocks", "TCC"], evet: "Yes", hayir: "No",
     bolge: "Zone", matris: "Conflict Matrix", matrisYes: "can be set together", matrisNo: "not possible",
     s4: "Capacity and Blocking-Time Analysis", s4i: "The block with the highest blocking-time sets the minimum train interval (headway); the UIC 406 occupancy ratio is this value divided by the target headway. Each block's reserved time comprises six components.",
@@ -283,7 +283,7 @@ function rDil(lang: RaporDil) {
   return lang === "en" ? en : tr;
 }
 
-export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, lang: RaporDil = "tr", turnaroundSn = 0): string {
+export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, lang: RaporDil = "tr", turnaroundSn = 0, bolgeler: MakasBolgeTopolojisi[] = []): string {
   const L = rDil(lang);
   const rs = rings.map((r, i) => {
     const sen = ringSenaryo(r, stock, cfg);
@@ -293,7 +293,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   });
   const denge = loopDenge(rings, stock, cfg);
   const olcek = olceklenme(rings, stock, true, cfg, turnaroundSn);
-  const zones = bolgeSeed();
+  const zones = bolgeler;
   const bt = blockingTimeRing(rings, stock, cfg);
   const chSayi = rings.reduce((n, r) => n + ringChallenge(r, stock, cfg).length, 0);
   const kritik = rings.reduce((n, r) => n + ringChallenge(r, stock, cfg).filter((c) => c.seviye === "kritik").length, 0);

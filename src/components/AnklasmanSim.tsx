@@ -10,14 +10,19 @@ import { useEffect, useMemo, useState } from "react";
 import { brand } from "@/lib/anaray/brand";
 import { sure } from "@/lib/anaray/format";
 import Link from "next/link";
-import { useSimConfig, useProje, useIsletme } from "@/components/SimConfigProvider";
+import { useSimConfig, useProje, useIsletme, useBolgeler } from "@/components/SimConfigProvider";
 import {
-  bolgeSeed,
-  makasBolgeId,
-  simuleEtAnklasman,
-  type RotaTalebi,
-  type SinyalAspekt,
+  bolgeSablonlari, bosBolge, yeniRota, bolgeNormalize, makasBolgeId, simuleEtAnklasman,
+  type RotaTalebi, type SinyalAspekt, type MakasBolgeTopolojisi, type AnklasmanRota, type BolgeTip,
 } from "@/lib/anaray/interlocking";
+
+const BOLGE_TIP_AD: Record<BolgeTip, string> = {
+  karsilasmali: "Karşılaşmalı (yüz yüze)",
+  headway: "Headway makası",
+  barinma: "Barınma (3. yön)",
+  depo: "Depo giriş/çıkış",
+  udonus: "U-dönüş (S-makas)",
+};
 import { CK, ASPEKT } from "@/lib/anaray/chartkit";
 
 // Aspekt renkleri chartkit'in ALAN semantiği katmanından (gerçek fener renkleri).
@@ -25,19 +30,61 @@ const ASPEKT_RENK: Record<SinyalAspekt, string> = ASPEKT;
 const ASPEKT_AD: Record<SinyalAspekt, string> = { yesil: "YEŞİL", sari: "SARI", kirmizi: "KIRMIZI", sonuk: "SÖNÜK" };
 
 export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {}) {
-  const bolgeler = useMemo(() => bolgeSeed(), []);
-  const [bolgeId, setBolgeId] = useState(
-    initialBolgeId && bolgeler.some((b) => b.id === initialBolgeId) ? initialBolgeId : bolgeler[0].id
-  );
-  const topo = useMemo(() => bolgeler.find((b) => b.id === bolgeId)!, [bolgeler, bolgeId]);
+  // Bölgeler artık KİRACININ kalıcı verisi (Firestore) — sabit seed değil.
+  const { bolgeler, setBolgeler, yazilabilir } = useBolgeler();
+  const [bolgeId, setBolgeId] = useState(initialBolgeId ?? "");
+  // Seçili bölge geçersizse (silme / ilk yükleme) ilk bölgeye düş.
+  useEffect(() => {
+    if (bolgeler.length && !bolgeler.some((b) => b.id === bolgeId)) setBolgeId(bolgeler[0].id);
+  }, [bolgeler, bolgeId]);
+  const topo = bolgeler.find((b) => b.id === bolgeId) ?? bolgeler[0];
 
-  // Bu soyut model hattın HANGİ fiziksel bölgelerinde kullanılıyor? (ters bağ:
-  // Ringler → Anklaşman derin bağlantısının karşılığı; model artık havada değil.)
+  // Bu bölge hattın HANGİ fiziksel makas bölgelerine bağlı? (ters bağ: Ringler → Anklaşman)
   const { rings } = useProje();
   const kullananlar = useMemo(
-    () => rings.flatMap((r) => r.makaslar.filter((m) => makasBolgeId(m) === bolgeId).map((m) => ({ ad: m.ad || r.ad, ringAd: r.ad }))),
-    [rings, bolgeId]
+    () => (topo ? rings.flatMap((r) => r.makaslar.filter((m) => makasBolgeId(m) === topo.id).map((m) => ({ ad: m.ad || r.ad, ringAd: r.ad }))) : []),
+    [rings, topo]
   );
+
+  // — bölge / rota düzenleme (kalıcı: setBolgeler → Firestore otomatik kayıt) —
+  // Her mutasyonda bolgeNormalize: blok/makas/sinyal listelerini rotalardan türetir,
+  // esZamanli'yi siler → çakışma matriksi girilen rotalarla daima tutarlı.
+  const bolgeGuncelle = (id: string, mut: (z: MakasBolgeTopolojisi) => MakasBolgeTopolojisi) =>
+    setBolgeler((list) => list.map((z) => (z.id === id ? bolgeNormalize(mut(z)) : z)));
+  const yeniBolgeId = () => {
+    const mevcut = new Set(bolgeler.map((b) => b.id));
+    let n = bolgeler.length + 1;
+    while (mevcut.has(String(n))) n++;
+    return String(n);
+  };
+  const bolgeEkle = () => {
+    const id = yeniBolgeId();
+    setBolgeler((list) => [...list, bosBolge(id, `${id}. Makas Bölgesi`, "karsilasmali")]);
+    setBolgeId(id);
+  };
+  const bolgeSilHandler = (id: string) => setBolgeler((list) => list.filter((z) => z.id !== id));
+  const sablonYukle = () => setBolgeler(bolgeSablonlari());
+
+  const rotaId = (z: MakasBolgeTopolojisi) => {
+    const mevcut = new Set(z.rotalar.map((r) => r.id));
+    let n = z.rotalar.length + 1;
+    while (mevcut.has(`${z.id}_R${n}`)) n++;
+    return `${z.id}_R${n}`;
+  };
+  const rotaEkle = () => topo && bolgeGuncelle(topo.id, (z) => ({ ...z, rotalar: [...z.rotalar, yeniRota(rotaId(z))] }));
+  const rotaGuncelle = (rid: string, patch: Partial<AnklasmanRota>) =>
+    topo && bolgeGuncelle(topo.id, (z) => ({ ...z, rotalar: z.rotalar.map((r) => (r.id === rid ? { ...r, ...patch } : r)) }));
+  const rotaSil = (rid: string) => topo && bolgeGuncelle(topo.id, (z) => ({ ...z, rotalar: z.rotalar.filter((r) => r.id !== rid) }));
+
+  // blok/makas listelerini serbest metin ↔ dizi çevir (editör alanları).
+  const bloklarStr = (bs: string[]) => bs.join(", ");
+  const bloklarParse = (s: string) => s.split(/[,\s]+/).map((x) => x.trim()).filter(Boolean);
+  const makaslarStr = (ms: { id: string; konum: string }[]) => ms.map((m) => `${m.id}:${m.konum}`).join(", ");
+  const makaslarParse = (s: string) =>
+    s.split(",").map((x) => x.trim()).filter(Boolean).map((tok) => {
+      const [id, konum] = tok.split(":").map((y) => y.trim());
+      return { id: id || "PM1", konum: konum || "" };
+    });
 
   // Kalıcı talep parametreleri (projeye kayıtlı).
   const { isletme, patchIsletme } = useIsletme();
@@ -49,8 +96,10 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
   const [faultAt, setFaultAt] = useState(30);
 
   // Talepler: trenler headway aralığıyla rotalar arasında round-robin gezer.
+  // Bölge yoksa ya da rotası yoksa boş → sim boş, güvenli.
   const istekler = useMemo<RotaTalebi[]>(() => {
-    const rl = topo.rotalar;
+    const rl = topo?.rotalar ?? [];
+    if (rl.length === 0) return [];
     return Array.from({ length: trenSayisi }, (_, i) => ({
       t: i * headwaySn,
       rotaId: rl[i % rl.length].id,
@@ -60,7 +109,7 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
 
   const { cfg } = useSimConfig();
   const sonuc = useMemo(
-    () => simuleEtAnklasman(topo, istekler, { cfg, ...(faultOn ? { fault: { t: faultAt, sure: 15 } } : {}) }),
+    () => simuleEtAnklasman(topo ?? bosBolge("_", "—"), istekler, { cfg, ...(faultOn ? { fault: { t: faultAt, sure: 15 } } : {}) }),
     [topo, istekler, faultOn, faultAt, cfg]
   );
 
@@ -85,6 +134,27 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
   const kare = sonuc.kareler[Math.min(frame, sonuc.kareler.length - 1)];
   const kabuller = sonuc.sonuclar.filter((s) => s.redSebep === "").length;
 
+  // Hiç bölge yoksa (paylaşım/eski kayıt) — boş durum + şablon tohumu.
+  if (!topo) {
+    return (
+      <div className="mx-auto max-w-3xl px-6 py-16 text-center">
+        <div className="field-label">Makas Bölgesi Anklaşman Simülatörü</div>
+        <h1 className="font-brand mt-2 text-2xl font-semibold" style={{ color: brand.ink }}>Henüz makas bölgesi yok</h1>
+        <p className="mx-auto mt-3 max-w-lg text-sm" style={{ color: brand.inkSoft }}>
+          Anklaşman senaryolarını çalıştırmak için en az bir makas bölgesi (rotalar + bloklar) tanımlanmalı.
+          Hazır şablonlardan başlayıp kendi hattına göre düzenleyebilirsin.
+        </p>
+        {yazilabilir ? (
+          <button onClick={sablonYukle} className="mt-6 rounded-md px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: brand.red }}>
+            + Şablon bölgeleri yükle
+          </button>
+        ) : (
+          <p className="mt-6 text-xs" style={{ color: brand.muted }}>Bu görünüm salt-okunur — bölge eklenemez.</p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
       <div className="mb-6 flex items-end justify-between border-b pb-4" style={{ borderColor: brand.border }}>
@@ -92,20 +162,100 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
           <div className="field-label">Makas Bölgesi Anklaşman Simülatörü — Dağıtık SIL4 Interlocking (anklaşman)</div>
           <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>{topo.ad}</h1>
         </div>
-        <select value={bolgeId} onChange={(e) => setBolgeId(e.target.value)} className="rounded border px-2 py-1.5 text-sm" style={{ borderColor: brand.borderStrong, color: brand.ink }}>
-          {bolgeler.map((b) => (<option key={b.id} value={b.id}>{b.ad}</option>))}
-        </select>
+        <div className="flex items-center gap-2">
+          <select value={bolgeId} onChange={(e) => setBolgeId(e.target.value)} className="rounded border px-2 py-1.5 text-sm" style={{ borderColor: brand.borderStrong, color: brand.ink }}>
+            {bolgeler.map((b) => (<option key={b.id} value={b.id}>{b.ad}</option>))}
+          </select>
+          {yazilabilir && (
+            <button onClick={bolgeEkle} title="Yeni makas bölgesi ekle" className="rounded-md border px-2.5 py-1.5 text-sm font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.ink }}>+ Bölge</button>
+          )}
+        </div>
       </div>
 
       {/* Model ↔ hat bağı */}
       <div className="mb-4 rounded-md border-l-4 px-4 py-2 text-xs" style={{ background: brand.surface, borderColor: kullananlar.length ? CK.good : CK.amber, color: brand.inkSoft }}>
         {kullananlar.length > 0 ? (
-          <>Bu <b>referans</b> anklaşman modeli (el kitabı MAZ-VA-AKS-001), proje hattındaki <b>{kullananlar.length} benzer-tipli makas bölgesine</b> karşılık geliyor:{" "}
-            {kullananlar.map((k) => k.ad).join(" · ")}. Topoloji, rotalar ve çakışma matriksi standarttan gelir (hat geometrinizden türetilmez); makas yerleşimini{" "}
-            <Link href="/ringler" className="underline" style={{ color: brand.red }}>Ringler</Link> modülünden düzenleyin.</>
+          <>Bu bölge, proje hattındaki <b>{kullananlar.length} makas bölgesine</b> bağlı:{" "}
+            {kullananlar.map((k) => k.ad).join(" · ")}. Rotaları aşağıdan düzenle — çakışma matriksi girilen rotalardan otomatik türetilir; makas yerleşimini{" "}
+            <Link href="/ringler" className="underline" style={{ color: brand.red }}>Ringler</Link> modülünden yönet.</>
         ) : (
-          <>▲ Bu model şu an proje hattındaki hiçbir makas bölgesine bağlı değil — el kitabı MAZ-VA-AKS-001 <b>referans topolojisi</b> olarak inceleniyor (hat geometrinizden türetilmez).</>
+          <>▲ Bu bölge şu an hattaki hiçbir ring makasına bağlı değil (yalnız bilgi amaçlı çalışır). Ring makaslarını{" "}
+            <Link href="/ringler" className="underline" style={{ color: brand.red }}>Ringler</Link> modülünden bu bölgeye bağlayabilirsin.</>
         )}
+      </div>
+
+      {/* Bölge editörü — kiracı kendi enterlok topolojisini kurar */}
+      <div className="mb-6">
+        <Panel baslik="Bölge Düzenle" aciklama="Bu bölgenin adını, tipini ve ROTALARINI tanımla. Blok/makas/sinyal listeleri ve çakışma matriksi rotalardan otomatik türetilir. Makas doğrultusu biçimi: PM1:AD, PM2:BE. Değişiklikler projeye otomatik kaydedilir.">
+          <fieldset disabled={!yazilabilir} className="contents">
+            <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-4">
+              <label className="block sm:col-span-2">
+                <span className="field-label">Bölge adı</span>
+                <input value={topo.ad} onChange={(e) => bolgeGuncelle(topo.id, (z) => ({ ...z, ad: e.target.value }))}
+                  className="mt-1 w-full rounded border px-2 py-1.5 text-sm disabled:opacity-60" style={{ borderColor: brand.border, color: brand.ink }} />
+              </label>
+              <label className="block">
+                <span className="field-label">Tip</span>
+                <select value={topo.tip} onChange={(e) => bolgeGuncelle(topo.id, (z) => ({ ...z, tip: e.target.value as BolgeTip }))}
+                  className="mt-1 w-full rounded border px-2 py-1.5 text-sm disabled:opacity-60" style={{ borderColor: brand.border, color: brand.ink }}>
+                  {(Object.keys(BOLGE_TIP_AD) as BolgeTip[]).map((t) => (<option key={t} value={t}>{BOLGE_TIP_AD[t]}</option>))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="field-label">Bölge uzunluğu</span>
+                <div className="mt-1 flex items-center gap-1">
+                  <input type="number" value={topo.uzunluk} step={10} min={0} onChange={(e) => bolgeGuncelle(topo.id, (z) => ({ ...z, uzunluk: Math.max(0, parseFloat(e.target.value) || 0) }))}
+                    className="w-full rounded border px-2 py-1 text-sm disabled:opacity-60" style={{ borderColor: brand.border, color: brand.ink }} />
+                  <span className="text-xs" style={{ color: brand.muted }}>m</span>
+                </div>
+              </label>
+            </div>
+
+            {/* Rota tablosu */}
+            <SubBaslik>Rotalar (NEREDEN → NEREYE)</SubBaslik>
+            <div className="mt-2 overflow-x-auto">
+              <table className="w-full min-w-[720px] text-xs">
+                <thead>
+                  <tr className="text-left" style={{ color: brand.muted }}>
+                    <th className="px-1 py-1 font-medium">Rota</th>
+                    <th className="px-1 py-1 font-medium">Nrdn</th>
+                    <th className="px-1 py-1 font-medium">Nrye</th>
+                    <th className="px-1 py-1 font-medium">Sinyal</th>
+                    <th className="px-1 py-1 font-medium">Bloklar</th>
+                    <th className="px-1 py-1 font-medium">Makaslar (id:konum)</th>
+                    <th className="px-1 py-1 font-medium" title="Headway timeout gerekli">HW</th>
+                    <th className="px-1 py-1 font-medium" title="Her geçişte TCC onayı">TCC</th>
+                    <th className="px-1 py-1"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topo.rotalar.map((r) => (
+                    <tr key={r.id} className="border-t" style={{ borderColor: brand.border }}>
+                      <td className="px-1 py-1 font-mono" style={{ color: brand.faint }}>{r.id}</td>
+                      <td className="px-1 py-1"><input value={r.nereden} onChange={(e) => rotaGuncelle(r.id, { nereden: e.target.value })} className="w-12 rounded border px-1 py-1 disabled:opacity-60" style={{ borderColor: brand.border }} /></td>
+                      <td className="px-1 py-1"><input value={r.nereye} onChange={(e) => rotaGuncelle(r.id, { nereye: e.target.value })} className="w-12 rounded border px-1 py-1 disabled:opacity-60" style={{ borderColor: brand.border }} /></td>
+                      <td className="px-1 py-1"><input value={r.sinyal} onChange={(e) => rotaGuncelle(r.id, { sinyal: e.target.value })} className="w-20 rounded border px-1 py-1 disabled:opacity-60" style={{ borderColor: brand.border }} /></td>
+                      <td className="px-1 py-1"><input value={bloklarStr(r.bloklar)} onChange={(e) => rotaGuncelle(r.id, { bloklar: bloklarParse(e.target.value) })} placeholder="BS1, BS2" className="w-28 rounded border px-1 py-1 disabled:opacity-60" style={{ borderColor: brand.border }} /></td>
+                      <td className="px-1 py-1"><input value={makaslarStr(r.makaslar)} onChange={(e) => rotaGuncelle(r.id, { makaslar: makaslarParse(e.target.value) })} placeholder="PM1:AD" className="w-36 rounded border px-1 py-1 disabled:opacity-60" style={{ borderColor: brand.border }} /></td>
+                      <td className="px-1 py-1 text-center"><input type="checkbox" checked={r.headwayGerekli} onChange={(e) => rotaGuncelle(r.id, { headwayGerekli: e.target.checked })} /></td>
+                      <td className="px-1 py-1 text-center"><input type="checkbox" checked={r.tccGerekli} onChange={(e) => rotaGuncelle(r.id, { tccGerekli: e.target.checked })} /></td>
+                      <td className="px-1 py-1 text-center"><button onClick={() => rotaSil(r.id)} title="Rotayı sil" className="rounded px-1.5 py-0.5 text-sm disabled:opacity-40" style={{ color: brand.red }}>✕</button></td>
+                    </tr>
+                  ))}
+                  {topo.rotalar.length === 0 && (
+                    <tr><td colSpan={9} className="px-1 py-3 text-center" style={{ color: brand.muted }}>Henüz rota yok — “+ Rota ekle” ile başla.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button onClick={rotaEkle} className="rounded-md px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: brand.ink }}>+ Rota ekle</button>
+              <button onClick={() => bolgeSilHandler(topo.id)} className="rounded-md border px-3 py-1.5 text-xs font-medium transition hover:bg-slate-50 disabled:opacity-50" style={{ borderColor: brand.borderStrong, color: brand.red }}>🗑 Bu bölgeyi sil</button>
+              <span className="text-xs" style={{ color: brand.muted }}>Türetilen: {topo.bloklar.length} blok · {topo.makaslar.length} makas · {topo.sinyaller.length} sinyal</span>
+            </div>
+          </fieldset>
+        </Panel>
       </div>
 
       {/* Kontrol */}

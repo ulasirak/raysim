@@ -12,6 +12,7 @@ import { istekKimlik, isAdminConfigured, adminDb } from "@/lib/firebaseAdmin";
 import { KREDI_BEDELI } from "@/lib/cuzdan";
 import { yoneticiMi, yoneticiUidMi } from "@/lib/anaray/yetki";
 import { varsayilanConfig, varsayilanMeta, varsayilanIsletme } from "@/lib/anaray/config";
+import { bolgeSablonlari } from "@/lib/anaray/interlocking";
 import { varsayilanArac } from "@/lib/anaray/vehicles";
 
 export const runtime = "nodejs";
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
 
   const ad = (govde.ad || "Yeni hat").toString().trim().slice(0, 120) || "Yeni hat";
   const bedel = KREDI_BEDELI.projeYukleme;
-  const bosVeriJson = JSON.stringify({ rings: [], cfg: varsayilanConfig, meta: varsayilanMeta, arac: varsayilanArac, isletme: varsayilanIsletme });
+  const bosVeriJson = JSON.stringify({ rings: [], cfg: varsayilanConfig, meta: varsayilanMeta, arac: varsayilanArac, isletme: varsayilanIsletme, bolgeler: bolgeSablonlari() });
 
   const db = await adminDb();
   const { FieldValue } = await import("firebase-admin/firestore");

@@ -19,7 +19,7 @@ import {
   ringSenaryo, ringChallenge, ringKisitDizisi, loopDenge, olceklenme,
   type DurakArasiRing,
 } from "./ring";
-import { bolgeSeed, cakismaMatriksi } from "./interlocking";
+import { cakismaMatriksi, type MakasBolgeTopolojisi } from "./interlocking";
 import { blockingTimeRing } from "./blockingtime";
 
 const INK = "0C2233";
@@ -90,11 +90,11 @@ function wordTablo(basliklar: string[], satirlar: string[][]): Table {
   });
 }
 
-export async function wordUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, turnaroundSn = 0): Promise<Blob> {
+export async function wordUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, turnaroundSn = 0, bolgeler: MakasBolgeTopolojisi[] = []): Promise<Blob> {
   const rs = ringSatirlari(rings, stock, cfg);
   const denge = loopDenge(rings, stock, cfg);
   const olcek = olceklenme(rings, stock, true, cfg, turnaroundSn);
-  const zones = bolgeSeed();
+  const zones = bolgeler;
 
   const kunye: string[][] = [
     ["Proje", meta.projeAdi], ["Hat", meta.hatAdi], ["Doküman No", meta.dokumanNo], ["Revizyon", meta.revizyon],
@@ -147,7 +147,7 @@ export async function wordUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakAras
   // 3. Makas bölgesi senaryoları
   cocuklar.push(h1("3. Makas Bölgesi Operasyon Senaryoları ve Çakışma Matriksleri"));
   cocuklar.push(p("Her makas bölgesi bağımsız SIL4 anklaşman birimidir. Rotalar NEREDEN→NEREYE tanımlı; çakışma matriksi (X = birlikte kurulabilir, 0 = mümkün değil) hangi rotaların eşzamanlı işletilebileceğini belirler."));
-  cocuklar.push(p("Not: aşağıdaki bölge topolojisi, rotalar ve çakışma matriksleri MAZ-VA-AKS-001 el kitabının referans standardından gelir; hattınızın makas geometrisinden otomatik türetilmez.", { size: 18 }));
+  cocuklar.push(p("Not: aşağıdaki makas bölgesi topolojileri, rotalar ve çakışma matriksleri projenizin Anklaşman modülünde tanımlı bölgelerden gelir; çakışma matriksi girilen rotalardan otomatik türetilir.", { size: 18 }));
   for (const z of zones) {
     cocuklar.push(h2(`Bölge ${z.id} — ${z.ad}`));
     cocuklar.push(wordTablo(["Rota", "Nereden", "Nereye", "Bloklar", "TCC"], z.rotalar.map((r) => [r.id, r.nereden, r.nereye, r.bloklar.join(", "), r.tccGerekli ? "Evet" : "Hayır"])));
@@ -207,11 +207,11 @@ function baslikSatiri(ws: ExcelJS.Worksheet, r: number) {
   row.alignment = { vertical: "middle" };
 }
 
-export async function excelUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, turnaroundSn = 0): Promise<Blob> {
+export async function excelUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, turnaroundSn = 0, bolgeler: MakasBolgeTopolojisi[] = []): Promise<Blob> {
   const wb = new ExcelJS.Workbook();
   wb.creator = "RaySim";
   const rs = ringSatirlari(rings, stock, cfg);
-  const zones = bolgeSeed();
+  const zones = bolgeler;
   const olcek = olceklenme(rings, stock, true, cfg, turnaroundSn);
   const denge = loopDenge(rings, stock, cfg);
 
