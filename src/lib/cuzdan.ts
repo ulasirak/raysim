@@ -36,6 +36,22 @@ export function paketBul(id: string) {
   return KREDI_PAKETLERI.find((p) => p.id === id);
 }
 
+/**
+ * Ödeme dönüşü için güvenli SİTE-İÇİ yol. Açık yönlendirme (open-redirect) ve
+ * protokole-göreli (`//evil.com`) saldırılarını engeller: yalnız tek `/` ile
+ * başlayan, şema/host içermeyen göreli yol kabul edilir; aksi halde "/".
+ * Query bırakılmaz (callback `?odeme=` ekler); hash korunur. Uzunluk sınırlı.
+ */
+export function guvenliDonusYolu(ham: unknown): string {
+  if (typeof ham !== "string") return "/";
+  let y = ham.trim().slice(0, 512);
+  if (!y.startsWith("/") || y.startsWith("//") || y.startsWith("/\\")) return "/";
+  // Şema veya host sızıntısı (satır sonu/backslash ile) → reddet.
+  if (/[\n\r\t\\]/.test(y) || y.includes("://")) return "/";
+  y = y.split("?")[0]; // mevcut query'yi at
+  return y || "/";
+}
+
 /** Kredi hareketinin türü (denetim izi). */
 export type HareketTuru = "satinalma" | "rapor" | "projeYukleme" | "duzeltme";
 

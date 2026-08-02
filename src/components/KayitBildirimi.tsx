@@ -21,11 +21,17 @@ export function KayitBildirimi() {
   const oncekiRef = useRef(durum);
   const zamanRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Bu effect, harici durum makinesini (kayıt `durum`u) geçici bir toast'a
+  // SENKRONLAR — meşru bir "dış sisteme abone ol + geçişte state güncelle" kullanımı:
+  // geçiş tespiti (oncekiRef) + otomatik gizleme zamanlayıcısı gerektirir, effect'siz
+  // yazılamaz. `set-state-in-effect` kuralı burada kasıtlı devre dışı.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const onceki = oncekiRef.current;
     oncekiRef.current = durum;
-    // Salt-okunur (demo/paylaşım) oturumda kayıt olmaz → bildirim de olmaz.
-    if (!yazilabilir) { setGorunum(null); return; }
+    // Salt-okunur (demo/paylaşım) oturumda kayıt olmaz → gösterim render'da
+    // `yazilabilir` ile kapatılır; burada state güncellenmez.
+    if (!yazilabilir) return;
 
     if (durum === "kaydediliyor") {
       if (zamanRef.current) clearTimeout(zamanRef.current);
@@ -40,10 +46,12 @@ export function KayitBildirimi() {
       setGorunum({ tip: "hata", metin: hataMetni ?? "Kayıt hatası" });
     }
   }, [durum, hataMetni, yazilabilir]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => () => { if (zamanRef.current) clearTimeout(zamanRef.current); }, []);
 
-  if (!gorunum) return null;
+  // Salt-okunur oturumda ya da gösterilecek bildirim yoksa çizme.
+  if (!yazilabilir || !gorunum) return null;
 
   const renk =
     gorunum.tip === "hata" ? brand.red

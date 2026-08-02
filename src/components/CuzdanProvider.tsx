@@ -92,10 +92,12 @@ export function CuzdanProvider({ children }: { children: React.ReactNode }) {
     const a = getAuthInstance();
     if (!a?.currentUser) return { hata: "Oturum yok." };
     const token = await a.currentUser.getIdToken();
+    // Ödemeye başlanan sayfa (pathname + #hash) → dönüşte kullanıcı buraya döner.
+    const donusYolu = window.location.pathname + window.location.hash;
     const yanit = await fetch("/api/odeme/baslat", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ paketId }),
+      body: JSON.stringify({ paketId, donusYolu }),
     });
     const veri = await yanit.json().catch(() => ({}));
     if (yanit.ok && veri.odemeUrl) {

@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
 import { istekKimlik, isAdminConfigured } from "@/lib/firebaseAdmin";
 import { odemeKaydiOlustur, kartAnahtariGetir } from "@/lib/cuzdanServer";
 import { isIyzicoConfigured, odemeBaslat } from "@/lib/iyzico";
-import { paketBul } from "@/lib/cuzdan";
+import { paketBul, guvenliDonusYolu } from "@/lib/cuzdan";
 import crypto from "crypto";
 
 export async function POST(req: Request) {
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   try { const k = await istekKimlik(req); uid = k.uid; eposta = k.email ?? ""; }
   catch { return NextResponse.json({ hata: "Kimlik doğrulanamadı." }, { status: 401 }); }
 
-  let govde: { paketId?: string };
+  let govde: { paketId?: string; donusYolu?: string };
   try { govde = await req.json(); }
   catch { return NextResponse.json({ hata: "Geçersiz istek." }, { status: 400 }); }
 
@@ -30,9 +30,10 @@ export async function POST(req: Request) {
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
   const conversationId = crypto.randomUUID();
+  const donusYolu = guvenliDonusYolu(govde.donusYolu); // ödemeye başlanan sayfaya dön
   // Alıcı e-postası imzalı token'dan gelir (istemciye güvenmeden).
 
-  await odemeKaydiOlustur(conversationId, { uid, kredi: paket.kredi, tl: paket.tl, durum: "beklemede" });
+  await odemeKaydiOlustur(conversationId, { uid, kredi: paket.kredi, tl: paket.tl, durum: "beklemede", donusYolu });
 
   // Kullanıcının kayıtlı kartı varsa ödeme formunda çıkması için anahtarı ekle.
   const cardUserKey = (await kartAnahtariGetir(uid)) ?? undefined;

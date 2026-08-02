@@ -25,12 +25,18 @@ export interface OdemeKaydi {
   kredi: number;
   tl: number;
   durum: "beklemede" | "tamam" | "basarisiz";
+  /** Ödeme sonrası dönülecek SİTE-İÇİ yol (ör. "/sistem", "/#sistem"). Kullanıcı
+   *  ödemeye hangi sayfadan başladıysa oraya döner (open-redirect'e karşı sanitize). */
+  donusYolu?: string;
 }
 
 export async function odemeKaydiOlustur(id: string, k: OdemeKaydi): Promise<void> {
   const db = await adminDb();
   const FieldValue = await alanDegeri();
-  await db.collection("odeme").doc(id).set({ ...k, olusturma: FieldValue.serverTimestamp() });
+  // Firestore `undefined` reddeder → donusYolu yoksa alanı hiç yazma.
+  const { donusYolu, ...temel } = k;
+  const govde = donusYolu ? { ...temel, donusYolu } : temel;
+  await db.collection("odeme").doc(id).set({ ...govde, olusturma: FieldValue.serverTimestamp() });
 }
 
 export async function odemeKaydiGetir(id: string): Promise<OdemeKaydi | null> {
@@ -38,7 +44,11 @@ export async function odemeKaydiGetir(id: string): Promise<OdemeKaydi | null> {
   const snap = await db.collection("odeme").doc(id).get();
   if (!snap.exists) return null;
   const d = snap.data() as Record<string, unknown>;
-  return { uid: String(d.uid), kredi: Number(d.kredi), tl: Number(d.tl), durum: (d.durum as OdemeKaydi["durum"]) ?? "beklemede" };
+  return {
+    uid: String(d.uid), kredi: Number(d.kredi), tl: Number(d.tl),
+    durum: (d.durum as OdemeKaydi["durum"]) ?? "beklemede",
+    donusYolu: d.donusYolu ? String(d.donusYolu) : undefined,
+  };
 }
 
 export async function odemeKaydiDurum(id: string, durum: OdemeKaydi["durum"]): Promise<void> {

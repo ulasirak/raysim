@@ -13,9 +13,12 @@ import { odemeKaydiGetir, odemeKaydiDurum, krediEkle, kartAnahtariKaydet } from 
 function siteUrl() {
   return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 }
-function yonlendir(durum: "basarili" | "hata") {
-  // 303: POST callback'ten GET ana sayfaya güvenli geçiş.
-  return NextResponse.redirect(`${siteUrl()}/?odeme=${durum}`, { status: 303 });
+// 303: POST callback'ten GET sayfaya güvenli geçiş. `yol` = ödemeye başlanan
+// site-içi yol (sanitize edilmiş); `?odeme=` durumu eklenir, varsa #hash korunur.
+function yonlendir(durum: "basarili" | "hata", yol = "/") {
+  const [path, hash] = (yol || "/").split("#");
+  const url = `${siteUrl()}${path || "/"}?odeme=${durum}${hash ? "#" + hash : ""}`;
+  return NextResponse.redirect(url, { status: 303 });
 }
 
 export async function POST(req: Request) {
@@ -37,20 +40,21 @@ export async function POST(req: Request) {
 
     const kayit = await odemeKaydiGetir(dogrulama.conversationId);
     if (!kayit) return yonlendir("hata");
+    const yol = kayit.donusYolu ?? "/"; // kullanıcı ödemeye hangi sayfadan başladıysa oraya dön
 
     // Tutar doğrulama: iyzico'nun bildirdiği ödenen tutar, kayıtlı fiyatla eşleşmeli.
     // FAIL-CLOSED: başarı yanıtında paidPrice hiç gelmediyse (odenenTl == null) tutar
     // doğrulanamaz → krediyi YÜKLEME. Aksi halde yanlış/eksik tutarla kredi yüklenebilirdi.
     if (dogrulama.odenenTl == null || Math.abs(dogrulama.odenenTl - kayit.tl) > 0.01) {
       await odemeKaydiDurum(dogrulama.conversationId, "basarisiz");
-      return yonlendir("hata");
+      return yonlendir("hata", yol);
     }
     // Para birimi güvencesi: initialize TRY zorlar; retrieve TRY dışı bildirirse
     // (sayısal eşit ama farklı birim) krediyi YÜKLEME. Birim yoksa tutar+TRY-init
     // yeterli sayılır (eski kayıtları bozmamak için fail-closed değil).
     if (dogrulama.paraBirimi && dogrulama.paraBirimi !== "TRY") {
       await odemeKaydiDurum(dogrulama.conversationId, "basarisiz");
-      return yonlendir("hata");
+      return yonlendir("hata", yol);
     }
 
     // İdempotent: krediEkle odemeOlay/{conversationId} ile çift eklemeyi önler.
@@ -62,7 +66,7 @@ export async function POST(req: Request) {
     if (dogrulama.cardUserKey) {
       try { await kartAnahtariKaydet(kayit.uid, dogrulama.cardUserKey); } catch { /* opsiyonel */ }
     }
-    return yonlendir("basarili");
+    return yonlendir("basarili", yol);
   } catch {
     return yonlendir("hata");
   }

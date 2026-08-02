@@ -48,7 +48,11 @@ export function GirisEkrani({ kapiModu = false }: { kapiModu?: boolean } = {}) {
     } catch { /* sessiz */ }
   }, []);
 
-  // Girişliyse ana hatta gönder (kapı modunda gerek yok — sayfa yerinde açılır).
+  // Auth → içerik geçişinin TEK kaynağı: oturum açılınca ana sayfaya götür.
+  // Hem taze giriş/kayıt (girisYap sonrası `user` güncellenince) hem de girişliyken
+  // /giris'e gelme durumunu kapsar. Kapı modunda yönlendirme YOK — sayfa yerinde
+  // açılır (Kapi çocukları aynı yolda gösterir). `gonder` ayrıca redirect ETMEZ:
+  // tek yol bu effect → çift yönlendirme / yarış olmaz.
   useEffect(() => {
     if (!kapiModu && hazir && user) router.replace("/");
   }, [kapiModu, hazir, user, router]);
@@ -60,12 +64,10 @@ export function GirisEkrani({ kapiModu = false }: { kapiModu?: boolean } = {}) {
     setMesgul(true); setMesaj(null);
     try {
       if (mod === "giris") {
-        await girisYap(eposta, sifre);
-        if (!kapiModu) router.replace("/");
+        await girisYap(eposta, sifre); // başarılıysa yukarıdaki effect yönlendirir
       } else if (mod === "kayit") {
         // Kayıt anında oturum açar: ek onay ekranı yok, doğrudan içeri.
         await kayitOl(eposta, sifre);
-        if (!kapiModu) router.replace("/");
       } else {
         await sifreSifirla(eposta);
         setMesaj({ tip: "ok", metin: "Şifre sıfırlama bağlantısı e-postanıza gönderildi." });
