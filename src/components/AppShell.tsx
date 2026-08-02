@@ -15,6 +15,7 @@ import { CuzdanProvider } from "@/components/CuzdanProvider";
 import { Kapi, useErisim } from "@/components/Kapi";
 import { BOLUM_SLUG, type BolumSlug } from "@/components/TekSayfa";
 import { BasaDonButonu } from "@/components/BasaDonButonu";
+import { KayitBildirimi } from "@/components/KayitBildirimi";
 import { brand } from "@/lib/anaray/brand";
 
 interface Modul {
@@ -308,6 +309,10 @@ function Govde({ children }: { children: React.ReactNode }) {
       {/* Sağ-alt "başa dön" düğmesi — uzun tek sayfada bir anda en üste döner
           (kısa sayfalarda kendini gizler) */}
       <BasaDonButonu />
+
+      {/* Global kayıt bildirimi (toast) — her otomatik kayıt döngüsünde kısa süre
+          "✓ Kaydedildi" belirir; tüm modülleri kapsar. */}
+      <KayitBildirimi />
 
       {/* Global footer — sol: dürüst metodoloji notu · orta: amblem · sağ: künye */}
       <footer className="border-t-2" style={{ background: "#0C2233", borderColor: "#C8102E" }}>
