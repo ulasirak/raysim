@@ -271,7 +271,32 @@ function StudioIc() {
 
       {/* EDİTÖR */}
       <div className="mt-6">
-        <Panel baslik="Düzenle" aciklama="Değişiklikler anında simülasyona yansır.">
+        <Panel baslik="Düzenle" aciklama="Araç değişiklikleri anında kaydedilir. İstasyon / mesafe / hız düzenlemesi önce canlı önizlenir; kalıcı olması için “Projeye kaydet”.">
+          {/* İstasyon/hat düzenlemesi kalıcılaştırma çubuğu — düzenlemenin YANINDA
+              görünür (sayfa tepesindeki başlıkla aynı işi yapar, ama editörün içinde). */}
+          {duzenlendi && (
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md border-l-4 px-3 py-2 text-xs"
+              style={{ background: CK.badBgSoft, borderColor: CK.amber, color: brand.ink }}>
+              <span>
+                ▲ <b>Kaydedilmemiş istasyon/hat düzenlemesi.</b>{" "}
+                {yazilabilir
+                  ? "Canlı önizleniyor ama henüz projeye yazılmadı — kalıcı olması için kaydedin."
+                  : "Bu görünüm salt-okunur; düzenleme kaydedilemez."}
+              </span>
+              {yazilabilir && (
+                <div className="flex shrink-0 items-center gap-2">
+                  <button onClick={projeyeKaydet} title="İstasyon/mesafe/hız düzenlemelerini kalıcı ring modeline yazar (Firestore'a kaydedilir)"
+                    className="rounded-md px-3 py-1 font-medium text-white transition hover:opacity-90" style={{ background: brand.red }}>
+                    ✓ Projeye kaydet
+                  </button>
+                  <button onClick={sifirla}
+                    className="rounded-md border px-3 py-1 font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
+                    ↺ Geri al
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             {/* Araç */}
             <div>
