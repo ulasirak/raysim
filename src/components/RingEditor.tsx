@@ -111,6 +111,21 @@ export function RingEditor() {
     setAcik({});
   };
 
+  // Durak/ring ekleme: yeni oluşan ring kart(lar)ını OTOMATİK AÇ (aksi halde katlı
+  // gelir, kullanıcı şeridi/sürükle-taşıyı göremez) ve ilkine kaydır. Yeni ring'ler
+  // = eski dizide olmayan id'ler (durakEkleBas/Son yeni id verir; durakBol iki yeni
+  // id üretir). Tek jenerik yol — hatta özel hiçbir varsayım yok.
+  const ekleUygula = (uret: (rs: DurakArasiRing[]) => DurakArasiRing[]) => {
+    const yeni = uret(rings);
+    const eskiIds = new Set(rings.map((r) => r.id));
+    const yeniler = yeni.filter((r) => !eskiIds.has(r.id));
+    setRings(yeni);
+    if (yeniler.length) {
+      setAcik((a) => { const n = { ...a }; yeniler.forEach((r) => { n[r.id] = true; }); return n; });
+      requestAnimationFrame(() => document.getElementById(`ring-${yeniler[0].id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
+    }
+  };
+
   // Deep-link: başka modülden `#ring-<id>` ankoruyla gelince o ring'i AÇ + kaydır.
   // (Sistem Merkezi blok teşhisi "→ Ringler'de düzelt" butonu bunu tetikler.)
   useEffect(() => {
@@ -209,7 +224,7 @@ export function RingEditor() {
                   </button>
                 </div>
                 <div className="mt-3 text-center">
-                  <button onClick={() => setRings(durakEkleSon)} className="text-xs underline" style={{ color: brand.muted }}>veya tek durak-arasıyla başla →</button>
+                  <button onClick={() => ekleUygula((rs) => durakEkleSon(rs))} className="text-xs underline" style={{ color: brand.muted }}>veya tek durak-arasıyla başla →</button>
                 </div>
               </div>
             ) : (
@@ -221,9 +236,9 @@ export function RingEditor() {
                 className="w-24 rounded border px-2 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
               <span className="text-xs" style={{ color: brand.muted }}>m</span>
               <div className="ml-auto flex gap-2">
-                <button onClick={() => setRings((rs) => durakEkleBas(rs, ekMesafe))}
+                <button onClick={() => ekleUygula((rs) => durakEkleBas(rs, ekMesafe))}
                   className="rounded-md border px-3 py-1 text-xs font-medium transition hover:bg-white" style={{ borderColor: brand.borderStrong, color: brand.ink }}>⇤ Başa ekle</button>
-                <button onClick={() => setRings((rs) => durakEkleSon(rs, ekMesafe))}
+                <button onClick={() => ekleUygula((rs) => durakEkleSon(rs, ekMesafe))}
                   className="rounded-md border px-3 py-1 text-xs font-medium transition hover:bg-white" style={{ borderColor: brand.borderStrong, color: brand.ink }}>Sona ekle ⇥</button>
               </div>
             </div>
@@ -288,7 +303,7 @@ export function RingEditor() {
                           <input type="number" min={1} max={Math.max(1, Math.round(rings[i].uzunluk) - 1)} step={50} value={bolKonum}
                             onChange={(e) => setBolKonum(Math.max(1, parseFloat(e.target.value) || 1))}
                             className="w-16 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /> m
-                          <button onClick={() => { setRings((rs) => durakBol(rs, i, bolKonum)); setBolRing(null); }}
+                          <button onClick={() => { ekleUygula((rs) => durakBol(rs, i, bolKonum)); setBolRing(null); }}
                             className="rounded px-1.5 py-0.5 font-semibold text-white" style={{ background: brand.ink }}>böl</button>
                           <button onClick={() => setBolRing(null)} className="rounded px-1" style={{ color: brand.muted }} title="Vazgeç">✕</button>
                         </span>
@@ -770,6 +785,12 @@ function KisitSeridi({ ring, kisitlar, konumSuresi, onTasi, ekleTuru, onSeritEkl
         {/* Uç duraklar */}
         <SeritDurak sol={0} ad={ring.fromAd} />
         <SeritDurak sol={100} ad={ring.toAd} sag />
+        {/* Boş şerit ipucu: sürüklenecek "nokta" = makas/geçit/tehlike; önce ＋ ile eklenir. */}
+        {kisitlar.length === 0 && !ekleTuru && (
+          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-[0.62rem]" style={{ color: brand.faint }}>
+            ＋ makas / geçit / tehlike ekleyin, sonra sürükleyerek konumlandırın
+          </span>
+        )}
         {/* Kısıtlar */}
         {kisitlar.map((k) => {
           const sol = ring.uzunluk > 0 ? (k.konum / ring.uzunluk) * 100 : 0;

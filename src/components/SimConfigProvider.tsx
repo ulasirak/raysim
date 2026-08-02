@@ -463,6 +463,9 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
     await islem(async () => {
       await projeAdiDegistir(aktifId, ad);
       setAktifAd(ad);
+      // Proje adı = hat adı: künye ve üretilen belgeler (PDF/Word/Excel dosya adı +
+      // başlığı) aynı isimle çıksın. Otomatik kayıt bunu Firestore'a yazar.
+      setMeta((m) => ({ ...m, hatAdi: ad }));
       setProjeler(await projeleriListele(user.uid));
     });
   }, [user, aktifId, islem]);
