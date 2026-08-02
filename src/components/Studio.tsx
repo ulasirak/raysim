@@ -6,10 +6,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import type { RailNetwork, RailEdge, Route } from "@/lib/anaray/types";
+import type { RailNetwork, Route } from "@/lib/anaray/types";
 import { flattenRoute, ringlerdenSebeke } from "@/lib/anaray/network";
-import { sebekedenRingler } from "@/lib/anaray/ring";
-import { addStationOnEdge, addTerminalStation, removeStation } from "@/lib/anaray/edit";
 import { simulate } from "@/lib/anaray/sim";
 import { simulateSignalled, reverseRoute, monteCarlo, planDepotDispatch, type MonteCarloResult } from "@/lib/anaray/signalling";
 import { tramvaylar } from "@/lib/anaray/vehicles";
@@ -51,7 +49,7 @@ export function Studio() {
 
 function StudioIc() {
   const { cfg } = useSimConfig();
-  const { rings, meta, setRings, yazilabilir } = useProje();
+  const { rings, meta } = useProje();
   // Araç ve işletme parametreleri KALICI (projeye kayıtlı) — tek kaynak, uçucu değil.
   const { arac: stock, patchArac, setArac } = useArac();
   const { isletme, patchIsletme } = useIsletme();
@@ -63,21 +61,11 @@ function StudioIc() {
     [rings, cfg, meta.hatAdi]
   );
 
-  const [network, setNetwork] = useState<RailNetwork>(() => proje?.network ?? BOS_SEBEKE);
-  const [route, setRoute] = useState<Route>(() => proje?.route ?? BOS_ROTA);
-  // Yerel düzenleme yapıldıysa proje hattı değişince üzerine yazma (senaryo denemesi
-  // korunur); yapılmadıysa yeni hat otomatik yansısın.
-  const [duzenlendi, setDuzenlendi] = useState(false);
-  const [sonProje, setSonProje] = useState(proje);
-  if (proje !== sonProje) {
-    // React'in "render sırasında durum ayarla" deseni (effect'te set-state yerine).
-    setSonProje(proje);
-    if (!duzenlendi && proje) {
-      setNetwork(proje.network);
-      setRoute(proje.route);
-    }
-  }
-  const [selEdge, setSelEdge] = useState<string>("");
+  // Sefer artık hattı DÜZENLEMEZ — yalnız simüle eder. Ağ/rota doğrudan proje
+  // hattından türetilir (tek düzenleme yeri Ringler). Yerel senaryo/sandbox yok →
+  // "kaydedilmemiş düzenleme" karmaşası ortadan kalktı.
+  const network: RailNetwork = proje?.network ?? BOS_SEBEKE;
+  const route: Route = proje?.route ?? BOS_ROTA;
   // Kalıcı sefer parametreleri (context → projeye kayıtlı).
   const headwayDk = isletme.seferHeadwayDk;
   const setHeadwayDk = (v: number) => patchIsletme({ seferHeadwayDk: v });
@@ -141,65 +129,9 @@ function StudioIc() {
     }, 20);
   };
 
-  // — güncelleyiciler —
-  // Hattı yerel olarak değiştiren her işlem "senaryo denemesi" sayılır: proje hattı
-  // sonradan değişse bile üzerine yazılmaz (kullanıcı ↺ ile geri döner).
-  // Araç düzenlemesi artık YEREL senaryo değil — projeye kalıcı yazılır (patchArac).
+  // Araç (çeken) düzenlemesi — anında kalıcı (patchArac). Hat düzenlemesi Sefer'de
+  // YAPILMAZ; Ringler'de yapılır (ikili düzenleme sadeleştirildi).
   const patchStock = patchArac;
-  const patchNode = (id: string, p: Partial<{ name: string; dwell: number; depot: boolean; queued: number }>) => {
-    setDuzenlendi(true);
-    setNetwork((n) => ({ ...n, nodes: n.nodes.map((nd) => (nd.id === id ? { ...nd, ...p } : nd)) }));
-  };
-  const patchSegment = (edgeId: string, i: number, p: Partial<{ vmax: number; gradient: number }>) => {
-    setDuzenlendi(true);
-    setNetwork((n) => ({
-      ...n,
-      edges: n.edges.map((e) =>
-        e.id === edgeId ? { ...e, segments: e.segments.map((s, j) => (j === i ? { ...s, ...p } : s)) } : e
-      ),
-    }));
-  };
-  const istasyonEkle = (edgeId: string) => {
-    const r = addStationOnEdge(network, route, edgeId, "Yeni İstasyon");
-    setDuzenlendi(true);
-    setNetwork(r.network);
-    setRoute(r.route);
-  };
-  const ucEkle = (where: "start" | "end") => {
-    const r = addTerminalStation(network, route, where, where === "start" ? "Yeni Başlangıç" : "Yeni Son");
-    setDuzenlendi(true);
-    setNetwork(r.network);
-    setRoute(r.route);
-  };
-  const istasyonSil = (nodeId: string) => {
-    const r = removeStation(network, route, nodeId);
-    setDuzenlendi(true);
-    setNetwork(r.network);
-    setRoute(r.route);
-  };
-  /** Yerel HAT denemesini bırak, paylaşılan proje hattına dön. Araç/sefer/kruvasman
-   *  artık KALICI proje verisidir (senaryo değil) → burada sıfırlanmaz. */
-  const sifirla = () => {
-    setDuzenlendi(false);
-    if (proje) {
-      setNetwork(proje.network);
-      setRoute(proje.route);
-    }
-  };
-  /** Yerel istasyon/mesafe/hız düzenlemelerini KALICI ring modeline yaz → projeye
-   *  (Firestore) kaydedilir; artık göstermelik değil. Makas/hemzemin/tehlike kısıtları
-   *  eski ring'den korunur (bunlar Ringler editöründe düzenlenir). */
-  const projeyeKaydet = () => {
-    if (!yazilabilir) return;
-    setRings(sebekedenRingler(network, route, rings, cfg));
-    setDuzenlendi(false); // proje yeniden üretilince güncel hat otomatik yansır
-  };
-
-  const nodeById = Object.fromEntries(network.nodes.map((n) => [n.id, n]));
-  const routeEdges = route.edgeIds
-    .map((id) => network.edges.find((e) => e.id === id))
-    .filter(Boolean) as RailEdge[];
-  const secili = routeEdges.some((e) => e.id === selEdge) ? selEdge : routeEdges[0]?.id ?? "";
 
   const vmax = Math.max(...result.points.map((p) => p.v));
   const ortHiz = line.length / result.totalTime;
@@ -215,37 +147,14 @@ function StudioIc() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
       {/* Rapor başlığı */}
-      <div className="mb-6 flex items-end justify-between border-b pb-4" style={{ borderColor: brand.border }}>
-        <div>
-          <div className="field-label">Sefer Simülasyon Raporu</div>
-          <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>{network.name}</h1>
-          <div className="mt-1 text-xs" style={{ color: brand.muted }}>
-            {duzenlendi
-              ? <span style={{ color: CK.amber }}>▲ Kaydedilmemiş düzenleme — proje hattından ayrıldı. {yazilabilir ? "“Projeye kaydet” ile kalıcı yap veya “Geri al” ile at." : "Bu görünüm salt-okunur; düzenleme kaydedilemez."}</span>
-              : <>Kaynak: <b>paylaşılan proje hattı</b> ({line.stations.length} durak · {km(line.length)} km) — buradan düzenleyip <b>Projeye kaydet</b> diyebilir ya da <Link href="/ringler" className="underline">Ringler</Link> modülünden düzenleyebilirsiniz.</>}
-          </div>
+      <div className="mb-6 border-b pb-4" style={{ borderColor: brand.border }}>
+        <div className="field-label">Sefer Simülasyon Raporu</div>
+        <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>{network.name}</h1>
+        <div className="mt-1 text-xs" style={{ color: brand.muted }}>
+          Kaynak: <b>paylaşılan proje hattı</b> ({line.stations.length} durak · {km(line.length)} km). Hattı düzenlemek için{" "}
+          <Link href="/#ringler" className="underline">Ringler (KUR)</Link> bölümüne gidin — değişiklikler burada anında yansır.
         </div>
-        {duzenlendi && (
-          <div className="flex shrink-0 items-center gap-2">
-            {yazilabilir && (
-              <button onClick={projeyeKaydet} title="Yerel düzenlemeleri kalıcı ring modeline yazar (Firestore'a kaydedilir)"
-                className="rounded-md px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90" style={{ background: brand.red }}>
-                ✓ Projeye kaydet
-              </button>
-            )}
-            <button onClick={sifirla} className="rounded-md border px-3 py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
-              ↺ Geri al
-            </button>
-          </div>
-        )}
       </div>
-
-      {!proje && (
-        <div className="mb-6 rounded-md border-l-4 px-4 py-3 text-sm" style={{ background: CK.badBgSoft, borderColor: brand.red, color: brand.ink }}>
-          ⚠ Proje hattı boş — <Link href="/ringler" className="underline" style={{ color: brand.red }}>Ringler</Link> modülünden durak-arası hücre ekleyin.
-          Aşağıdaki değerler yer tutucudur.
-        </div>
-      )}
 
       {/* Canlı ağ simülasyonu (kahraman) */}
       <Panel baslik="Canlı Ağ Simülasyonu" aciklama="Tüm trenler (gidiş + dönüş) aynı anda hat üzerinde hareket eder; işgal edilen bloklar canlı kırmızıya döner. Dispatcher (hat sevkçisi): gidiş şeridindeki bir sinyale tıkla → o blok arızalanır, trenler arkasında kuyruklanır. Parklanma alanı (🅿) tanımlı istasyonlarda bekleyen trenler sırayla servise çıkar. Oynat ▶">
@@ -281,45 +190,20 @@ function StudioIc() {
         </Panel>
       </section>
 
-      {/* EDİTÖR */}
+      {/* ÇEKEN ARAÇ — Sefer'in tek düzenleme yüzeyi. Hat (istasyon/mesafe/hız/makas/
+          depo) düzenlemesi Ringler'de (KUR) → ikili düzenleme sadeleştirildi. */}
       <div className="mt-6">
-        <Panel baslik="Düzenle" aciklama="Araç değişiklikleri anında kaydedilir. İstasyon / mesafe / hız düzenlemesi önce canlı önizlenir; kalıcı olması için “Projeye kaydet”.">
-          {/* İstasyon/hat düzenlemesi kalıcılaştırma çubuğu — düzenlemenin YANINDA
-              görünür (sayfa tepesindeki başlıkla aynı işi yapar, ama editörün içinde). */}
-          {duzenlendi && (
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md border-l-4 px-3 py-2 text-xs"
-              style={{ background: CK.badBgSoft, borderColor: CK.amber, color: brand.ink }}>
-              <span>
-                ▲ <b>Kaydedilmemiş istasyon/hat düzenlemesi.</b>{" "}
-                {yazilabilir
-                  ? "Canlı önizleniyor ama henüz projeye yazılmadı — kalıcı olması için kaydedin."
-                  : "Bu görünüm salt-okunur; düzenleme kaydedilemez."}
-              </span>
-              {yazilabilir && (
-                <div className="flex shrink-0 items-center gap-2">
-                  <button onClick={projeyeKaydet} title="İstasyon/mesafe/hız düzenlemelerini kalıcı ring modeline yazar (Firestore'a kaydedilir)"
-                    className="rounded-md px-3 py-1 font-medium text-white transition hover:opacity-90" style={{ background: brand.red }}>
-                    ✓ Projeye kaydet
-                  </button>
-                  <button onClick={sifirla}
-                    className="rounded-md border px-3 py-1 font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
-                    ↺ Geri al
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            {/* Araç */}
-            <div>
-              <SubBaslik>Çeken Araç</SubBaslik>
+        <Panel baslik="Çeken Araç" aciklama="Simülasyonda kullanılan aracı seç veya özelliklerini ayarla — değişiklik anında projeye kaydedilir. İstasyon, mesafe, hız limiti, makas ve parklanma düzenlemesi Ringler (KUR) bölümünde yapılır.">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="block sm:col-span-2 lg:col-span-1">
+              <span className="field-label">Araç</span>
               <select
                 value={tramvaylar.some((a) => a.id === stock.id) ? stock.id : ""}
                 onChange={(e) => {
                   const v = tramvaylar.find((a) => a.id === e.target.value);
                   if (v) setArac({ ...v });
                 }}
-                className="mb-3 w-full rounded border px-2 py-1 text-sm"
+                className="mt-1 w-full rounded border px-2 py-1.5 text-sm"
                 style={{ borderColor: brand.border, color: brand.ink }}
               >
                 {!tramvaylar.some((a) => a.id === stock.id) && <option value="">Özel araç</option>}
@@ -327,126 +211,15 @@ function StudioIc() {
                   <option key={a.id} value={a.id}>{a.name}</option>
                 ))}
               </select>
-              <div className="grid grid-cols-2 gap-3">
-                <Num label="Azami Hız" suffix="km/h" step={5} value={round(kmh(stock.maxSpeed))} onChange={(v) => patchStock({ maxSpeed: v * KMH })} />
-                <Num label="Kütle" suffix="t" step={1} value={round(stock.mass / 1000)} onChange={(v) => patchStock({ mass: v * 1000 })} />
-                <Num label="Fren" suffix="m/s²" step={0.1} value={round(stock.maxBraking, 1)} onChange={(v) => patchStock({ maxBraking: v })} />
-              </div>
-            </div>
-
-            {/* İstasyonlar */}
-            <div>
-              <SubBaslik>İstasyonlar</SubBaslik>
-              <div className="flex flex-col gap-2">
-                {line.stations.map((st, i) => {
-                  const node = nodeById[st.id];
-                  const istasyon = node?.type === "istasyon";
-                  // Uç dahil her durak silinebilir; en az iki durak kalmalı.
-                  const silinebilir = line.stations.length > 2;
-                  const depo = !!st.depot;
-                  const sonIstasyon = i === line.stations.length - 1;
-                  return (
-                    <div key={st.id} className="rounded border p-2" style={{ borderColor: depo ? brand.borderStrong : brand.border, background: depo ? CK.track : "transparent" }}>
-                      <div className="flex items-center gap-2">
-                        <input value={st.name} onChange={(e) => patchNode(st.id, { name: e.target.value })}
-                          className="min-w-0 flex-1 rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
-                        <span className="font-mono text-xs" style={{ color: brand.faint }}
-                          title="Hat başından uzaklık (kilometraj) — durak konumundan gelir, düzenlenemez">{km(st.position)}<span className="ml-0.5" style={{ color: brand.faint }}>km</span></span>
-                        {istasyon ? (
-                          <div className="flex items-center gap-1" title="Durakta bekleme (dwell) süresi — düzenlenebilir">
-                            <input type="number" value={st.dwell} min={0} step={5}
-                              onChange={(e) => patchNode(st.id, { dwell: Math.max(0, parseFloat(e.target.value) || 0) })}
-                              className="w-14 rounded border px-1 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
-                            <span className="text-xs" style={{ color: brand.muted }}>sn bekleme</span>
-                          </div>
-                        ) : (
-                          <span className="text-xs" style={{ color: brand.faint }}>hat başı</span>
-                        )}
-                        {silinebilir ? (
-                          <button onClick={() => istasyonSil(st.id)} title="İstasyonu sil"
-                            className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
-                        ) : (
-                          <span className="w-6" />
-                        )}
-                      </div>
-                      {/* Parklanma (depo) — çıkışa hazır bekleyen tren girdisi */}
-                      <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                        <button onClick={() => patchNode(st.id, { depot: !depo, queued: !depo && !st.queued ? 1 : st.queued })}
-                          className="rounded px-2 py-0.5 text-xs font-medium transition"
-                          style={depo ? { background: brand.ink, color: "#fff" } : { background: "transparent", color: brand.muted, border: `1px solid ${brand.border}` }}>
-                          🅿 Parklanma alanı
-                        </button>
-                        {depo && (
-                          <div className="flex items-center gap-1">
-                            <span className="text-xs" style={{ color: brand.muted }}>bekleyen</span>
-                            <input type="number" value={st.queued ?? 0} min={0} step={1}
-                              onChange={(e) => patchNode(st.id, { queued: Math.max(0, Math.round(parseFloat(e.target.value) || 0)) })}
-                              className="w-14 rounded border px-1 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
-                            <span className="text-xs" style={{ color: brand.muted }}>tren</span>
-                            {sonIstasyon && <span className="text-xs" style={{ color: CK.amber }} title="Hattın sonundaki depo gidiş yönünde tren veremez (gidecek yer yok)">⚠ uç istasyon</span>}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {/* İstasyon ekle */}
-              <div className="mt-3 flex items-center gap-2 border-t pt-3" style={{ borderColor: brand.border }}>
-                <select value={secili} onChange={(e) => setSelEdge(e.target.value)}
-                  className="min-w-0 flex-1 rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }}>
-                  {routeEdges.map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {nodeById[e.from]?.name} → {nodeById[e.to]?.name}
-                    </option>
-                  ))}
-                </select>
-                <button onClick={() => secili && istasyonEkle(secili)}
-                  className="rounded-md px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90" style={{ background: brand.ink }}>
-                  ＋ Ortasına istasyon ekle
-                </button>
-              </div>
-              {/* Başa / sona durak (hattı uzatır) */}
-              <div className="mt-2 flex items-center gap-2">
-                <button onClick={() => ucEkle("start")}
-                  className="flex-1 rounded-md border px-3 py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.ink }}>
-                  ⇤ Başa durak ekle
-                </button>
-                <button onClick={() => ucEkle("end")}
-                  className="flex-1 rounded-md border px-3 py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.ink }}>
-                  Sona durak ekle ⇥
-                </button>
-              </div>
-              {depotPlan.total > 0 && (
-                <div className="mt-2 rounded-md px-2 py-1.5 text-xs" style={{ background: CK.track, color: brand.inkSoft }}>
-                  🅿 <b>{depotPlan.total} tren</b> {depotPlan.depots.length} parklanma alanından sırayla servise çıkacak
-                  ({headwayDk} dk aralıkla). Canlı Ağ gidiş servisi bu depolardan besleniyor.
-                </div>
-              )}
-            </div>
-
-            {/* Segmentler */}
-            <div>
-              <SubBaslik>Hız Limiti</SubBaslik>
-              <div className="flex flex-col gap-2">
-                {routeEdges.map((e) => (
-                  <div key={e.id} className="rounded border p-2" style={{ borderColor: brand.border }}>
-                    <div className="mb-1 text-xs font-medium" style={{ color: brand.inkSoft }}>
-                      {nodeById[e.from]?.name} → {nodeById[e.to]?.name}
-                    </div>
-                    {e.segments.map((s, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <span className="w-6 text-xs" style={{ color: brand.faint }}>{e.segments.length > 1 ? `#${i + 1}` : ""}</span>
-                        <input type="number" step={5} value={round(kmh(s.vmax))} onChange={(ev) => patchSegment(e.id, i, { vmax: (parseFloat(ev.target.value) || 0) * KMH })}
-                          className="w-16 rounded border px-1 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
-                        <span className="text-xs" style={{ color: brand.muted }}>km/h</span>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </div>
+            </label>
+            <Num label="Azami Hız" suffix="km/h" step={5} value={round(kmh(stock.maxSpeed))} onChange={(v) => patchStock({ maxSpeed: v * KMH })} />
+            <Num label="Kütle" suffix="t" step={1} value={round(stock.mass / 1000)} onChange={(v) => patchStock({ mass: v * 1000 })} />
+            <Num label="Fren" suffix="m/s²" step={0.1} value={round(stock.maxBraking, 1)} onChange={(v) => patchStock({ maxBraking: v })} />
           </div>
+          <p className="mt-4 border-t pt-3 text-xs" style={{ borderColor: brand.border, color: brand.muted }}>
+            Hattı düzenlemek mi istiyorsun? İstasyon / mesafe / hız / makas / parklanma alanı{" "}
+            <Link href="/#ringler" className="underline" style={{ color: brand.red }}>Ringler (KUR)</Link> bölümünde — orada yapılan değişiklikler burada anında yansır.
+          </p>
         </Panel>
       </div>
 
@@ -589,10 +362,6 @@ function Num({ label, value, onChange, step, suffix }: { label: string; value: n
       </div>
     </label>
   );
-}
-
-function SubBaslik({ children }: { children: React.ReactNode }) {
-  return <div className="field-label mb-2 border-b pb-1" style={{ borderColor: brand.border }}>{children}</div>;
 }
 
 function VeritabaniDurumu() {
