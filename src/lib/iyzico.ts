@@ -63,8 +63,12 @@ export interface OdemeBaslatGirdi {
  *  URL'i (yedek) döner. Gömme, kullanıcıyı siteden çıkarmadan modal içinde öder. */
 export async function odemeBaslat(g: OdemeBaslatGirdi): Promise<{ checkoutFormContent?: string; paymentPageUrl?: string; token?: string; status: string; errorMessage?: string; errorCode?: string }> {
   const fiyat = g.fiyatTl.toFixed(2);
-  const [ad, ...kalan] = (g.aliciAdSoyad || "RaySim Kullanıcı").split(" ");
-  const soyad = kalan.join(" ") || "-";
+  // Ad/soyad iyzico'da ZORUNLU + geçerli olmalı. Adın yoksa e-postanın @ öncesi
+  // (boşluksuz) gelir → tek parça kalır. Soyad boşsa "-" iyzico'yu bozuyordu
+  // ("soyadı görmedim"); geçerli bir yer tutucu ("Kullanıcı") kullan.
+  const parcalar = (g.aliciAdSoyad || "RaySim Kullanıcı").trim().split(/\s+/).filter(Boolean);
+  const ad = parcalar[0] || "RaySim";
+  const soyad = parcalar.length > 1 ? parcalar.slice(1).join(" ") : "Kullanıcı";
   const govde = {
     locale: "tr",
     conversationId: g.conversationId,

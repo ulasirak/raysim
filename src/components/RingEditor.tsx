@@ -49,6 +49,24 @@ export function RingEditor() {
   const { patchIsletme } = useIsletme();
   const setKapali = (v: boolean) => patchIsletme({ kapali: v });
   const [acik, setAcik] = useState<Record<string, boolean>>(() => (rings[0] ? { [rings[0].id]: true } : {}));
+  // Silme GERİ AL: silmeden ÖNCEKİ ring dizisini tutar; kullanıcı yanlışlıkla durak/
+  // ring silerse tek tıkla geri döner. Zaman aşımında (araç çubuğu kalabalıklaşmasın)
+  // temizlenir; başka bir silme yeni anlık görüntüyü yazar.
+  const [geriAl, setGeriAl] = useState<DurakArasiRing[] | null>(null);
+  const geriAlZaman = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const silHatirla = (updater: (rs: DurakArasiRing[]) => DurakArasiRing[]) => {
+    setGeriAl(rings); // silmeden önceki durumu sakla
+    setRings(updater);
+    if (geriAlZaman.current) clearTimeout(geriAlZaman.current);
+    geriAlZaman.current = setTimeout(() => setGeriAl(null), 15000);
+  };
+  const geriAlUygula = () => {
+    if (!geriAl) return;
+    setRings(geriAl);
+    setGeriAl(null);
+    if (geriAlZaman.current) clearTimeout(geriAlZaman.current);
+  };
+  useEffect(() => () => { if (geriAlZaman.current) clearTimeout(geriAlZaman.current); }, []);
 
   const oneriler = useMemo(() => dengeOnerisi(rings, stock, cfg), [rings, stock, cfg]);
   const tumEksik = useMemo(() => rings.flatMap((r) => ringDogrula(r, cfg)), [rings, cfg]);
@@ -65,7 +83,7 @@ export function RingEditor() {
   const patchTn = (rid: string, tid: string, p: Partial<DurakArasiRing["tehlikeNoktalari"][number]>) =>
     setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, tehlikeNoktalari: r.tehlikeNoktalari.map((t) => (t.id === tid ? { ...t, ...p } : t)) } : r)));
 
-  const ringSil = (id: string) => setRings((rs) => rs.filter((r) => r.id !== id));
+  const ringSil = (id: string) => silHatirla((rs) => rs.filter((r) => r.id !== id));
   const sifirla = () => {
     sifirlaRings();
     setKapali(true);
@@ -123,6 +141,16 @@ export function RingEditor() {
         </button>
       </div>
 
+      {/* Silme GERİ AL çubuğu — yanlış silinen durak/ring tek tıkla geri gelir. */}
+      {geriAl && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-md border-l-4 px-4 py-2 text-sm" style={{ background: CK.amberBg, borderColor: CK.amber, color: brand.ink }}>
+          <span>↩︎ Silme işlemi yapıldı. Yanlışlıkla mı? Geri alabilirsin.</span>
+          <button onClick={geriAlUygula} className="shrink-0 rounded-md px-3 py-1 text-xs font-semibold text-white transition hover:opacity-90" style={{ background: brand.ink }}>
+            ↺ Silmeyi geri al
+          </button>
+        </div>
+      )}
+
       {/* DURAKLAR & MESAFELER — hattın GİRİŞ NOKTASI. Boş hatta da görünür: müşteri
           önce buradan durak/mesafe/hız girer, ring hücreleri buradan doğar. Detaylı
           hücre şartları (worst/best, makas, hemzemin, tehlike, depo) alttaki kartlarda.
@@ -166,7 +194,7 @@ export function RingEditor() {
                       </div>
                     )}
                     {duraklar.length > 2 ? (
-                      <button onClick={() => setRings((rs) => durakSil(rs, i))} title="Durağı sil (orta durak → komşu ringleri birleştirir)"
+                      <button onClick={() => silHatirla((rs) => durakSil(rs, i))} title="Durağı sil (orta durak → komşu ringleri birleştirir)"
                         className="shrink-0 rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
                     ) : (<span className="w-6 shrink-0" />)}
                   </div>
