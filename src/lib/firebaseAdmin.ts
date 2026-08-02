@@ -63,12 +63,6 @@ export async function adminDb(): Promise<Firestore> {
   return getFirestore(await adminApp());
 }
 
-/** Admin Auth (e-postadan uid çözmek gibi işler için). */
-export async function adminAuth() {
-  const { getAuth } = await import("firebase-admin/auth");
-  return getAuth(await adminApp());
-}
-
 /**
  * İstek başlığındaki Firebase ID token'ını jose ile DOĞRUDAN doğrular; uid ve
  * (varsa) e-postayı döndürür. İstemci `Authorization: Bearer <idToken>` gönderir;
