@@ -11,7 +11,6 @@ import Link from "next/link";
 import { brand } from "@/lib/anaray/brand";
 import { sure, kmh } from "@/lib/anaray/format";
 import { useSimConfig, useProje, useArac } from "@/components/SimConfigProvider";
-import { ParametreEditoru } from "@/components/ParametreEditoru";
 import { loopDenge, olceklenme, ringSenaryo } from "@/lib/anaray/ring";
 import { bolgeSeed, simuleEtAnklasman } from "@/lib/anaray/interlocking";
 import { blockingTimeRing, type BlokSperr } from "@/lib/anaray/blockingtime";
@@ -56,7 +55,7 @@ function blokNeden(b: BlokSperr): BlokNeden {
 }
 
 export function SistemMerkezi() {
-  const { cfg, sifirla } = useSimConfig();
+  const { cfg } = useSimConfig();
   const { rings } = useProje();
   const { arac: stock } = useArac();
 
@@ -106,18 +105,15 @@ export function SistemMerkezi() {
     <div className="mx-auto max-w-6xl px-6 py-8">
       <div className="mb-6 flex items-end justify-between border-b pb-4" style={{ borderColor: brand.border }}>
         <div>
-          <div className="field-label">Sistem Merkezi — Canlı Simülasyon Parametreleri & Durum</div>
-          <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>RaySim Parametre & Bilgi Merkezi</h1>
+          <div className="field-label">Sistem Merkezi — Canlı Durum & Kapasite Analizi</div>
+          <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>RaySim Canlı Durum & Bilgi Merkezi</h1>
         </div>
-        <button onClick={sifirla} className="rounded-md border px-3 py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
-          ↺ Belge varsayılanlarına dön
-        </button>
       </div>
 
       {bosHat && (
         <div className="mb-6 rounded border-l-4 px-4 py-3 text-sm" style={{ borderColor: CK.amber, background: CK.amberBg, color: CK.amberInk }}>
           ▲ Bu hatta henüz ring (durak arası hücre) yok — canlı durum ve kapasite panelleri gizlendi.
-          Parametreleri şimdi girebilir, hattı{" "}
+          Parametreleri header&apos;daki <b>⚙ Parametreler</b> butonundan, hattı{" "}
           <Link href="/ringler" className="underline">Ringler modülünden</Link> kurabilirsiniz.
         </div>
       )}
@@ -266,10 +262,11 @@ export function SistemMerkezi() {
       </Panel>
       )}
 
-      {/* Parametreler — editable, paylaşılan */}
-      <Panel baslik="Simülasyon Parametreleri" aciklama="Tek kaynak. Değiştirdiğin an Sefer / Ringler / Anklaşman modüllerinin tümü bu değerlerle yeniden hesaplar. Otomatik kaydedilir. (Header'daki “⚙ Parametreler” ile de açılır.)">
-        <ParametreEditoru />
-      </Panel>
+      {/* Parametre düzenleme TEK yerde: header'daki ⚙ Parametreler. Burada tekrar
+          gösterilmez (çift giriş kafa karıştırıyordu) — yalnız yönlendirme. */}
+      <div className="mt-6 rounded-lg border border-dashed px-4 py-3 text-sm" style={{ borderColor: brand.borderStrong, color: brand.muted }}>
+        ⚙ Simülasyon parametreleri header&apos;daki <b style={{ color: brand.ink }}>“⚙ Parametreler”</b> butonundan düzenlenir — tek kaynak, her sayfadan erişilir. Yukarıdaki canlı durum ve kapasite panelleri bu değerlerle anlık çözülür.
+      </div>
 
       <footer className="mt-10 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
         RaySim · Sistem Merkezi — parametreler tek kaynaktır; Sefer / Ringler / Anklaşman modülleri buradan okur. Değerler tarayıcıda saklanır (localStorage). Referans hızlar: {kmh(cfg.vAnahat).toFixed(0)}/{kmh(cfg.vSahasal).toFixed(0)}/{kmh(cfg.vMakas).toFixed(0)}/{kmh(cfg.vHemzemin).toFixed(0)} km/h.
