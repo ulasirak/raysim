@@ -2,7 +2,7 @@
 //
 // Her kullanıcının kendi projeleri vardır; bir proje = tek bir HAT'ın tüm durumu
 // (ring zinciri + simülasyon parametreleri + künye). Aktif proje seçilir ve o an
-// bütün modüller (Sefer/Ringler/Anklaşman/Tam Hat/Sistem/Belgeler/Coğrafi) o tek
+// bütün modüller (Ringler/Anklaşman/Sefer/Sistem/Belgeler) o tek
 // hatta hizmet eder.
 //
 // İzolasyon YALNIZCA Firestore güvenlik kurallarıyla sağlanır (firestore.rules):

@@ -122,21 +122,6 @@ export function RingEditor() {
         </button>
       </div>
 
-      {/* Eşit şartlar — durak-çiftleri dengeleme önerisi */}
-      {oneriler.length > 0 && (
-        <Panel baslik="Eşit Şartlar — Dengeleme Önerileri" aciklama="Best-case yakın-mesafe hedefi: durak-çiftleri arası worst-case süreler eşitlendikçe headway kararlı olur. Ortalamadan sapan ringler ve öneriler:">
-          <div className="flex flex-col gap-1.5">
-            {oneriler.map((o) => (
-              <div key={o.ringId} className="flex items-start gap-2 rounded border px-3 py-2 text-sm" style={{ borderColor: o.fark > 0 ? brand.red + "55" : OK + "55", background: o.fark > 0 ? CK.badBgSoft : CK.goodBgSoft }}>
-                <span className="shrink-0 font-mono text-xs" style={{ color: o.fark > 0 ? brand.red : OK }}>{o.fark > 0 ? "+" : ""}{Math.round(o.fark)} s</span>
-                <span className="font-medium" style={{ color: brand.ink }}>{o.ad}:</span>
-                <span style={{ color: brand.inkSoft }}>{o.oneri}</span>
-              </div>
-            ))}
-          </div>
-        </Panel>
-      )}
-
       {/* Eksik şart uyarısı */}
       {tumEksik.length > 0 && (
         <div className="mt-4 rounded-lg border p-4" style={{ borderColor: brand.red, background: CK.badBgSoft }}>
@@ -202,6 +187,24 @@ export function RingEditor() {
       <button onClick={ringEkle} className="mt-4 w-full rounded-lg border-2 border-dashed py-3 text-sm font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
         ＋ Durak arası ring (hücre) ekle
       </button>
+
+      {/* Eşit şartlar — durak-çiftleri dengeleme önerisi. Hattın ALTINDA: önce hattı
+          gör/kur, sonra iyileştirme tavsiyesi (dolu hatta sayfa artık öneriyle açılmaz). */}
+      {oneriler.length > 0 && (
+        <div className="mt-6">
+          <Panel baslik="Eşit Şartlar — Dengeleme Önerileri" aciklama="Best-case yakın-mesafe hedefi: durak-çiftleri arası worst-case süreler eşitlendikçe headway kararlı olur. Ortalamadan sapan ringler ve öneriler:">
+            <div className="flex flex-col gap-1.5">
+              {oneriler.map((o) => (
+                <div key={o.ringId} className="flex items-start gap-2 rounded border px-3 py-2 text-sm" style={{ borderColor: o.fark > 0 ? brand.red + "55" : OK + "55", background: o.fark > 0 ? CK.badBgSoft : CK.goodBgSoft }}>
+                  <span className="shrink-0 font-mono text-xs" style={{ color: o.fark > 0 ? brand.red : OK }}>{o.fark > 0 ? "+" : ""}{Math.round(o.fark)} s</span>
+                  <span className="font-medium" style={{ color: brand.ink }}>{o.ad}:</span>
+                  <span style={{ color: brand.inkSoft }}>{o.oneri}</span>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        </div>
+      )}
 
       <footer className="mt-10 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
         RaySim · Ring editörü — canlı parametreler (Sistem Merkezi&apos;nden): sahasal {kmh(cfg.vSahasal).toFixed(0)} · makas {kmh(cfg.vMakas).toFixed(0)} · hemzemin {kmh(cfg.vHemzemin).toFixed(0)} km/h · a={cfg.ivme} b={cfg.yavaslama} m/s² · headway {cfg.headway} s

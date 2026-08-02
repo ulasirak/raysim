@@ -11,7 +11,6 @@ import { brand } from "@/lib/anaray/brand";
 const ADIMLAR = [
   ["1", "Ringler", "/ringler", "Durak arası hücreleri (mesafe, dwell, makas, hemzemin) ekleyin — hattın omurgası."],
   ["2", "Sistem Merkezi", "/sistem", "Hız, ivme, headway ve zamanlayıcı parametrelerini projenize göre girin."],
-  ["3", "Coğrafi Güzergah", "/cografi", "Elinizde GTFS/koordinat varsa hattı doğrudan güzergahtan üretebilirsiniz."],
 ] as const;
 
 export function BosHat({ modul }: { modul: string }) {
