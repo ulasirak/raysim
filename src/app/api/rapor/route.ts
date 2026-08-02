@@ -10,7 +10,7 @@
 
 import { NextResponse } from "next/server";
 import { istekKimlik, isAdminConfigured } from "@/lib/firebaseAdmin";
-import { krediDus, KrediYetersizError } from "@/lib/cuzdanServer";
+import { krediDus, krediBakiye, KrediYetersizError } from "@/lib/cuzdanServer";
 import { KREDI_BEDELI } from "@/lib/cuzdan";
 import { yoneticiMi, yoneticiUidMi } from "@/lib/anaray/yetki";
 import { raporHTML, type RaporDil } from "@/lib/anaray/rapor";
@@ -51,11 +51,24 @@ export async function POST(req: Request) {
   }
   const cfg: SimConfig = { ...varsayilanConfig, ...(govde.veri?.cfg ?? {}) };
   const meta: ProjeMeta = { ...varsayilanMeta, ...(govde.veri?.meta ?? {}) };
-  const arac: RollingStock = govde.veri?.arac ?? varsayilanArac; // projenin aracı (yoksa varsayılan)
+  // Araç girdisi İSTEMCİDEN gelir → güvenli aralığa kıskaçla: bozuk/negatif/NaN
+  // alanlar simülasyonu kilitleyebilir (stall) veya rapora NaN yazabilir. Fail-safe.
+  const arac: RollingStock = saglamArac(govde.veri?.arac);
   const dil: RaporDil = govde.dil === "en" ? "en" : "tr";
   // Dönüş bekleme (s) → çevrim/filo hesabı. Geçersiz/negatif/aşırı değerler nötrlenir.
   const ts = Number(govde.veri?.turnaroundSn);
   const turnaroundSn = Number.isFinite(ts) ? Math.min(3600, Math.max(0, ts)) : 0;
+
+  // Bakiye ÖN-KONTROLÜ: muaf değilse ve bakiye yetersizse pahalı rapor üretimini
+  // hiç çalıştırma (boşuna CPU / DoS önlemi). Asıl düşüm aşağıda atomik krediDus'ta.
+  if (!muaf) {
+    let bakiye: number;
+    try { bakiye = await krediBakiye(uid); }
+    catch { return NextResponse.json({ hata: "Bakiye okunamadı." }, { status: 500 }); }
+    if (bakiye < KREDI_BEDELI.rapor) {
+      return NextResponse.json({ hata: "yetersiz_kredi", gereken: KREDI_BEDELI.rapor, mevcut: bakiye }, { status: 402 });
+    }
+  }
 
   // 1) Raporu ÜRET (başarısızsa kredi düşülmez).
   let html: string;
@@ -79,4 +92,31 @@ export async function POST(req: Request) {
 
   // 3) HTML'i döndür (istemci yeni sekmede açıp yazdırır).
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+}
+
+/**
+ * İstemciden gelen araç verisini GÜVENLİ aralığa kıskaçlar. Varsayılandan başlar,
+ * her sayısal alanı `Number.isFinite` + makul alt/üst sınırla değiştirir. Böylece
+ * bozuk/negatif/NaN girdi ne simülasyonu kilitler ne de rapora NaN yazar.
+ */
+function saglamArac(a: Partial<RollingStock> | undefined): RollingStock {
+  const d = varsayilanArac;
+  const n = (v: unknown, def: number, lo: number, hi: number) => {
+    const x = Number(v);
+    return Number.isFinite(x) ? Math.min(hi, Math.max(lo, x)) : def;
+  };
+  return {
+    id: typeof a?.id === "string" ? a.id : d.id,
+    name: typeof a?.name === "string" ? a.name : d.name,
+    mass: n(a?.mass, d.mass, 1_000, 2_000_000),                       // kg
+    rotatingMassFactor: n(a?.rotatingMassFactor, d.rotatingMassFactor, 0, 0.5),
+    length: n(a?.length, d.length, 1, 1_000),                        // m
+    maxSpeed: n(a?.maxSpeed, d.maxSpeed, 1, 150),                    // m/s (taban 1 → stall yok)
+    startingTractiveEffort: n(a?.startingTractiveEffort, d.startingTractiveEffort, 1, 5_000_000), // N
+    power: n(a?.power, d.power, 1_000, 50_000_000),                  // W
+    maxBraking: n(a?.maxBraking, d.maxBraking, 0.1, 5),              // m/s²
+    davisA: n(a?.davisA, d.davisA, 0, 1e7),
+    davisB: n(a?.davisB, d.davisB, 0, 1e6),
+    davisC: n(a?.davisC, d.davisC, 0, 1e5),
+  };
 }

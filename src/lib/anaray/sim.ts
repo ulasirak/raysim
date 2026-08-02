@@ -57,7 +57,7 @@ function maxAllowedSpeed(
 }
 
 export function simulate(line: Line, stock: RollingStock, dt = 0.5): SimResult {
-  const meff = stock.mass * (1 + stock.rotatingMassFactor);
+  const meff = Math.max(1, stock.mass * (1 + stock.rotatingMassFactor)); // kütle≤0 → NaN ivme olmasın
   const b = Math.max(0.1, stock.maxBraking); // negatif/0 fren → sqrt(2·b·d) NaN olmasın (hatsim/blockingtime ile tutarlı)
 
   const points: TrajectoryPoint[] = [];
@@ -76,6 +76,7 @@ export function simulate(line: Line, stock: RollingStock, dt = 0.5): SimResult {
 
   const maxIter = 500_000;
   let iter = 0;
+  let stuck = 0; // ilerleme olmayan ardışık adım sayacı (patolojik girdi → erken çık)
 
   while (s < line.length - 0.01 && iter < maxIter) {
     iter++;
@@ -94,6 +95,8 @@ export function simulate(line: Line, stock: RollingStock, dt = 0.5): SimResult {
 
     let sNew = s + ((v + vNew) / 2) * dt;
     t += dt;
+    // Stall koruması: tren hiç ilerlemiyorsa (ör. maxSpeed 0) 500k nokta biriktirme.
+    if (sNew <= s + 1e-6) { if (++stuck > 4000) break; } else stuck = 0;
 
     // Sonraki durağa ulaşıldı mı?
     if (nextStop && sNew >= nextStop.position) {

@@ -87,6 +87,16 @@ interface HareketDetay {
 }
 
 /**
+ * Cüzdan bakiyesini okur — pahalı iş (rapor üretimi) yapmadan ÖNCE hızlı ön-kontrol
+ * için. Asıl düşüm `krediDus`'ta atomik yapılır; bu okuma yalnız boşuna iş/DoS önler.
+ */
+export async function krediBakiye(uid: string): Promise<number> {
+  const db = await adminDb();
+  const snap = await db.collection("cuzdan").doc(uid).get();
+  return snap.exists ? Number(snap.data()?.bakiye ?? 0) : 0;
+}
+
+/**
  * Krediyi ATOMİK düşer ve hareket yazar. Bakiye yetersizse hiçbir şey yazmaz,
  * KrediYetersizError fırlatır. Dönüş: işlem sonrası bakiye.
  */

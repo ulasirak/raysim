@@ -91,7 +91,7 @@ export function RingEditor() {
     else { const r = rings[i - 1]; if (r) patch(r.id, { depot: on, queued: on && !r.queued ? 1 : r.queued }); }
   };
   const depoQueued = (i: number, n: number) => {
-    const q = Math.max(0, Math.round(n));
+    const q = Math.min(40, Math.max(0, Math.round(n))); // üst sınır: aşırı tren donmasın
     if (i === 0) { const r = rings[0]; if (r) patch(r.id, { fromQueued: q }); }
     else { const r = rings[i - 1]; if (r) patch(r.id, { queued: q }); }
   };
@@ -277,7 +277,7 @@ export function RingEditor() {
                     {depoDurum(i).on && (
                       <span className="flex items-center gap-1" style={{ color: brand.muted }}>
                         bekleyen
-                        <input type="number" min={0} step={1} value={depoDurum(i).q} onChange={(e) => depoQueued(i, parseFloat(e.target.value) || 0)}
+                        <input type="number" min={0} max={40} step={1} value={depoDurum(i).q} onChange={(e) => depoQueued(i, parseFloat(e.target.value) || 0)}
                           className="w-14 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /> tren
                         {i === duraklar.length - 1 && <span style={{ color: CK.amber }} title="Hattın sonundaki depo gidiş yönünde tren veremez (gidecek yer yok)">⚠ uç</span>}
                       </span>
@@ -498,7 +498,7 @@ function RingKart(p: KartProps) {
           worst {sure(sen.worstToplam)} {sen.headwayUygun ? "≤" : ">"} {cfg.headway} s
         </span>
         <button onClick={p.onToggle} className="rounded px-1.5 text-sm" style={{ color: brand.muted }}>{p.acik ? "▾" : "▸"}</button>
-        <button onClick={p.onSil} title="Ringi sil" className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
+        <button onClick={p.onSil} title="Ringi sil" aria-label="Ringi sil" className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
       </div>
 
       {p.acik && (

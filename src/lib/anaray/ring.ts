@@ -567,13 +567,13 @@ export function durakBol(rings: DurakArasiRing[], index: number, konum?: number)
   const sonrasi = <T extends { konum: number }>(xs: T[]) => xs.filter((o) => o.konum > yari).map((o) => ({ ...o, konum: o.konum - yari }));
   const a: DurakArasiRing = {
     ...r, id: yeniId("RING"), toAd: "Yeni Durak", uzunluk: yari,
-    worstUzunluk: Math.max(yari, r.worstUzunluk), bestUzunluk: clamp(r.bestUzunluk, 50, yari),
+    worstUzunluk: Math.max(yari, r.worstUzunluk), bestUzunluk: clamp(r.bestUzunluk, Math.min(50, yari), yari),
     depot: false, queued: undefined,
     makaslar: oncesi(r.makaslar), hemzeminler: oncesi(r.hemzeminler), tehlikeNoktalari: oncesi(r.tehlikeNoktalari),
   };
   const b: DurakArasiRing = {
     ...r, id: yeniId("RING"), fromAd: "Yeni Durak", uzunluk: kalan,
-    worstUzunluk: Math.max(kalan, r.worstUzunluk), bestUzunluk: clamp(r.bestUzunluk, 50, kalan),
+    worstUzunluk: Math.max(kalan, r.worstUzunluk), bestUzunluk: clamp(r.bestUzunluk, Math.min(50, kalan), kalan),
     fromDepot: undefined, fromQueued: undefined,
     makaslar: sonrasi(r.makaslar), hemzeminler: sonrasi(r.hemzeminler), tehlikeNoktalari: sonrasi(r.tehlikeNoktalari),
   };

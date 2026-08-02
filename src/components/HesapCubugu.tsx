@@ -101,7 +101,7 @@ export function HesapKontrolleri() {
               {projeler.map((p) => (<option key={p.id} value={p.id}>{p.ad}</option>))}
             </select>
             {aktifId && (
-              <button onClick={() => setAdTaslak(aktifAd)} title="Proje adını değiştir"
+              <button onClick={() => setAdTaslak(aktifAd)} title="Proje adını değiştir" aria-label="Proje adını değiştir"
                 className="rounded-md border px-1.5 py-1 text-xs transition hover:bg-white/10"
                 style={{ borderColor: koyu.kenar, color: koyu.metinYumusak }}>✎</button>
             )}
@@ -163,7 +163,7 @@ export function HesapKontrolleri() {
       </span>
 
       {/* ⋮ menüsü — seyrek işler + kredi al + çıkış */}
-      <button onClick={() => setMenuAcik((a) => !a)} title="Hesap · kredi · hat işlemleri · çıkış"
+      <button onClick={() => setMenuAcik((a) => !a)} title="Hesap · kredi · hat işlemleri · çıkış" aria-label="Hesap menüsü"
         className="rounded-md border px-2 py-1 font-medium leading-none transition hover:bg-white/10"
         style={{ background: koyu.yuzey, borderColor: koyu.kenar, color: koyu.metin }}>⋮</button>
 

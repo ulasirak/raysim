@@ -117,7 +117,7 @@ function runTrains(
   blocked?: Set<number>, // kalıcı arızalı bloklar (dispatcher modu) — hep dolu sayılır
   origins?: number[] // tren başına çıkış konumu (m); verilmezse 0 (hat başı). Depo çıkışı.
 ): SignalTrain[] {
-  const meff = stock.mass * (1 + stock.rotatingMassFactor);
+  const meff = Math.max(1, stock.mass * (1 + stock.rotatingMassFactor)); // kütle≤0 → NaN yörünge olmasın
   const b = Math.max(0.1, stock.maxBraking); // negatif/0 fren → NaN yörünge olmasın (hatsim/blockingtime ile tutarlı)
   const stops = line.stations.map((s) => ({ pos: s.position, dwell: s.dwell }));
   const EPS = 1; // kırmızı sinyalde 1 m geride dur (temiz blok işgali)
@@ -134,8 +134,15 @@ function runTrains(
 
   let t = 0;
   const maxT = baseTime * 3 + count * headway + 1200;
+  // Sağlamlık backstop'u: patolojik girdide (maxSpeed=0, aşırı eğim, negatif kütle)
+  // hiçbir tren ilerleyemezse döngü kilitlenmesin. Sert iterasyon tavanı + adım
+  // başı "canlılık" kontrolü (aşağıda). maxT bazı çağrılarda ~1e9 olduğundan şart.
+  const HARD_ITERS = 2_000_000;
+  let iters = 0;
 
   while (trains.some((tr) => !tr.done) && t < maxT) {
+    if (++iters > HARD_ITERS) break;
+    const sumBefore = trains.reduce((acc, tr) => acc + tr.s, 0);
     // blok işgali (adım başı anlık görüntü) — tren boyu kadar (kuyruk→baş)
     const occ = new Array<number>(nb).fill(-1);
     for (const tr of trains) if (tr.started && !tr.done) {
@@ -207,6 +214,19 @@ function runTrains(
       tr.v = vNew;
       tr.points.push({ t: t + dt, s: sNew });
     }
+    // Canlılık: kimse ilerlemedi + kimse duruşta/çıkış-sırası beklemiyorsa → kalıcı
+    // stall (hat fiziksel olarak koşulamıyor). Kalanları bitir ve çık; sonsuz dönme.
+    let alive = trains.reduce((acc, tr) => acc + tr.s, 0) > sumBefore + 1e-6;
+    if (!alive) {
+      for (const tr of trains) {
+        if (tr.done) continue;
+        if (!tr.started) {
+          const entryT = tr.k * headway + (pert?.entry[tr.k] ?? 0);
+          if (t < entryT - 1e-9) { alive = true; break; }
+        } else if (tr.dwellUntil > t + 1e-9) { alive = true; break; }
+      }
+    }
+    if (!alive) { for (const tr of trains) if (!tr.done) { tr.done = true; tr.arr = t; } break; }
     t += dt;
   }
 
@@ -223,7 +243,7 @@ export function simulateSignalled(
   const baseTime = runTrains(line, stock, bounds, 1e9, 1, dt, 600)[0].arr;
 
   const blocked = opts.blocked && opts.blocked.length ? new Set(opts.blocked) : undefined;
-  const runs = runTrains(line, stock, bounds, opts.headway, Math.max(1, opts.count), dt, baseTime, undefined, blocked, opts.origins);
+  const runs = runTrains(line, stock, bounds, opts.headway, Math.min(200, Math.max(1, opts.count)), dt, baseTime, undefined, blocked, opts.origins);
   const trains = runs.map((tr) => ({ ...tr, delay: Math.max(0, tr.arr - (tr.index * opts.headway + baseTime)) }));
   const maxDelay = Math.max(0, ...trains.map((t) => t.delay));
   const tMax = Math.max(...trains.map((t) => t.arr));
@@ -328,13 +348,14 @@ export function monteCarlo(
   const dt = opts.dt ?? 0.5;
   const bounds = makeBlocks(line, opts.maxBlockLen);
   const baseTime = runTrains(line, stock, bounds, 1e9, 1, dt, 600)[0].arr;
-  const count = Math.max(1, opts.count);
+  const count = Math.min(200, Math.max(1, opts.count)); // motor koruması: aşırı tren sayısı donmasın
+  const trials = Math.min(500, Math.max(1, cfg.trials)); // deneme sayısı üst sınırı
   const nStops = line.stations.length;
 
   const all: number[] = [];
   const perTrain: number[][] = Array.from({ length: count }, () => []);
 
-  for (let tr = 0; tr < cfg.trials; tr++) {
+  for (let tr = 0; tr < trials; tr++) {
     const entry = Array.from({ length: count }, () => expRand(cfg.meanEntry));
     const dwell = Array.from({ length: count }, () => Array.from({ length: nStops }, () => expRand(cfg.meanDwell)));
     const runs = runTrains(line, stock, bounds, opts.headway, count, dt, baseTime, { entry, dwell });
@@ -372,7 +393,7 @@ export function monteCarlo(
   });
 
   return {
-    trials: cfg.trials,
+    trials, // fiilen koşturulan (kıskaçlanmış) deneme sayısı
     onTimePct: onTime * 100,
     meanDelay: mean,
     p90Delay: percentile(all, 90),

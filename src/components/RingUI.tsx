@@ -16,12 +16,12 @@ export function Rozet({ ok, okText, hataText }: { ok: boolean; okText: string; h
   );
 }
 
-export function Num({ label, value, onChange, step, suffix, hata, allowNeg }: { label: string; value: number; onChange: (v: number) => void; step: number; suffix: string; hata?: boolean; allowNeg?: boolean }) {
+export function Num({ label, value, onChange, step, suffix, hata, allowNeg, max }: { label: string; value: number; onChange: (v: number) => void; step: number; suffix: string; hata?: boolean; allowNeg?: boolean; max?: number }) {
   return (
     <label className="block">
       <span className="field-label" style={{ fontSize: "0.6rem" }}>{label}</span>
       <div className="mt-0.5 flex items-center gap-1">
-        <input type="number" value={value} step={step} onChange={(e) => { const v = parseFloat(e.target.value) || 0; onChange(allowNeg ? v : Math.max(0, v)); }}
+        <input type="number" value={value} step={step} max={max} onChange={(e) => { let v = parseFloat(e.target.value) || 0; if (!allowNeg) v = Math.max(0, v); if (max != null) v = Math.min(max, v); onChange(v); }}
           className="w-full rounded border px-1.5 py-1 text-right text-sm" style={{ borderColor: hata ? brand.red : brand.border, color: hata ? brand.red : brand.ink }} />
         <span className="text-[0.65rem]" style={{ color: brand.muted }}>{suffix}</span>
       </div>

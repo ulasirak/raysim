@@ -1,9 +1,9 @@
 "use client";
 
 // raysim — KREDİ CÜZDANI (istemci bağlamı).
-// Kullanıcının bakiyesini okur ve ücretli eylemler için TEK kapı sunar:
-// `krediHarca(eylem)` → sunucudaki /api/kredi/dus'a imzalı token'la gider,
-// atomik düşer, yeni bakiyeyi döndürür. Bakiye yetersizse KrediYetersiz sinyali.
+// Kullanıcının bakiyesini OKUR ve kredi paketi satın almayı başlatır. Ücretli
+// eylemlerde kredi düşümü ilgili SUNUCU ucunda atomik yapılır (rapor: /api/rapor,
+// hat: /api/proje/olustur) — istemci düşüm yapmaz.
 //
 // Bakiye OKUMA istemciden güvenli (kurallar sahibi okumaya izin verir); YAZMA
 // yalnız sunucudan olur (bkz. firestore.rules + lib/cuzdanServer.ts).
@@ -11,13 +11,11 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { getAuthInstance, isFirebaseConfigured } from "@/lib/firebase";
-import { bakiyeGetir, KREDI_BEDELI, type KrediEylemi } from "@/lib/cuzdan";
+import { bakiyeGetir } from "@/lib/cuzdan";
 
 interface CuzdanCtx {
   bakiye: number | null; // null = henüz yüklenmedi
   yenile: () => Promise<void>;
-  /** Ücretli eylem için krediyi sunucuda düşer. Dönüş: {tamam, bakiye, gereken?, mevcut?}. */
-  krediHarca: (eylem: KrediEylemi, ref?: string) => Promise<HarcamaSonuc>;
   /** Kredi paketi satın almayı başlatır; iyzico formunu MODAL içinde açar (siteden çıkmaz). */
   krediSatinAl: (paketId: string) => Promise<{ hata?: string }>;
   /** Açık ödeme modalının iyzico gömme içeriği (null = kapalı). */
@@ -29,15 +27,6 @@ interface CuzdanCtx {
   /** Ödeme dönüşü sonucu (iyzico callback'ten): kullanıcıya banner gösterilir. */
   odemeSonucu: "basarili" | "hata" | null;
   odemeSonucuTemizle: () => void;
-}
-
-export interface HarcamaSonuc {
-  tamam: boolean;
-  bakiye?: number;
-  yetersiz?: boolean;
-  gereken?: number;
-  mevcut?: number;
-  hata?: string;
 }
 
 const Ctx = createContext<CuzdanCtx | null>(null);
@@ -76,26 +65,6 @@ export function CuzdanProvider({ children }: { children: React.ReactNode }) {
     })();
     return () => { iptal = true; };
   }, [user]);
-
-  const krediHarca = useCallback(async (eylem: KrediEylemi, ref?: string): Promise<HarcamaSonuc> => {
-    const a = getAuthInstance();
-    if (!a?.currentUser) return { tamam: false, hata: "Oturum yok." };
-    const token = await a.currentUser.getIdToken();
-    const yanit = await fetch("/api/kredi/dus", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ eylem, ref }),
-    });
-    const veri = await yanit.json().catch(() => ({}));
-    if (yanit.ok) {
-      if (typeof veri.bakiye === "number") setBakiye(veri.bakiye);
-      return { tamam: true, bakiye: veri.bakiye };
-    }
-    if (yanit.status === 402) {
-      return { tamam: false, yetersiz: true, gereken: veri.gereken ?? KREDI_BEDELI[eylem], mevcut: veri.mevcut ?? 0 };
-    }
-    return { tamam: false, hata: veri.hata ?? `Hata (${yanit.status}).` };
-  }, []);
 
   const krediSatinAl = useCallback(async (paketId: string): Promise<{ hata?: string }> => {
     const a = getAuthInstance();
@@ -142,7 +111,7 @@ export function CuzdanProvider({ children }: { children: React.ReactNode }) {
   }, [yenile]);
 
   return (
-    <Ctx.Provider value={{ bakiye, yenile, krediHarca, krediSatinAl, odemeIcerik, odemeUrlYedek, odemeKapat, odemeSonucu, odemeSonucuTemizle }}>
+    <Ctx.Provider value={{ bakiye, yenile, krediSatinAl, odemeIcerik, odemeUrlYedek, odemeKapat, odemeSonucu, odemeSonucuTemizle }}>
       {children}
     </Ctx.Provider>
   );
