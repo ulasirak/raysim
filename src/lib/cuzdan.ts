@@ -22,15 +22,26 @@ export const KREDI_BEDELI = {
 export type KrediEylemi = keyof typeof KREDI_BEDELI;
 
 /**
- * Satın alınabilir kredi paketleri. Fiyatlar (TL) SUNUCUDA sabittir; istemci
- * fiyat yollayamaz, yalnız paket id seçer. Fiyatları netleştirince güncelle.
- * (Placeholder değerler — gerçek fiyatlandırmayı belirle.)
+ * Satın alınabilir kredi paketleri. Fiyatlar (TL, KDV dâhil) SUNUCUDA sabittir;
+ * istemci fiyat yollayamaz, yalnız paket id seçer.
+ *
+ * Fiyatlandırma (Dengeli): 1 kredi tabanı 20₺; hacimde kredi başına ucuzlar
+ * (Standart %15, Profesyonel %25 avantaj). Buna göre PDF rapor (10 kredi) = 200₺,
+ * yeni hat (1 kredi) = 20₺. Değiştirmek istersen yalnız `tl` değerlerini güncelle.
  */
 export const KREDI_PAKETLERI = [
-  { id: "p10", kredi: 10, tl: 100 },
-  { id: "p50", kredi: 50, tl: 450 },
-  { id: "p100", kredi: 100, tl: 800 },
+  { id: "p10", ad: "Başlangıç", kredi: 10, tl: 200 },
+  { id: "p50", ad: "Standart", kredi: 50, tl: 850 },
+  { id: "p100", ad: "Profesyonel", kredi: 100, tl: 1500 },
 ] as const;
+
+/** Paketin kredi başına TL fiyatı ve en ucuz pakete göre indirim oranı (%). */
+export function paketAvantaj(p: { kredi: number; tl: number }): { birim: number; indirimYuzde: number } {
+  const birim = p.tl / p.kredi;
+  const taban = KREDI_PAKETLERI[0].tl / KREDI_PAKETLERI[0].kredi; // en küçük paket = referans
+  const indirimYuzde = Math.round(((taban - birim) / taban) * 100);
+  return { birim, indirimYuzde };
+}
 
 export function paketBul(id: string) {
   return KREDI_PAKETLERI.find((p) => p.id === id);

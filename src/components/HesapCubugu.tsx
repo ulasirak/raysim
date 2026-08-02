@@ -15,7 +15,7 @@ import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { useHesap } from "@/components/SimConfigProvider";
 import { useCuzdan } from "@/components/CuzdanProvider";
-import { KREDI_PAKETLERI, hareketleriGetir, type KrediHareket } from "@/lib/cuzdan";
+import { KREDI_PAKETLERI, paketAvantaj, hareketleriGetir, type KrediHareket } from "@/lib/cuzdan";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 
@@ -183,15 +183,19 @@ export function HesapKontrolleri() {
             <div className="border-b px-3 py-2" style={{ borderColor: brand.border }}>
               <div className="field-label mb-1" style={{ color: brand.faint }}>KREDİ AL</div>
               <div className="flex flex-wrap gap-1.5">
-                {KREDI_PAKETLERI.map((p) => (
-                  <button key={p.id}
-                    onClick={async () => { setOdemeHata(null); const r = await krediSatinAl(p.id); if (r.hata) setOdemeHata(r.hata); }}
-                    title={`${p.kredi} kredi — ${p.tl} TL`}
-                    className="rounded border px-2 py-1 text-xs font-medium transition hover:bg-slate-50"
-                    style={{ borderColor: brand.border, color: brand.ink }}>
-                    {p.kredi} kredi<span style={{ color: brand.muted }}> · {p.tl}₺</span>
-                  </button>
-                ))}
+                {KREDI_PAKETLERI.map((p) => {
+                  const { indirimYuzde } = paketAvantaj(p);
+                  return (
+                    <button key={p.id}
+                      onClick={async () => { setOdemeHata(null); const r = await krediSatinAl(p.id); if (r.hata) setOdemeHata(r.hata); }}
+                      title={`${p.ad} — ${p.kredi} kredi, ${p.tl}₺ (KDV dâhil)${indirimYuzde > 0 ? ` · %${indirimYuzde} avantajlı` : ""}`}
+                      className="relative rounded border px-2 py-1 text-xs font-medium transition hover:bg-slate-50"
+                      style={{ borderColor: brand.border, color: brand.ink }}>
+                      <span style={{ color: brand.faint }}>{p.ad}</span> · {p.kredi} kredi<span style={{ color: brand.muted }}> · {p.tl}₺</span>
+                      {indirimYuzde > 0 && <span className="ml-1 rounded px-1 text-[0.6rem] font-semibold" style={{ background: CK.goodBg, color: CK.good }}>%{indirimYuzde}</span>}
+                    </button>
+                  );
+                })}
               </div>
               {odemeHata && <div className="mt-1 text-[0.7rem]" style={{ color: brand.red }}>{odemeHata}</div>}
             </div>
