@@ -14,6 +14,9 @@ export function NetworkDiagram({ network, route, line }: { network: RailNetwork;
   const inRoute = routeEdgeSet(route);
   const nodeById = Object.fromEntries(network.nodes.map((n) => [n.id, n]));
   const kmById = Object.fromEntries((line?.stations ?? []).map((s) => [s.id, s.position]));
+  // Durak adları çakışmasın diye SOLDAN SAĞA sırayla İKİ SIRAYA dağıtılır (üst/alt);
+  // böylece her etikete iki kat yatay alan düşer (yoğun hatta üst üste binmiyor).
+  const xSira = new Map([...network.nodes].sort((a, b) => a.x - b.x).map((n, i) => [n.id, i]));
 
   return (
     <svg viewBox={`0 0 ${VBW} ${VBH}`} className="w-full h-auto" role="img" aria-label="Şebeke şeması" style={{ fontFamily: CK.sans }}>
@@ -50,7 +53,8 @@ export function NetworkDiagram({ network, route, line }: { network: RailNetwork;
               // hat başı / makas: içi dolu kare
               <rect x={n.x - 4} y={n.y - 4} width={8} height={8} fill={CK.muted} />
             )}
-            <text x={n.x} y={n.y - 13} fill={istasyon ? CK.ink : CK.muted} fontSize={11.5} fontWeight={istasyon ? 600 : 400} textAnchor="middle">
+            {/* İki sıralı kaydırma: çift sıra üstte (y-13), tek sıra daha yukarıda (y-28) */}
+            <text x={n.x} y={n.y - ((xSira.get(n.id) ?? 0) % 2 === 0 ? 13 : 28)} fill={istasyon ? CK.ink : CK.muted} fontSize={11} fontWeight={istasyon ? 600 : 400} textAnchor="middle">
               {n.name}
             </text>
             {konum !== undefined ? (
