@@ -288,15 +288,6 @@ export function reverseRoute(route: Route): Route {
   };
 }
 
-/** Filo (araç) ihtiyacı = tur süresi / sefer aralığı (yukarı yuvarlanır). */
-export function fleetSize(forwardTime: number, returnTime: number, turnaround: number, headway: number): {
-  roundTrip: number;
-  trains: number;
-} {
-  const roundTrip = forwardTime + returnTime + 2 * turnaround;
-  return { roundTrip, trains: Math.max(1, Math.ceil(roundTrip / headway)) };
-}
-
 // ————————————————————————————————————————————————
 // Monte-Carlo gecikme yayılımı / robustluk (Faz 4)
 // ————————————————————————————————————————————————

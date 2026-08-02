@@ -126,7 +126,7 @@ export function CografiHarita() {
             <li>📄 <b>stops.txt</b> / <b>.csv</b> — <span style={{ color: brand.muted }}>UTF-8, virgülle ayrılmış.</span><br />
               Zorunlu sütun: <code>stop_lat</code>, <code>stop_lon</code> (veya <code>lat</code>/<code>lon</code>). Ad: <code>stop_name</code>.</li>
             <li>📄 <b>shapes.txt</b> / <b>.csv</b> <span style={{ color: brand.muted }}>(opsiyonel)</span> — <code>shape_pt_lat</code>, <code>shape_pt_lon</code>, <code>shape_pt_sequence</code>. <span style={{ color: brand.muted }}>Gerçek kurp geometrisi → hız kısıtı tahmini buradan çıkar.</span></li>
-            <li>Standart <b>GTFS</b> (Google Transit) ile birebir uyumlu; herhangi bir raylı-sistem/GIS aracının GTFS dışa aktarımı çalışır.</li>
+            <li>Standart <b>GTFS</b> (Google Transit) ile birebir uyumlu; herhangi bir raylı-sistem/GIS (CBS — Coğrafi Bilgi Sistemi) aracının GTFS dışa aktarımı çalışır.</li>
           </ul>
         </div>
         <div className="rounded-lg border-l-4 p-4 text-xs" style={{ background: CK.amberBg, borderColor: CK.amber, color: brand.inkSoft }}>

@@ -12,7 +12,7 @@ import type { RollingStock } from "@/lib/anaray/types";
 import { makasBolgeId } from "@/lib/anaray/interlocking";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import type { SimConfig } from "@/lib/anaray/config";
-import { araclar } from "@/lib/anaray/vehicles";
+import { tramvaylar } from "@/lib/anaray/vehicles";
 import { brand } from "@/lib/anaray/brand";
 import { CK, SERI } from "@/lib/anaray/chartkit";
 import { kmh, sure } from "@/lib/anaray/format";
@@ -119,7 +119,7 @@ export function RingEditor() {
       <div className="mb-6 flex items-end justify-between border-b pb-4" style={{ borderColor: brand.border }}>
         <div>
           <div className="field-label">Durak Arası Ring Editörü — Gerçek-Hayat İşletim Hücreleri</div>
-          <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>{meta.hatAdi || "Adsız Hat"} · Loop Şartları</h1>
+          <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>{meta.hatAdi || "Adsız Hat"} · Loop (Çevrim) Şartları</h1>
         </div>
         <button
           onClick={() => {
@@ -133,13 +133,13 @@ export function RingEditor() {
 
       {/* Loop özeti + ölçeklenme — hat boşken gösterilecek bir ölçek yok */}
       {rings.length > 0 && (
-      <Panel baslik="Loop Özeti & Ölçeklenme" aciklama="Ringler zincirlenerek loop oluşturur. Worst-case (belge: 1500 m + makas + hemzemin) her hücrenin 240 s headway'e sığması gerekir. Tren sayısı arttıkça darboğaz en yavaş ringdir.">
+      <Panel baslik="Loop (Çevrim) Özeti & Ölçeklenme" aciklama="Ringler zincirlenerek loop (çevrim) oluşturur. Worst-case (en kötü durum; belge: 1500 m + makas + hemzemin) her hücrenin 240 s headway'e (sefer aralığı) sığması gerekir. Tren sayısı arttıkça darboğaz en yavaş ringdir.">
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <select
-            value={araclar.some((a) => a.id === stock.id) ? stock.id : ""}
-            onChange={(e) => { const v = araclar.find((a) => a.id === e.target.value); if (v) setArac({ ...v }); }}
+            value={tramvaylar.some((a) => a.id === stock.id) ? stock.id : ""}
+            onChange={(e) => { const v = tramvaylar.find((a) => a.id === e.target.value); if (v) setArac({ ...v }); }}
             className="rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }}>
-            {araclar.map((a) => (<option key={a.id} value={a.id}>{a.name}</option>))}
+            {tramvaylar.map((a) => (<option key={a.id} value={a.id}>{a.name}</option>))}
           </select>
           <label className="flex items-center gap-2 text-sm" style={{ color: brand.inkSoft }}>
             <input type="checkbox" checked={kapali} onChange={(e) => setKapali(e.target.checked)} />
@@ -362,7 +362,7 @@ function RingKart(p: KartProps) {
           {/* Duraklar + mesafe köşeleri */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div>
-              <SubBaslik>Duraklar & Mesafe (worst ↔ best köşesi)</SubBaslik>
+              <SubBaslik>Duraklar & Mesafe (worst/best = en kötü/en iyi köşesi)</SubBaslik>
               <div className="grid grid-cols-2 gap-2">
                 <Text label="Başlangıç durağı" value={ring.fromAd} onChange={(v) => p.onPatch({ fromAd: v })} />
                 <Text label="Bitiş durağı" value={ring.toAd} onChange={(v) => p.onPatch({ toAd: v })} />
@@ -381,8 +381,8 @@ function RingKart(p: KartProps) {
                 </div>
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2">
-                <Num label="Best-case mesafe" suffix="m" step={50} value={ring.bestUzunluk} onChange={(v) => p.onPatch({ bestUzunluk: v })} />
-                <Num label="Worst-case mesafe" suffix="m" step={50} value={ring.worstUzunluk} onChange={(v) => p.onPatch({ worstUzunluk: v })} />
+                <Num label="Best-case (en iyi) mesafe" suffix="m" step={50} value={ring.bestUzunluk} onChange={(v) => p.onPatch({ bestUzunluk: v })} />
+                <Num label="Worst-case (en kötü) mesafe" suffix="m" step={50} value={ring.worstUzunluk} onChange={(v) => p.onPatch({ worstUzunluk: v })} />
                 <Num label="Sahasal azami" suffix="km/h" step={5} value={Math.round(kmh(ring.vmax))} onChange={(v) => p.onPatch({ vmax: v * KMH })} />
                 <Num label="Varış durak bekleme" suffix="s" step={5} value={ring.dwell} onChange={(v) => p.onPatch({ dwell: v })} />
               </div>
@@ -476,7 +476,7 @@ function RingKart(p: KartProps) {
           {/* Challenge (karşılaşılabilecek zorluklar) */}
           {challenge.length > 0 && (
             <div className="mt-4 border-t pt-3" style={{ borderColor: brand.border }}>
-              <SubBaslik>Challenge — Karşılaşılabilecek Durumlar</SubBaslik>
+              <SubBaslik>Challenge (zorluk senaryosu) — Karşılaşılabilecek Durumlar</SubBaslik>
               <div className="mt-2 flex flex-col gap-1.5">
                 {challenge.map((c, i) => {
                   const renk = c.seviye === "kritik" ? brand.red : c.seviye === "uyari" ? CK.amber : brand.muted;

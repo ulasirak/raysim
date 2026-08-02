@@ -118,30 +118,3 @@ export function simulate(line: Line, stock: RollingStock, dt = 0.5): SimResult {
 
   return { points, totalTime: t, stationEvents };
 }
-
-/** Yörüngeden verilen zamandaki durumu doğrusal ara-değerle örnekler. */
-export function sampleAt(points: TrajectoryPoint[], tt: number): TrajectoryPoint {
-  if (points.length === 0) return { t: tt, s: 0, v: 0, a: 0, regime: "durak" };
-  if (tt <= points[0].t) return points[0];
-  const last = points[points.length - 1];
-  if (tt >= last.t) return last;
-
-  let lo = 0;
-  let hi = points.length - 1;
-  while (lo + 1 < hi) {
-    const mid = (lo + hi) >> 1;
-    if (points[mid].t <= tt) lo = mid;
-    else hi = mid;
-  }
-  const p0 = points[lo];
-  const p1 = points[hi];
-  const span = p1.t - p0.t || 1;
-  const f = (tt - p0.t) / span;
-  return {
-    t: tt,
-    s: p0.s + (p1.s - p0.s) * f,
-    v: p0.v + (p1.v - p0.v) * f,
-    a: p0.a,
-    regime: p0.regime,
-  };
-}

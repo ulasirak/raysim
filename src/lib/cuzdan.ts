@@ -32,8 +32,6 @@ export const KREDI_PAKETLERI = [
   { id: "p100", kredi: 100, tl: 800 },
 ] as const;
 
-export type PaketId = (typeof KREDI_PAKETLERI)[number]["id"];
-
 export function paketBul(id: string) {
   return KREDI_PAKETLERI.find((p) => p.id === id);
 }

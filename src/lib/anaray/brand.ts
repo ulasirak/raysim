@@ -23,11 +23,3 @@ export const brand = {
   speed: "#0C2233", // fiili hız eğrisi
   limit: "#C8102E", // hız limiti (kesikli)
 } as const;
-
-// Hareket rejimi renkleri (açık zeminde ayırt edilir)
-export const rejimRenk = {
-  hizlanma: "#0E7C57", // yeşil
-  seyir: "#0C6DB8", // mavi
-  yavaslama: "#C8102E", // kırmızı
-  durak: "#6B7A8A", // gri
-} as const;

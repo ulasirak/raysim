@@ -76,13 +76,6 @@ interface HareketDetay {
   ref?: string;
 }
 
-/** Güncel bakiye (cüzdan yoksa 0). Sunucu içi kullanım. */
-export async function bakiyeOku(uid: string): Promise<number> {
-  const db = await adminDb();
-  const snap = await db.collection("cuzdan").doc(uid).get();
-  return snap.exists ? Number(snap.data()?.bakiye ?? 0) : 0;
-}
-
 /**
  * Krediyi ATOMİK düşer ve hareket yazar. Bakiye yetersizse hiçbir şey yazmaz,
  * KrediYetersizError fırlatır. Dönüş: işlem sonrası bakiye.

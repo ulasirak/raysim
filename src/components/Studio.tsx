@@ -11,9 +11,8 @@ import { flattenRoute, ringlerdenSebeke } from "@/lib/anaray/network";
 import { sebekedenRingler } from "@/lib/anaray/ring";
 import { addStationOnEdge, addTerminalStation, removeStation } from "@/lib/anaray/edit";
 import { simulate } from "@/lib/anaray/sim";
-import { simulateSignalled, reverseRoute, fleetSize, monteCarlo, planDepotDispatch, type MonteCarloResult } from "@/lib/anaray/signalling";
-import { computeEnergy } from "@/lib/anaray/energy";
-import { araclar } from "@/lib/anaray/vehicles";
+import { simulateSignalled, reverseRoute, monteCarlo, planDepotDispatch, type MonteCarloResult } from "@/lib/anaray/signalling";
+import { tramvaylar } from "@/lib/anaray/vehicles";
 import { kmh, km, sure } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
@@ -22,7 +21,6 @@ import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimCon
 import { BosHat } from "@/components/BosHat";
 import { LiveNetwork } from "@/components/LiveNetwork";
 import { NetworkDiagram } from "@/components/NetworkDiagram";
-import { TrainGraphChart } from "@/components/TrainGraphChart";
 
 const KMH = 1 / 3.6;
 
@@ -88,7 +86,6 @@ function StudioIc() {
   const turnaroundDk = isletme.turnaroundDk;
   const setTurnaroundDk = (v: number) => patchIsletme({ turnaroundDk: v });
   const [ariza, setAriza] = useState<number[]>([]); // dispatcher: arızalı bloklar (gidiş hattı) — geçici what-if
-  const [yon, setYon] = useState<"gidis" | "donus" | "ikisi">("gidis");
   // Monte-Carlo senaryo parametreleri KALICI (projeye kayıtlı) — tek kaynak isletme.
   const meanEntry = isletme.mcMeanEntrySn;
   const setMeanEntry = (v: number) => patchIsletme({ mcMeanEntrySn: v });
@@ -105,8 +102,6 @@ function StudioIc() {
     const l = flattenRoute(network, route);
     return { line: l, result: simulate(l, stock, 0.5) };
   }, [network, stock, route]);
-
-  const enerji = useMemo(() => computeEnergy(line, stock, result), [line, stock, result]);
 
   const reverseLine = useMemo(() => flattenRoute(network, reverseRoute(route)), [network, route]);
 
@@ -130,10 +125,6 @@ function StudioIc() {
   const donusSim = useMemo(
     () => simulateSignalled(reverseLine, stock, { headway: headwayDk * 60, count: seferSayisi, maxBlockLen: BLOK_MAXLEN }),
     [reverseLine, stock, headwayDk, seferSayisi]
-  );
-  const filo = useMemo(
-    () => fleetSize(gidisSim.baseTime, donusSim.baseTime, turnaroundDk * 60, headwayDk * 60),
-    [gidisSim.baseTime, donusSim.baseTime, turnaroundDk, headwayDk]
   );
 
   const monteCarloCalistir = () => {
@@ -257,7 +248,7 @@ function StudioIc() {
       )}
 
       {/* Canlı ağ simülasyonu (kahraman) */}
-      <Panel baslik="Canlı Ağ Simülasyonu" aciklama="Tüm trenler (gidiş + dönüş) aynı anda hat üzerinde hareket eder; işgal edilen bloklar canlı kırmızıya döner. Dispatcher: gidiş şeridindeki bir sinyale tıkla → o blok arızalanır, trenler arkasında kuyruklanır. Parklanma alanı (🅿) tanımlı istasyonlarda bekleyen trenler sırayla servise çıkar. Oynat ▶">
+      <Panel baslik="Canlı Ağ Simülasyonu" aciklama="Tüm trenler (gidiş + dönüş) aynı anda hat üzerinde hareket eder; işgal edilen bloklar canlı kırmızıya döner. Dispatcher (hat sevkçisi): gidiş şeridindeki bir sinyale tıkla → o blok arızalanır, trenler arkasında kuyruklanır. Parklanma alanı (🅿) tanımlı istasyonlarda bekleyen trenler sırayla servise çıkar. Oynat ▶">
         <LiveNetwork network={network} route={route} line={line} blocks={canliGidis.blocks}
           up={canliGidis.trains} down={donusSim.trains} tMax={Math.max(canliGidis.tMax, donusSim.tMax)} trainLen={stock.length}
           faultBlocks={ariza} onBlockClick={arizaToggle} depots={depotPlan.depots} />
@@ -268,6 +259,26 @@ function StudioIc() {
           </div>
         )}
       </Panel>
+
+      {/* Sefer sıklığı */}
+      <section className="mt-6">
+        <Panel baslik="Sefer Sıklığı" aciklama="Sabit blok sinyal sistemi + çift yön. Tren dolu bloğa giremez (kırmızı sinyalde durur).">
+          <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <Num label="Sefer Aralığı" suffix="dk" step={0.5} value={headwayDk} onChange={(v) => setHeadwayDk(Math.max(0.5, v))} />
+            <Num label="Sefer Sayısı" suffix="tren" step={1} value={seferSayisi} onChange={(v) => setSeferSayisi(Math.max(1, Math.round(v)))} />
+            <Num label="Dönüş Bekleme" suffix="dk" step={0.5} value={turnaroundDk} onChange={(v) => setTurnaroundDk(Math.max(0, v))} />
+          </div>
+
+          {/* Bekleme durumu */}
+          <div className="text-sm">
+            {gidisSim.anyDelay ? (
+              <span style={{ color: brand.red }}>⚠ Bu aralıkta trenler birbirini bekliyor — en fazla {sure(gidisSim.maxDelay)} gecikme.</span>
+            ) : (
+              <span style={{ color: CK.good }}>✓ Bu aralıkta bekleme yok — trenler serbest akıyor.</span>
+            )}
+          </div>
+        </Panel>
+      </section>
 
       {/* EDİTÖR */}
       <div className="mt-6">
@@ -302,16 +313,16 @@ function StudioIc() {
             <div>
               <SubBaslik>Çeken Araç</SubBaslik>
               <select
-                value={araclar.some((a) => a.id === stock.id) ? stock.id : ""}
+                value={tramvaylar.some((a) => a.id === stock.id) ? stock.id : ""}
                 onChange={(e) => {
-                  const v = araclar.find((a) => a.id === e.target.value);
+                  const v = tramvaylar.find((a) => a.id === e.target.value);
                   if (v) setArac({ ...v });
                 }}
                 className="mb-3 w-full rounded border px-2 py-1 text-sm"
                 style={{ borderColor: brand.border, color: brand.ink }}
               >
-                {!araclar.some((a) => a.id === stock.id) && <option value="">Özel araç</option>}
-                {araclar.map((a) => (
+                {!tramvaylar.some((a) => a.id === stock.id) && <option value="">Özel araç</option>}
+                {tramvaylar.map((a) => (
                   <option key={a.id} value={a.id}>{a.name}</option>
                 ))}
               </select>
@@ -503,72 +514,9 @@ function StudioIc() {
         </div>
       </section>
 
-      {/* Enerji & güç */}
-      <section className="mt-6">
-        <Panel baslik="Enerji & Güç" aciklama="Tek sefer enerji dengesi — çekiş verimi %85, rejeneratif geri kazanım %30, yardımcı yük 15 kW.">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <MiniStat etiket="Net Enerji" deger={enerji.netKWh.toFixed(1)} alt="kWh / sefer" />
-            <MiniStat etiket="Özgül Tüketim" deger={enerji.perKm.toFixed(2)} alt="kWh / km" />
-            <MiniStat etiket="Çekiş" deger={enerji.tractionKWh.toFixed(1)} alt="kWh (şebekeden)" />
-            <MiniStat etiket="Rejeneratif" deger={`−${enerji.regenKWh.toFixed(1)}`} alt="kWh geri kazanım" />
-          </div>
-        </Panel>
-      </section>
-
-      {/* Sefer sıklığı, sinyalizasyon & kapasite */}
-      <section className="mt-6">
-        <Panel baslik="Sefer Sıklığı, Sinyalizasyon & Kapasite" aciklama="Sabit blok sinyal sistemi + çift yön. Tren dolu bloğa giremez (kırmızı sinyalde durur); ince yatay çizgiler sinyal bloklarıdır.">
-          <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
-            <Num label="Sefer Aralığı" suffix="dk" step={0.5} value={headwayDk} onChange={(v) => setHeadwayDk(Math.max(0.5, v))} />
-            <Num label="Sefer Sayısı" suffix="tren" step={1} value={seferSayisi} onChange={(v) => setSeferSayisi(Math.max(1, Math.round(v)))} />
-            <Num label="Dönüş Bekleme" suffix="dk" step={0.5} value={turnaroundDk} onChange={(v) => setTurnaroundDk(Math.max(0, v))} />
-          </div>
-
-          {/* Yön seçimi + durum */}
-          <div className="mb-4 flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-1">
-              {(["gidis", "donus", "ikisi"] as const).map((y) => (
-                <button key={y} onClick={() => setYon(y)} className="rounded px-2.5 py-1 text-xs font-medium transition"
-                  style={yon === y ? { background: brand.ink, color: "#fff" } : { background: CK.track, color: brand.inkSoft }}>
-                  {y === "gidis" ? "Gidiş" : y === "donus" ? "Dönüş" : "İkisi"}
-                </button>
-              ))}
-            </div>
-            <div className="min-w-0 flex-1 text-sm">
-              {gidisSim.anyDelay ? (
-                <span style={{ color: brand.red }}>⚠ Bu aralıkta trenler birbirini bekliyor — en fazla {sure(gidisSim.maxDelay)} gecikme.</span>
-              ) : (
-                <span style={{ color: CK.good }}>✓ Bu aralıkta bekleme yok — trenler serbest akıyor.</span>
-              )}
-            </div>
-          </div>
-
-          {/* Kapasite / filo çıktıları */}
-          <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <MiniStat etiket="Gecikmesiz en sık aralık" deger={sure(gidisSim.minHeadway)} />
-            <MiniStat etiket="Sinyal bloğu" deger={`${gidisSim.blocks.length - 1}`} alt="durak arası = 1 blok" />
-            <MiniStat etiket="Tur süresi" deger={sure(filo.roundTrip)} alt="gidiş-dönüş + bekleme" />
-            <MiniStat etiket="Araç ihtiyacı" deger={`${filo.trains} tren`} alt={`${headwayDk} dk arayla`} />
-          </div>
-
-          <TrainGraphChart
-            line={line}
-            blocks={gidisSim.blocks}
-            gidis={yon === "donus" ? [] : gidisSim.trains}
-            donus={yon === "gidis" ? undefined : donusSim.trains}
-            tMax={Math.max(yon === "donus" ? 0 : gidisSim.tMax, yon === "gidis" ? 0 : donusSim.tMax)}
-          />
-          {yon !== "gidis" && (
-            <p className="mt-2 text-xs" style={{ color: brand.muted }}>
-              <span style={{ color: CK.orange }}>■</span> Dönüş yönü (Terminal → Merkez). Çift hat varsayımı: yönler bağımsız.
-            </p>
-          )}
-        </Panel>
-      </section>
-
       {/* Monte-Carlo gecikme analizi */}
       <section className="mt-6">
-        <Panel baslik="Monte-Carlo Gecikme Analizi (Robustluk)" aciklama="Rastgele giriş gecikmesi + durak sapmalarıyla çok sayıda sefer simüle edilir; birincil gecikmelerin sonraki trenlere yayılımı ölçülür.">
+        <Panel baslik="Monte-Carlo Gecikme Analizi (Robustluk / sağlamlık)" aciklama="Rastgele giriş gecikmesi + durak sapmalarıyla çok sayıda sefer simüle edilir; birincil gecikmelerin sonraki trenlere yayılımı ölçülür.">
           <div className="mb-4 flex flex-wrap items-end gap-4">
             <div className="w-36"><Num label="Ort. Giriş Gecikmesi" suffix="sn" step={5} value={meanEntry} onChange={(v) => setMeanEntry(Math.max(0, v))} /></div>
             <div className="w-36"><Num label="Ort. Durak Sapması" suffix="sn" step={1} value={meanDwell} onChange={(v) => setMeanDwell(Math.max(0, v))} /></div>

@@ -146,7 +146,7 @@ export function Belgeler() {
       </div>
 
       {/* İndirme */}
-      <Panel baslik="Belge Üret" aciklama="Şık PDF = amblemli kapak + KPI kartları + hat şeması + renkli çakışma matriksleri + blocking-time grafiği (baskıya hazır). Word = düzenlenebilir Tasarım El Kitabı. Excel = 7 sayfalı çalışma kitabı.">
+      <Panel baslik="Belge Üret" aciklama="Şık PDF = amblemli kapak + KPI (temel performans göstergesi) kartları + hat şeması + renkli çakışma matriksleri + blocking-time (blok işgal süresi) grafiği (baskıya hazır). Word = düzenlenebilir Tasarım El Kitabı. Excel = 7 sayfalı çalışma kitabı.">
         <div className="mb-3 flex items-center gap-2">
           <span className="field-label">Rapor dili</span>
           <div className="inline-flex overflow-hidden rounded-md border" style={{ borderColor: brand.borderStrong }}>
@@ -212,7 +212,7 @@ export function Belgeler() {
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <MiniStat etiket="Durak arası hücre" deger={`${ozet.ring}`} alt={`${ozet.makas} makas`} />
           <MiniStat etiket="Makas bölgesi / rota" deger={`${ozet.zone} / ${ozet.rota}`} alt="senaryo + matriks" />
-          <MiniStat etiket="Challenge kaydı" deger={`${ozet.chSayi}`} alt={`${ozet.kritik} kritik`} vurgu={ozet.kritik > 0 ? brand.red : undefined} />
+          <MiniStat etiket="Challenge (zorluk) kaydı" deger={`${ozet.chSayi}`} alt={`${ozet.kritik} kritik`} vurgu={ozet.kritik > 0 ? brand.red : undefined} />
           <MiniStat etiket="Darboğaz" deger={ozet.darbogaz ? sure(ozet.darbogaz.worstToplam) : "—"} alt={ozet.darbogaz?.ad} vurgu={brand.red} />
         </div>
         <div className="mt-2 text-xs" style={{ color: rings.length === 0 ? brand.muted : ozet.headwayUygun && ozet.dengeli ? CK.good : CK.amber }}>

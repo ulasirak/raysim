@@ -32,9 +32,9 @@ interface Modul {
 
 // Boru hattı sırası TEK SAYFA bölüm sırasıyla birebir aynı (BOLUM_SLUG).
 const MODULLER: Modul[] = [
-  { href: "/", slug: "sefer", ad: "Sefer Simülasyonu", rol: "Ağ · fizik · headway · kapasite", kod: "SR-0001", rota: "Ana Hat Sefer Analizi" },
-  { href: "/ringler", slug: "ringler", ad: "Durak Arası Ringler", rol: "İşletim hücreleri · worst/best · loop", kod: "SR-0002", rota: "Durak Arası Ring Şartları" },
-  { href: "/anklasman", slug: "anklasman", ad: "Makas Bölgesi Anklaşman", rol: "Interlocking · çakışma matriksi · aspekt", kod: "SR-0003", rota: "Makas Bölgesi Anklaşman" },
+  { href: "/", slug: "sefer", ad: "Sefer Simülasyonu", rol: "Ağ · fizik · headway (sefer aralığı) · kapasite", kod: "SR-0001", rota: "Ana Hat Sefer Analizi" },
+  { href: "/ringler", slug: "ringler", ad: "Durak Arası Ringler", rol: "İşletim hücreleri · worst/best (en kötü/en iyi) · loop (çevrim)", kod: "SR-0002", rota: "Durak Arası Ring Şartları" },
+  { href: "/anklasman", slug: "anklasman", ad: "Makas Bölgesi Anklaşman", rol: "Interlocking (anklaşman) · çakışma matriksi · aspekt (sinyal görüntüsü)", kod: "SR-0003", rota: "Makas Bölgesi Anklaşman" },
   { href: "/sistem", slug: "sistem", ad: "Sistem Merkezi", rol: "Parametreler · canlı durum · bilgi", kod: "SR-0004", rota: "Simülasyon Parametreleri & Durum" },
   { href: "/cografi", slug: "cografi", ad: "Coğrafi Güzergah", rol: "GTFS · gerçek koordinat · harita", kod: "SR-0007", rota: "Gerçek Koordinatlı Hat Haritası" },
   { href: "/belgeler", slug: "belgeler", ad: "Teknik Belgeler", rol: "Ücretli PDF rapor · tasarım el kitabı", kod: "SR-0006", rota: "Teknik Dokümantasyon Üretimi" },

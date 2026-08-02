@@ -13,7 +13,6 @@ import Link from "next/link";
 import { useSimConfig, useProje, useIsletme } from "@/components/SimConfigProvider";
 import {
   bolgeSeed,
-  cakismaMatriksi,
   makasBolgeId,
   simuleEtAnklasman,
   type RotaTalebi,
@@ -64,7 +63,6 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
     () => simuleEtAnklasman(topo, istekler, { cfg, ...(faultOn ? { fault: { t: faultAt, sure: 15 } } : {}) }),
     [topo, istekler, faultOn, faultAt, cfg]
   );
-  const matriks = useMemo(() => cakismaMatriksi(topo), [topo]);
 
   // Oynatma
   const [frame, setFrame] = useState(0);
@@ -91,7 +89,7 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
     <div className="mx-auto max-w-6xl px-6 py-8">
       <div className="mb-6 flex items-end justify-between border-b pb-4" style={{ borderColor: brand.border }}>
         <div>
-          <div className="field-label">Makas Bölgesi Anklaşman Simülatörü — Dağıtık SIL4 Interlocking</div>
+          <div className="field-label">Makas Bölgesi Anklaşman Simülatörü — Dağıtık SIL4 Interlocking (anklaşman)</div>
           <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>{topo.ad}</h1>
         </div>
         <select value={bolgeId} onChange={(e) => setBolgeId(e.target.value)} className="rounded border px-2 py-1.5 text-sm" style={{ borderColor: brand.borderStrong, color: brand.ink }}>
@@ -116,7 +114,7 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
           <Num label="Tren sayısı" suffix="tren" step={1} value={trenSayisi} onChange={(v) => setTrenSayisi(Math.max(1, Math.round(v)))} />
           <Num label="Talep aralığı" suffix="s" step={5} value={headwaySn} onChange={(v) => setHeadwaySn(Math.max(1, v))} />
           <label className="block">
-            <span className="field-label">Fail-safe arıza</span>
+            <span className="field-label">Fail-safe (arıza-emniyetli) arıza</span>
             <div className="mt-1 flex items-center gap-2">
               <input type="checkbox" checked={faultOn} onChange={(e) => setFaultOn(e.target.checked)} />
               <span className="text-xs" style={{ color: brand.inkSoft }}>{faultOn ? "aktif" : "kapalı"}</span>
@@ -128,7 +126,7 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
           <MiniStat etiket="Kabul / talep" deger={`${kabuller} / ${istekler.length}`} />
           <MiniStat etiket="Maks. eşzamanlı rota" deger={`${sonuc.maxEszamanli}`} alt={sonuc.maxEszamanli > 1 ? "paralel kurulum" : "tek tren"} vurgu={sonuc.maxEszamanli > 1 ? CK.good : brand.ink} />
           <MiniStat etiket="Ort. bekleme" deger={sure(sonuc.ortBekleme)} alt="çakışma kuyruğu" />
-          <MiniStat etiket="Throughput" deger={`${sonuc.throughput.toFixed(0)}/sa`} alt="kabul edilen" />
+          <MiniStat etiket="Throughput (geçiş debisi)" deger={`${sonuc.throughput.toFixed(0)}/sa`} alt="kabul edilen" />
         </div>
       </Panel>
 
@@ -208,35 +206,6 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
         </Panel>
       </div>
 
-      {/* Çakışma matriksi */}
-      <div className="mt-6">
-        <Panel baslik="Çakışma Matriksi" aciklama="X = iki rota aynı anda kurulabilir (kesişmiyor) · 0 = mümkün değil (ortak blok/makas ya da emniyet kısıtı). Belgedeki bölge tablolarıyla uyumlu.">
-          <div className="overflow-x-auto">
-            <table className="text-xs">
-              <thead>
-                <tr>
-                  <th className="p-2"></th>
-                  {topo.rotalar.map((r) => (<th key={r.id} className="p-2 font-mono font-medium" style={{ color: brand.muted }}>{r.nereden}{r.nereye}</th>))}
-                </tr>
-              </thead>
-              <tbody>
-                {topo.rotalar.map((r, i) => (
-                  <tr key={r.id}>
-                    <td className="p-2 font-mono font-medium" style={{ color: brand.muted }}>{r.nereden}{r.nereye}</td>
-                    {topo.rotalar.map((c, j) => (
-                      <td key={c.id} className="p-2 text-center font-mono font-semibold"
-                        style={{ color: i === j ? brand.faint : matriks[i][j] ? CK.good : CK.red, background: i === j ? brand.paper : matriks[i][j] ? CK.goodBg : CK.badBg }}>
-                        {i === j ? "·" : matriks[i][j] ? "X" : "0"}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
-      </div>
-
       {/* Sonuç tablosu */}
       <div className="mt-6">
         <Panel baslik="Tren Geçiş Sonuçları" aciklama="Her talebin kabul/bekleme/yeşil/çıkış zamanları. Bekleme = çakışma emniyet kuyruğu.">
@@ -276,7 +245,7 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
       </div>
 
       <footer className="mt-10 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
-        RaySim · Dağıtık anklaşman — TCC yalnız istek gönderir, son söz saha SIL4 PLC&apos;sindedir · makas adımı {cfg.makasAdimMax} s · route release {topo.tip === "depo" ? cfg.routeReleaseDepo : cfg.routeReleaseAnahat} s · fail-safe = yalnız bu bölge söner (canlı parametreler: Sistem Merkezi)
+        RaySim · Dağıtık anklaşman — TCC (Tren Kontrol Merkezi) yalnız istek gönderir, son söz saha SIL4 PLC&apos;sindedir · makas adımı {cfg.makasAdimMax} s · route release {topo.tip === "depo" ? cfg.routeReleaseDepo : cfg.routeReleaseAnahat} s · fail-safe = yalnız bu bölge söner (canlı parametreler: Sistem Merkezi)
       </footer>
     </div>
   );

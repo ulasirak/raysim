@@ -33,3 +33,10 @@ export const araclar: RollingStock[] = [
 ];
 
 export const varsayilanArac = araclar[0];
+
+// Tramvay tipleri — Loop Özeti/Ölçeklenme (RingEditor) ve Studio "Çeken Araç"
+// seçicileri bu ürün kapsamında YALNIZCA tramvayları listeler: düşük tabanlı
+// tramvay + hızlı tramvay (LRV). Metro/hafif metro seçicilerde gösterilmez.
+export const tramvaylar: RollingStock[] = araclar.filter(
+  (a) => a.id === "tramvay" || a.id === "hizli-tramvay",
+);

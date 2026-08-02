@@ -99,12 +99,6 @@ export function cakismaMatriksi(topo: MakasBolgeTopolojisi): boolean[][] {
 export type SinyalAspekt = "yesil" | "sari" | "kirmizi" | "sonuk";
 export type RotaFaz = "bos" | "talep" | "tanzim" | "kurulu" | "isgal" | "release";
 
-export interface RotaCanli {
-  id: string;
-  faz: RotaFaz;
-  faartim: number; // faz içi geçen süre (s)
-}
-
 /** Bir bölgenin bir andaki tam durumu. */
 export interface AnklasmanKare {
   t: number;

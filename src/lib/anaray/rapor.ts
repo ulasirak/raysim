@@ -535,15 +535,3 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
 </div>
 </body></html>`;
 }
-
-// Yeni pencerede aç + yazdırma diyalogunu tetikle (kullanıcı "PDF olarak kaydet" seçer).
-export function yazdirRapor(html: string) {
-  const w = window.open("", "_blank", "width=920,height=1000");
-  if (!w) throw new Error("Açılır pencere engellendi — tarayıcıda bu site için pop-up iznini verin.");
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
-  w.focus();
-  // İçerik (font/SVG) yerleşsin diye kısa gecikmeyle yazdır.
-  setTimeout(() => { try { w.print(); } catch { /* kullanıcı butondan da yazdırabilir */ } }, 700);
-}

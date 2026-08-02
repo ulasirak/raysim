@@ -21,8 +21,8 @@ import { CK, RAMP_BLUE, SERI } from "@/lib/anaray/chartkit";
 const OK = CK.good;
 // Blocking-time 6 bileşeni ZAMAN SIRALI → kategorik değil ordinal rampa (raporla aynı).
 const BT_PARCA: [string, string][] = [
-  ["Setup", RAMP_BLUE[0]], ["Görme", RAMP_BLUE[1]], ["Yaklaşma", RAMP_BLUE[2]],
-  ["Seyir", RAMP_BLUE[3]], ["Temizleme", RAMP_BLUE[4]], ["Release", RAMP_BLUE[5]],
+  ["Setup (rota kurma)", RAMP_BLUE[0]], ["Görme", RAMP_BLUE[1]], ["Yaklaşma", RAMP_BLUE[2]],
+  ["Seyir", RAMP_BLUE[3]], ["Temizleme", RAMP_BLUE[4]], ["Release (serbest)", RAMP_BLUE[5]],
 ];
 
 // Bir bloğun blocking-time'ını NE tıkıyor? 6 bileşeni 3 düzeltilebilir gruba
@@ -113,7 +113,7 @@ export function SistemMerkezi() {
       {bosHat && (
         <div className="mb-6 rounded border-l-4 px-4 py-3 text-sm" style={{ borderColor: CK.amber, background: CK.amberBg, color: CK.amberInk }}>
           ▲ Bu hatta henüz ring (durak arası hücre) yok — canlı durum ve kapasite panelleri gizlendi.
-          Parametreleri header&apos;daki <b>⚙ Parametreler</b> butonundan, hattı{" "}
+          Parametreleri header&apos;daki (üst çubuk) <b>⚙ Parametreler</b> butonundan, hattı{" "}
           <Link href="/ringler" className="underline">Ringler modülünden</Link> kurabilirsiniz.
         </div>
       )}
@@ -147,7 +147,7 @@ export function SistemMerkezi() {
               <tr className="border-b text-left" style={{ borderColor: brand.borderStrong, color: brand.muted }}>
                 <th className="py-2 font-medium">Makas bölgesi</th>
                 <th className="py-2 font-medium">Maks. eşzamanlı</th>
-                <th className="py-2 font-medium">Throughput</th>
+                <th className="py-2 font-medium">Throughput (geçiş debisi)</th>
                 <th className="py-2 font-medium">Ort. bekleme</th>
               </tr>
             </thead>
@@ -168,7 +168,7 @@ export function SistemMerkezi() {
 
       {/* Blocking-Time (Sperrzeitentreppe) + UIC 406 */}
       {bt && (
-      <Panel baslik="Blocking-Time (Sperrzeitentreppe) & UIC 406 Kapasite" aciklama="Her sinyal bloğunun rezerve süresi = 6 bileşen (rota kurma + görme + yaklaşma + seyir + temizleme + release). En yüksek blocking-time'lı blok min headway'i belirler; UIC 406 doluluk = min headway / hedef headway.">
+      <Panel baslik="Blocking-Time / Sperrzeitentreppe (blok işgal süresi) & UIC 406 Kapasite" aciklama="Her sinyal bloğunun rezerve süresi = 6 bileşen (rota kurma + görme + yaklaşma + seyir + temizleme + release). En yüksek blocking-time'lı blok min headway'i belirler; UIC 406 doluluk = min headway / hedef headway.">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <MiniStat etiket="Min headway (kritik blok)" deger={sure(bt.minHeadway)} alt={`blok #${bt.kritikBlok}${bt.bloklar[bt.kritikBlok]?.makasBlok ? " (makas)" : ""}`} vurgu={brand.red} />
           <MiniStat etiket="Teorik kapasite" deger={`${bt.teorikKapasite.toFixed(0)}/sa`} alt="tren/saat üst sınır" />
