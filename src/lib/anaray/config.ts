@@ -25,7 +25,6 @@ export interface SimConfig {
   routeReleaseAnahat: number;
   routeReleaseDepo: number;
   makasAdimMax: number;
-  acilRotaKilidi: number; // REZERVE — henüz hiçbir motor okumuyor; kullanıcı editöründen çıkarıldı (ölü param olmasın)
   // Blok / geometri (m)
   kisitGenisligi: number; // makas/geçit kısıt bölgesi genişliği
   blokMaxUzunluk: number; // sinyal bloğu azami uzunluğu
@@ -45,7 +44,6 @@ export const varsayilanConfig: SimConfig = {
   routeReleaseAnahat: 5,
   routeReleaseDepo: 8,
   makasAdimMax: 6,
-  acilRotaKilidi: 120,
   kisitGenisligi: 40,
   blokMaxUzunluk: 500,
 };

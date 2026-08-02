@@ -32,12 +32,11 @@ const ASPEKT_AD: Record<SinyalAspekt, string> = { yesil: "YEŞİL", sari: "SARI"
 export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {}) {
   // Bölgeler artık KİRACININ kalıcı verisi (Firestore) — sabit seed değil.
   const { bolgeler, setBolgeler, yazilabilir } = useBolgeler();
-  const [bolgeId, setBolgeId] = useState(initialBolgeId ?? "");
-  // Seçili bölge geçersizse (silme / ilk yükleme) ilk bölgeye düş.
-  useEffect(() => {
-    if (bolgeler.length && !bolgeler.some((b) => b.id === bolgeId)) setBolgeId(bolgeler[0].id);
-  }, [bolgeler, bolgeId]);
-  const topo = bolgeler.find((b) => b.id === bolgeId) ?? bolgeler[0];
+  const [secId, setSecId] = useState(initialBolgeId ?? "");
+  // Seçili id geçersizse (silme / ilk yükleme) ilk bölgeye düş — render anında
+  // türetilir (effect + setState-in-effect cascading render tuzağından kaçınır).
+  const bolgeId = bolgeler.some((b) => b.id === secId) ? secId : (bolgeler[0]?.id ?? "");
+  const topo = bolgeler.find((b) => b.id === bolgeId);
 
   // Bu bölge hattın HANGİ fiziksel makas bölgelerine bağlı? (ters bağ: Ringler → Anklaşman)
   const { rings } = useProje();
@@ -60,7 +59,7 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
   const bolgeEkle = () => {
     const id = yeniBolgeId();
     setBolgeler((list) => [...list, bosBolge(id, `${id}. Makas Bölgesi`, "karsilasmali")]);
-    setBolgeId(id);
+    setSecId(id);
   };
   const bolgeSilHandler = (id: string) => setBolgeler((list) => list.filter((z) => z.id !== id));
   const sablonYukle = () => setBolgeler(bolgeSablonlari());
@@ -163,7 +162,7 @@ export function AnklasmanSim({ initialBolgeId }: { initialBolgeId?: string } = {
           <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>{topo.ad}</h1>
         </div>
         <div className="flex items-center gap-2">
-          <select value={bolgeId} onChange={(e) => setBolgeId(e.target.value)} className="rounded border px-2 py-1.5 text-sm" style={{ borderColor: brand.borderStrong, color: brand.ink }}>
+          <select value={bolgeId} onChange={(e) => setSecId(e.target.value)} className="rounded border px-2 py-1.5 text-sm" style={{ borderColor: brand.borderStrong, color: brand.ink }}>
             {bolgeler.map((b) => (<option key={b.id} value={b.id}>{b.ad}</option>))}
           </select>
           {yazilabilir && (
