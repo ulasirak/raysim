@@ -9,7 +9,7 @@ import { useMemo, useState } from "react";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { sure, indir } from "@/lib/anaray/format";
-import { useSimConfig, useProje, useArac } from "@/components/SimConfigProvider";
+import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { PROJE_META_ALANLAR } from "@/lib/anaray/config";
 import { loopDenge, olceklenme, ringChallenge, ringDogrula, loopTamMi } from "@/lib/anaray/ring";
 import { bolgeSeed } from "@/lib/anaray/interlocking";
@@ -24,6 +24,8 @@ export function Belgeler() {
   const { rings, meta, patchMeta, yazilabilir } = useProje();
   const { yenile } = useCuzdan();
   const { arac: stock } = useArac();
+  const { isletme } = useIsletme();
+  const turnaroundSn = Math.max(0, isletme.turnaroundDk) * 60; // dönüş bekleme → çevrim/filo hesabı
   const [durum, setDurum] = useState<{ tip: "ok" | "err" | "info"; metin: string } | null>(null);
   const [mesgul, setMesgul] = useState<"" | "word" | "excel" | "rapor" | "html">("");
   const [dil, setDil] = useState<RaporDil>("tr");
@@ -67,7 +69,7 @@ export function Belgeler() {
     const yanit = await fetch("/api/rapor", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ veri: { rings, cfg, meta, arac: stock }, dil }),
+      body: JSON.stringify({ veri: { rings, cfg, meta, arac: stock, turnaroundSn }, dil }),
     });
     if (!yanit.ok) {
       const v = await yanit.json().catch(() => ({}));
@@ -115,7 +117,7 @@ export function Belgeler() {
     setMesgul("word"); setDurum(null);
     try {
       const { wordUret } = await import("@/lib/anaray/dokuman");
-      const blob = await wordUret(meta, cfg, rings, stock);
+      const blob = await wordUret(meta, cfg, rings, stock, turnaroundSn);
       indir(blob, dosyaAdi("docx"));
       setDurum({ tip: "ok", metin: `Word belgesi üretildi: ${dosyaAdi("docx")}` });
     } catch (e) {
@@ -127,7 +129,7 @@ export function Belgeler() {
     setMesgul("excel"); setDurum(null);
     try {
       const { excelUret } = await import("@/lib/anaray/dokuman");
-      const blob = await excelUret(meta, cfg, rings, stock);
+      const blob = await excelUret(meta, cfg, rings, stock, turnaroundSn);
       indir(blob, dosyaAdi("xlsx"));
       setDurum({ tip: "ok", metin: `Excel çalışma kitabı üretildi: ${dosyaAdi("xlsx")}` });
     } catch (e) {

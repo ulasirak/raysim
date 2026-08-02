@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   }
   catch { return NextResponse.json({ hata: "Kimlik doğrulanamadı." }, { status: 401 }); }
 
-  let govde: { veri?: { rings?: DurakArasiRing[]; cfg?: Partial<SimConfig>; meta?: Partial<ProjeMeta>; arac?: RollingStock }; dil?: string };
+  let govde: { veri?: { rings?: DurakArasiRing[]; cfg?: Partial<SimConfig>; meta?: Partial<ProjeMeta>; arac?: RollingStock; turnaroundSn?: number }; dil?: string };
   try { govde = await req.json(); } catch { return NextResponse.json({ hata: "Geçersiz istek." }, { status: 400 }); }
 
   const rings = govde.veri?.rings;
@@ -53,11 +53,14 @@ export async function POST(req: Request) {
   const meta: ProjeMeta = { ...varsayilanMeta, ...(govde.veri?.meta ?? {}) };
   const arac: RollingStock = govde.veri?.arac ?? varsayilanArac; // projenin aracı (yoksa varsayılan)
   const dil: RaporDil = govde.dil === "en" ? "en" : "tr";
+  // Dönüş bekleme (s) → çevrim/filo hesabı. Geçersiz/negatif/aşırı değerler nötrlenir.
+  const ts = Number(govde.veri?.turnaroundSn);
+  const turnaroundSn = Number.isFinite(ts) ? Math.min(3600, Math.max(0, ts)) : 0;
 
   // 1) Raporu ÜRET (başarısızsa kredi düşülmez).
   let html: string;
   try {
-    html = raporHTML(meta, cfg, rings, arac, dil);
+    html = raporHTML(meta, cfg, rings, arac, dil, turnaroundSn);
   } catch (e) {
     return NextResponse.json({ hata: `Rapor üretilemedi: ${e instanceof Error ? e.message : String(e)}` }, { status: 500 });
   }

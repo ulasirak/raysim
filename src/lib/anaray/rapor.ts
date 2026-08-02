@@ -240,7 +240,7 @@ function rDil(lang: RaporDil) {
     bolge: "Bölge", matris: "Çakışma Matriksi", matrisYes: "birlikte kurulabilir", matrisNo: "mümkün değil",
     s4: "Kapasite ve Blocking-Time Analizi", s4i: "En yüksek blocking-time'lı blok minimum tren aralığını (headway) belirler; UIC 406 doluluk oranı bu değerin hedef headway'e bölümüdür. Her bloğun rezerve süresi altı bileşenden oluşur.",
     thGost: ["Gösterge", "Değer"],
-    kapTur: "Tur süresi (worst-case)", kapHedef: "Hedef headway", kapSigan: "Headway'de sığan tren", kapDarbogaz: "Darboğaz hücre", kapDenge: "Denge (eşit şartlar)", kapDengeli: "Dengeli", kapSapma: (p: string) => `%${p} sapma`, kapMin: "Minimum headway (kritik blok)", kapTeorik: "Teorik kapasite", kapUIC: "UIC 406 doluluk (hedef headway'de)", tphSuffix: "tren/saat",
+    kapTur: "Tur süresi (worst-case seyir)", kapDonus: "Dönüş bekleme (tur başına)", kapCevrim: "Çevrim süresi (dönüş bekleme dâhil)", kapHedef: "Hedef headway", kapSigan: "Headway'de gereken tren", kapDarbogaz: "Darboğaz hücre", kapDenge: "Denge (eşit şartlar)", kapDengeli: "Dengeli", kapSapma: (p: string) => `%${p} sapma`, kapMin: "Minimum headway (kritik blok)", kapTeorik: "Teorik kapasite", kapUIC: "UIC 406 doluluk (hedef headway'de)", tphSuffix: "tren/saat",
     s41: "4.1 Blocking-Time (Sperrzeitentreppe)",
     fig4: (h: number) => `Şekil 4 — Sperrzeitentreppe: iki ardışık trenin blok işgal (blocking-time) pencereleri; kritik blokta ikinci trenin başlangıcı birincinin bitişine değer = min headway ${h}s.`,
     fig5: "Şekil 5 — Blok başına blocking-time bileşen dağılımı (kritik blok kırmızı etiketli).",
@@ -273,7 +273,7 @@ function rDil(lang: RaporDil) {
     bolge: "Zone", matris: "Conflict Matrix", matrisYes: "can be set together", matrisNo: "not possible",
     s4: "Capacity and Blocking-Time Analysis", s4i: "The block with the highest blocking-time sets the minimum train interval (headway); the UIC 406 occupancy ratio is this value divided by the target headway. Each block's reserved time comprises six components.",
     thGost: ["Indicator", "Value"],
-    kapTur: "Cycle time (worst-case)", kapHedef: "Target headway", kapSigan: "Trains within headway", kapDarbogaz: "Bottleneck cell", kapDenge: "Balance (equal conditions)", kapDengeli: "Balanced", kapSapma: (p) => `${p}% deviation`, kapMin: "Minimum headway (critical block)", kapTeorik: "Theoretical capacity", kapUIC: "UIC 406 occupancy (at target headway)", tphSuffix: "trains/hour",
+    kapTur: "Running time (worst-case)", kapDonus: "Turnaround (per cycle)", kapCevrim: "Cycle time (incl. turnaround)", kapHedef: "Target headway", kapSigan: "Trains required", kapDarbogaz: "Bottleneck cell", kapDenge: "Balance (equal conditions)", kapDengeli: "Balanced", kapSapma: (p) => `${p}% deviation`, kapMin: "Minimum headway (critical block)", kapTeorik: "Theoretical capacity", kapUIC: "UIC 406 occupancy (at target headway)", tphSuffix: "trains/hour",
     s41: "4.1 Blocking-Time (Sperrzeitentreppe)",
     fig4: (h) => `Figure 4 — Sperrzeitentreppe: block occupation (blocking-time) windows of two consecutive trains; at the critical block the second train's start touches the first's end = min headway ${h}s.`,
     fig5: "Figure 5 — Per-block blocking-time component breakdown (critical block labelled red).",
@@ -283,7 +283,7 @@ function rDil(lang: RaporDil) {
   return lang === "en" ? en : tr;
 }
 
-export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, lang: RaporDil = "tr"): string {
+export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, lang: RaporDil = "tr", turnaroundSn = 0): string {
   const L = rDil(lang);
   const rs = rings.map((r, i) => {
     const sen = ringSenaryo(r, stock, cfg);
@@ -292,7 +292,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
       worstToplam: Math.round(sen.worstToplam), headwayOk: sen.headwayUygun, pay: Math.round(sen.headwayPayi) };
   });
   const denge = loopDenge(rings, stock, cfg);
-  const olcek = olceklenme(rings, stock, true, cfg);
+  const olcek = olceklenme(rings, stock, true, cfg, turnaroundSn);
   const zones = bolgeSeed();
   const bt = blockingTimeRing(rings, stock, cfg);
   const chSayi = rings.reduce((n, r) => n + ringChallenge(r, stock, cfg).length, 0);
@@ -318,7 +318,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const kpiRow = `<div class="kpi-row">
     ${kpi(L.kpi.hucre, `${rings.length}`, L.altMakas(rings.reduce((n, r) => n + r.makaslar.length, 0)))}
     ${kpi(L.kpi.hedef, `${cfg.headway} s`, olcek.headwayUygun ? L.altTumu : L.altIhlal, olcek.headwayUygun ? "#0E7C57" : RED)}
-    ${kpi(L.kpi.sigan, `${olcek.maxTrenHedefHeadway}`, L.altTur(s0(olcek.turSuresi)))}
+    ${kpi(L.kpi.sigan, `${olcek.maxTrenHedefHeadway}`, L.altTur(s0(olcek.cevrimSuresi)))}
     ${kpi(L.kpi.kapasite, `${bt.teorikKapasite.toFixed(0)}`, L.altTph)}
     ${kpi(L.kpi.uic, `%${bt.dolulukHedef.toFixed(0)}`, bt.hedefUygun ? L.altUygun : L.altIhlalK, bt.hedefUygun ? "#0E7C57" : RED)}
     ${kpi(L.kpi.ch, `${chSayi} / ${kritik}`, L.altRisk, kritik > 0 ? RED : INK)}
@@ -363,6 +363,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   // ---- Kapasite ----
   const kapasiteTbl = tbl(L.thGost, [
     [L.kapTur, s0(olcek.turSuresi)],
+    [L.kapDonus, s0(olcek.turnaroundToplam)],
+    [L.kapCevrim, s0(olcek.cevrimSuresi)],
     [L.kapHedef, s0(cfg.headway)],
     [L.kapSigan, `${olcek.maxTrenHedefHeadway}`],
     [L.kapDarbogaz, olcek.darbogazRing ? `${olcek.darbogazRing.ad} (${s0(olcek.darbogazRing.worstToplam)})` : "—"],

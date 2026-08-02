@@ -262,7 +262,8 @@ function StudioIc() {
 
       {/* Sefer sıklığı */}
       <section className="mt-6">
-        <Panel baslik="Sefer Sıklığı" aciklama="Sabit blok sinyal sistemi + çift yön. Tren dolu bloğa giremez (kırmızı sinyalde durur).">
+        <Panel baslik="Sefer Sıklığı" aciklama="Sabit blok sinyal sistemi + çift yön. Tren dolu bloğa giremez (kırmızı sinyalde durur). Dönüş Bekleme: Belgeler’deki çevrim süresi + gereken filo hesabını besler.">
+
           <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
             <Num label="Sefer Aralığı" suffix="dk" step={0.5} value={headwayDk} onChange={(v) => setHeadwayDk(Math.max(0.5, v))} />
             <Num label="Sefer Sayısı" suffix="tren" step={1} value={seferSayisi} onChange={(v) => setSeferSayisi(Math.max(1, Math.round(v)))} />

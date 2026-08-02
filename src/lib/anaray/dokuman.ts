@@ -90,10 +90,10 @@ function wordTablo(basliklar: string[], satirlar: string[][]): Table {
   });
 }
 
-export async function wordUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock): Promise<Blob> {
+export async function wordUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, turnaroundSn = 0): Promise<Blob> {
   const rs = ringSatirlari(rings, stock, cfg);
   const denge = loopDenge(rings, stock, cfg);
-  const olcek = olceklenme(rings, stock, true, cfg);
+  const olcek = olceklenme(rings, stock, true, cfg, turnaroundSn);
   const zones = bolgeSeed();
 
   const kunye: string[][] = [
@@ -162,9 +162,11 @@ export async function wordUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakAras
   const bt = blockingTimeRing(rings, stock, cfg);
   cocuklar.push(h1("4. Kapasite ve Darboğaz Analizi"));
   cocuklar.push(wordTablo(["Gösterge", "Değer"], [
-    ["Tur süresi (worst-case)", s0(olcek.turSuresi)],
+    ["Tur süresi (worst-case, seyir)", s0(olcek.turSuresi)],
+    ["Dönüş bekleme (tur başına)", s0(olcek.turnaroundToplam)],
+    ["Çevrim süresi (dönüş bekleme dâhil)", s0(olcek.cevrimSuresi)],
     ["Hedef headway", s0(cfg.headway)],
-    ["Headway'de sığan tren", `${olcek.maxTrenHedefHeadway}`],
+    ["Headway'de gereken tren", `${olcek.maxTrenHedefHeadway}`],
     ["Darboğaz hücre", olcek.darbogazRing ? `${olcek.darbogazRing.ad} (${s0(olcek.darbogazRing.worstToplam)})` : "—"],
     ["Denge (eşit şartlar)", denge.dengeli ? "Dengeli" : `%${denge.sapmaYuzde.toFixed(0)} sapma`],
     ["Tüm hücreler headway'e uygun mu", olcek.headwayUygun ? "Evet" : "Hayır — ihlal var"],
@@ -205,12 +207,12 @@ function baslikSatiri(ws: ExcelJS.Worksheet, r: number) {
   row.alignment = { vertical: "middle" };
 }
 
-export async function excelUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock): Promise<Blob> {
+export async function excelUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, turnaroundSn = 0): Promise<Blob> {
   const wb = new ExcelJS.Workbook();
   wb.creator = "RaySim";
   const rs = ringSatirlari(rings, stock, cfg);
   const zones = bolgeSeed();
-  const olcek = olceklenme(rings, stock, true, cfg);
+  const olcek = olceklenme(rings, stock, true, cfg, turnaroundSn);
   const denge = loopDenge(rings, stock, cfg);
 
   // 1) Künye
@@ -276,7 +278,7 @@ export async function excelUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakAra
   const wP = wb.addWorksheet("Kapasite & Darboğaz");
   wP.columns = [{ header: "Gösterge", key: "g", width: 34 }, { header: "Değer", key: "d", width: 30 }];
   baslikSatiri(wP, 1);
-  ([["Tur süresi (worst-case, s)", `${Math.round(olcek.turSuresi)}`], ["Hedef headway (s)", `${cfg.headway}`], ["Headway'de sığan tren", `${olcek.maxTrenHedefHeadway}`], ["Darboğaz hücre", olcek.darbogazRing ? `${olcek.darbogazRing.ad} (${Math.round(olcek.darbogazRing.worstToplam)} s)` : "—"], ["Denge (eşit şartlar)", denge.dengeli ? "Dengeli" : `%${denge.sapmaYuzde.toFixed(0)} sapma`], ["Tüm hücreler headway'e uygun", olcek.headwayUygun ? "Evet" : "Hayır — ihlal var"]] as [string, string][]).forEach(([g, d]) => wP.addRow({ g, d }));
+  ([["Tur süresi (worst-case seyir, s)", `${Math.round(olcek.turSuresi)}`], ["Dönüş bekleme (tur başına, s)", `${Math.round(olcek.turnaroundToplam)}`], ["Çevrim süresi (dönüş bekleme dâhil, s)", `${Math.round(olcek.cevrimSuresi)}`], ["Hedef headway (s)", `${cfg.headway}`], ["Headway'de gereken tren", `${olcek.maxTrenHedefHeadway}`], ["Darboğaz hücre", olcek.darbogazRing ? `${olcek.darbogazRing.ad} (${Math.round(olcek.darbogazRing.worstToplam)} s)` : "—"], ["Denge (eşit şartlar)", denge.dengeli ? "Dengeli" : `%${denge.sapmaYuzde.toFixed(0)} sapma`], ["Tüm hücreler headway'e uygun", olcek.headwayUygun ? "Evet" : "Hayır — ihlal var"]] as [string, string][]).forEach(([g, d]) => wP.addRow({ g, d }));
 
   // 6b) Blocking-Time (Sperrzeitentreppe)
   const bt = blockingTimeRing(rings, stock, cfg);

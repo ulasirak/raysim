@@ -282,22 +282,36 @@ export function loopDenge(rings: DurakArasiRing[], stock: RollingStock, cfg: Sim
 }
 
 export interface OlceklenmeSonuc {
-  turSuresi: number; // s — loop tam tur (worst-case toplam)
+  turSuresi: number; // s — loop tam tur SEYİR süresi (worst-case, dönüş beklemesi HARİÇ)
+  turnaroundToplam: number; // s — tur başına toplam dönüş bekleme (her ters/kalkış noktasında)
+  cevrimSuresi: number; // s — filo hesabına giren tam çevrim = turSuresi + turnaroundToplam
   darbogazRing: RingDenge | null; // en yavaş ring
   minHeadway: number; // s — en yavaş ringin dayattığı alt sınır
-  maxTrenHedefHeadway: number; // hedef 240 s headway'de loop'a sığan tren sayısı
+  maxTrenHedefHeadway: number; // hedef headway'de çevrime sığan (gereken) tren sayısı
   headwayUygun: boolean; // tüm ringler 240 s altında mı?
 }
 
-/** Tren sayısı arttıkça: darboğaz ringi ve headway alt sınırını çıkarır. */
-export function olceklenme(rings: DurakArasiRing[], stock: RollingStock, kapali: boolean, cfg: SimConfig = BELGE): OlceklenmeSonuc {
+/**
+ * Tren sayısı arttıkça: darboğaz ringi ve headway alt sınırını çıkarır.
+ * `turnaroundSn` = uçta/kalkışta dönüş bekleme (s). Çevrim süresine eklenir → filo
+ * (maxTrenHedefHeadway) hesabını besler. Açık hatta iki uçta ters dönülür (×2),
+ * kapalı loop'ta tek kalkış/dinlenme noktası (×1). Varsayılan 0 → geriye uyumlu.
+ */
+export function olceklenme(
+  rings: DurakArasiRing[], stock: RollingStock, kapali: boolean, cfg: SimConfig = BELGE, turnaroundSn = 0,
+): OlceklenmeSonuc {
   const denge = loopDenge(rings, stock, cfg);
-  const turSuresi = denge.perRing.reduce((s, p) => s + p.worstToplam, 0) * (kapali ? 1 : 2); // açık hat gidiş-dönüş
+  const yon = kapali ? 1 : 2; // açık hat gidiş-dönüş
+  const turSuresi = denge.perRing.reduce((s, p) => s + p.worstToplam, 0) * yon;
+  const turnaroundToplam = Math.max(0, turnaroundSn) * yon; // her ters/kalkış noktasında bekleme
+  const cevrimSuresi = turSuresi + turnaroundToplam;
   const minHeadway = denge.enYavas ? denge.enYavas.worstToplam : 0;
-  const maxTren = cfg.headway > 0 ? Math.max(1, Math.floor(turSuresi / cfg.headway)) : 1;
+  const maxTren = cfg.headway > 0 ? Math.max(1, Math.floor(cevrimSuresi / cfg.headway)) : 1;
   const headwayUygun = rings.every((r) => ringSenaryo(r, stock, cfg).headwayUygun);
   return {
     turSuresi,
+    turnaroundToplam,
+    cevrimSuresi,
     darbogazRing: denge.enYavas,
     minHeadway,
     maxTrenHedefHeadway: maxTren,
