@@ -305,20 +305,7 @@ function StudioIc() {
                 <MiniStat etiket="P90 Gecikme" deger={sure(mc.p90Delay)} alt="%90 bunun altında" />
                 <MiniStat etiket="En Kötü" deger={sure(mc.maxDelay)} />
               </div>
-              <div className="mt-4">
-                <div className="field-label mb-2">Tren sırasına göre ortalama gecikme — yayılım</div>
-                <div className="flex h-24 items-end gap-1">
-                  {mc.avgByTrain.map((d, i) => {
-                    const mx = Math.max(1, ...mc.avgByTrain);
-                    return (
-                      <div key={i} className="flex flex-1 flex-col items-center gap-1">
-                        <div className="w-full rounded-t" style={{ height: `${(d / mx) * 100}%`, minHeight: 2, background: brand.red }} title={sure(d)} />
-                        <span className="text-[0.6rem]" style={{ color: brand.faint }}>{i + 1}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              <MonteCarloGrafik mc={mc} />
             </>
           ) : (
             <p className="text-sm" style={{ color: brand.muted }}>Analizi başlatmak için butona basın.</p>
@@ -341,6 +328,114 @@ function StudioIc() {
 function round(n: number, d = 0) {
   const f = Math.pow(10, d);
   return Math.round(n * f) / f;
+}
+
+/**
+ * Monte-Carlo çıktısının GÖRSELİ (iki grafik):
+ *  1) Gecikme DAĞILIMI histogramı — eşik altı (dakik, mavi) / üstü (geç, kırmızı);
+ *     ortalama · P90 · eşik dikey işaretleri. Kuyruk riskini tek bakışta gösterir.
+ *  2) Tren SIRASINA göre yayılım — medyan (nokta+çizgi) + P90 bıyığı; birincil
+ *     gecikmenin sonraki trenlere kademelenmesini gösterir.
+ * Renkler projenin doğrulanmış paletinden (chartkit CK). Tek seri/durum kodlaması.
+ */
+function MonteCarloGrafik({ mc }: { mc: MonteCarloResult }) {
+  // — 1) Dağılım histogramı —
+  const W = 720, H = 196, L = 40, R = 14, T = 12, B = 30;
+  const PW = W - L - R, PH = H - T - B;
+  const maxD = Math.max(1, mc.maxDelay);
+  const maxOran = Math.max(1, ...mc.histogram.map((h) => h.oran));
+  const px = (d: number) => L + (Math.min(Math.max(d, 0), maxD) / maxD) * PW;
+  const py = (o: number) => T + PH - (o / maxOran) * PH;
+  const bw = PW / Math.max(1, mc.histogram.length);
+  const yTicks = [0, 0.5, 1].map((f) => ({ oran: f * maxOran, y: py(f * maxOran) }));
+  // Etiketler farklı YÜKSEKLİKLERE dizilir → yakın x'lerde çakışmaz (dataviz kontrolü).
+  const isaret = (d: number, ad: string, renk: string, yLabel: number) => (
+    <g>
+      <line x1={px(d)} x2={px(d)} y1={T} y2={T + PH} stroke={renk} strokeWidth={1.5} strokeDasharray="4 3" />
+      <text x={px(d) + 3} y={yLabel} textAnchor="start" fontSize={9} fontWeight={600} fill={renk} style={{ fontVariantNumeric: "tabular-nums" }}>{ad}</text>
+    </g>
+  );
+
+  // — 2) Yayılım şeridi —
+  const W2 = 720, H2 = 128, L2 = 40, R2 = 14, T2 = 12, B2 = 24;
+  const PW2 = W2 - L2 - R2, PH2 = H2 - T2 - B2;
+  const n = mc.perTren.length;
+  const maxY = Math.max(1, mc.threshold, ...mc.perTren.map((p) => p.p90));
+  const sx = (i: number) => L2 + (n <= 1 ? PW2 / 2 : (i / (n - 1)) * PW2);
+  const sy = (v: number) => T2 + PH2 - (Math.min(Math.max(v, 0), maxY) / maxY) * PH2;
+  const y2Ticks = [0, 0.5, 1].map((f) => ({ v: f * maxY, y: sy(f * maxY) }));
+
+  return (
+    <div className="mt-4 flex flex-col gap-4">
+      {/* Histogram */}
+      <div>
+        <div className="field-label mb-1">Gecikme dağılımı — {mc.trials} sefer × {n} tren örneği</div>
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 220 }} role="img" aria-label="Gecikme dağılımı histogramı">
+          {yTicks.map((t, i) => (
+            <g key={i}>
+              <line x1={L} x2={L + PW} y1={t.y} y2={t.y} stroke={CK.grid} strokeWidth={1} />
+              <text x={L - 5} y={t.y + 3} textAnchor="end" fontSize={9} fill={CK.muted} style={{ fontVariantNumeric: "tabular-nums" }}>%{t.oran.toFixed(0)}</text>
+            </g>
+          ))}
+          {mc.histogram.map((h, i) => {
+            const x = L + i * bw + 1;
+            const y = py(h.oran);
+            const hgt = Math.max(0, T + PH - y);
+            const gec = h.alt >= mc.threshold;
+            return (
+              <rect key={i} x={x} y={y} width={Math.max(0.5, bw - 2)} height={hgt} rx={3} fill={gec ? CK.red : CK.blue} opacity={0.88}>
+                <title>{sure(h.alt)}–{sure(h.ust)}: %{h.oran.toFixed(1)}{gec ? " · geç" : ""}</title>
+              </rect>
+            );
+          })}
+          {isaret(mc.meanDelay, "ort", CK.ink2, T + 10)}
+          {isaret(mc.threshold, "eşik", CK.amber, T + 22)}
+          {isaret(mc.p90Delay, "P90", CK.red, T + 34)}
+          <line x1={L} x2={L + PW} y1={T + PH} y2={T + PH} stroke={CK.muted} strokeWidth={1} />
+          <text x={L} y={H - 5} textAnchor="start" fontSize={9} fill={CK.muted}>0</text>
+          <text x={L + PW / 2} y={H - 5} textAnchor="middle" fontSize={9} fill={CK.muted}>varış gecikmesi →</text>
+          <text x={L + PW} y={H - 5} textAnchor="end" fontSize={9} fill={CK.muted} style={{ fontVariantNumeric: "tabular-nums" }}>{sure(maxD)}</text>
+        </svg>
+        <div className="mt-1 flex flex-wrap items-center gap-3 text-[0.65rem]" style={{ color: brand.muted }}>
+          <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm" style={{ background: CK.blue }} /> dakik (eşik altı)</span>
+          <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm" style={{ background: CK.red }} /> geç (eşik üstü)</span>
+          <span>· çubuk = o gecikme aralığına düşen sefer oranı</span>
+        </div>
+      </div>
+
+      {/* Yayılım şeridi (tren sırasına göre kademe) */}
+      <div>
+        <div className="field-label mb-1">Tren sırasına göre yayılım — medyan ● + P90 bıyığı</div>
+        <svg viewBox={`0 0 ${W2} ${H2}`} className="w-full" style={{ maxHeight: 150 }} role="img" aria-label="Tren sırasına göre gecikme yayılımı">
+          {y2Ticks.map((t, i) => (
+            <g key={i}>
+              <line x1={L2} x2={L2 + PW2} y1={t.y} y2={t.y} stroke={CK.grid} strokeWidth={1} />
+              <text x={L2 - 5} y={t.y + 3} textAnchor="end" fontSize={9} fill={CK.muted} style={{ fontVariantNumeric: "tabular-nums" }}>{sure(t.v)}</text>
+            </g>
+          ))}
+          {/* eşik */}
+          <line x1={L2} x2={L2 + PW2} y1={sy(mc.threshold)} y2={sy(mc.threshold)} stroke={CK.amber} strokeWidth={1.5} strokeDasharray="4 3" />
+          <text x={L2 + PW2} y={sy(mc.threshold) - 3} textAnchor="end" fontSize={9} fontWeight={600} fill={CK.amber}>eşik</text>
+          {/* medyan trend çizgisi */}
+          {n > 1 && <polyline points={mc.perTren.map((p, i) => `${sx(i)},${sy(p.p50)}`).join(" ")} fill="none" stroke={CK.blue} strokeWidth={2} />}
+          {/* her tren: p50→p90 bıyık + noktalar */}
+          {mc.perTren.map((p, i) => (
+            <g key={i}>
+              <line x1={sx(i)} x2={sx(i)} y1={sy(p.p50)} y2={sy(p.p90)} stroke={CK.blue} strokeWidth={2} opacity={0.3} />
+              <circle cx={sx(i)} cy={sy(p.p90)} r={2.5} fill={CK.blue} opacity={0.5} />
+              <circle cx={sx(i)} cy={sy(p.p50)} r={3.5} fill={CK.blue}>
+                <title>Tren {i + 1}: medyan {sure(p.p50)} · P90 {sure(p.p90)}</title>
+              </circle>
+            </g>
+          ))}
+          <line x1={L2} x2={L2 + PW2} y1={T2 + PH2} y2={T2 + PH2} stroke={CK.muted} strokeWidth={1} />
+          <text x={L2} y={H2 - 4} textAnchor="start" fontSize={9} fill={CK.muted}>tren 1</text>
+          <text x={L2 + PW2} y={H2 - 4} textAnchor="end" fontSize={9} fill={CK.muted}>tren {n}</text>
+          <text x={L2 + PW2 / 2} y={H2 - 4} textAnchor="middle" fontSize={9} fill={CK.muted}>sefer sırası →</text>
+        </svg>
+      </div>
+    </div>
+  );
 }
 
 /** Toplam saniyeyi (başlangıç saati + geçen süre) "SS:DD" 24-saat gösterimine çevirir. */

@@ -312,8 +312,11 @@ export interface MonteCarloResult {
   meanDelay: number;
   p90Delay: number;
   maxDelay: number;
-  avgByTrain: number[]; // tren sırasına göre ortalama varış gecikmesi
   threshold: number;
+  /** Gecikme DAĞILIMI (histogram): tüm örneklerin kovalara düşen oranı (%). */
+  histogram: { alt: number; ust: number; oran: number }[];
+  /** Tren SIRASINA göre gecikme kademesi (yayılım): ortalama + p50 + p90. */
+  perTren: { ort: number; p50: number; p90: number }[];
 }
 
 export function monteCarlo(
@@ -345,15 +348,37 @@ export function monteCarlo(
   all.sort((a, b) => a - b);
   const mean = all.reduce((s, x) => s + x, 0) / (all.length || 1);
   const onTime = all.filter((d) => d <= cfg.threshold).length / (all.length || 1);
-  const avgByTrain = perTrain.map((arr) => arr.reduce((s, x) => s + x, 0) / (arr.length || 1));
+  const maxDelay = all[all.length - 1] ?? 0;
+
+  // Gecikme dağılımı histogramı — sabit kova sayısı; son kova üst sınırı dahil.
+  const nB = 14;
+  const genislik = maxDelay > 0 ? maxDelay / nB : 1;
+  const N = all.length || 1;
+  const histogram = Array.from({ length: nB }, (_, i) => {
+    const alt = i * genislik;
+    const ust = (i + 1) * genislik;
+    const say = all.filter((d) => (i === nB - 1 ? d >= alt && d <= ust : d >= alt && d < ust)).length;
+    return { alt, ust, oran: (say / N) * 100 };
+  });
+
+  // Tren sırasına göre gecikme kademesi (yayılım): her tren için p50/p90/ortalama.
+  const perTren = perTrain.map((arr) => {
+    const s = [...arr].sort((a, b) => a - b);
+    return {
+      ort: s.reduce((a, b) => a + b, 0) / (s.length || 1),
+      p50: percentile(s, 50),
+      p90: percentile(s, 90),
+    };
+  });
 
   return {
     trials: cfg.trials,
     onTimePct: onTime * 100,
     meanDelay: mean,
     p90Delay: percentile(all, 90),
-    maxDelay: all[all.length - 1] ?? 0,
-    avgByTrain,
+    maxDelay,
     threshold: cfg.threshold,
+    histogram,
+    perTren,
   };
 }
