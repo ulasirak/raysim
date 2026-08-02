@@ -361,28 +361,49 @@ zamanlı gösterir (requestAnimationFrame). SSR hidrasyon tuzağı `mounted` gua
 
 ---
 
-## 12. Kalıcılık, Auth ve Güvenlik
+## 12. Kalıcılık, Auth ve Güvenlik (çok-kiracılı)
 
-### localStorage
+### Veri modeli — proje başına belge
 
-`SimConfigProvider` cfg/rings/meta'yı `raysim_*` anahtarlarıyla saklar. Anahtar öneki
-değiştiğinde eski kayıtlar yok sayılır (versiyon/temizlik mekanizması).
+Her hat, sahibinin hesabına bağlı **tek bir Firestore belgesidir**
+(`src/lib/projeler.ts`). Belge alanları: `uid` (sahip), `ad` (proje/hat adı),
+`veri` (tüm simülasyonu tanımlayan JSON — `ProjeVerisi { rings, cfg, meta, arac,
+isletme }`), `paylasim` (salt-okunur link açık mı), zaman damgaları. Düzenlerken
+`SimConfigProvider` debounce'lu **otomatik kayıt** yapar; ayrı localStorage veya
+"vitrin/senaryo" katmanı yoktur.
 
-### Firebase — Firestore (senaryolar)
+### Auth — self-servis, anonim çok-kiracılı
 
-`src/lib/scenarios.ts` senaryoları `senaryolar` koleksiyonunda saklar (JSON payload). Firebase
-web config'i `NEXT_PUBLIC_*` ile tarayıcıya gider (normal) — **veritabanını koruyan tek katman
-Firestore kurallarıdır** (`firestore.rules`):
+`AuthProvider` (Firebase Auth, e-posta/şifre). Fabrika/varsayılan şifre yok; her
+ziyaretçi kendi hesabını açar ve **birden çok proje** oluşturur. `yazilabilir`
+guard'ı düzenleme iznini belirler: sahip kendi projesinde tam yetkili;
+salt-okunur paylaşım görünümünde (`paylasimGorunumu`) `SaltOkunurKalkan` tüm
+girdileri `fieldset[disabled]` ile kilitler.
+
+### Firestore güvenlik kuralları — tek koruma katmanı
+
+Firebase web config'i `NEXT_PUBLIC_*` ile tarayıcıya gider (normal); veritabanını
+koruyan tek katman `firestore.rules`'tur. Özet mantık:
 
 ```
-senaryolar: read  → herkes (vitrin)
-            write → yalnız request.auth.token.email == <yönetici>
+projeler/{id}:
+  read   → kaynak.uid == request.auth.uid  VEYA  kaynak.paylasim == true
+  write  → kaynak.uid == request.auth.uid            (sahip)
+  create → yeni.uid  == request.auth.uid
 ```
 
-### Auth — yönetici girişi
+`protectedProcedure` benzeri sunucu rol kontrolü YOKTUR; satır güvenliğini yalnız
+bu kurallar sağlar — yeni hassas alan eklerken kural şart.
 
-`getAuthInstance()` (Email/Password). Vitrin modunda (`NEXT_PUBLIC_VITRIN=1`) ziyaretçi
-salt-okunur; yalnız giriş yapan yönetici Kaydet/Sil görür (`yazabilir = !vitrin || !!user`).
+### Krediler & ödeme — sunucu-otoriteli
+
+Ücretli eylemler (rapor, yeni hat) krediden düşer. **Fiyat ve düşüm sunucuda**
+(`src/lib/cuzdanServer.ts` + `/api/kredi/dus`, `/api/rapor`, `/api/proje/*`)
+enforce edilir; istemci fiyat/kredi yollayamaz (yalnız paket id seçer). Ödeme
+iyzico Checkout Form ile (`/api/odeme/baslat` → gömülü modal → `/api/odeme/callback`).
+Sunucu Firebase erişimi lazy Admin SDK'dır (`src/lib/firebaseAdmin.ts`); kimlik
+`Authorization: Bearer <idToken>` jose ile doğrulanır. `FIREBASE_SERVICE_ACCOUNT`
+tanımsızsa bu uçlar 503 döner.
 
 ---
 

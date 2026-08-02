@@ -32,7 +32,7 @@ interface Modul {
 }
 
 // Boru hattı sırası TEK SAYFA bölüm sırasıyla birebir aynı (BOLUM_SLUG) — veri
-// akışı: KUR (Ringler·Coğrafi) → ANALİZ (Sefer·Sistem) → BELGELE.
+// akışı: KUR (Ringler) → ANALİZ (Sefer·Sistem) → BELGELE.
 // Numaralı metro istasyonları bu akışı görselleştirir. (Guard aşağıda sırayı zorlar.)
 const MODULLER: Modul[] = [
   { href: "/ringler", slug: "ringler", ad: "Durak Arası Ringler", rol: "İşletim hücreleri · worst/best (en kötü/en iyi) · loop (çevrim)", kod: "SR-0001", rota: "Durak Arası Ring Şartları" },
