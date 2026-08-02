@@ -111,6 +111,9 @@ export interface Isletme {
   seferSayisi: number;          // tren adedi
   seferHeadwayDk: number;       // sefer aralığı (dk) — simüle dispatch aralığı
   turnaroundDk: number;         // dönüş bekleme (dk)
+  seferBaslangicSaati: string;  // hat şeması ilk kalkış saati "SS:DD"
+  mcMeanEntrySn: number;        // Monte-Carlo: ort. giriş gecikmesi (s)
+  mcMeanDwellSn: number;        // Monte-Carlo: ort. durak sapması (s)
   // Anklaşman talep senaryosu (AnklasmanSim)
   anklasmanTren: number;        // talep tren adedi
   anklasmanHeadwaySn: number;   // rota isteği aralığı (s)
@@ -124,6 +127,9 @@ export const varsayilanIsletme: Isletme = {
   seferSayisi: 6,
   seferHeadwayDk: 4,
   turnaroundDk: 3,
+  seferBaslangicSaati: "08:00",
+  mcMeanEntrySn: 30,
+  mcMeanDwellSn: 5,
   anklasmanTren: 4,
   anklasmanHeadwaySn: 20,
   kapali: true,

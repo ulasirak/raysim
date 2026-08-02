@@ -89,12 +89,16 @@ function StudioIc() {
   const setTurnaroundDk = (v: number) => patchIsletme({ turnaroundDk: v });
   const [ariza, setAriza] = useState<number[]>([]); // dispatcher: arızalı bloklar (gidiş hattı) — geçici what-if
   const [yon, setYon] = useState<"gidis" | "donus" | "ikisi">("gidis");
-  const [meanEntry, setMeanEntry] = useState(30);
-  const [meanDwell, setMeanDwell] = useState(5);
+  // Monte-Carlo senaryo parametreleri KALICI (projeye kayıtlı) — tek kaynak isletme.
+  const meanEntry = isletme.mcMeanEntrySn;
+  const setMeanEntry = (v: number) => patchIsletme({ mcMeanEntrySn: v });
+  const meanDwell = isletme.mcMeanDwellSn;
+  const setMeanDwell = (v: number) => patchIsletme({ mcMeanDwellSn: v });
   const [mc, setMc] = useState<MonteCarloResult | null>(null);
   const [mcRunning, setMcRunning] = useState(false);
-  // Hat Şeması sefer saatleri: başlangıç saati girilir, buton istasyon istasyon gösterir.
-  const [baslangicSaati, setBaslangicSaati] = useState("08:00");
+  // Hat Şeması sefer başlangıç saati KALICI (projeye kayıtlı); buton istasyon istasyon gösterir.
+  const baslangicSaati = isletme.seferBaslangicSaati;
+  const setBaslangicSaati = (v: string) => patchIsletme({ seferBaslangicSaati: v });
   const [saatlerGoster, setSaatlerGoster] = useState(false);
 
   const { line, result } = useMemo(() => {
