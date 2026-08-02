@@ -362,12 +362,15 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(meta.dokumanNo)} — ${esc(meta.projeAdi)}</title>
 <style>
+  /* Site ile AYNI yazı tipleri: gövde Geist (sans), başlıklar Spectral (marka serif),
+     sayısal/mono Geist Mono. Rapor ayrı sekmede açıldığından fontlar burada YÜKLENİR
+     (yazdırma manuel butonla; tıklanana dek fontlar hazır olur). */
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Spectral:wght@500;600;700&display=swap');
   @page { size: A4; margin: 18mm 16mm 20mm; }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
-  body { font-family: "Spectral", Georgia, "Times New Roman", serif; color: ${INK}; font-size: 11pt; line-height: 1.5; background: #f0f2f4;
-    /* Spectral yüklenmezse Georgia'ya düşer; Georgia varsayılan olarak eski-stil (zıplayan)
-       rakamlar kullanır. Tüm belgede hizalı (lining) rakam zorla → sayılar taban çizgisinde durur. */
+  body { font-family: "Geist", "Segoe UI", system-ui, -apple-system, sans-serif; color: ${INK}; font-size: 11pt; line-height: 1.5; background: #f0f2f4;
+    /* Geist yüklenmezse system-ui'ye düşer. Tüm belgede hizalı (lining) rakam zorla. */
     font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1; }
   /* Sayısal yüzeyler: hizalı + tabular (sütunlar dikey hizalanır, rakamlar eşit genişlikte). */
   table, .kpi-v, .kpi-a, .pill, .cover .kunye td, .fig .cap {
