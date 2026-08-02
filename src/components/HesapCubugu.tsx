@@ -43,7 +43,7 @@ export function HesapKontrolleri() {
   const {
     demoMu, paylasimGorunumu, durum, hataMetni, projeler, aktifId, aktifAd,
     paylasimAcik, kota, kotaDoldu,
-    projeSec, projeYeni, projeSilmeIstegi, paylasimDegistir,
+    projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle, paylasimDegistir,
   } = useHesap();
   const { bakiye, krediSatinAl } = useCuzdan();
 
@@ -52,6 +52,7 @@ export function HesapKontrolleri() {
   const [yeniAd, setYeniAd] = useState("");
   const [kopyalandi, setKopyalandi] = useState(false);
   const [menuAcik, setMenuAcik] = useState(false);
+  const [adTaslak, setAdTaslak] = useState<string | null>(null);
   const [isBasi, setIsBasi] = useState<string | null>(null);
   const [gecmisAcik, setGecmisAcik] = useState(false);
   const [hareketler, setHareketler] = useState<KrediHareket[]>([]);
@@ -87,17 +88,35 @@ export function HesapKontrolleri() {
         <span className="hidden font-semibold uppercase tracking-[0.14em] sm:inline"
           style={{ color: koyu.etiket, fontSize: "0.6rem" }}>AKTİF HAT</span>
 
-        {/* Hat seçici — seçilen hat tüm modüllerde aktif olur. (Ad değiştirme yok:
-            hat adı Belgeler künyesinden düzenlenir.) */}
-        <select
-          value={aktifId ?? ""}
-          onChange={(e) => projeSec(e.target.value)}
-          title="Üzerinde çalıştığınız proje. Seçtiğiniz hat tüm modüllerde aktif olur."
-          className="rounded-md border px-2.5 py-1 text-xs font-medium"
-          style={{ background: koyu.yuzey, borderColor: koyu.kenar, color: koyu.metin, colorScheme: "dark", maxWidth: 220 }}
-        >
-          {projeler.map((p) => (<option key={p.id} value={p.id}>{p.ad}</option>))}
-        </select>
+        {/* Hat seçici + yanındaki ✎ ile proje adı doğrudan düzenlenir. */}
+        {adTaslak === null ? (
+          <div className="flex items-center gap-1">
+            <select
+              value={aktifId ?? ""}
+              onChange={(e) => projeSec(e.target.value)}
+              title="Üzerinde çalıştığınız proje. Seçtiğiniz hat tüm modüllerde aktif olur."
+              className="rounded-md border px-2.5 py-1 text-xs font-medium"
+              style={{ background: koyu.yuzey, borderColor: koyu.kenar, color: koyu.metin, colorScheme: "dark", maxWidth: 200 }}
+            >
+              {projeler.map((p) => (<option key={p.id} value={p.id}>{p.ad}</option>))}
+            </select>
+            {aktifId && (
+              <button onClick={() => setAdTaslak(aktifAd)} title="Proje adını değiştir"
+                className="rounded-md border px-1.5 py-1 text-xs transition hover:bg-white/10"
+                style={{ borderColor: koyu.kenar, color: koyu.metinYumusak }}>✎</button>
+            )}
+          </div>
+        ) : (
+          /* Satır-içi ad değiştirme — seçicinin yerinde */
+          <div className="flex items-center gap-1">
+            <input value={adTaslak} onChange={(e) => setAdTaslak(e.target.value)} autoFocus
+              onKeyDown={(e) => { if (e.key === "Enter") { sar(projeAdiGuncelle(adTaslak.trim() || aktifAd), "ad"); setAdTaslak(null); } if (e.key === "Escape") setAdTaslak(null); }}
+              className="rounded-md border px-2.5 py-1 text-xs" style={{ background: koyu.yuzey, borderColor: koyu.kenarGuclu, color: koyu.metin, maxWidth: 200 }} />
+            <button onClick={() => { sar(projeAdiGuncelle(adTaslak.trim() || aktifAd), "ad"); setAdTaslak(null); }}
+              className="rounded-md px-2.5 py-1 text-xs font-medium" style={{ background: brand.red, color: "#fff" }}>Kaydet</button>
+            <button onClick={() => setAdTaslak(null)} className="rounded-md px-2 py-1 text-xs" style={{ color: koyu.metinYumusak }}>Vazgeç</button>
+          </div>
+        )}
 
         {/* Yeni hat */}
         {yeniAcik ? (
