@@ -237,7 +237,8 @@ export function RingEditor() {
                       className="min-w-0 flex-1 rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
                     <span className="shrink-0 font-mono text-xs" style={{ color: brand.faint }} title="Hat başından uzaklık">{km(d.konum)} km</span>
                     {i > 0 && (
-                      <div className="flex shrink-0 items-center gap-1" title="Varış durak bekleme süresi">
+                      <div className="flex shrink-0 items-center gap-1" title="Bu durakta trenin bekleme (duruş) süresi">
+                        <span className="text-[0.65rem] font-medium" style={{ color: brand.inkSoft }}>bekleme</span>
                         <input type="number" min={0} step={5} value={rings[i - 1].dwell}
                           onChange={(e) => patch(rings[i - 1].id, { dwell: Math.max(0, parseFloat(e.target.value) || 0) })}
                           className="w-14 rounded border px-1 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
