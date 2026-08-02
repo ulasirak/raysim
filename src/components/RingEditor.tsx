@@ -78,6 +78,23 @@ export function RingEditor() {
     setAcik({});
   };
 
+  // Deep-link: başka modülden `#ring-<id>` ankoruyla gelince o ring'i AÇ + kaydır.
+  // (Sistem Merkezi blok teşhisi "→ Ringler'de düzelt" butonu bunu tetikler.)
+  useEffect(() => {
+    const acKaydir = () => {
+      const m = window.location.hash.match(/^#ring-(.+)$/);
+      if (!m) return;
+      const id = decodeURIComponent(m[1]);
+      if (!rings.some((r) => r.id === id)) return;
+      setAcik((a) => ({ ...a, [id]: true }));
+      // Kart açıldıktan (bir sonraki boya) sonra kaydır.
+      requestAnimationFrame(() => document.getElementById(`ring-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    };
+    acKaydir();
+    window.addEventListener("hashchange", acKaydir);
+    return () => window.removeEventListener("hashchange", acKaydir);
+  }, [rings]);
+
   // Ekleme fonksiyonları opsiyonel KONUM + EKSTRA parametre alır. Şeritten tıkla-
   // ekle akışı önce el kitabı varsayılanlı bir form açar, kullanıcı süre-etkileyen
   // alanları (motor süresi, route release, hız…) ayarlayınca bu ekstra ile ekler.
@@ -219,11 +236,12 @@ export function RingEditor() {
         </div>
       )}
 
-      {/* Ring kartları */}
+      {/* Ring kartları — her biri `ring-<id>` ankoru taşır (Sistem Merkezi teşhis
+          butonu buraya kaydırır); scroll-mt sticky nav altında kalmasını önler. */}
       <div className="mt-6 flex flex-col gap-4">
         {rings.map((r, i) => (
+          <div key={r.id} id={`ring-${r.id}`} className="scroll-mt-28">
           <RingKart
-            key={r.id}
             ring={r}
             index={i}
             stock={stock}
@@ -242,6 +260,7 @@ export function RingEditor() {
             onTnSil={(tid) => tnSil(r.id, tid)}
             onTnPatch={(tid, p) => patchTn(r.id, tid, p)}
           />
+          </div>
         ))}
       </div>
 

@@ -14,7 +14,8 @@ import { useSimConfig, useProje, useArac } from "@/components/SimConfigProvider"
 import { PARAM_META, paramGoster, paramSI, birim, type ParamMeta, type ParamModul } from "@/lib/anaray/config";
 import { loopDenge, olceklenme, ringSenaryo } from "@/lib/anaray/ring";
 import { bolgeSeed, simuleEtAnklasman } from "@/lib/anaray/interlocking";
-import { blockingTimeRing } from "@/lib/anaray/blockingtime";
+import { blockingTimeRing, type BlokSperr } from "@/lib/anaray/blockingtime";
+import { loopToHat } from "@/lib/anaray/hatsim";
 import { BlockingStairChart } from "@/components/BlockingStairChart";
 import { CK, RAMP_BLUE, SERI } from "@/lib/anaray/chartkit";
 
@@ -26,6 +27,35 @@ const BT_PARCA: [string, string][] = [
   ["Setup", RAMP_BLUE[0]], ["Görme", RAMP_BLUE[1]], ["Yaklaşma", RAMP_BLUE[2]],
   ["Seyir", RAMP_BLUE[3]], ["Temizleme", RAMP_BLUE[4]], ["Release", RAMP_BLUE[5]],
 ];
+
+// Bir bloğun blocking-time'ını NE tıkıyor? 6 bileşeni 3 düzeltilebilir gruba
+// indirger, baskın olanı bulur ve KULLANICININ nereden düzelteceğini söyler.
+// hedef: hangi modül bölümüne yönlendirileceği (#slug ankoru).
+type BlokNeden = { grup: string; icon: string; neden: string; cozum: string; hedef: "ringler" | "sefer" };
+function blokNeden(b: BlokSperr): BlokNeden {
+  const seyir = b.tRunning + b.tApproach;   // mesafe + hız
+  const manevra = b.tSetup + b.tRelease;    // makas tanzim + route release
+  const temizle = b.tClearing;              // tren boyu / çıkış hızı
+  const en = Math.max(seyir, manevra, temizle);
+  if (en === manevra && b.makasBlok && manevra > 0) return {
+    grup: "Makas tanzim + release", icon: "⑂",
+    neden: "Makas rotası kurma (tanzim) ve serbest bırakma süresi bu bloğu tıkıyor.",
+    cozum: "Ringler'de bu durak-arasındaki makasın adım sayısını/süresini ya da route release'i azalt.",
+    hedef: "ringler",
+  };
+  if (en === temizle) return {
+    grup: "Tren boyu", icon: "▭",
+    neden: "Tren boyunun bloğu terk süresi baskın (uzun araç veya düşük çıkış hızı).",
+    cozum: "Sefer modülünde daha kısa araç seç ya da bu kesimde sahasal hızı artır.",
+    hedef: "sefer",
+  };
+  return {
+    grup: "Mesafe / hız", icon: "↔",
+    neden: "Durak arası mesafe uzun veya sahasal hız düşük → seyir + yaklaşma süresi baskın.",
+    cozum: "Ring Ekle bölümünde bu durak-arasının MESAFESİNİ kısalt (ya da sahasal hızı artır).",
+    hedef: "ringler",
+  };
+}
 
 export function SistemMerkezi() {
   const { cfg, patch, sifirla } = useSimConfig();
@@ -50,6 +80,23 @@ export function SistemMerkezi() {
   // blocking-time panelleri gizlenir, parametre girişi açık kalır.
   const bosHat = rings.length === 0;
   const bt = useMemo(() => (rings.length ? blockingTimeRing(rings, stock, cfg) : null), [rings, stock, cfg]);
+
+  // Blok → durak-arası (ring) eşlemesi + neden analizi. Her blok, hangi ring'in
+  // içine düştüğüyle adlandırılır; blokNeden ile darboğazın sebebi ve çözüm yeri
+  // bulunur. Süreye göre azalan sıralı (en kritik blok en üstte).
+  const btModel = useMemo(() => (rings.length ? loopToHat(rings, true, cfg) : null), [rings, cfg]);
+  const teshis = useMemo(() => {
+    if (!bt || !btModel) return [];
+    const rb = btModel.ringBounds;
+    const ringAt = (s: number) => { for (let r = 0; r < rb.length - 1; r++) if (s < rb[r + 1] - 1e-6) return r; return Math.max(0, rb.length - 2); };
+    return bt.bloklar
+      .map((b) => {
+        const ri = ringAt((b.start + b.end) / 2);
+        const ring = rings[ri];
+        return { b, ri, ring, ad: ring ? `${ring.fromAd} → ${ring.toAd}` : `Blok #${b.i}`, ...blokNeden(b) };
+      })
+      .sort((a, z) => z.b.toplam - a.b.toplam);
+  }, [bt, btModel, rings]);
 
   const gruplar = useMemo(() => {
     const g = new Map<string, ParamMeta[]>();
@@ -184,6 +231,45 @@ export function SistemMerkezi() {
             ))}
             <span className="ml-1" style={{ color: CK.faint }}>(açıktan koyuya = zaman sırası)</span>
           </div>
+        </div>
+
+        {/* Blok teşhisi & çözüm — her blok hangi durak-arasına düşüyor, darboğazın
+            nedeni ne ve nereden düzeltilir; buton doğrudan o ring'e/bölüme götürür. */}
+        <div className="mt-5 border-t pt-4" style={{ borderColor: brand.border }}>
+          <div className="field-label mb-1">🔧 Blok Teşhisi & Çözüm</div>
+          <p className="mb-2.5 text-xs" style={{ color: brand.muted }}>
+            Her blok, düştüğü <b>durak-arası (ring)</b> ile adlandırılır; en kritik blok en üstte.
+            Darboğazın nedeni ve nereden düzelteceğin yanında — <b>buton doğrudan o ring&apos;e/bölüme götürür</b>.
+          </p>
+          {teshis.length === 0 ? (
+            <p className="text-xs" style={{ color: brand.muted }}>Değerlendirilecek blok yok.</p>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              {teshis.map((t) => {
+                const kritik = bt && t.b.i === bt.kritikBlok;
+                const asiyor = bt ? t.b.toplam > bt.hedefHeadway : false;
+                const renk = kritik || asiyor ? CK.red : brand.border;
+                const href = t.hedef === "ringler" && t.ring ? `/#ring-${t.ring.id}` : "/#sefer";
+                return (
+                  <div key={t.b.i} className="rounded border p-2.5 text-xs" style={{ borderColor: renk, background: kritik ? CK.badBgSoft : "transparent" }}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded px-1.5 py-0.5 font-mono font-semibold" style={{ background: kritik ? CK.red : CK.track, color: kritik ? "#fff" : brand.inkSoft }}>Blok {t.b.i}</span>
+                      <span className="font-medium" style={{ color: brand.ink }}>{t.ad}</span>
+                      <span className="font-mono" style={{ color: asiyor ? CK.red : brand.muted }}>{sure(t.b.toplam)}</span>
+                      {kritik && <span className="rounded px-1.5 py-0.5 text-[0.6rem] font-semibold" style={{ background: CK.red, color: "#fff" }}>KRİTİK — min headway</span>}
+                      {asiyor && !kritik && <span className="rounded px-1.5 py-0.5 text-[0.6rem] font-semibold" style={{ background: CK.amberBg, color: CK.amberInk }}>hedefi aşıyor</span>}
+                      <a href={href} className="ml-auto rounded-md px-2.5 py-1 text-xs font-medium text-white transition hover:opacity-90" style={{ background: brand.ink }}>
+                        {t.hedef === "ringler" ? "→ Ringler'de düzelt" : "→ Sefer'de düzelt"}
+                      </a>
+                    </div>
+                    <div className="mt-1.5" style={{ color: brand.inkSoft }}>
+                      <b>{t.icon} {t.grup}:</b> {t.neden} <span style={{ color: brand.muted }}>· Çözüm: {t.cozum}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </Panel>
       )}
