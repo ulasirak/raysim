@@ -14,7 +14,7 @@ import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimCon
 import type { SimConfig } from "@/lib/anaray/config";
 import { brand } from "@/lib/anaray/brand";
 import { CK, SERI } from "@/lib/anaray/chartkit";
-import { kmh, sure } from "@/lib/anaray/format";
+import { kmh, km, sure } from "@/lib/anaray/format";
 import {
   MAKAS_TIP_AD,
   ringChallenge,
@@ -27,6 +27,12 @@ import {
   yeniMakas,
   yeniRing,
   yeniTehlike,
+  ringDuraklari,
+  durakAdiDegistir,
+  durakEkleBas,
+  durakEkleSon,
+  durakBol,
+  durakSil,
   type DurakArasiRing,
   type HemzeminTip,
   type KisitTur,
@@ -47,6 +53,8 @@ export function RingEditor() {
 
   const oneriler = useMemo(() => dengeOnerisi(rings, stock, cfg), [rings, stock, cfg]);
   const tumEksik = useMemo(() => rings.flatMap((r) => ringDogrula(r, cfg)), [rings, cfg]);
+  // Durak zinciri (ring uçlarından türer) — üstteki hızlı durak editörü için.
+  const duraklar = useMemo(() => ringDuraklari(rings), [rings]);
 
   // — güncelleyiciler —
   const patch = (id: string, p: Partial<DurakArasiRing>) =>
@@ -121,6 +129,72 @@ export function RingEditor() {
           {yonetici ? "↺ Vitrin hattına dön" : "🗑 Hattı temizle"}
         </button>
       </div>
+
+      {/* DURAKLAR & MESAFELER — hızlı durak editörü (Sefer'den taşındı, ring modeline
+          doğrudan yazar). Durak zinciri: adları/beklemeyi düzenle, aralara mesafe/hız
+          gir, BAŞA · ORTAYA · SONA durak ekle. Detaylı hücre şartları (worst/best,
+          makas, hemzemin, tehlike, depo) aşağıdaki ring kartlarında. */}
+      {rings.length > 0 && (
+        <div className="mt-4">
+          <Panel baslik="Duraklar & Mesafeler" aciklama="Hattın durak zinciri — başa, ortaya, sona durak ekle; adları ve durak-arası mesafe/hız değerlerini gir. Değişiklikler anında kaydedilir; detaylı hücre şartları aşağıdaki ring kartlarında.">
+            <button onClick={() => setRings(durakEkleBas)}
+              className="mb-2 w-full rounded-md border-2 border-dashed py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
+              ⇤ Başa durak ekle
+            </button>
+            <div className="flex flex-col">
+              {duraklar.map((d, i) => (
+                <div key={`durak-${i}`}>
+                  {/* Durak satırı */}
+                  <div className="flex items-center gap-2 rounded border px-2 py-1.5" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[0.6rem] font-semibold text-white" style={{ background: brand.ink }}>{i + 1}</span>
+                    <input value={d.ad} onChange={(e) => setRings((rs) => durakAdiDegistir(rs, i, e.target.value))}
+                      className="min-w-0 flex-1 rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+                    <span className="shrink-0 font-mono text-xs" style={{ color: brand.faint }} title="Hat başından uzaklık">{km(d.konum)} km</span>
+                    {i > 0 && (
+                      <div className="flex shrink-0 items-center gap-1" title="Varış durak bekleme süresi">
+                        <input type="number" min={0} step={5} value={rings[i - 1].dwell}
+                          onChange={(e) => patch(rings[i - 1].id, { dwell: Math.max(0, parseFloat(e.target.value) || 0) })}
+                          className="w-14 rounded border px-1 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+                        <span className="text-[0.65rem]" style={{ color: brand.muted }}>sn</span>
+                      </div>
+                    )}
+                    {duraklar.length > 2 ? (
+                      <button onClick={() => setRings((rs) => durakSil(rs, i))} title="Durağı sil (orta durak → komşu ringleri birleştirir)"
+                        className="shrink-0 rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
+                    ) : (<span className="w-6 shrink-0" />)}
+                  </div>
+                  {/* Durak-arası (ring i) — mesafe + hız + ortaya ekle */}
+                  {i < rings.length && (
+                    <div className="ml-6 flex flex-wrap items-center gap-2 py-1 pl-2 text-xs" style={{ color: brand.muted }}>
+                      <span style={{ color: brand.faint }}>↓</span>
+                      <span className="flex items-center gap-1">
+                        mesafe
+                        <input type="number" min={50} step={50} value={Math.round(rings[i].uzunluk)}
+                          onChange={(e) => patch(rings[i].id, { uzunluk: Math.max(50, parseFloat(e.target.value) || 0) })}
+                          className="w-20 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /> m
+                      </span>
+                      <span className="flex items-center gap-1">
+                        hız
+                        <input type="number" min={5} step={5} value={Math.round(kmh(rings[i].vmax))}
+                          onChange={(e) => patch(rings[i].id, { vmax: Math.max(5, parseFloat(e.target.value) || 0) * KMH })}
+                          className="w-16 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /> km/h
+                      </span>
+                      <button onClick={() => setRings((rs) => durakBol(rs, i))} title="Bu ringi ikiye bölerek ortaya durak ekle"
+                        className="rounded border px-2 py-0.5 font-medium transition hover:bg-slate-50" style={{ borderColor: brand.border, color: brand.ink }}>
+                        ＋ ortaya durak
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setRings(durakEkleSon)}
+              className="mt-2 w-full rounded-md border-2 border-dashed py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
+              Sona durak ekle ⇥
+            </button>
+          </Panel>
+        </div>
+      )}
 
       {/* Eksik şart uyarısı */}
       {tumEksik.length > 0 && (

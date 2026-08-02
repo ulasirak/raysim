@@ -500,6 +500,88 @@ export function loopTamMi(rings: DurakArasiRing[]): boolean {
 }
 
 // ————————————————————————————————————————————————
+// Durak (istasyon) düzenleme — doğrudan ring zinciri üzerinde
+// ————————————————————————————————————————————————
+// Ring modeli durak-ARASI hücrelerden oluşur; bir durak, iki komşu ringin
+// paylaştığı uçtur (ring N.toAd == ring N+1.fromAd). Aşağıdaki SAF fonksiyonlar
+// durak-merkezli işlemleri (ekle baş/son/orta · sil · ad senkron) doğrudan ring
+// dizisine uygular — grafa çevirmeye gerek yok. RingEditor "Duraklar" paneli kullanır.
+// Durak indeksleme: n ring → (n+1) durak; durak i, ring i-1 (gelen) ile ring i (giden) arasında.
+
+/** Ring zincirinden sıralı durak listesi + kümülatif konum (m). */
+export function ringDuraklari(rings: DurakArasiRing[]): { ad: string; konum: number }[] {
+  if (rings.length === 0) return [];
+  const out = [{ ad: rings[0].fromAd, konum: 0 }];
+  let acc = 0;
+  for (const r of rings) { acc += r.uzunluk; out.push({ ad: r.toAd, konum: acc }); }
+  return out;
+}
+
+/** Durak i'nin adını değiştir — paylaşılan durak iki komşu ringde SENKRON güncellenir. */
+export function durakAdiDegistir(rings: DurakArasiRing[], i: number, ad: string): DurakArasiRing[] {
+  return rings.map((r, k) => {
+    if (k === i - 1) return { ...r, toAd: ad }; // durağa GELEN ring
+    if (k === i) return { ...r, fromAd: ad };   // duraktan GİDEN ring
+    return r;
+  });
+}
+
+/** Başa durak ekle (yeni durak → mevcut ilk durak). */
+export function durakEkleBas(rings: DurakArasiRing[]): DurakArasiRing[] {
+  const ilk = rings[0];
+  return [yeniRing("Yeni Durak", ilk ? ilk.fromAd : "Son Durak"), ...rings];
+}
+
+/** Sona durak ekle (mevcut son durak → yeni durak). */
+export function durakEkleSon(rings: DurakArasiRing[]): DurakArasiRing[] {
+  const son = rings[rings.length - 1];
+  return [...rings, yeniRing(son ? son.toAd : "Başlangıç Durağı", "Yeni Durak")];
+}
+
+/** Ring `index`'i ikiye bölerek ORTASINA durak ekle. Kısıtlar konuma göre paylaştırılır. */
+export function durakBol(rings: DurakArasiRing[], index: number): DurakArasiRing[] {
+  const r = rings[index];
+  if (!r) return rings;
+  const yari = clamp(Math.round(r.uzunluk / 2), 1, Math.max(1, r.uzunluk - 1));
+  const kalan = Math.max(1, r.uzunluk - yari);
+  const oncesi = <T extends { konum: number }>(xs: T[]) => xs.filter((o) => o.konum <= yari);
+  const sonrasi = <T extends { konum: number }>(xs: T[]) => xs.filter((o) => o.konum > yari).map((o) => ({ ...o, konum: o.konum - yari }));
+  const a: DurakArasiRing = {
+    ...r, id: yeniId("RING"), toAd: "Yeni Durak", uzunluk: yari,
+    worstUzunluk: Math.max(yari, r.worstUzunluk), bestUzunluk: clamp(r.bestUzunluk, 50, yari),
+    depot: false, queued: undefined,
+    makaslar: oncesi(r.makaslar), hemzeminler: oncesi(r.hemzeminler), tehlikeNoktalari: oncesi(r.tehlikeNoktalari),
+  };
+  const b: DurakArasiRing = {
+    ...r, id: yeniId("RING"), fromAd: "Yeni Durak", uzunluk: kalan,
+    worstUzunluk: Math.max(kalan, r.worstUzunluk), bestUzunluk: clamp(r.bestUzunluk, 50, kalan),
+    fromDepot: undefined, fromQueued: undefined,
+    makaslar: sonrasi(r.makaslar), hemzeminler: sonrasi(r.hemzeminler), tehlikeNoktalari: sonrasi(r.tehlikeNoktalari),
+  };
+  return [...rings.slice(0, index), a, b, ...rings.slice(index + 1)];
+}
+
+/** Durak i'yi sil. İlk/son → uç ringi at; orta durak → iki komşu ringi BİRLEŞTİR.
+ *  En az bir ring (iki durak) korunur (aksi halde hat kalmaz). */
+export function durakSil(rings: DurakArasiRing[], i: number): DurakArasiRing[] {
+  const n = rings.length;
+  if (n <= 1) return rings; // 1 ring = 2 durak: daha aza inme
+  if (i <= 0) return rings.slice(1);           // ilk durak → ilk ringi at
+  if (i >= n) return rings.slice(0, n - 1);    // son durak → son ringi at
+  const a = rings[i - 1], b = rings[i];        // orta durak i: a ve b'yi birleştir
+  const merged: DurakArasiRing = {
+    ...a, toAd: b.toAd, uzunluk: a.uzunluk + b.uzunluk,
+    worstUzunluk: Math.max(a.worstUzunluk, b.worstUzunluk, a.uzunluk + b.uzunluk),
+    bestUzunluk: Math.min(a.bestUzunluk, b.bestUzunluk),
+    dwell: b.dwell, depot: b.depot, queued: b.queued,
+    makaslar: [...a.makaslar, ...b.makaslar.map((m) => ({ ...m, konum: m.konum + a.uzunluk }))],
+    hemzeminler: [...a.hemzeminler, ...b.hemzeminler.map((h) => ({ ...h, konum: h.konum + a.uzunluk }))],
+    tehlikeNoktalari: [...a.tehlikeNoktalari, ...b.tehlikeNoktalari.map((t) => ({ ...t, konum: t.konum + a.uzunluk }))],
+  };
+  return [...rings.slice(0, i - 1), merged, ...rings.slice(i + 1)];
+}
+
+// ————————————————————————————————————————————————
 // Fabrika yardımcıları (yeni öğe)
 // ————————————————————————————————————————————————
 
