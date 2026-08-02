@@ -59,8 +59,9 @@ export interface OdemeBaslatGirdi {
   cardUserKey?: string;
 }
 
-/** Checkout Form başlatır; ödeme sayfası URL'i döner. */
-export async function odemeBaslat(g: OdemeBaslatGirdi): Promise<{ paymentPageUrl?: string; token?: string; status: string; errorMessage?: string; errorCode?: string }> {
+/** Checkout Form başlatır; GÖMME içeriği (checkoutFormContent) + ödeme sayfası
+ *  URL'i (yedek) döner. Gömme, kullanıcıyı siteden çıkarmadan modal içinde öder. */
+export async function odemeBaslat(g: OdemeBaslatGirdi): Promise<{ checkoutFormContent?: string; paymentPageUrl?: string; token?: string; status: string; errorMessage?: string; errorCode?: string }> {
   const fiyat = g.fiyatTl.toFixed(2);
   const [ad, ...kalan] = (g.aliciAdSoyad || "RaySim Kullanıcı").split(" ");
   const soyad = kalan.join(" ") || "-";
@@ -95,6 +96,7 @@ export async function odemeBaslat(g: OdemeBaslatGirdi): Promise<{ paymentPageUrl
   };
   const y = await iyzicoPost("/payment/iyzipos/checkoutform/initialize/auth/ecom", govde);
   return {
+    checkoutFormContent: y.checkoutFormContent as string | undefined,
     paymentPageUrl: y.paymentPageUrl as string | undefined,
     token: y.token as string | undefined,
     status: (y.status as string) ?? "failure",

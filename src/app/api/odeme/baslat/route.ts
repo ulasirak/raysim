@@ -49,13 +49,14 @@ export async function POST(req: Request) {
       aliciUid: uid,
       cardUserKey,
     });
-    if (sonuc.status !== "success" || !sonuc.paymentPageUrl) {
+    if (sonuc.status !== "success" || (!sonuc.checkoutFormContent && !sonuc.paymentPageUrl)) {
       return NextResponse.json(
         { hata: `Ödeme başlatılamadı: ${sonuc.errorMessage ?? "bilinmeyen hata"}` },
         { status: 502 },
       );
     }
-    return NextResponse.json({ odemeUrl: sonuc.paymentPageUrl });
+    // İçerik = modal-içi gömme (site içinde kalır); odemeUrl = yedek (yeni sekme).
+    return NextResponse.json({ icerik: sonuc.checkoutFormContent, odemeUrl: sonuc.paymentPageUrl });
   } catch (e) {
     return NextResponse.json({ hata: e instanceof Error ? e.message : "Ödeme hatası." }, { status: 500 });
   }

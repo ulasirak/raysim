@@ -18,8 +18,14 @@ interface CuzdanCtx {
   yenile: () => Promise<void>;
   /** Ücretli eylem için krediyi sunucuda düşer. Dönüş: {tamam, bakiye, gereken?, mevcut?}. */
   krediHarca: (eylem: KrediEylemi, ref?: string) => Promise<HarcamaSonuc>;
-  /** Kredi paketi satın almayı başlatır; iyzico ödeme sayfasına yönlendirir. */
+  /** Kredi paketi satın almayı başlatır; iyzico formunu MODAL içinde açar (siteden çıkmaz). */
   krediSatinAl: (paketId: string) => Promise<{ hata?: string }>;
+  /** Açık ödeme modalının iyzico gömme içeriği (null = kapalı). */
+  odemeIcerik: string | null;
+  /** Gömme başarısızsa yeni sekmede açılacak yedek iyzico URL'i. */
+  odemeUrlYedek: string | null;
+  /** Ödeme modalını kapatır (kullanıcı vazgeçti → sitede kalır). */
+  odemeKapat: () => void;
   /** Ödeme dönüşü sonucu (iyzico callback'ten): kullanıcıya banner gösterilir. */
   odemeSonucu: "basarili" | "hata" | null;
   odemeSonucuTemizle: () => void;
@@ -41,6 +47,9 @@ export function CuzdanProvider({ children }: { children: React.ReactNode }) {
   const [bakiye, setBakiye] = useState<number | null>(null);
   const [odemeSonucu, setOdemeSonucu] = useState<"basarili" | "hata" | null>(null);
   const odemeSonucuTemizle = useCallback(() => setOdemeSonucu(null), []);
+  const [odemeIcerik, setOdemeIcerik] = useState<string | null>(null);
+  const [odemeUrlYedek, setOdemeUrlYedek] = useState<string | null>(null);
+  const odemeKapat = useCallback(() => { setOdemeIcerik(null); setOdemeUrlYedek(null); }, []);
 
   const yenile = useCallback(async () => {
     if (!user || !isFirebaseConfigured()) { setBakiye(null); return; }
@@ -100,8 +109,11 @@ export function CuzdanProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify({ paketId, donusYolu }),
     });
     const veri = await yanit.json().catch(() => ({}));
-    if (yanit.ok && veri.odemeUrl) {
-      window.location.href = veri.odemeUrl; // iyzico ödeme sayfası
+    if (yanit.ok && (veri.icerik || veri.odemeUrl)) {
+      // Modal-içi gömme: kullanıcı SİTEDEN ÇIKMAZ → vazgeçince (Kapat) yerinde kalır.
+      // Gömme yoksa yalnız yedek URL tutulur (modal "yeni sekmede aç" sunar).
+      setOdemeUrlYedek(veri.odemeUrl ?? null);
+      setOdemeIcerik(veri.icerik ?? "");
       return {};
     }
     return { hata: veri.hata ?? `Ödeme başlatılamadı (${yanit.status}).` };
@@ -130,7 +142,7 @@ export function CuzdanProvider({ children }: { children: React.ReactNode }) {
   }, [yenile]);
 
   return (
-    <Ctx.Provider value={{ bakiye, yenile, krediHarca, krediSatinAl, odemeSonucu, odemeSonucuTemizle }}>
+    <Ctx.Provider value={{ bakiye, yenile, krediHarca, krediSatinAl, odemeIcerik, odemeUrlYedek, odemeKapat, odemeSonucu, odemeSonucuTemizle }}>
       {children}
     </Ctx.Provider>
   );
