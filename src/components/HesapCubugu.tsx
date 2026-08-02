@@ -16,6 +16,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { useHesap } from "@/components/SimConfigProvider";
 import { useCuzdan } from "@/components/CuzdanProvider";
 import { KREDI_PAKETLERI, paketAvantaj, hareketleriGetir, type KrediHareket } from "@/lib/cuzdan";
+import { getAuthInstance } from "@/lib/firebase";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 
@@ -42,10 +43,30 @@ export function HesapKontrolleri() {
   const { user, hazir, yapilandirildi, cikisYap } = useAuth();
   const {
     demoMu, paylasimGorunumu, durum, hataMetni, projeler, aktifId, aktifAd,
-    paylasimAcik, kota, kotaDoldu,
+    paylasimAcik, kota, kotaDoldu, yonetici,
     projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle, paylasimDegistir,
   } = useHesap();
-  const { bakiye, krediSatinAl } = useCuzdan();
+  const { bakiye, krediSatinAl, yenile } = useCuzdan();
+  const [testKrediMesgul, setTestKrediMesgul] = useState(false);
+
+  // Yönetici: kendi hesabına test kredisi ekler (ödeme akışını denemek için).
+  const testKrediEkle = async () => {
+    setTestKrediMesgul(true); setOdemeHata(null);
+    try {
+      const token = await getAuthInstance()?.currentUser?.getIdToken();
+      if (!token) { setOdemeHata("Oturum bulunamadı."); return; }
+      const y = await fetch("/api/admin/kredi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ miktar: 1000 }),
+      });
+      const v = await y.json().catch(() => ({}));
+      if (!y.ok) { setOdemeHata(v.hata ?? `Eklenemedi (${y.status}).`); return; }
+      await yenile();
+    } catch (e) {
+      setOdemeHata(e instanceof Error ? e.message : "Kredi eklenemedi.");
+    } finally { setTestKrediMesgul(false); }
+  };
 
   const [yeniAcik, setYeniAcik] = useState(false);
   const [odemeHata, setOdemeHata] = useState<string | null>(null);
@@ -198,6 +219,13 @@ export function HesapKontrolleri() {
                 })}
               </div>
               {odemeHata && <div className="mt-1 text-[0.7rem]" style={{ color: brand.red }}>{odemeHata}</div>}
+              {yonetici && (
+                <button onClick={testKrediEkle} disabled={testKrediMesgul}
+                  className="mt-2 rounded border px-2 py-1 text-[0.7rem] font-medium transition hover:bg-slate-50 disabled:opacity-50"
+                  style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
+                  {testKrediMesgul ? "Ekleniyor…" : "＋ 1000 test kredisi (yönetici)"}
+                </button>
+              )}
             </div>
 
             {/* Kredi geçmişi — satın alma + harcama hareketleri (denetim) */}
