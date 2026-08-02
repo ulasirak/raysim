@@ -12,14 +12,11 @@ import type { RollingStock } from "@/lib/anaray/types";
 import { makasBolgeId } from "@/lib/anaray/interlocking";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import type { SimConfig } from "@/lib/anaray/config";
-import { tramvaylar } from "@/lib/anaray/vehicles";
 import { brand } from "@/lib/anaray/brand";
 import { CK, SERI } from "@/lib/anaray/chartkit";
 import { kmh, sure } from "@/lib/anaray/format";
 import {
   MAKAS_TIP_AD,
-  loopDenge,
-  olceklenme,
   ringChallenge,
   ringDogrula,
   ringKisitDizisi,
@@ -43,17 +40,13 @@ export function RingEditor() {
   const { cfg } = useSimConfig();
   const { rings, setRings, sifirlaRings, meta, yonetici, yukleniyor } = useProje();
   // Araç ve işletme parametreleri KALICI (projeye kayıtlı) — tek kaynak.
-  const { arac: stock, setArac } = useArac();
-  const { isletme, patchIsletme } = useIsletme();
-  const kapali = isletme.kapali;
+  const { arac: stock } = useArac();
+  const { patchIsletme } = useIsletme();
   const setKapali = (v: boolean) => patchIsletme({ kapali: v });
   const [acik, setAcik] = useState<Record<string, boolean>>(() => (rings[0] ? { [rings[0].id]: true } : {}));
 
-  const denge = useMemo(() => loopDenge(rings, stock, cfg), [rings, stock, cfg]);
-  const olcek = useMemo(() => olceklenme(rings, stock, kapali, cfg), [rings, stock, kapali, cfg]);
   const oneriler = useMemo(() => dengeOnerisi(rings, stock, cfg), [rings, stock, cfg]);
   const tumEksik = useMemo(() => rings.flatMap((r) => ringDogrula(r, cfg)), [rings, cfg]);
-  const loopTam = tumEksik.length === 0 && rings.length > 0;
 
   // — güncelleyiciler —
   const patch = (id: string, p: Partial<DurakArasiRing>) =>
@@ -111,8 +104,6 @@ export function RingEditor() {
   const tnSil = (rid: string, tid: string) =>
     setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, tehlikeNoktalari: r.tehlikeNoktalari.filter((t) => t.id !== tid) } : r)));
 
-  const maxWorst = Math.max(1, ...denge.perRing.map((p) => p.worstToplam));
-
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
       {/* Başlık */}
@@ -130,62 +121,6 @@ export function RingEditor() {
           {yonetici ? "↺ Vitrin hattına dön" : "🗑 Hattı temizle"}
         </button>
       </div>
-
-      {/* Loop özeti + ölçeklenme — hat boşken gösterilecek bir ölçek yok */}
-      {rings.length > 0 && (
-      <Panel baslik="Loop (Çevrim) Özeti & Ölçeklenme" aciklama="Ringler zincirlenerek loop (çevrim) oluşturur. Worst-case (en kötü durum; belge: 1500 m + makas + hemzemin) her hücrenin 240 s headway'e (sefer aralığı) sığması gerekir. Tren sayısı arttıkça darboğaz en yavaş ringdir.">
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <select
-            value={tramvaylar.some((a) => a.id === stock.id) ? stock.id : ""}
-            onChange={(e) => { const v = tramvaylar.find((a) => a.id === e.target.value); if (v) setArac({ ...v }); }}
-            className="rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }}>
-            {tramvaylar.map((a) => (<option key={a.id} value={a.id}>{a.name}</option>))}
-          </select>
-          <label className="flex items-center gap-2 text-sm" style={{ color: brand.inkSoft }}>
-            <input type="checkbox" checked={kapali} onChange={(e) => setKapali(e.target.checked)} />
-            Kapalı hat (ring / sürekli loop)
-          </label>
-          <span className="text-xs" style={{ color: brand.muted }}>{kapali ? "Tur = ringlerin tek geçişi" : "Açık hat — tur gidiş+dönüş"}</span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <MiniStat etiket="Ring (hücre) sayısı" deger={`${rings.length}`} alt={loopTam ? "şartlar tam ✓" : `${tumEksik.length} eksik`} vurgu={loopTam ? OK : brand.red} />
-          <MiniStat etiket="Tur süresi (worst)" deger={sure(olcek.turSuresi)} alt={kapali ? "kapalı loop" : "gidiş+dönüş"} />
-          <MiniStat etiket="Darboğaz ring" deger={olcek.darbogazRing ? sure(olcek.darbogazRing.worstToplam) : "—"} alt={olcek.darbogazRing?.ad ?? ""} vurgu={brand.red} />
-          <MiniStat etiket={`${cfg.headway} s headway'de tren`} deger={`${olcek.maxTrenHedefHeadway}`} alt={olcek.headwayUygun ? "tüm ringler uygun ✓" : "ihlal var ⚠"} vurgu={olcek.headwayUygun ? OK : brand.red} />
-        </div>
-
-        {/* Denge — durak-çiftleri arası eşit şartlar */}
-        <div className="mt-4">
-          <div className="field-label mb-2 flex items-center justify-between">
-            <span>Durak-çiftleri dengesi (eşit şartlar)</span>
-            {denge.perRing.length > 0 && (
-              <span style={{ color: denge.dengeli ? OK : brand.red }}>
-                {denge.dengeli ? "✓ Dengeli — headway kararlı" : `⚠ Dengesiz (%${denge.sapmaYuzde.toFixed(0)} sapma) — en yavaş ring darboğaz`}
-              </span>
-            )}
-          </div>
-          <div className="flex h-28 items-end gap-1.5">
-            {denge.perRing.map((p) => {
-              const ihlal = p.worstToplam > cfg.headway;
-              const col = ihlal ? brand.red : p.id === denge.enYavas?.id ? brand.redSoft : brand.route;
-              return (
-                <div key={p.id} className="flex flex-1 flex-col items-center gap-1">
-                  <span className="text-[0.6rem] font-medium" style={{ color: brand.faint }}>{sure(p.worstToplam)}</span>
-                  <div className="w-full rounded-t transition-all" style={{ height: `${(p.worstToplam / maxWorst) * 100}%`, minHeight: 3, background: col }} title={p.ad} />
-                  <span className="max-w-full truncate text-[0.6rem]" style={{ color: brand.faint }} title={p.ad}>{p.ad.split("→").pop()?.trim()}</span>
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-1 flex items-center gap-2 text-[0.65rem]" style={{ color: brand.muted }}>
-            <span>Ortalama {sure(denge.ortalama)}</span>
-            <span>·</span>
-            <span style={{ color: brand.red }}>■ 240 s ihlali / darboğaz</span>
-          </div>
-        </div>
-      </Panel>
-      )}
 
       {/* Eşit şartlar — durak-çiftleri dengeleme önerisi */}
       {oneriler.length > 0 && (

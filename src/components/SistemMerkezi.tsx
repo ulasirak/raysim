@@ -11,8 +11,6 @@ import Link from "next/link";
 import { brand } from "@/lib/anaray/brand";
 import { sure, kmh } from "@/lib/anaray/format";
 import { useSimConfig, useProje, useArac } from "@/components/SimConfigProvider";
-import { loopDenge, olceklenme, ringSenaryo } from "@/lib/anaray/ring";
-import { bolgeSeed, simuleEtAnklasman } from "@/lib/anaray/interlocking";
 import { blockingTimeRing, type BlokSperr } from "@/lib/anaray/blockingtime";
 import { loopToHat } from "@/lib/anaray/hatsim";
 import { BlockingStairChart } from "@/components/BlockingStairChart";
@@ -59,20 +57,6 @@ export function SistemMerkezi() {
   const { rings } = useProje();
   const { arac: stock } = useArac();
 
-  // Canlı durum — mevcut cfg + paylaşılan hat (ringler) ile çözülür
-  const denge = useMemo(() => loopDenge(rings, stock, cfg), [rings, stock, cfg]);
-  const olcek = useMemo(() => olceklenme(rings, stock, true, cfg), [rings, stock, cfg]);
-  const zoneler = useMemo(() => bolgeSeed(), []);
-  const zoneDurum = useMemo(
-    () =>
-      zoneler.map((z) => {
-        const istek = Array.from({ length: 4 }, (_, i) => ({ t: i * 20, rotaId: z.rotalar[i % z.rotalar.length].id, trenId: `T${i + 1}` }));
-        const r = simuleEtAnklasman(z, istek, { cfg });
-        return { z, maxEs: r.maxEszamanli, throughput: r.throughput, ortBekleme: r.ortBekleme };
-      }),
-    [zoneler, cfg]
-  );
-  const ihlaller = useMemo(() => rings.filter((r) => !ringSenaryo(r, stock, cfg).headwayUygun), [rings, stock, cfg]);
   // Hat boşken (yeni hesap / yeni proje) çözülecek bir şey yoktur: canlı durum ve
   // blocking-time panelleri gizlenir, parametre girişi açık kalır.
   const bosHat = rings.length === 0;
@@ -95,12 +79,6 @@ export function SistemMerkezi() {
       .sort((a, z) => z.b.toplam - a.b.toplam);
   }, [bt, btModel, rings]);
 
-  const uyarilar: { tip: "err" | "warn"; metin: string }[] = [];
-  if (ihlaller.length) uyarilar.push({ tip: "err", metin: `${ihlaller.length} ring ${cfg.headway} s headway'i aşıyor: ${ihlaller.map((r) => r.ad).join(", ")}` });
-  if (!denge.dengeli) uyarilar.push({ tip: "warn", metin: `Durak-çiftleri dengesiz (%${denge.sapmaYuzde.toFixed(0)} sapma) — darboğaz: ${denge.enYavas?.ad}` });
-  const bekleyenZone = zoneDurum.filter((z) => z.ortBekleme > 5);
-  if (bekleyenZone.length) uyarilar.push({ tip: "warn", metin: `${bekleyenZone.length} makas bölgesinde çakışma kuyruğu birikiyor` });
-
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
       <div className="mb-6 flex items-end justify-between border-b pb-4" style={{ borderColor: brand.border }}>
@@ -116,54 +94,6 @@ export function SistemMerkezi() {
           Parametreleri header&apos;daki (üst çubuk) <b>⚙ Parametreler</b> butonundan, hattı{" "}
           <Link href="/ringler" className="underline">Ringler modülünden</Link> kurabilirsiniz.
         </div>
-      )}
-
-      {/* Canlı sistem durumu — hero */}
-      {!bosHat && (
-      <Panel baslik="Canlı Sistem Durumu" aciklama="Aşağıdaki parametrelerle proje hattı (ring loop + makas bölgeleri) anlık çözülür. Parametreyi değiştir → tüm sistem canlı güncellenir.">
-        {uyarilar.length > 0 ? (
-          <div className="mb-4 flex flex-col gap-1.5">
-            {uyarilar.map((u, i) => (
-              <div key={i} className="rounded border px-3 py-2 text-sm" style={{ borderColor: u.tip === "err" ? CK.red : CK.amber, background: u.tip === "err" ? CK.badBgSoft : CK.amberBg, color: u.tip === "err" ? CK.red : CK.amberInk }}>
-                {u.tip === "err" ? "⚠ " : "▲ "}{u.metin}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="mb-4 rounded border px-3 py-2 text-sm" style={{ borderColor: OK, background: CK.goodBgSoft, color: OK }}>✓ Tüm ringler headway&apos;e sığıyor, denge korunuyor, bölgelerde kuyruk yok.</div>
-        )}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <MiniStat etiket="Loop tur süresi" deger={sure(olcek.turSuresi)} alt="worst-case, kapalı hat" />
-          <MiniStat etiket="Darboğaz ring" deger={olcek.darbogazRing ? sure(olcek.darbogazRing.worstToplam) : "—"} alt={olcek.darbogazRing?.ad} vurgu={brand.red} />
-          <MiniStat etiket={`${cfg.headway} s'de tren`} deger={`${olcek.maxTrenHedefHeadway}`} alt={olcek.headwayUygun ? "uygun ✓" : "ihlal ⚠"} vurgu={olcek.headwayUygun ? OK : brand.red} />
-          <MiniStat etiket="Denge" deger={denge.dengeli ? "Dengeli" : `%${denge.sapmaYuzde.toFixed(0)} sapma`} vurgu={denge.dengeli ? OK : brand.red} />
-        </div>
-        <div className="mt-3 text-xs" style={{ color: brand.faint }}>
-          Makas bölgeleri, el kitabı MAZ-VA-AKS-001 <b>referans topolojilerinden</b> çözülür (hattınızın makas geometrisinden türetilmez); mevcut parametrelerle canlı işletilir.
-        </div>
-        <div className="mt-2 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left" style={{ borderColor: brand.borderStrong, color: brand.muted }}>
-                <th className="py-2 font-medium">Makas bölgesi</th>
-                <th className="py-2 font-medium">Maks. eşzamanlı</th>
-                <th className="py-2 font-medium">Throughput (geçiş debisi)</th>
-                <th className="py-2 font-medium">Ort. bekleme</th>
-              </tr>
-            </thead>
-            <tbody>
-              {zoneDurum.map(({ z, maxEs, throughput, ortBekleme }) => (
-                <tr key={z.id} className="border-b" style={{ borderColor: brand.border }}>
-                  <td className="py-2" style={{ color: brand.ink }}>{z.ad}</td>
-                  <td className="py-2 font-mono" style={{ color: maxEs > 1 ? OK : brand.inkSoft }}>{maxEs} {maxEs > 1 ? "(paralel)" : "(tek tren)"}</td>
-                  <td className="py-2 font-mono" style={{ color: brand.inkSoft }}>{throughput.toFixed(0)}/sa</td>
-                  <td className="py-2 font-mono" style={{ color: ortBekleme > 5 ? brand.red : brand.inkSoft }}>{sure(ortBekleme)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Panel>
       )}
 
       {/* Blocking-Time (Sperrzeitentreppe) + UIC 406 */}

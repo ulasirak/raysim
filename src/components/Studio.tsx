@@ -328,9 +328,7 @@ function StudioIc() {
               </select>
               <div className="grid grid-cols-2 gap-3">
                 <Num label="Azami Hız" suffix="km/h" step={5} value={round(kmh(stock.maxSpeed))} onChange={(v) => patchStock({ maxSpeed: v * KMH })} />
-                <Num label="Güç" suffix="kW" step={25} value={round(stock.power / 1000)} onChange={(v) => patchStock({ power: v * 1000 })} />
                 <Num label="Kütle" suffix="t" step={1} value={round(stock.mass / 1000)} onChange={(v) => patchStock({ mass: v * 1000 })} />
-                <Num label="Çekiş" suffix="kN" step={2} value={round(stock.startingTractiveEffort / 1000)} onChange={(v) => patchStock({ startingTractiveEffort: v * 1000 })} />
                 <Num label="Fren" suffix="m/s²" step={0.1} value={round(stock.maxBraking, 1)} onChange={(v) => patchStock({ maxBraking: v })} />
               </div>
             </div>
