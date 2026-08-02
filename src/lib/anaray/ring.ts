@@ -526,23 +526,49 @@ export function durakAdiDegistir(rings: DurakArasiRing[], i: number, ad: string)
   });
 }
 
-/** Başa durak ekle (yeni durak → mevcut ilk durak). */
-export function durakEkleBas(rings: DurakArasiRing[]): DurakArasiRing[] {
+/** Yeni ring — verilen mesafeyle (yoksa yeniRing varsayılanı). */
+function mesafeliRing(from: string, to: string, mesafe?: number): DurakArasiRing {
+  const r = yeniRing(from, to);
+  if (mesafe != null && mesafe > 0) {
+    r.uzunluk = Math.max(50, Math.round(mesafe));
+    r.bestUzunluk = clamp(r.bestUzunluk, 50, r.uzunluk);
+    r.worstUzunluk = Math.max(r.uzunluk, r.worstUzunluk);
+  }
+  return r;
+}
+
+/** Başa durak ekle (yeni durak → mevcut ilk durak). `mesafe` verilirse o uzunlukla. */
+export function durakEkleBas(rings: DurakArasiRing[], mesafe?: number): DurakArasiRing[] {
   const ilk = rings[0];
-  return [yeniRing("Yeni Durak", ilk ? ilk.fromAd : "Son Durak"), ...rings];
+  return [mesafeliRing("Yeni Durak", ilk ? ilk.fromAd : "Son Durak", mesafe), ...rings];
 }
 
-/** Sona durak ekle (mevcut son durak → yeni durak). */
-export function durakEkleSon(rings: DurakArasiRing[]): DurakArasiRing[] {
+/** Sona durak ekle (mevcut son durak → yeni durak). `mesafe` verilirse o uzunlukla. */
+export function durakEkleSon(rings: DurakArasiRing[], mesafe?: number): DurakArasiRing[] {
   const son = rings[rings.length - 1];
-  return [...rings, yeniRing(son ? son.toAd : "Başlangıç Durağı", "Yeni Durak")];
+  return [...rings, mesafeliRing(son ? son.toAd : "Başlangıç Durağı", "Yeni Durak", mesafe)];
 }
 
-/** Ring `index`'i ikiye bölerek ORTASINA durak ekle. Kısıtlar konuma göre paylaştırılır. */
-export function durakBol(rings: DurakArasiRing[], index: number): DurakArasiRing[] {
+/**
+ * Toplam uzunluk + durak sayısından hattı KUR (hızlı ilk taslak): (n-1) ring,
+ * her biri eşit mesafe. Sonra kullanıcı adları/mesafeleri ince ayarlar.
+ */
+export function duraklardanHat(toplamUzunluk: number, durakSayisi: number): DurakArasiRing[] {
+  const n = Math.max(2, Math.round(durakSayisi));
+  const ringSayisi = n - 1;
+  const seg = Math.max(50, Math.round(Math.max(50, toplamUzunluk) / ringSayisi));
+  const ad = (i: number) => (i === 0 ? "Başlangıç Durağı" : i === n - 1 ? "Son Durak" : `Durak ${i + 1}`);
+  return Array.from({ length: ringSayisi }, (_, i) => mesafeliRing(ad(i), ad(i + 1), seg));
+}
+
+/**
+ * Ring `index`'i ikiye bölerek ORTASINA durak ekle. `konum` verilirse orada (0..uzunluk),
+ * yoksa ortadan böler. Kısıtlar bölme noktasına göre paylaştırılır.
+ */
+export function durakBol(rings: DurakArasiRing[], index: number, konum?: number): DurakArasiRing[] {
   const r = rings[index];
   if (!r) return rings;
-  const yari = clamp(Math.round(r.uzunluk / 2), 1, Math.max(1, r.uzunluk - 1));
+  const yari = clamp(Math.round(konum ?? r.uzunluk / 2), 1, Math.max(1, r.uzunluk - 1));
   const kalan = Math.max(1, r.uzunluk - yari);
   const oncesi = <T extends { konum: number }>(xs: T[]) => xs.filter((o) => o.konum <= yari);
   const sonrasi = <T extends { konum: number }>(xs: T[]) => xs.filter((o) => o.konum > yari).map((o) => ({ ...o, konum: o.konum - yari }));

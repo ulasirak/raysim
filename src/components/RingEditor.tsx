@@ -32,6 +32,7 @@ import {
   durakEkleSon,
   durakBol,
   durakSil,
+  duraklardanHat,
   type DurakArasiRing,
   type HemzeminTip,
   type KisitTur,
@@ -72,6 +73,13 @@ export function RingEditor() {
   const tumEksik = useMemo(() => rings.flatMap((r) => ringDogrula(r, cfg)), [rings, cfg]);
   // Durak zinciri (ring uçlarından türer) — üstteki hızlı durak editörü için.
   const duraklar = useMemo(() => ringDuraklari(rings), [rings]);
+  // Durak ekleme yardımcı girdileri: hızlı kurulum (toplam+sayı), ekleme mesafesi,
+  // ortaya bölme konumu (hangi ring + hangi metre).
+  const [hizliToplam, setHizliToplam] = useState(6000);
+  const [hizliSayi, setHizliSayi] = useState(7);
+  const [ekMesafe, setEkMesafe] = useState(1000);
+  const [bolRing, setBolRing] = useState<string | null>(null);
+  const [bolKonum, setBolKonum] = useState(500);
 
   // — güncelleyiciler —
   const patch = (id: string, p: Partial<DurakArasiRing>) =>
@@ -159,23 +167,53 @@ export function RingEditor() {
         <div className="mt-4">
           <Panel baslik="Duraklar & Mesafeler" aciklama="Hattın başladığı yer: durakları ve aralarındaki mesafe/hızları buradan gir. Başa · ortaya · sona durak ekle, adları düzenle. Her durak-arası bir işletim hücresi (ring) oluşturur — detaylı şartlar aşağıdaki kartlarda. Değişiklikler anında kaydedilir.">
             {duraklar.length === 0 ? (
-              <div className="rounded-md border-2 border-dashed px-6 py-8 text-center" style={{ borderColor: brand.border }}>
-                <div className="font-brand text-base font-semibold" style={{ color: brand.ink }}>Hattınız boş — buradan başlayın</div>
-                <p className="mx-auto mt-1 max-w-lg text-xs leading-relaxed" style={{ color: brand.muted }}>
-                  İlk durak-arasını ekleyin: iki durak arasında bir işletim hücresi (ring) oluşur. Sonra başa/ortaya/sona
-                  durak ekleyip mesafe ve hızları girin; diğer modüller aynı anda bu hatta göre hesaplamaya başlar.
-                </p>
-                <button onClick={() => setRings(durakEkleSon)}
-                  className="mt-4 inline-block rounded-md px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: brand.red }}>
-                  ＋ İlk durak-arasını ekle
-                </button>
+              <div className="rounded-md border-2 border-dashed px-6 py-6" style={{ borderColor: brand.border }}>
+                <div className="text-center">
+                  <div className="font-brand text-base font-semibold" style={{ color: brand.ink }}>Hattınız boş — buradan başlayın</div>
+                  <p className="mx-auto mt-1 max-w-lg text-xs leading-relaxed" style={{ color: brand.muted }}>
+                    <b>Toplam uzunluk + durak sayısı</b> gir → hat eşit bölünür; sonra adları ve mesafeleri tek tek düzenlersin.
+                    (Tek tek de başlayabilirsin.)
+                  </p>
+                </div>
+                {/* Hızlı kurulum: toplam + sayı → eşit böl */}
+                <div className="mx-auto mt-4 flex max-w-md flex-wrap items-end justify-center gap-3">
+                  <label className="block">
+                    <span className="field-label">Toplam uzunluk</span>
+                    <div className="mt-1 flex items-center gap-1">
+                      <input type="number" min={100} step={100} value={hizliToplam} onChange={(e) => setHizliToplam(Math.max(100, parseFloat(e.target.value) || 0))}
+                        className="w-24 rounded border px-2 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+                      <span className="text-xs" style={{ color: brand.muted }}>m</span>
+                    </div>
+                  </label>
+                  <label className="block">
+                    <span className="field-label">Durak sayısı</span>
+                    <input type="number" min={2} step={1} value={hizliSayi} onChange={(e) => setHizliSayi(Math.max(2, Math.round(parseFloat(e.target.value) || 2)))}
+                      className="mt-1 w-20 rounded border px-2 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+                  </label>
+                  <button onClick={() => setRings(duraklardanHat(hizliToplam, hizliSayi))}
+                    className="rounded-md px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: brand.red }}>
+                    Hattı kur ({hizliSayi} durak · {Math.round(hizliToplam / Math.max(1, hizliSayi - 1))} m ara)
+                  </button>
+                </div>
+                <div className="mt-3 text-center">
+                  <button onClick={() => setRings(durakEkleSon)} className="text-xs underline" style={{ color: brand.muted }}>veya tek durak-arasıyla başla →</button>
+                </div>
               </div>
             ) : (
             <>
-            <button onClick={() => setRings(durakEkleBas)}
-              className="mb-2 w-full rounded-md border-2 border-dashed py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
-              ⇤ Başa durak ekle
-            </button>
+            {/* Ekleme mesafesi + başa/sona ekle — yeni durak SEÇTİĞİN mesafeyle eklenir. */}
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
+              <span className="text-xs font-medium" style={{ color: brand.inkSoft }}>Yeni durak mesafesi</span>
+              <input type="number" min={50} step={50} value={ekMesafe} onChange={(e) => setEkMesafe(Math.max(50, parseFloat(e.target.value) || 0))}
+                className="w-24 rounded border px-2 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+              <span className="text-xs" style={{ color: brand.muted }}>m</span>
+              <div className="ml-auto flex gap-2">
+                <button onClick={() => setRings((rs) => durakEkleBas(rs, ekMesafe))}
+                  className="rounded-md border px-3 py-1 text-xs font-medium transition hover:bg-white" style={{ borderColor: brand.borderStrong, color: brand.ink }}>⇤ Başa ekle</button>
+                <button onClick={() => setRings((rs) => durakEkleSon(rs, ekMesafe))}
+                  className="rounded-md border px-3 py-1 text-xs font-medium transition hover:bg-white" style={{ borderColor: brand.borderStrong, color: brand.ink }}>Sona ekle ⇥</button>
+              </div>
+            </div>
             <div className="flex flex-col">
               {duraklar.map((d, i) => (
                 <div key={`durak-${i}`}>
@@ -214,19 +252,28 @@ export function RingEditor() {
                           onChange={(e) => patch(rings[i].id, { vmax: Math.max(5, parseFloat(e.target.value) || 0) * KMH })}
                           className="w-16 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /> km/h
                       </span>
-                      <button onClick={() => setRings((rs) => durakBol(rs, i))} title="Bu ringi ikiye bölerek ortaya durak ekle"
-                        className="rounded border px-2 py-0.5 font-medium transition hover:bg-slate-50" style={{ borderColor: brand.border, color: brand.ink }}>
-                        ＋ ortaya durak
-                      </button>
+                      {bolRing === rings[i].id ? (
+                        <span className="flex items-center gap-1">
+                          böl:
+                          <input type="number" min={1} max={Math.max(1, Math.round(rings[i].uzunluk) - 1)} step={50} value={bolKonum}
+                            onChange={(e) => setBolKonum(Math.max(1, parseFloat(e.target.value) || 1))}
+                            className="w-16 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /> m
+                          <button onClick={() => { setRings((rs) => durakBol(rs, i, bolKonum)); setBolRing(null); }}
+                            className="rounded px-1.5 py-0.5 font-semibold text-white" style={{ background: brand.ink }}>böl</button>
+                          <button onClick={() => setBolRing(null)} className="rounded px-1" style={{ color: brand.muted }} title="Vazgeç">✕</button>
+                        </span>
+                      ) : (
+                        <button onClick={() => { setBolRing(rings[i].id); setBolKonum(Math.round(rings[i].uzunluk / 2)); }}
+                          title="Bu ringi seçtiğin konumda bölerek ortaya durak ekle (varsayılan: orta)"
+                          className="rounded border px-2 py-0.5 font-medium transition hover:bg-slate-50" style={{ borderColor: brand.border, color: brand.ink }}>
+                          ＋ ortaya durak
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
               ))}
             </div>
-            <button onClick={() => setRings(durakEkleSon)}
-              className="mt-2 w-full rounded-md border-2 border-dashed py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
-              Sona durak ekle ⇥
-            </button>
             </>
             )}
           </Panel>
