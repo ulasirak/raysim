@@ -16,6 +16,7 @@ import { Kapi, useErisim } from "@/components/Kapi";
 import { BOLUM_SLUG, type BolumSlug } from "@/components/TekSayfa";
 import { BasaDonButonu } from "@/components/BasaDonButonu";
 import { KayitBildirimi } from "@/components/KayitBildirimi";
+import { ParametreDuzenleButonu } from "@/components/ParametreDuzenleButonu";
 import { brand } from "@/lib/anaray/brand";
 
 interface Modul {
@@ -184,7 +185,7 @@ function Govde({ children }: { children: React.ReactNode }) {
   return (
     <>
       {/* Header: marka + sağ slotta hesap/hat kontrolleri (girişsizken slot boş → sade) */}
-      <Masthead sag={<HesapKontrolleri />} />
+      <Masthead sag={<div className="flex flex-wrap items-center justify-end gap-3"><ParametreDuzenleButonu /><HesapKontrolleri /></div>} />
 
       {/* Modül navigasyonu — sistemin mantıksal iş akışı bir METRO HATTI olarak:
           altı istasyon soldan sağa boru hattı; kaydırma ilerlemesi rayda akan bir
