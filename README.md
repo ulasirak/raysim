@@ -1,10 +1,10 @@
 # RaySim — Demiryolu Ağı Simülasyon Sistemi
 
-Mikroskobik tren hareketi, sinyalizasyon ve kapasite analizi için web tabanlı,
-**çok-kiracılı** demiryolu simülasyon platformu. Blocking-time
-(Sperrzeitentreppe) ve UIC 406 metodolojisine dayanan bağımsız fizik + sinyal
-çekirdeği; her hesap kendi hatlarını kurar, analiz eder ve baskıya hazır teknik
-rapor üretir.
+Web tabanlı, **çok-kiracılı** demiryolu ağı simülasyon platformu. Bir hattı
+kurar (duraklar, mesafeler, makas/hemzemin/tehlike kısıtları), **çift şeritli
+canlı sefer simülasyonuyla** gerçek zamanlı işletir, sabit blok sinyalizasyonunu
+ve kapasiteyi teşhis eder, baskıya hazır teknik rapor üretir. Her hesap kendi
+hatlarını sıfırdan kurar.
 
 **Canlı:** https://raysim.vercel.app
 
@@ -22,7 +22,7 @@ gösterir.
 | Faz | Modül | Kod | İçerik |
 |-----|-------|-----|--------|
 | **KUR** | Durak Arası Ringler | SR-0001 | Duraklar & mesafeler · durak-arası hücreler · makas/hemzemin/tehlike kısıtları · worst/best · loop (çevrim) |
-| **ANALİZ** | Sefer Simülasyonu | SR-0002 | Canlı ağ · fizik · headway · sabit/hareketli blok · kapasite |
+| **ANALİZ** | Sefer Simülasyonu | SR-0002 | Canlı çift-şerit ağ · fizik · headway · sabit blok sinyalizasyon · gecikme robustluğu |
 | **ANALİZ** | Sistem Merkezi | SR-0003 | Parametreler · canlı durum · Sperrzeitentreppe · blocking-time · teşhis |
 | **BELGELE** | Teknik Belgeler | SR-0004 | Ücretli PDF rapor · düzenlenebilir Word/Excel tasarım el kitabı |
 
@@ -53,11 +53,12 @@ kaynaktan (`src/lib/cuzdan.ts`) sabittir; istemci fiyat/kredi yollayamaz.
 
 ## Teknik çekirdek
 
+- **Canlı simülasyon:** çift şeritli (gidiş/dönüş) gerçek zamanlı sefer, sabit
+  blok 3-fener sinyalizasyon, sevkçi blok arızası, parklanma (depo) servisi
 - **Fizik:** Davis direnci, eğim, P/v çekiş sınırı, önden fren eğrisi
-- **Sinyalizasyon:** sabit blok + hareketli blok (CBTC), makas bölgesi kısıtları,
-  tren-boyu işgal
-- **Kapasite:** blocking-time (6 bileşen), UIC 406, Monte-Carlo gecikme yayılımı
-  (histogram + yayılım şeridi), enerji + rejeneratif geri kazanım
+- **Sinyalizasyon:** sabit blok, makas bölgesi kısıtları, tren-boyu işgal
+- **Kapasite & robustluk:** blocking-time (6 bileşen), UIC 406 doluluk, Monte-Carlo
+  gecikme yayılımı (histogram + yayılım şeridi)
 - **Rapor:** amblemli kapak + KPI kartları + hat şeması + blocking-time grafiği;
   site ile aynı tipografi (Geist gövde, Spectral başlık), baskıya hazır A4
 
@@ -79,7 +80,7 @@ src/
       odeme/           # baslat / callback — iyzico
   components/          # AppShell, RingEditor, Studio, Belgeler, sağlayıcılar…
   lib/
-    anaray/            # ÇEKİRDEK: fizik, sinyal, kapasite, enerji, rapor, tipler
+    anaray/            # ÇEKİRDEK: fizik, sinyal, sefer simülasyonu, kapasite, rapor, tipler
     projeler.ts        # çok-kiracılı Firestore CRUD + paylaşım
     cuzdan*.ts          # kredi cüzdanı (istemci + sunucu-otoriteli)
     iyzico.ts          # ödeme entegrasyonu
