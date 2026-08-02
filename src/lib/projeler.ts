@@ -2,7 +2,7 @@
 //
 // Her kullanıcının kendi projeleri vardır; bir proje = tek bir HAT'ın tüm durumu
 // (ring zinciri + simülasyon parametreleri + künye). Aktif proje seçilir ve o an
-// bütün modüller (Ringler/Anklaşman/Sefer/Sistem/Belgeler) o tek
+// bütün modüller (Ringler/Sefer/Sistem/Belgeler) o tek
 // hatta hizmet eder.
 //
 // İzolasyon YALNIZCA Firestore güvenlik kurallarıyla sağlanır (firestore.rules):
@@ -19,7 +19,6 @@ import {
 import { getDb, getAuthInstance } from "./firebase";
 import type { SimConfig, ProjeMeta, Isletme } from "./anaray/config";
 import type { DurakArasiRing } from "./anaray/ring";
-import type { MakasBolgeTopolojisi } from "./anaray/interlocking";
 import type { RollingStock } from "./anaray/types";
 
 const COL = "projeler";
@@ -51,9 +50,6 @@ export interface ProjeVerisi {
   arac?: RollingStock;
   /** İşletme/sefer parametreleri (sefer sayısı, kruvasman, sinyal modu vb.). */
   isletme?: Isletme;
-  /** Kiracının makas bölgesi anklaşman topolojileri (Anklaşman modülü + Belgeler
-   *  bunları okur). Eski kayıtlarda yoktur → okunurken şablonlarla doldurulur. */
-  bolgeler?: MakasBolgeTopolojisi[];
 }
 
 /** Proje listesi satırı (ağır `veri` alanı olmadan). */

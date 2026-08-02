@@ -6,10 +6,8 @@
 // headway (240 s) uygunluğu, durak-çiftleri arası denge ve tren-sayısı
 // darboğazı anında yeniden hesaplanır. Hücreler bir loop (kapalı hat) oluşturur.
 
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RollingStock } from "@/lib/anaray/types";
-import { makasBolgeId } from "@/lib/anaray/interlocking";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import type { SimConfig } from "@/lib/anaray/config";
 import { brand } from "@/lib/anaray/brand";
@@ -601,10 +599,6 @@ function RingKart(p: KartProps) {
                         </select>
                         <input value={m.ad} placeholder="ad (ör. 1. Makas)" onChange={(e) => p.onMakasPatch(m.id, { ad: e.target.value })}
                           className="min-w-0 flex-1 rounded border px-1.5 py-1 text-xs" style={{ borderColor: brand.border, color: brand.ink }} />
-                        <Link href={`/anklasman?bolge=${makasBolgeId(m)}`} title="Bu makasın anklaşman modelini aç"
-                          className="rounded px-2 py-1 text-[0.65rem] font-medium transition hover:opacity-80" style={{ background: CK.track, color: brand.ink }}>
-                          anklaşman →
-                        </Link>
                         <button onClick={() => p.onMakasSil(m.id)} className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
                       </div>
                       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-6">

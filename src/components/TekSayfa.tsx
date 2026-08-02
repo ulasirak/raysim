@@ -19,7 +19,6 @@
 
 import { Studio } from "@/components/Studio";
 import { RingEditor } from "@/components/RingEditor";
-import { AnklasmanSim } from "@/components/AnklasmanSim";
 import { SistemMerkezi } from "@/components/SistemMerkezi";
 import { Belgeler } from "@/components/Belgeler";
 import { SaltOkunurKalkan } from "@/components/SaltOkunurKalkan";
@@ -27,20 +26,19 @@ import { brand } from "@/lib/anaray/brand";
 
 /** Bölüm ankorları — AppShell navigasyonu ve scroll-spy ile ORTAK kaynak. */
 // SIRA = veri akışı (girdi → analiz → çıktı). Kullanıcı yukarıdan aşağı:
-//   KUR:     Ringler (hattı kur) · Coğrafi (koordinattan üret/gör) · Anklaşman (makas bölgeleri)
+//   KUR:     Ringler (hattı kur) · Coğrafi (koordinattan üret/gör)
 //   ANALİZ:  Sefer (canlı ağ) · Sistem (kapasite/blocking-time)
 //   BELGELE: Teknik Belgeler (ücretli PDF rapor) — doğal iş akışının son adımı.
 // Önce girdi, sonra çıktı: yeni kullanıcı hattı KURDUĞU yerden başlar, boş bir
 // simülasyona bakmaz.
 export const BOLUM_SLUG = [
-  "ringler", "anklasman", "sefer", "sistem", "belgeler",
+  "ringler", "sefer", "sistem", "belgeler",
 ] as const;
 export type BolumSlug = (typeof BOLUM_SLUG)[number];
 
 /** Faz başlığı olan bölümler yeni bir boru-hattı aşaması açar (KUR/ANALİZ/BELGELE). */
 const BOLUMLER: { slug: BolumSlug; el: React.ReactNode; faz?: { ad: string; not: string } }[] = [
   { slug: "ringler", el: <RingEditor />, faz: { ad: "KUR", not: "Hattı ve makas bölgelerini tanımla — buradaki her veri kalıcıdır." } },
-  { slug: "anklasman", el: <AnklasmanSim /> },
   { slug: "sefer", el: <Studio />, faz: { ad: "ANALİZ ET", not: "Kurduğun hattı simüle et — canlı ağ, kapasite ve darboğazlar." } },
   { slug: "sistem", el: <SistemMerkezi /> },
   { slug: "belgeler", el: <Belgeler />, faz: { ad: "BELGELE", not: "Analizden profesyonel tasarım dokümantasyonu üret." } },

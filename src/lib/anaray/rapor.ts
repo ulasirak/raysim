@@ -3,7 +3,7 @@
 // Amaç: doküman üreticinin (dokuman.ts) düz Word/Excel çıktısının yanında,
 // görsel olarak yüksek kaliteli, kurumsal, baskıya hazır bir Tasarım El Kitabı
 // raporu üretmek. Amblemli kapak + renk kodlu bölüm banzları + gömülü şema/grafik
-// + renkli çakışma matriksleri. İçerik tamamen girilen projeden türer.
+// İçerik tamamen girilen projeden türer.
 //
 // Tarayıcıda çalışır: yeni pencerede açar, yazdırma diyalogunu tetikler
 // (kullanıcı "Hedef: PDF olarak kaydet" ile indirir). SSR'de çağrılmaz.
@@ -18,7 +18,6 @@ import {
   ringSenaryo, ringChallenge, ringKisitDizisi, loopDenge, olceklenme,
   type DurakArasiRing,
 } from "./ring";
-import { cakismaMatriksi, type MakasBolgeTopolojisi } from "./interlocking";
 import { blockingTimeRing } from "./blockingtime";
 import { loopToHat } from "./hatsim";
 import { simulate } from "./sim";
@@ -224,7 +223,7 @@ function rDil(lang: RaporDil) {
     kunye: { proje: "Proje", hat: "Hat", dok: "Doküman No", rev: "Revizyon", tarih: "Tarih", idare: "İdare", yuk: "Yüklenici", mus: "Müşavir", firma: "Sinyalizasyon Firması" },
     kpi: { hucre: "Durak arası hücre", hedef: "Hedef headway", sigan: "Headway'de sığan tren", kapasite: "Teorik kapasite", uic: "UIC 406 doluluk", ch: "Challenge / kritik" },
     altMakas: (n: number) => `${n} makas`, altTumu: "tümü uygun", altIhlal: "ihlal var", altTur: (s: string) => `tur ${s}`, altTph: "tren/saat", altUygun: "uygun", altIhlalK: "ihlal", altRisk: "risk kaydı",
-    s1: "Tasarım Kriterleri", s1i: "Sistem, sabit blok ve dağıtık SIL4 anklaşman mimarisi üzerine kurulmuştur. Aşağıdaki göstergeler ve parametreler tüm işletim senaryolarının temelini oluşturur.",
+    s1: "Tasarım Kriterleri", s1i: "Sistem, sabit blok mimarisi üzerine kurulmuştur. Aşağıdaki göstergeler ve parametreler tüm işletim senaryolarının temelini oluşturur.",
     thParam: ["Parametre", "Değer", "Etkisi"],
     s2: "Durak Arası İşletim Hücreleri", s2i: (n: number, h: number) => `Hat, ${n} durak-arası hücreye (ring) bölünmüştür. Her hücre kendi mesafe, makas, hemzemin ve tehlike (acil frenleme) şartlarını taşır; worst-case senaryo en uzun mesafe + tüm kısıtlarla, hedef headway ${h} s ile değerlendirilir.`,
     fig1: "Şekil 1 — Hat şeması: istasyon zinciri, makas (⑂) ve hemzemin geçit dağılımı.",
@@ -235,13 +234,10 @@ function rDil(lang: RaporDil) {
     s21: "2.1 Ring Bazında Kısıt ve Risk (Challenge) Analizi",
     thKisit: ["Kısıt", "Konum (m)", "Detay"], noKisit: "Kısıt yok — kesintisiz seyir.",
     pillOk: "UYGUN", pillBad: "İHLAL",
-    s3: "Makas Bölgesi Operasyon Senaryoları ve Çakışma Matriksleri", s3i: "Her makas bölgesi bağımsız SIL4 anklaşman birimidir. Rotalar NEREDEN→NEREYE tanımlıdır; çakışma matriksi hangi rotaların eşzamanlı kurulabileceğini belirler. Bu bölümdeki bölge topolojileri, rotalar ve çakışma matriksleri projenizin Anklaşman modülünde tanımlıdır; çakışma matriksi girilen rotalardan otomatik türetilir.",
-    thRota: ["Rota", "Nereden", "Nereye", "Bloklar", "TCC"], evet: "Evet", hayir: "Hayır",
-    bolge: "Bölge", matris: "Çakışma Matriksi", matrisYes: "birlikte kurulabilir", matrisNo: "mümkün değil",
     s4: "Kapasite ve Blocking-Time Analizi", s4i: "En yüksek blocking-time'lı blok minimum tren aralığını (headway) belirler; UIC 406 doluluk oranı bu değerin hedef headway'e bölümüdür. Her bloğun rezerve süresi altı bileşenden oluşur.",
     thGost: ["Gösterge", "Değer"],
     kapTur: "Tur süresi (worst-case seyir)", kapDonus: "Dönüş bekleme (tur başına)", kapCevrim: "Çevrim süresi (dönüş bekleme dâhil)", kapHedef: "Hedef headway", kapSigan: "Headway'de gereken tren", kapDarbogaz: "Darboğaz hücre", kapDenge: "Denge (eşit şartlar)", kapDengeli: "Dengeli", kapSapma: (p: string) => `%${p} sapma`, kapMin: "Minimum headway (kritik blok)", kapTeorik: "Teorik kapasite", kapUIC: "UIC 406 doluluk (hedef headway'de)", tphSuffix: "tren/saat",
-    s41: "4.1 Blocking-Time (Sperrzeitentreppe)",
+    s41: "3.1 Blocking-Time (Sperrzeitentreppe)",
     fig4: (h: number) => `Şekil 4 — Sperrzeitentreppe: iki ardışık trenin blok işgal (blocking-time) pencereleri; kritik blokta ikinci trenin başlangıcı birincinin bitişine değer = min headway ${h}s.`,
     fig5: "Şekil 5 — Blok başına blocking-time bileşen dağılımı (kritik blok kırmızı etiketli).",
     thBt: ["Blok", "Setup", "Görme", "Yaklaşma", "Seyir", "Temizleme", "Release", "Toplam (s)"],
@@ -257,7 +253,7 @@ function rDil(lang: RaporDil) {
     kunye: { proje: "Project", hat: "Line", dok: "Document No", rev: "Revision", tarih: "Date", idare: "Authority", yuk: "Contractor", mus: "Consultant", firma: "Signalling Firm" },
     kpi: { hucre: "Inter-station cells", hedef: "Target headway", sigan: "Trains within headway", kapasite: "Theoretical capacity", uic: "UIC 406 occupancy", ch: "Challenges / critical" },
     altMakas: (n) => `${n} switches`, altTumu: "all compliant", altIhlal: "violations", altTur: (s) => `cycle ${s}`, altTph: "trains/hour", altUygun: "compliant", altIhlalK: "violation", altRisk: "risk records",
-    s1: "Design Criteria", s1i: "The system is built on a fixed-block, distributed SIL4 interlocking architecture. The indicators and parameters below form the basis of all operating scenarios.",
+    s1: "Design Criteria", s1i: "The system is built on a fixed-block architecture. The indicators and parameters below form the basis of all operating scenarios.",
     thParam: ["Parameter", "Value", "Effect"],
     s2: "Inter-station Operating Cells", s2i: (n, h) => `The line is divided into ${n} inter-station cells (rings). Each cell carries its own distance, switch, level-crossing and hazard (emergency braking) conditions; the worst case is evaluated at the longest distance with all constraints against the ${h}s target headway.`,
     fig1: "Figure 1 — Line schematic: station chain, switch (⑂) and level-crossing distribution.",
@@ -268,13 +264,10 @@ function rDil(lang: RaporDil) {
     s21: "2.1 Per-cell Constraint & Risk (Challenge) Analysis",
     thKisit: ["Constraint", "Position (m)", "Detail"], noKisit: "No constraints — uninterrupted run.",
     pillOk: "OK", pillBad: "VIOLATION",
-    s3: "Switch Zone Operation Scenarios and Conflict Matrices", s3i: "Each switch zone is an independent SIL4 interlocking unit. Routes are defined FROM→TO; the conflict matrix determines which routes may be set simultaneously. The zone topologies, routes and conflict matrices in this section are defined in your project's Interlocking module; the conflict matrix is auto-derived from the routes you enter.",
-    thRota: ["Route", "From", "To", "Blocks", "TCC"], evet: "Yes", hayir: "No",
-    bolge: "Zone", matris: "Conflict Matrix", matrisYes: "can be set together", matrisNo: "not possible",
     s4: "Capacity and Blocking-Time Analysis", s4i: "The block with the highest blocking-time sets the minimum train interval (headway); the UIC 406 occupancy ratio is this value divided by the target headway. Each block's reserved time comprises six components.",
     thGost: ["Indicator", "Value"],
     kapTur: "Running time (worst-case)", kapDonus: "Turnaround (per cycle)", kapCevrim: "Cycle time (incl. turnaround)", kapHedef: "Target headway", kapSigan: "Trains required", kapDarbogaz: "Bottleneck cell", kapDenge: "Balance (equal conditions)", kapDengeli: "Balanced", kapSapma: (p) => `${p}% deviation`, kapMin: "Minimum headway (critical block)", kapTeorik: "Theoretical capacity", kapUIC: "UIC 406 occupancy (at target headway)", tphSuffix: "trains/hour",
-    s41: "4.1 Blocking-Time (Sperrzeitentreppe)",
+    s41: "3.1 Blocking-Time (Sperrzeitentreppe)",
     fig4: (h) => `Figure 4 — Sperrzeitentreppe: block occupation (blocking-time) windows of two consecutive trains; at the critical block the second train's start touches the first's end = min headway ${h}s.`,
     fig5: "Figure 5 — Per-block blocking-time component breakdown (critical block labelled red).",
     thBt: ["Block", "Setup", "Sighting", "Approach", "Running", "Clearing", "Release", "Total (s)"],
@@ -283,7 +276,7 @@ function rDil(lang: RaporDil) {
   return lang === "en" ? en : tr;
 }
 
-export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, lang: RaporDil = "tr", turnaroundSn = 0, bolgeler: MakasBolgeTopolojisi[] = []): string {
+export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, lang: RaporDil = "tr", turnaroundSn = 0): string {
   const L = rDil(lang);
   const rs = rings.map((r, i) => {
     const sen = ringSenaryo(r, stock, cfg);
@@ -293,7 +286,6 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   });
   const denge = loopDenge(rings, stock, cfg);
   const olcek = olceklenme(rings, stock, true, cfg, turnaroundSn);
-  const zones = bolgeler;
   const bt = blockingTimeRing(rings, stock, cfg);
   const chSayi = rings.reduce((n, r) => n + ringChallenge(r, stock, cfg).length, 0);
   const kritik = rings.reduce((n, r) => n + ringChallenge(r, stock, cfg).filter((c) => c.seviye === "kritik").length, 0);
@@ -344,20 +336,6 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
       ? `<ul class="ch">${ch.map((c) => `<li class="${c.seviye === "kritik" ? "krit" : ""}"><b>[${esc(c.seviye.toUpperCase())}]</b> ${esc(c.baslik)}: ${esc(c.mesaj)}</li>`).join("")}</ul>`
       : "";
     return `<div class="ring-detay"><h4>${esc(r.fromAd)} → ${esc(r.toAd)}</h4>${kisitTbl}${chList}</div>`;
-  }).join("");
-
-  // ---- Makas bölgeleri + çakışma matriksleri ----
-  const bolgeBlok = zones.map((z) => {
-    const rotaTbl = tbl(L.thRota,
-      z.rotalar.map((r) => [r.id, r.nereden, r.nereye, r.bloklar.join(", "), r.tccGerekli ? L.evet : L.hayir]), { first: true });
-    const m = cakismaMatriksi(z);
-    const mHead = `<tr><th></th>${z.rotalar.map((r) => `<th>${esc(r.nereden)}${esc(r.nereye)}</th>`).join("")}</tr>`;
-    const mBody = z.rotalar.map((r, i) =>
-      `<tr><th class="l">${esc(r.nereden)}${esc(r.nereye)}</th>${z.rotalar.map((_, j) =>
-        i === j ? `<td class="mx diag">·</td>` : `<td class="mx ${m[i][j] ? "yes" : "no"}">${m[i][j] ? "X" : "0"}</td>`).join("")}</tr>`).join("");
-    return `<div class="bolge"><h4>${L.bolge} ${esc(z.id)} — ${esc(z.ad)}</h4>${rotaTbl}
-      <div class="matris-etiket">${L.matris} <span class="mx-leg"><span class="yes">X</span> ${L.matrisYes} · <span class="no">0</span> ${L.matrisNo}</span></div>
-      <table class="matris"><thead>${mHead}</thead><tbody>${mBody}</tbody></table></div>`;
   }).join("");
 
   // ---- Kapasite ----
@@ -514,12 +492,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   ${ringDetay}
 
   <!-- 3 -->
-  <div class="banner"><span class="no">3</span>${L.s3}</div>
-  <p>${L.s3i}</p>
-  ${bolgeBlok}
-
-  <!-- 4 -->
-  <div class="banner"><span class="no">4</span>${L.s4}</div>
+  <div class="banner"><span class="no">3</span>${L.s4}</div>
   <p>${L.s4i}</p>
   ${kapasiteTbl}
   ${bfFig}
@@ -528,8 +501,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <div class="fig">${blockingBarSvg(bt.bloklar, bt.kritikBlok)}<div class="cap">${L.fig5}</div></div>
   ${btTbl}
 
-  <!-- 5 -->
-  <div class="banner"><span class="no">5</span>${L.s5}</div>
+  <!-- 4 -->
+  <div class="banner"><span class="no">4</span>${L.s5}</div>
   <table class="imza"><thead><tr><th>${esc(L.thImza[0])}</th><th>${esc(L.thImza[1])}</th></tr></thead>
   <tbody><tr><td class="l">${esc(meta.hazirlayan)}</td><td class="l">${esc(meta.onaylayan)}</td></tr>
   <tr><td class="l">${esc(L.imzaTarih)}</td><td class="l">${esc(L.imzaTarih)}</td></tr></tbody></table>

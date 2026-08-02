@@ -19,7 +19,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { varsayilanConfig, varsayilanMeta, konyaMeta, varsayilanIsletme, type SimConfig, type ProjeMeta, type Isletme } from "@/lib/anaray/config";
 import { konya2EtapSeed, type DurakArasiRing } from "@/lib/anaray/ring";
-import { bolgeSablonlari, bolgeSeedKonya, type MakasBolgeTopolojisi } from "@/lib/anaray/interlocking";
 import { varsayilanArac } from "@/lib/anaray/vehicles";
 import type { RollingStock } from "@/lib/anaray/types";
 import { yoneticiMi } from "@/lib/anaray/yetki";
@@ -53,8 +52,6 @@ interface Ctx {
   setArac: (s: RollingStock) => void;
   isletme: Isletme;
   patchIsletme: (p: Partial<Isletme>) => void;
-  bolgeler: MakasBolgeTopolojisi[];
-  setBolgeler: React.Dispatch<React.SetStateAction<MakasBolgeTopolojisi[]>>;
   // — hesap / proje —
   yazilabilir: boolean;
   /** Bu hesap vitrin (Konya) hattının sahibi mi? Yalnız tohum/etiket kararı. */
@@ -108,22 +105,20 @@ function eskiYerelTaslak(): ProjeVerisi | null {
       meta: { ...varsayilanMeta, ...(hm ? (JSON.parse(hm) as Partial<ProjeMeta>) : {}) },
       arac: varsayilanArac,
       isletme: varsayilanIsletme,
-      bolgeler: bolgeSablonlari(),
     };
   } catch {
     return null;
   }
 }
 
-/** Sıfırdan başlayan hesap: hat BOŞ, künye nötr. Kullanıcı kendi verisini girer.
- *  Anklaşman bölgeleri NÖTR şablonlarla başlar (kiracı düzenler). */
+/** Sıfırdan başlayan hesap: hat BOŞ, künye nötr. Kullanıcı kendi verisini girer. */
 function bosVeri(): ProjeVerisi {
-  return { rings: [], cfg: varsayilanConfig, meta: varsayilanMeta, arac: varsayilanArac, isletme: varsayilanIsletme, bolgeler: bolgeSablonlari() };
+  return { rings: [], cfg: varsayilanConfig, meta: varsayilanMeta, arac: varsayilanArac, isletme: varsayilanIsletme };
 }
 
-/** Yönetici vitrini: Konya Tramvay 2. Etap taslağı + Konya referans bölgeleri. */
+/** Yönetici vitrini: Konya Tramvay 2. Etap taslağı. */
 function vitrinVerisi(): ProjeVerisi {
-  return { rings: vitrinRings(), cfg: varsayilanConfig, meta: konyaMeta, arac: varsayilanArac, isletme: varsayilanIsletme, bolgeler: bolgeSeedKonya() };
+  return { rings: vitrinRings(), cfg: varsayilanConfig, meta: konyaMeta, arac: varsayilanArac, isletme: varsayilanIsletme };
 }
 
 export function SimConfigProvider({ children }: { children: React.ReactNode }) {
@@ -137,7 +132,6 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
   const [meta, setMeta] = useState<ProjeMeta>(varsayilanMeta);
   const [arac, setAracRaw] = useState<RollingStock>(varsayilanArac);
   const [isletme, setIsletmeRaw] = useState<Isletme>(varsayilanIsletme);
-  const [bolgeler, setBolgelerRaw] = useState<MakasBolgeTopolojisi[]>([]);
 
   const [projeler, setProjeler] = useState<ProjeOzet[]>([]);
   const [aktifId, setAktifId] = useState<string | null>(null);
@@ -170,19 +164,15 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
     const nMeta = { ...varsayilanMeta, ...v.meta };
     const nArac = v.arac ?? varsayilanArac;
     const nIsletme = { ...varsayilanIsletme, ...v.isletme };
-    // Eski kayıtta bölge yoktur → yöneticide Konya referansı, diğerlerinde nötr
-    // şablonlar. Böylece Anklaşman modülü hiç boş kalmaz; ilk düzenlemede kalıcılaşır.
-    const nBolgeler = v.bolgeler ?? (yonetici ? bolgeSeedKonya() : bolgeSablonlari());
     setRingsRaw(v.rings);
     setCfg(nCfg);
     setMeta(nMeta);
     setAracRaw(nArac);
     setIsletmeRaw(nIsletme);
-    setBolgelerRaw(nBolgeler);
     // İmza NORMALİZE edilmiş halden üretilir (otomatik-kayıtla birebir aynı sıra) →
     // eksik alanlı eski kayıt açılınca gereksiz "kaydediliyor" tetiklenmez.
-    imzaRef.current = JSON.stringify({ rings: v.rings, cfg: nCfg, meta: nMeta, arac: nArac, isletme: nIsletme, bolgeler: nBolgeler });
-  }, [yonetici]);
+    imzaRef.current = JSON.stringify({ rings: v.rings, cfg: nCfg, meta: nMeta, arac: nArac, isletme: nIsletme });
+  }, []);
 
   // Paylaşım görünümünden çıkış. ADRESTEKİ `?proje=` DE SİLİNİR: aksi halde
   // istemci-içi gezinme sağlayıcıyı yeniden kurmadığı için kullanıcı salt-okunur
@@ -306,7 +296,7 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
   // 3) Otomatik kayıt (geciktirmeli) — yalnız yazılabilir durumda ve gerçek değişimde
   useEffect(() => {
     if (!yazilabilir || !aktifId || durum === "yukleniyor") return;
-    const veri: ProjeVerisi = { rings, cfg, meta, arac, isletme, bolgeler };
+    const veri: ProjeVerisi = { rings, cfg, meta, arac, isletme };
     const imza = JSON.stringify(veri);
     if (imza === imzaRef.current) return;
 
@@ -341,7 +331,7 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
     }, 1200);
 
     return () => { if (zamanlayiciRef.current) clearTimeout(zamanlayiciRef.current); };
-  }, [rings, cfg, meta, arac, isletme, bolgeler, yazilabilir, aktifId, durum]);
+  }, [rings, cfg, meta, arac, isletme, yazilabilir, aktifId, durum]);
 
   // — yazma sarmalayıcıları —
   // Salt-okunur modda (demo / paylaşım linki) yazma SESSİZCE yok sayılır. Arayüz
@@ -350,11 +340,6 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
   const setRings: React.Dispatch<React.SetStateAction<DurakArasiRing[]>> = useCallback((v) => {
     if (!yazilabilir) return;
     setRingsRaw((eski) => (typeof v === "function" ? (v as (p: DurakArasiRing[]) => DurakArasiRing[])(eski) : v));
-  }, [yazilabilir]);
-
-  const setBolgeler: React.Dispatch<React.SetStateAction<MakasBolgeTopolojisi[]>> = useCallback((v) => {
-    if (!yazilabilir) return;
-    setBolgelerRaw((eski) => (typeof v === "function" ? (v as (p: MakasBolgeTopolojisi[]) => MakasBolgeTopolojisi[])(eski) : v));
   }, [yazilabilir]);
 
   const patch = useCallback((p: Partial<SimConfig>) => {
@@ -507,13 +492,13 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
 
   const deger = useMemo<Ctx>(() => ({
     cfg, patch, sifirla, rings, setRings, sifirlaRings, meta, patchMeta,
-    arac, patchArac, setArac, isletme, patchIsletme, bolgeler, setBolgeler,
+    arac, patchArac, setArac, isletme, patchIsletme,
     yazilabilir, yonetici, demoMu, paylasimGorunumu, paylasimdanCik, durum, hataMetni,
     projeler, aktifId, aktifAd, paylasimAcik, kota, kotaDoldu,
     projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle, paylasimDegistir,
   }), [
     cfg, patch, sifirla, rings, setRings, sifirlaRings, meta, patchMeta,
-    arac, patchArac, setArac, isletme, patchIsletme, bolgeler, setBolgeler,
+    arac, patchArac, setArac, isletme, patchIsletme,
     yazilabilir, yonetici, demoMu, paylasimGorunumu, paylasimdanCik, durum, hataMetni,
     projeler, aktifId, aktifAd, paylasimAcik, kota, kotaDoldu,
     projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle, paylasimDegistir,
@@ -567,18 +552,8 @@ export function useIsletme(): { isletme: Isletme; patchIsletme: (p: Partial<Isle
   return { isletme, patchIsletme, yazilabilir };
 }
 
-/** Makas bölgesi anklaşman topolojileri — kiracının kalıcı verisi (Anklaşman + Belgeler). */
-export function useBolgeler(): {
-  bolgeler: MakasBolgeTopolojisi[];
-  setBolgeler: React.Dispatch<React.SetStateAction<MakasBolgeTopolojisi[]>>;
-  yazilabilir: boolean;
-} {
-  const { bolgeler, setBolgeler, yazilabilir } = useCtx();
-  return { bolgeler, setBolgeler, yazilabilir };
-}
-
 /** Oturum + proje yönetimi (kabuk/başlık için). */
-export function useHesap(): Omit<Ctx, "cfg" | "patch" | "sifirla" | "rings" | "setRings" | "sifirlaRings" | "meta" | "patchMeta" | "arac" | "patchArac" | "setArac" | "isletme" | "patchIsletme" | "bolgeler" | "setBolgeler"> {
+export function useHesap(): Omit<Ctx, "cfg" | "patch" | "sifirla" | "rings" | "setRings" | "sifirlaRings" | "meta" | "patchMeta" | "arac" | "patchArac" | "setArac" | "isletme" | "patchIsletme"> {
   const c = useCtx();
   return {
     yazilabilir: c.yazilabilir, yonetici: c.yonetici, demoMu: c.demoMu, paylasimGorunumu: c.paylasimGorunumu,

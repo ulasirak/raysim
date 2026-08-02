@@ -3,7 +3,7 @@
 // raysim — SİSTEM MERKEZİ.
 // (1) Paylaşılan simülasyon parametreleri — buradan değiştir, tüm modüllere canlı
 //     yansır (localStorage'da kalıcı). (2) Canlı sistem durumu — mevcut config +
-//     örnek seed'le ring loop + anklaşman bölgeleri anlık çözülür. (3) Bilgi /
+//     örnek seed'le ring loop anlık çözülür. (3) Bilgi /
 //     challenge referansı — sistemin karşıladığı gerçek-hayat durumları.
 
 import { useMemo } from "react";
@@ -199,7 +199,7 @@ export function SistemMerkezi() {
       </div>
 
       <footer className="mt-10 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
-        RaySim · Sistem Merkezi — parametreler tek kaynaktır; Sefer / Ringler / Anklaşman modülleri buradan okur. Değerler tarayıcıda saklanır (localStorage). Referans hızlar: {kmh(cfg.vAnahat).toFixed(0)}/{kmh(cfg.vSahasal).toFixed(0)}/{kmh(cfg.vMakas).toFixed(0)}/{kmh(cfg.vHemzemin).toFixed(0)} km/h.
+        RaySim · Sistem Merkezi — parametreler tek kaynaktır; Ringler / Sefer / Sistem modülleri buradan okur. Değerler tarayıcıda saklanır (localStorage). Referans hızlar: {kmh(cfg.vAnahat).toFixed(0)}/{kmh(cfg.vSahasal).toFixed(0)}/{kmh(cfg.vMakas).toFixed(0)}/{kmh(cfg.vHemzemin).toFixed(0)} km/h.
       </footer>
     </div>
   );

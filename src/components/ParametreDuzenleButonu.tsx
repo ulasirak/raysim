@@ -69,7 +69,7 @@ export function ParametreDuzenleButonu() {
 
             {/* Açıklama */}
             <p className="border-b px-5 py-2 text-xs" style={{ borderColor: brand.border, color: brand.muted }}>
-              Tek kaynak — değiştirdiğin an Sefer / Ringler / Anklaşman modüllerinin tümü yeniden hesaplar ve otomatik kaydedilir.
+              Tek kaynak — değiştirdiğin an Ringler / Sefer / Sistem modüllerinin tümü yeniden hesaplar ve otomatik kaydedilir.
             </p>
 
             {/* Kaydırılabilir gövde */}

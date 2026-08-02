@@ -1,7 +1,7 @@
 "use client";
 
 // raysim — ortak uygulama kabuğu (tek sistem navigasyonu).
-// Tüm modüller (Sefer / Ringler / Anklaşman / Kural Kitabı) aynı Masthead + nav
+// Tüm modüller (Ringler / Sefer / Sistem / Teknik Belgeler) aynı Masthead + nav
 // altında mantıksal olarak bağlıdır. Aktif modül yola (pathname) göre belirlenir;
 // Masthead künyesi ve rota buradan beslenir. Sayfalar yalnız içeriklerini döner.
 
@@ -32,14 +32,13 @@ interface Modul {
 }
 
 // Boru hattı sırası TEK SAYFA bölüm sırasıyla birebir aynı (BOLUM_SLUG) — veri
-// akışı: KUR (Ringler·Coğrafi·Anklaşman) → ANALİZ (Sefer·Sistem) → BELGELE.
+// akışı: KUR (Ringler·Coğrafi) → ANALİZ (Sefer·Sistem) → BELGELE.
 // Numaralı metro istasyonları bu akışı görselleştirir. (Guard aşağıda sırayı zorlar.)
 const MODULLER: Modul[] = [
   { href: "/ringler", slug: "ringler", ad: "Durak Arası Ringler", rol: "İşletim hücreleri · worst/best (en kötü/en iyi) · loop (çevrim)", kod: "SR-0001", rota: "Durak Arası Ring Şartları" },
-  { href: "/anklasman", slug: "anklasman", ad: "Makas Bölgesi Anklaşman", rol: "Interlocking (anklaşman) · çakışma matriksi · aspekt (sinyal görüntüsü)", kod: "SR-0002", rota: "Makas Bölgesi Anklaşman" },
-  { href: "/", slug: "sefer", ad: "Sefer Simülasyonu", rol: "Canlı ağ · fizik · headway (sefer aralığı) · kapasite", kod: "SR-0003", rota: "Ana Hat Sefer Analizi" },
-  { href: "/sistem", slug: "sistem", ad: "Sistem Merkezi", rol: "Kapasite · blocking-time · teşhis", kod: "SR-0004", rota: "Kapasite Analizi & Durum" },
-  { href: "/belgeler", slug: "belgeler", ad: "Teknik Belgeler", rol: "Ücretli PDF rapor · tasarım el kitabı", kod: "SR-0005", rota: "Teknik Dokümantasyon Üretimi" },
+  { href: "/", slug: "sefer", ad: "Sefer Simülasyonu", rol: "Canlı ağ · fizik · headway (sefer aralığı) · kapasite", kod: "SR-0002", rota: "Ana Hat Sefer Analizi" },
+  { href: "/sistem", slug: "sistem", ad: "Sistem Merkezi", rol: "Kapasite · blocking-time · teşhis", kod: "SR-0003", rota: "Kapasite Analizi & Durum" },
+  { href: "/belgeler", slug: "belgeler", ad: "Teknik Belgeler", rol: "Ücretli PDF rapor · tasarım el kitabı", kod: "SR-0004", rota: "Teknik Dokümantasyon Üretimi" },
 ];
 
 // slug sırası ile BOLUM_SLUG'ın kaymadığını derleme anında yakalar.

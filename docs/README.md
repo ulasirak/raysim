@@ -1,6 +1,6 @@
 # RaySim — Sistem Dokümantasyonu
 
-Demiryolu ağı simülasyon, sinyalizasyon/anklaşman ve kapasite analizi platformu.
+Demiryolu ağı simülasyon, sinyalizasyon ve kapasite analizi platformu.
 Blocking-time (Sperrzeitentreppe) ve UIC 406 metodolojisine dayanan bağımsız çekirdek.
 
 > Bu belge sistemin **teknik/geliştirici dokümantasyonudur** — mimari, matematik motoru,
@@ -13,18 +13,17 @@ Blocking-time (Sperrzeitentreppe) ve UIC 406 metodolojisine dayanan bağımsız 
 3. [Veri Modeli](#3-veri-modeli)
 4. [Fizik Motoru](#4-fizik-motoru)
 5. [Sinyalizasyon ve Blok](#5-sinyalizasyon-ve-blok)
-6. [Anklaşman (Interlocking)](#6-anklaşman-interlocking)
-7. [Kapasite ve Blocking-Time](#7-kapasite-ve-blocking-time)
-8. [Ring Modeli ve Loop](#8-ring-modeli-ve-loop)
-9. [Enerji Analizi](#9-enerji-analizi)
-10. [Tek Hat İşletmesi](#10-tek-hat-i̇şletmesi)
-11. [Parametreler (SimConfig)](#11-parametreler-simconfig)
-12. [UI Modülleri](#12-ui-modülleri)
-13. [Kalıcılık, Auth ve Güvenlik](#13-kalıcılık-auth-ve-güvenlik)
-14. [Belge Üretimi](#14-belge-üretimi)
-15. [Dağıtım ve Altyapı](#15-dağıtım-ve-altyapı)
-16. [Doğrulama](#16-doğrulama)
-17. [Referanslar ve Sözlük](#17-referanslar-ve-sözlük)
+6. [Kapasite ve Blocking-Time](#6-kapasite-ve-blocking-time)
+7. [Ring Modeli ve Loop](#7-ring-modeli-ve-loop)
+8. [Enerji Analizi](#8-enerji-analizi)
+9. [Tek Hat İşletmesi](#9-tek-hat-i̇şletmesi)
+10. [Parametreler (SimConfig)](#10-parametreler-simconfig)
+11. [UI Modülleri](#11-ui-modülleri)
+12. [Kalıcılık, Auth ve Güvenlik](#12-kalıcılık-auth-ve-güvenlik)
+13. [Belge Üretimi](#13-belge-üretimi)
+14. [Dağıtım ve Altyapı](#14-dağıtım-ve-altyapı)
+15. [Doğrulama](#15-doğrulama)
+16. [Referanslar ve Sözlük](#16-referanslar-ve-sözlük)
 
 ---
 
@@ -48,8 +47,7 @@ kuvvet **N**, ivme **m/s²**. Gösterimde km/km·h⁻¹/dakikaya çevrilir (`src
 | `types.ts` | Çekirdek veri modeli (Line, RollingStock, RailNetwork, Route) |
 | `sim.ts` | Tek tren mikroskobik fizik motoru |
 | `signalling.ts` | Çok-tren sabit blok + Monte-Carlo + filo |
-| `hatsim.ts` | Tam hat çok-tren + hareketli blok (CBTC) + interlocking birleşimi |
-| `interlocking.ts` | Makas bölgesi anklaşman motoru (dağıtık) |
+| `hatsim.ts` | Ring zinciri → birleşik hat + makas bölgeleri (kapasite kaynağı) |
 | `blockingtime.ts` | Blocking-time (Sperrzeitentreppe) + UIC 406 kapasite |
 | `ring.ts` | Durak-arası ring hücreleri + loop + örnek seed |
 | `energy.ts` | Enerji dengesi + rejeneratif geri kazanım |
@@ -81,7 +79,7 @@ kalıcıdır.
 ```
 Ring (DurakArasiRing[])  ──ringToLine──►  Line  ──simulate──►  Trajectory
        │                                    │
-       └──loopToHat──► HatModel ──simuleHat──► çok-tren + interlocking + kapasite
+       └──loopToHat──► HatModel ──blockingTimeRing──► makas bölgeleri + kapasite
                           │
 RailNetwork+Route ──flattenRoute──► Line   (graf alternatifi)
 ```
@@ -92,8 +90,7 @@ her zaman bundan **türetilir** (elle tutulmaz). Böylece tek gerçek vardır.
 ### Modül boru hattı
 
 `AppShell` (`src/components/AppShell.tsx`) ortak kabuğu (Masthead + navigasyon + footer)
-sağlar. 6 modül soldan sağa mantıksal iş akışıdır: Sefer → Ringler → Anklaşman → Tam Hat →
-Sistem → Belgeler.
+sağlar. 4 modül soldan sağa mantıksal iş akışıdır: Ringler → Sefer → Sistem → Belgeler.
 
 ---
 
@@ -210,37 +207,7 @@ trenlere yayılımını ölçer: dakiklik %, ortalama/P90/max gecikme, tren-sır
 
 ---
 
-## 6. Anklaşman (Interlocking)
-
-`src/lib/anaray/interlocking.ts` — **dağıtık** makas bölgesi anklaşmanı (merkezi ana anklaşman
-yok; her bölge bağımsız SIL4 birimi, TCC yalnız istek/onay arayüzü).
-
-### Çakışma matriksi
-
-İki rota **çakışır** (aynı anda kurulamaz) eğer:
-- ortak bir blok kullanıyorlarsa, **veya**
-- ortak bir makası **farklı doğrultuda** istiyorlarsa.
-
-`cakismaMatriksi(topo)` tam matriksi üretir (X = birlikte uygun, 0 = değil). Belge senaryoları
-`esZamanli` çiftleriyle de verilebilir.
-
-### Faz makinesi
-
-Her rota süreci: `bos → talep → tanzim → kurulu → isgal → release → bos`
-
-| Faz | Anlam | Süre |
-|-----|-------|------|
-| tanzim | makaslar sıralı hareket (SARI) | `makas_sayısı × makasAdimMax` (≤6 s/adım) |
-| kurulu | tüm zincir kilitli, giriş sinyali YEŞİL | anlık |
-| isgal | tren bölgede, arkadaki sinyaller KIRMIZI | geçiş süresi |
-| release | rota serbest bırakma kilidi | 5 s ana hat / 8 s depo |
-
-**Emniyet:** çakışan rota talepleri kuyrukta bekler. **Fail-safe:** kritik arıza penceresinde
-bölge sinyalleri **SÖNÜK** (blanking).
-
----
-
-## 7. Kapasite ve Blocking-Time
+## 6. Kapasite ve Blocking-Time
 
 `src/lib/anaray/blockingtime.ts` — klasik demiryolu kapasite teorisi (Pachl; UIC 406).
 
@@ -295,7 +262,7 @@ headway'ini (`kapasiteFixed`, `kapasiteMoving`) döndürür.
 
 ---
 
-## 8. Ring Modeli ve Loop
+## 7. Ring Modeli ve Loop
 
 `src/lib/anaray/ring.ts` — iki durak arasındaki her kesim bağımsız bir **ring hücresi**dir.
 
@@ -322,7 +289,7 @@ DurakArasiRing {
 
 ---
 
-## 9. Enerji Analizi
+## 8. Enerji Analizi
 
 `src/lib/anaray/energy.ts` — adım adım enerji dengesi:
 
@@ -341,7 +308,7 @@ sonuç ~2 kWh/km mertebesindedir.
 
 ---
 
-## 10. Tek Hat İşletmesi
+## 9. Tek Hat İşletmesi
 
 `src/lib/anaray/singletrack.ts` — tek ray iki yönde paylaşılır. Kruvasman (geçiş) istasyonları
 arası **kesim** bir karşılıklı-dışlama kaynağıdır (aynı anda tek tren, herhangi yön).
@@ -352,7 +319,7 @@ yalnız geçiş istasyonlarında karşılaşır.
 
 ---
 
-## 11. Parametreler (SimConfig)
+## 10. Parametreler (SimConfig)
 
 `src/lib/anaray/config.ts` — tek kaynak. Sistem Merkezi'nden düzenlenir, her yere yansır.
 
@@ -377,23 +344,24 @@ Değerler km/h gösteriminden SI'ye `paramSI`/`paramGoster` ile çevrilir.
 
 ---
 
-## 12. UI Modülleri
+## 11. UI Modülleri
+
+Ana deneyim tek sayfadır (`/` → `TekSayfa`): tüm modüller boru hattı sırasıyla dikey akar.
+Eski derin rotalar uyumluluk için durur.
 
 | # | Rota | Modül | İşlev |
 |---|------|-------|-------|
-| 1 | `/` | Sefer Simülasyonu | Graf editörü + fizik + headway + kapasite + canlı animasyon |
-| 2 | `/ringler` | Durak Arası Ringler | Ring hücreleri, worst/best, loop dengesi |
-| 3 | `/anklasman` | Makas Bölgesi Anklaşman | Interlocking, çakışma matriksi, aspekt oynatma |
-| 4 | `/hat` | Tam Hat | Çok tren, sabit/hareketli blok, kapasite mutabakatı, darboğaz |
-| 5 | `/sistem` | Sistem Merkezi | Parametreler, canlı durum, Sperrzeitentreppe, challenge |
-| 6 | `/belgeler` | Teknik Belgeler | Word + Excel tasarım el kitabı üretimi |
+| 1 | `/ringler` | Durak Arası Ringler | Ring hücreleri, makas/hemzemin/tehlike kısıtları, worst/best, loop dengesi |
+| 2 | `/` | Sefer Simülasyonu | Graf editörü + fizik + headway + kapasite + canlı animasyon |
+| 3 | `/sistem` | Sistem Merkezi | Parametreler, canlı durum, Sperrzeitentreppe, challenge |
+| 4 | `/belgeler` | Teknik Belgeler | PDF + Word + Excel tasarım el kitabı üretimi |
 
 Canlı animasyon (`LiveNetwork.tsx`) tüm trenleri + işgal bloklarını + makas aspektlerini eş
 zamanlı gösterir (requestAnimationFrame). SSR hidrasyon tuzağı `mounted` guard ile çözülür.
 
 ---
 
-## 13. Kalıcılık, Auth ve Güvenlik
+## 12. Kalıcılık, Auth ve Güvenlik
 
 ### localStorage
 
@@ -418,19 +386,20 @@ salt-okunur; yalnız giriş yapan yönetici Kaydet/Sil görür (`yazabilir = !vi
 
 ---
 
-## 14. Belge Üretimi
+## 13. Belge Üretimi
 
-`src/lib/anaray/dokuman.ts` (`docx` + `exceljs`):
+`src/lib/anaray/rapor.ts` (baskıya hazır PDF/HTML) + `src/lib/anaray/dokuman.ts` (`docx` + `exceljs`):
+- `raporHTML()` → amblemli kapak + KPI kartları + hat şeması + blocking-time grafikleri (yazdır → PDF).
 - `wordUret()` → profesyonel **.docx** Tasarım El Kitabı (kapak/künye, kriterler, ring şartları,
-  makas senaryoları + çakışma matriksleri, kapasite, imza).
-- `excelUret()` → 7 sayfalı **.xlsx** (künye, kriterler, ringler, makas rotaları, çakışma
-  matriksi, kapasite, challenge-risk).
+  kapasite/blocking-time, imza).
+- `excelUret()` → çok sayfalı **.xlsx** (künye, kriterler, ringler, kapasite, blocking-time,
+  challenge-risk).
 
 İçerik tamamen girilen projeden (`meta` + `rings` + `cfg`) türer — belirli bir hatta bağlı değildir.
 
 ---
 
-## 15. Dağıtım ve Altyapı
+## 14. Dağıtım ve Altyapı
 
 - **Platform:** Vercel (proje `raysim`, kapsam `ulasiraks-projects`).
 - **Otomatik deploy:** GitHub `master`'a her push → Vercel otomatik prod deploy
@@ -451,19 +420,19 @@ npm run lint
 
 ---
 
-## 16. Doğrulama
+## 15. Doğrulama
 
 - **Uyumluluk taraması:** 6 config × 4 araç tipi × 2 blok modu + diğer motorlar = **74/74**
   geçti (çökme/NaN yok, sıralama invaryantı her yerde korunur).
 - **Kapasite mutabakatı (jenerik seed):** analitik 116 s ≥ sim-sabit 63 s ≥ sim-hareketli 41 s.
 - **Tek hat invaryantı:** karşılıklı-dışlama ihlali 0, deadlock 0 (4 farklı kruvasman düzeni).
-- **Anklaşman:** çakışma matriksi belgeyle uyumlu, mutual-exclusion ≤ makas sayısı, fail-safe
-  sönük.
+- **Makas fiziği:** ring kısıtları → hız düşümü + worst-case ek süre + blocking-time makas bloğu
+  tespiti uçtan uca doğrulandı.
 - Her sürüm `tsc --noEmit` + `eslint` + `next build` temiz.
 
 ---
 
-## 17. Referanslar ve Sözlük
+## 16. Referanslar ve Sözlük
 
 - **Pachl, J.** — *Railway Operation and Control* (blocking-time teorisi, interlocking).
 - **Hansen & Pachl** — *Railway Timetabling & Operations*.

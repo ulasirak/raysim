@@ -1,8 +1,8 @@
 // raysim — PAYLAŞILAN SİMÜLASYON PARAMETRELERİ (tek kaynak).
 //
 // Belge kabullerinden (MAZ-VA-AKS-001 v6.0) türeyen tüm sayısal parametreler
-// burada tek bir `SimConfig` nesnesinde toplanır. Tüm modüller (Sefer, Ringler,
-// Anklaşman) bu config'i okur; Sistem modülünden değiştirilince simülasyon her
+// burada tek bir `SimConfig` nesnesinde toplanır. Tüm modüller (Ringler, Sefer,
+// Sistem) bu config'i okur; Sistem modülünden değiştirilince simülasyon her
 // yerde canlı güncellenir. Birimler SI (hız m/s, süre s, mesafe m, ivme m/s²).
 
 const KMH = 1 / 3.6;
@@ -49,7 +49,7 @@ export const varsayilanConfig: SimConfig = {
 };
 
 export type ParamTur = "hiz" | "ivme" | "sure" | "mesafe";
-export type ParamModul = "sefer" | "ringler" | "anklasman";
+export type ParamModul = "sefer" | "ringler";
 
 export interface ParamMeta {
   key: keyof SimConfig;
@@ -67,7 +67,7 @@ export interface ParamMeta {
 export const PARAM_META: ParamMeta[] = [
   { key: "vAnahat", ad: "Ana hat azami hız", grup: "Hızlar", tur: "hiz", kaynak: "4.1", etkiler: "Serbest seyir üst hızı", moduller: ["sefer"], min: 20, max: 100, step: 5 },
   { key: "vSahasal", ad: "Sahasal işletme hızı", grup: "Hızlar", tur: "hiz", kaynak: "4.1", etkiler: "Ring/durak arası ortalama hız", moduller: ["ringler", "sefer"], min: 20, max: 70, step: 5 },
-  { key: "vMakas", ad: "Makas geçiş hızı", grup: "Hızlar", tur: "hiz", kaynak: "3.4.8.2", etkiler: "Makas bölgesi geçiş + tanzim hızı", moduller: ["ringler", "anklasman"], min: 5, max: 30, step: 1 },
+  { key: "vMakas", ad: "Makas geçiş hızı", grup: "Hızlar", tur: "hiz", kaynak: "3.4.8.2", etkiler: "Makas bölgesi geçiş hızı", moduller: ["ringler"], min: 5, max: 30, step: 1 },
   { key: "vHemzemin", ad: "Hemzemin/yaya hızı", grup: "Hızlar", tur: "hiz", kaynak: "4.3", etkiler: "Geçit yavaşlama hızı", moduller: ["ringler"], min: 10, max: 40, step: 1 },
   { key: "vAcil", ad: "Acil frenleme hızı", grup: "Hızlar", tur: "hiz", kaynak: "worst-case", etkiler: "Tehlike/acil frenleme noktasında worst-case hız", moduller: ["ringler"], min: 0, max: 25, step: 1 },
   { key: "ivme", ad: "Hızlanma ivmesi (a)", grup: "Dinamik", tur: "ivme", kaynak: "4.3", etkiler: "Kalkış / seyir süresi", moduller: ["ringler", "sefer"], min: 0.3, max: 1.5, step: 0.1 },
@@ -75,9 +75,9 @@ export const PARAM_META: ParamMeta[] = [
   { key: "headway", ad: "Hedef headway", grup: "Headway & Mesafe", tur: "sure", kaynak: "4.3 · sözleşme", etkiler: "Sefer sıklığı hedefi + ring uygunluk eşiği", moduller: ["sefer", "ringler"], min: 60, max: 600, step: 10 },
   { key: "ortalamaDurakArasi", ad: "Ortalama durak arası", grup: "Headway & Mesafe", tur: "mesafe", kaynak: "4.3", etkiler: "Yeni ring nominal mesafesi", moduller: ["ringler"], min: 200, max: 2000, step: 50 },
   { key: "enUzunHeadwayMesafesi", ad: "Worst-case mesafe", grup: "Headway & Mesafe", tur: "mesafe", kaynak: "4.3", etkiler: "Ring worst-case referans mesafesi", moduller: ["ringler"], min: 500, max: 2500, step: 50 },
-  { key: "routeReleaseAnahat", ad: "Route release (ana hat)", grup: "Zamanlayıcılar", tur: "sure", kaynak: "Ek L", etkiler: "Ana hat makas rota serbest bırakma", moduller: ["anklasman", "ringler"], min: 1, max: 20, step: 1 },
-  { key: "routeReleaseDepo", ad: "Route release (depo)", grup: "Zamanlayıcılar", tur: "sure", kaynak: "Ek L", etkiler: "Depo manevra rota serbest bırakma", moduller: ["anklasman"], min: 1, max: 30, step: 1 },
-  { key: "makasAdimMax", ad: "Makas adım süresi", grup: "Zamanlayıcılar", tur: "sure", kaynak: "Ek Ö", etkiler: "Her makas hareketi (tanzim) süresi", moduller: ["anklasman", "ringler"], min: 1, max: 12, step: 1 },
+  { key: "routeReleaseAnahat", ad: "Route release (ana hat)", grup: "Zamanlayıcılar", tur: "sure", kaynak: "Ek L", etkiler: "Ana hat makas rota serbest bırakma", moduller: ["ringler"], min: 1, max: 20, step: 1 },
+  { key: "routeReleaseDepo", ad: "Route release (depo)", grup: "Zamanlayıcılar", tur: "sure", kaynak: "Ek L", etkiler: "Depo manevra rota serbest bırakma", moduller: ["ringler"], min: 1, max: 30, step: 1 },
+  { key: "makasAdimMax", ad: "Makas adım süresi", grup: "Zamanlayıcılar", tur: "sure", kaynak: "Ek Ö", etkiler: "Her makas hareketi süresi", moduller: ["ringler"], min: 1, max: 12, step: 1 },
   { key: "kisitGenisligi", ad: "Kısıt bölge genişliği", grup: "Blok", tur: "mesafe", kaynak: "türetme", etkiler: "Makas/geçit hız-kısıt bölgesi uzunluğu", moduller: ["ringler"], min: 10, max: 120, step: 5 },
   { key: "blokMaxUzunluk", ad: "Sinyal bloğu azami", grup: "Blok", tur: "mesafe", kaynak: "2.1", etkiler: "Blok sayısı + gecikmesiz aralık", moduller: ["sefer"], min: 100, max: 1500, step: 50 },
 ];
@@ -112,9 +112,6 @@ export interface Isletme {
   seferBaslangicSaati: string;  // hat şeması ilk kalkış saati "SS:DD"
   mcMeanEntrySn: number;        // Monte-Carlo: ort. giriş gecikmesi (s)
   mcMeanDwellSn: number;        // Monte-Carlo: ort. durak sapması (s)
-  // Anklaşman talep senaryosu (AnklasmanSim)
-  anklasmanTren: number;        // talep tren adedi
-  anklasmanHeadwaySn: number;   // rota isteği aralığı (s)
   // Ring/ölçeklenme
   kapali: boolean;              // kapalı hat (loop) mı, açık uçlu hat mı
 }
@@ -128,8 +125,6 @@ export const varsayilanIsletme: Isletme = {
   seferBaslangicSaati: "08:00",
   mcMeanEntrySn: 30,
   mcMeanDwellSn: 5,
-  anklasmanTren: 4,
-  anklasmanHeadwaySn: 20,
   kapali: true,
 };
 

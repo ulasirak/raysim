@@ -1,7 +1,7 @@
 // raysim — Ring zinciri → BİRLEŞİK HAT MODELİ (makas bölgeleriyle).
 //
 // Durak-arası ring hücrelerini tek bir birleşik hatta zincirler ve makas
-// bölgelerini (interlocking kaynağı) çıkarır. Blocking-time kapasite hesabı
+// bölgelerini (kapasite kaynağı) çıkarır. Blocking-time kapasite hesabı
 // (blockingtime.ts) ve teknik rapor (rapor.ts) bu modeli tüketir.
 //
 // NOT: Çok-tren canlı simülasyon modülü (HatSim) kaldırıldı; burada yalnızca
@@ -15,7 +15,7 @@ import { BELGE, type DurakArasiRing, type MakasTip, ringToLine } from "./ring";
 // Birleşik hat modeli (ring zinciri → tek Line + makas bölgeleri)
 // ————————————————————————————————————————————————
 
-/** Birleşik hat üzerinde bir makas bölgesi = interlocking kaynağı. */
+/** Birleşik hat üzerinde bir makas bölgesi = kapasite (mutual-exclusion) kaynağı. */
 export interface MakasZon {
   id: string;
   ad: string;

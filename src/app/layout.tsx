@@ -30,9 +30,9 @@ export const metadata: Metadata = {
     template: "%s · RaySim",
   },
   description:
-    "Demiryolu ağı simülasyon, sinyalizasyon, sefer ve kapasite analizi sistemi — mikroskobik tren hareketi, sabit blok/anklaşman ve UIC 406 kapasite.",
+    "Demiryolu ağı simülasyon, sinyalizasyon, sefer ve kapasite analizi sistemi — mikroskobik tren hareketi, sabit blok ve UIC 406 kapasite.",
   applicationName: "RaySim",
-  keywords: ["demiryolu", "simülasyon", "sinyalizasyon", "anklaşman", "kapasite", "tramvay", "RaySim"],
+  keywords: ["demiryolu", "simülasyon", "sinyalizasyon", "kapasite", "tramvay", "RaySim"],
   authors: [{ name: "RaySim" }],
   openGraph: {
     type: "website",

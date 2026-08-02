@@ -50,13 +50,6 @@ export interface MakasBolgesi {
   id: string;
   ad: string;
   tip: MakasTip;
-  /**
-   * Bu fiziksel bölgenin anklaşman modeli (interlocking topolojisi) id'si.
-   * Verilmezse tipten türetilir (`bolgeIdIcin`). Aynı tipte birden çok bölge
-   * olduğunda hangi bölgenin hangi modele bağlandığı BURADA sabitlenir —
-   * yoksa hepsi aynı modele düşer.
-   */
-  bolgeId?: string;
   konum: number; // ring başından mesafe (m)
   gecisHizi: number; // m/s (varsayılan 15 km/h)
   tccZorunlu: boolean; // her geçiş TCC onayı gerektirir mi?
@@ -706,13 +699,13 @@ export function konya2EtapSeed(): { rings: DurakArasiRing[]; loop: Loop } {
     // El kitabı notu: Hükümet–Alaaddin arası ~15 s'de aşılır (kısa aralık).
     seedRing("Alaaddin", "Hükümet", 360, {
       worstUzunluk: w(360),
-      makaslar: [{ ...yeniMakas("karsilasmali", 45), ad: "1. Makas Bölgesi — Alaaddin (karşılaşmalı, TCC)", bolgeId: "1" }],
+      makaslar: [{ ...yeniMakas("karsilasmali", 45), ad: "1. Makas Bölgesi — Alaaddin (karşılaşmalı, TCC)" }],
       hemzeminler: [{ ...yeniHemzemin("karayolu", 210), ad: "Alaaddin–Hükümet karayolu geçidi (karma trafik)" }],
     }),
     // Hükümet → Mevlana: 2. Makas Bölgesi (headway). Karma trafik (yaya/karayolu).
     seedRing("Hükümet", "Mevlana", 660, {
       worstUzunluk: w(660),
-      makaslar: [{ ...yeniMakas("headway", 610), ad: "2. Makas Bölgesi — Mevlana (headway)", bolgeId: "2" }],
+      makaslar: [{ ...yeniMakas("headway", 610), ad: "2. Makas Bölgesi — Mevlana (headway)" }],
       hemzeminler: [{ ...yeniHemzemin("yaya", 300), ad: "Mevlana yaya geçidi (karma trafik)" }],
     }),
     // Mevlana → Mevlana Kültür Merkezi
@@ -723,14 +716,14 @@ export function konya2EtapSeed(): { rings: DurakArasiRing[]; loop: Loop } {
     // MKM → Fetih Caddesi: MKM sonrası S-makas bölgesi (izole, karma trafiksiz)
     seedRing("Mevlana Kültür Merkezi", "Fetih Caddesi", 540, {
       worstUzunluk: w(540),
-      makaslar: [{ ...yeniMakas("udonus", 70), ad: "MKM S-Makas Bölgesi (izole U-dönüş)", bolgeId: "5.1" }],
+      makaslar: [{ ...yeniMakas("udonus", 70), ad: "MKM S-Makas Bölgesi (izole U-dönüş)" }],
     }),
     seedRing("Fetih Caddesi", "Spor ve Kongre Merkezi", 636, { worstUzunluk: w(636) }),
     seedRing("Spor ve Kongre Merkezi", "Karşehir Caddesi", 636, { worstUzunluk: w(636) }),
     // Karşehir Caddesi → Adliye: Adliye S-makas bölgesi (izole, çift-yön geri dönüş)
     seedRing("Karşehir Caddesi", "Adliye", 706, {
       worstUzunluk: w(706),
-      makaslar: [{ ...yeniMakas("udonus", 660), ad: "Adliye S-Makas Bölgesi (izole çift-yön U-dönüş)", bolgeId: "5.1" }],
+      makaslar: [{ ...yeniMakas("udonus", 660), ad: "Adliye S-Makas Bölgesi (izole çift-yön U-dönüş)" }],
       hemzeminler: [{ ...yeniHemzemin("karayolu", 330), ad: "Adliye karayolu geçidi" }],
     }),
   ];

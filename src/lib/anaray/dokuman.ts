@@ -19,7 +19,6 @@ import {
   ringSenaryo, ringChallenge, ringKisitDizisi, loopDenge, olceklenme,
   type DurakArasiRing,
 } from "./ring";
-import { cakismaMatriksi, type MakasBolgeTopolojisi } from "./interlocking";
 import { blockingTimeRing } from "./blockingtime";
 
 const INK = "0C2233";
@@ -90,11 +89,10 @@ function wordTablo(basliklar: string[], satirlar: string[][]): Table {
   });
 }
 
-export async function wordUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, turnaroundSn = 0, bolgeler: MakasBolgeTopolojisi[] = []): Promise<Blob> {
+export async function wordUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, turnaroundSn = 0): Promise<Blob> {
   const rs = ringSatirlari(rings, stock, cfg);
   const denge = loopDenge(rings, stock, cfg);
   const olcek = olceklenme(rings, stock, true, cfg, turnaroundSn);
-  const zones = bolgeler;
 
   const kunye: string[][] = [
     ["Proje", meta.projeAdi], ["Hat", meta.hatAdi], ["Doküman No", meta.dokumanNo], ["Revizyon", meta.revizyon],
@@ -119,7 +117,7 @@ export async function wordUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakAras
 
     // 1. Tasarım kriterleri
     h1("1. Tasarım Kriterleri"),
-    p("Sistem, sabit blok ve dağıtık SIL4 anklaşman mimarisi üzerine kurulmuştur. Aşağıdaki parametreler tüm işletim senaryolarının temelini oluşturur:"),
+    p("Sistem, sabit blok mimarisi üzerine kurulmuştur. Aşağıdaki parametreler tüm işletim senaryolarının temelini oluşturur:"),
     wordTablo(["Parametre", "Değer", "Etkisi"], kriterler),
 
     // 2. Durak arası ring şartları
@@ -144,23 +142,9 @@ export async function wordUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakAras
     }
   }
 
-  // 3. Makas bölgesi senaryoları
-  cocuklar.push(h1("3. Makas Bölgesi Operasyon Senaryoları ve Çakışma Matriksleri"));
-  cocuklar.push(p("Her makas bölgesi bağımsız SIL4 anklaşman birimidir. Rotalar NEREDEN→NEREYE tanımlı; çakışma matriksi (X = birlikte kurulabilir, 0 = mümkün değil) hangi rotaların eşzamanlı işletilebileceğini belirler."));
-  cocuklar.push(p("Not: aşağıdaki makas bölgesi topolojileri, rotalar ve çakışma matriksleri projenizin Anklaşman modülünde tanımlı bölgelerden gelir; çakışma matriksi girilen rotalardan otomatik türetilir.", { size: 18 }));
-  for (const z of zones) {
-    cocuklar.push(h2(`Bölge ${z.id} — ${z.ad}`));
-    cocuklar.push(wordTablo(["Rota", "Nereden", "Nereye", "Bloklar", "TCC"], z.rotalar.map((r) => [r.id, r.nereden, r.nereye, r.bloklar.join(", "), r.tccGerekli ? "Evet" : "Hayır"])));
-    const m = cakismaMatriksi(z);
-    const mHead = ["", ...z.rotalar.map((r) => `${r.nereden}${r.nereye}`)];
-    const mRows = z.rotalar.map((r, i) => [`${r.nereden}${r.nereye}`, ...z.rotalar.map((_, j) => (i === j ? "·" : m[i][j] ? "X" : "0"))]);
-    cocuklar.push(p("Çakışma Matriksi:", { bold: true, size: 18 }));
-    cocuklar.push(wordTablo(mHead, mRows));
-  }
-
-  // 4. Kapasite
+  // 3. Kapasite
   const bt = blockingTimeRing(rings, stock, cfg);
-  cocuklar.push(h1("4. Kapasite ve Darboğaz Analizi"));
+  cocuklar.push(h1("3. Kapasite ve Darboğaz Analizi"));
   cocuklar.push(wordTablo(["Gösterge", "Değer"], [
     ["Tur süresi (worst-case, seyir)", s0(olcek.turSuresi)],
     ["Dönüş bekleme (tur başına)", s0(olcek.turnaroundToplam)],
@@ -171,7 +155,7 @@ export async function wordUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakAras
     ["Denge (eşit şartlar)", denge.dengeli ? "Dengeli" : `%${denge.sapmaYuzde.toFixed(0)} sapma`],
     ["Tüm hücreler headway'e uygun mu", olcek.headwayUygun ? "Evet" : "Hayır — ihlal var"],
   ]));
-  cocuklar.push(h2("4.1 Blocking-Time (Sperrzeitentreppe) ve UIC 406 Kapasite"));
+  cocuklar.push(h2("3.1 Blocking-Time (Sperrzeitentreppe) ve UIC 406 Kapasite"));
   cocuklar.push(p("Her sinyal bloğunun rezerve (blocking-time) süresi altı bileşenden oluşur: rota kurma (setup), sürücü görme, yaklaşma, blok içi seyir, tren temizleme ve rota serbest bırakma. En yüksek blocking-time'lı blok minimum tren aralığını (headway) belirler; UIC 406 doluluk oranı bu değerin hedef headway'e bölümüdür."));
   cocuklar.push(wordTablo(["Gösterge", "Değer"], [
     ["Minimum headway (kritik blok)", `${s0(bt.minHeadway)} (blok #${bt.kritikBlok}${bt.bloklar[bt.kritikBlok]?.makasBlok ? ", makas" : ""})`],
@@ -184,8 +168,8 @@ export async function wordUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakAras
     bt.bloklar.map((b) => [`#${b.i}${b.makasBlok ? " ⑂" : ""}`, `${b.tSetup}`, `${b.tSighting}`, b.tApproach.toFixed(0), b.tRunning.toFixed(0), b.tClearing.toFixed(0), `${b.tRelease}`, b.toplam.toFixed(0)])
   ));
 
-  // 5. İmza
-  cocuklar.push(h1("5. Onay"));
+  // 4. İmza
+  cocuklar.push(h1("4. Onay"));
   cocuklar.push(wordTablo(["Hazırlayan", "Onaylayan"], [[meta.hazirlayan, meta.onaylayan], ["İmza / Tarih", "İmza / Tarih"]]));
 
   const doc = new Document({
@@ -207,11 +191,10 @@ function baslikSatiri(ws: ExcelJS.Worksheet, r: number) {
   row.alignment = { vertical: "middle" };
 }
 
-export async function excelUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, turnaroundSn = 0, bolgeler: MakasBolgeTopolojisi[] = []): Promise<Blob> {
+export async function excelUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, turnaroundSn = 0): Promise<Blob> {
   const wb = new ExcelJS.Workbook();
   wb.creator = "RaySim";
   const rs = ringSatirlari(rings, stock, cfg);
-  const zones = bolgeler;
   const olcek = olceklenme(rings, stock, true, cfg, turnaroundSn);
   const denge = loopDenge(rings, stock, cfg);
 
@@ -243,44 +226,13 @@ export async function excelUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakAra
     if (r.headway === "İHLAL") row.getCell("headway").font = { color: { argb: "FFC8102E" }, bold: true };
   });
 
-  // 4) Makas rotaları (tüm bölgeler)
-  const wM = wb.addWorksheet("Makas Rotaları");
-  wM.columns = [{ header: "Bölge", key: "b", width: 8 }, { header: "Bölge Adı", key: "ba", width: 40 }, { header: "Rota", key: "r", width: 14 }, { header: "Nereden", key: "n1", width: 9 }, { header: "Nereye", key: "n2", width: 9 }, { header: "Bloklar", key: "bl", width: 22 }, { header: "TCC", key: "t", width: 6 }];
-  baslikSatiri(wM, 1);
-  zones.forEach((z) => z.rotalar.forEach((r) => wM.addRow({ b: z.id, ba: z.ad, r: r.id, n1: r.nereden, n2: r.nereye, bl: r.bloklar.join(", "), t: r.tccGerekli ? "Evet" : "Hayır" })));
-
-  // 5) Çakışma matriksleri (her bölge blok halinde)
-  const wX = wb.addWorksheet("Çakışma Matriksi");
-  let satir = 1;
-  zones.forEach((z) => {
-    wX.getCell(satir, 1).value = `Bölge ${z.id} — ${z.ad}`;
-    wX.getCell(satir, 1).font = { bold: true, color: { argb: "FF0C2233" } };
-    satir++;
-    const m = cakismaMatriksi(z);
-    wX.getCell(satir, 1).value = "";
-    z.rotalar.forEach((r, j) => { const c = wX.getCell(satir, j + 2); c.value = `${r.nereden}${r.nereye}`; c.font = { bold: true }; });
-    satir++;
-    z.rotalar.forEach((r, i) => {
-      const rc = wX.getCell(satir, 1); rc.value = `${r.nereden}${r.nereye}`; rc.font = { bold: true };
-      z.rotalar.forEach((_, j) => {
-        const c = wX.getCell(satir, j + 2);
-        c.value = i === j ? "·" : m[i][j] ? "X" : "0";
-        c.alignment = { horizontal: "center" };
-        if (i !== j) c.font = { color: { argb: m[i][j] ? "FF0E7C57" : "FFC8102E" }, bold: true };
-      });
-      satir++;
-    });
-    satir += 1;
-  });
-  wX.getColumn(1).width = 10;
-
-  // 6) Kapasite
+  // 4) Kapasite
   const wP = wb.addWorksheet("Kapasite & Darboğaz");
   wP.columns = [{ header: "Gösterge", key: "g", width: 34 }, { header: "Değer", key: "d", width: 30 }];
   baslikSatiri(wP, 1);
   ([["Tur süresi (worst-case seyir, s)", `${Math.round(olcek.turSuresi)}`], ["Dönüş bekleme (tur başına, s)", `${Math.round(olcek.turnaroundToplam)}`], ["Çevrim süresi (dönüş bekleme dâhil, s)", `${Math.round(olcek.cevrimSuresi)}`], ["Hedef headway (s)", `${cfg.headway}`], ["Headway'de gereken tren", `${olcek.maxTrenHedefHeadway}`], ["Darboğaz hücre", olcek.darbogazRing ? `${olcek.darbogazRing.ad} (${Math.round(olcek.darbogazRing.worstToplam)} s)` : "—"], ["Denge (eşit şartlar)", denge.dengeli ? "Dengeli" : `%${denge.sapmaYuzde.toFixed(0)} sapma`], ["Tüm hücreler headway'e uygun", olcek.headwayUygun ? "Evet" : "Hayır — ihlal var"]] as [string, string][]).forEach(([g, d]) => wP.addRow({ g, d }));
 
-  // 6b) Blocking-Time (Sperrzeitentreppe)
+  // 4b) Blocking-Time (Sperrzeitentreppe)
   const bt = blockingTimeRing(rings, stock, cfg);
   const wB = wb.addWorksheet("Blocking-Time");
   wB.getCell(1, 1).value = `Min headway ${Math.round(bt.minHeadway)} s · Teorik kapasite ${bt.teorikKapasite.toFixed(0)} tren/sa · UIC 406 doluluk %${bt.dolulukHedef.toFixed(0)} (hedef ${bt.hedefHeadway} s) · ${bt.hedefUygun ? "UYGUN" : "İHLAL"}`;
@@ -293,7 +245,7 @@ export async function excelUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakAra
   });
   wB.columns.forEach((c) => { c.width = 12; });
 
-  // 7) Challenge / risk
+  // 5) Challenge / risk
   const wCh = wb.addWorksheet("Challenge - Risk");
   wCh.columns = [{ header: "Durak Arası", key: "ad", width: 34 }, { header: "Seviye", key: "s", width: 10 }, { header: "Başlık", key: "b", width: 24 }, { header: "Açıklama", key: "m", width: 70 }];
   baslikSatiri(wCh, 1);

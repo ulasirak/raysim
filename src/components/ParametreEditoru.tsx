@@ -13,8 +13,8 @@ import { CK } from "@/lib/anaray/chartkit";
 import { useSimConfig } from "@/components/SimConfigProvider";
 import { PARAM_META, paramGoster, paramSI, birim, type ParamMeta, type ParamModul } from "@/lib/anaray/config";
 
-// Modül etiketleri = 3 kategorik seri (valide: mavi · turkuaz · turuncu).
-const MODUL_RENK: Record<ParamModul, string> = { sefer: CK.blue, ringler: CK.aqua, anklasman: CK.orange };
+// Modül etiketleri = kategorik seri (valide: mavi · turkuaz).
+const MODUL_RENK: Record<ParamModul, string> = { sefer: CK.blue, ringler: CK.aqua };
 
 function round(n: number, d = 0) {
   const f = Math.pow(10, d);
