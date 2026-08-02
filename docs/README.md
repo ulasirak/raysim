@@ -291,6 +291,10 @@ DurakArasiRing {
 
 ## 8. Enerji Analizi
 
+> **Kapsam notu:** Enerji, arayüzde ayrı bir modül/panel **değildir**. Yalnızca
+> üretilen teknik raporda bir *enerji–mesafe figürü* olarak yer alır; ürünün
+> odağı hat kurma + canlı sefer simülasyonu + kapasite teşhisi + belge üretimidir.
+
 `src/lib/anaray/energy.ts` — adım adım enerji dengesi:
 
 ```
