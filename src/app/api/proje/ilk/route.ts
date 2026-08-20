@@ -11,6 +11,7 @@
 
 import { NextResponse } from "next/server";
 import { istekKimlik, isAdminConfigured, adminDb } from "@/lib/firebaseAdmin";
+import { hizSiniri } from "@/lib/rateLimit";
 import { VERI_BAYT_SINIRI } from "@/lib/projeler";
 
 export const runtime = "nodejs";
@@ -23,6 +24,15 @@ export async function POST(req: Request) {
   let uid: string;
   try { const k = await istekKimlik(req); uid = k.uid; }
   catch { return NextResponse.json({ hata: "Kimlik doğrulanamadı." }, { status: 401 }); }
+
+  // Kötüye kullanım freni: ilk-hat seed'i normalde hesap başına bir kez çağrılır.
+  const hiz = await hizSiniri(`projeilk:${uid}`, 10, 300);
+  if (!hiz.izin) {
+    return NextResponse.json(
+      { hata: "Çok fazla istek — lütfen biraz bekleyin.", sifirlaSn: hiz.sifirlaSn },
+      { status: 429 },
+    );
+  }
 
   let govde: { ad?: string; veriJson?: string };
   try { govde = await req.json(); } catch { return NextResponse.json({ hata: "Geçersiz istek." }, { status: 400 }); }

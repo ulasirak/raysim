@@ -7,6 +7,7 @@
 import { NextResponse } from "next/server";
 import { istekKimlik, isAdminConfigured } from "@/lib/firebaseAdmin";
 import { odemeKaydiOlustur, kartAnahtariGetir } from "@/lib/cuzdanServer";
+import { hizSiniri } from "@/lib/rateLimit";
 import { isIyzicoConfigured, odemeBaslat } from "@/lib/iyzico";
 import { paketBul, guvenliDonusYolu } from "@/lib/cuzdan";
 import crypto from "crypto";
@@ -20,6 +21,15 @@ export async function POST(req: Request) {
   let eposta = "";
   try { const k = await istekKimlik(req); uid = k.uid; eposta = k.email ?? ""; }
   catch { return NextResponse.json({ hata: "Kimlik doğrulanamadı." }, { status: 401 }); }
+
+  // Kötüye kullanım freni: ödeme başlatmayı (örhan kayıt üretir) kullanıcı başına sınırla.
+  const hiz = await hizSiniri(`odeme:${uid}`, 10, 300);
+  if (!hiz.izin) {
+    return NextResponse.json(
+      { hata: "Çok fazla ödeme denemesi — lütfen biraz bekleyin.", sifirlaSn: hiz.sifirlaSn },
+      { status: 429 },
+    );
+  }
 
   let govde: { paketId?: string; donusYolu?: string };
   try { govde = await req.json(); }

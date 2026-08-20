@@ -11,6 +11,7 @@
 import { NextResponse } from "next/server";
 import { istekKimlik, isAdminConfigured } from "@/lib/firebaseAdmin";
 import { krediDus, krediBakiye, KrediYetersizError } from "@/lib/cuzdanServer";
+import { hizSiniri } from "@/lib/rateLimit";
 import { KREDI_BEDELI } from "@/lib/cuzdan";
 import { yoneticiMi, yoneticiUidMi } from "@/lib/anaray/yetki";
 import { raporHTML, type RaporDil } from "@/lib/anaray/rapor";
@@ -36,6 +37,15 @@ export async function POST(req: Request) {
     muaf = yoneticiUidMi(k.uid) || (k.emailDogrulandi && yoneticiMi(k.email));
   }
   catch { return NextResponse.json({ hata: "Kimlik doğrulanamadı." }, { status: 401 }); }
+
+  // Kötüye kullanım freni: pahalı rapor üretimini kullanıcı başına sınırla.
+  const hiz = await hizSiniri(`rapor:${uid}`, 20, 300);
+  if (!hiz.izin) {
+    return NextResponse.json(
+      { hata: "Çok fazla rapor isteği — lütfen biraz bekleyin.", sifirlaSn: hiz.sifirlaSn },
+      { status: 429 },
+    );
+  }
 
   let govde: { veri?: { rings?: DurakArasiRing[]; cfg?: Partial<SimConfig>; meta?: Partial<ProjeMeta>; arac?: RollingStock; turnaroundSn?: number }; dil?: string };
   try { govde = await req.json(); } catch { return NextResponse.json({ hata: "Geçersiz istek." }, { status: 400 }); }

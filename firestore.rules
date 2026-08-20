@@ -97,6 +97,13 @@ service cloud.firestore {
       allow read, write: if false; // yalnız Admin SDK
     }
 
+    // hiz/{anahtar} = dağıtık oran-sınırı sayacı (sayac, baslangic, guncelleme).
+    // Tamamen sunucuya ait (Admin SDK); istemci ne okur ne yazar. Eski kayıtlar
+    // /api/cron/temizlik ile toplanır.
+    match /hiz/{anahtar} {
+      allow read, write: if false; // yalnız Admin SDK
+    }
+
     // Tanımlı olmayan her yol tamamen kapalı (varsayılan reddet)
     match /{document=**} {
       allow read, write: if false;
