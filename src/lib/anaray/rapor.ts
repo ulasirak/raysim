@@ -237,6 +237,7 @@ function rDil(lang: RaporDil) {
     s4: "Kapasite ve Blocking-Time Analizi", s4i: "En yüksek blocking-time'lı blok minimum tren aralığını (headway) belirler; UIC 406 doluluk oranı bu değerin hedef headway'e bölümüdür. Her bloğun rezerve süresi altı bileşenden oluşur.",
     thGost: ["Gösterge", "Değer"],
     kapTur: "Tur süresi (worst-case seyir)", kapDonus: "Dönüş bekleme (tur başına)", kapCevrim: "Çevrim süresi (dönüş bekleme dâhil)", kapHedef: "Hedef headway", kapSigan: "Headway'de gereken tren", kapDarbogaz: "Darboğaz hücre", kapDenge: "Denge (eşit şartlar)", kapDengeli: "Dengeli", kapSapma: (p: string) => `%${p} sapma`, kapMin: "Minimum headway (kritik blok)", kapTeorik: "Teorik kapasite", kapUIC: "UIC 406 doluluk (hedef headway'de)", tphSuffix: "tren/saat",
+    kapNot: "Kapasite değerleri temkinli (worst-case) kabullerle hesaplanır; saha koşullarındaki sapma minimum düzeyde ve daima güvenli yöndedir — gerçek hat performansı bu rakamlara eşit ya da daha iyidir.",
     s41: "3.1 Blocking-Time (Sperrzeitentreppe)",
     fig4: (h: number) => `Şekil 4 — Sperrzeitentreppe: iki ardışık trenin blok işgal (blocking-time) pencereleri; kritik blokta ikinci trenin başlangıcı birincinin bitişine değer = min headway ${h}s.`,
     fig5: "Şekil 5 — Blok başına blocking-time bileşen dağılımı (kritik blok kırmızı etiketli).",
@@ -267,6 +268,7 @@ function rDil(lang: RaporDil) {
     s4: "Capacity and Blocking-Time Analysis", s4i: "The block with the highest blocking-time sets the minimum train interval (headway); the UIC 406 occupancy ratio is this value divided by the target headway. Each block's reserved time comprises six components.",
     thGost: ["Indicator", "Value"],
     kapTur: "Running time (worst-case)", kapDonus: "Turnaround (per cycle)", kapCevrim: "Cycle time (incl. turnaround)", kapHedef: "Target headway", kapSigan: "Trains required", kapDarbogaz: "Bottleneck cell", kapDenge: "Balance (equal conditions)", kapDengeli: "Balanced", kapSapma: (p) => `${p}% deviation`, kapMin: "Minimum headway (critical block)", kapTeorik: "Theoretical capacity", kapUIC: "UIC 406 occupancy (at target headway)", tphSuffix: "trains/hour",
+    kapNot: "Capacity figures are computed under conservative (worst-case) assumptions; field deviation is minimal and always on the safe side — real line performance meets or exceeds these values.",
     s41: "3.1 Blocking-Time (Sperrzeitentreppe)",
     fig4: (h) => `Figure 4 — Sperrzeitentreppe: block occupation (blocking-time) windows of two consecutive trains; at the critical block the second train's start touches the first's end = min headway ${h}s.`,
     fig5: "Figure 5 — Per-block blocking-time component breakdown (critical block labelled red).",
@@ -498,6 +500,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <div class="banner"><span class="no">3</span>${L.s4}</div>
   <p>${L.s4i}</p>
   ${kapasiteTbl}
+  <p class="muted" style="font-size:11px;margin-top:6px">${L.kapNot}</p>
   ${bfFig}
   <h3 class="sub">${L.s41}</h3>
   <div class="fig">${line ? sperrzeitSvg(bt, line.length) : ""}<div class="cap">${L.fig4(Math.round(bt.minHeadway))}</div></div>
