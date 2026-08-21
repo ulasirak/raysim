@@ -288,7 +288,9 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
     if (!authHazir || !user || !yonetici || paylasimId) return;
     if (durum !== "hazir") return; // bootstrap bitmeden çalışma
     if (hazirDenendi.current) return;
-    const bayrak = `raysim_hazir_seed_${user.uid}`;
+    // v2: gerçek CAD verisi (Alaaddin-Etap1-2-depo) — eski presetler silinince
+    // yeni anahtar sayesinde bir kez yeniden seed edilir.
+    const bayrak = `raysim_hazir_seed_v2_${user.uid}`;
     try { if (localStorage.getItem(bayrak)) { hazirDenendi.current = true; return; } } catch { /* yok */ }
     hazirDenendi.current = true;
     (async () => {
