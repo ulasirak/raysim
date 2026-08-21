@@ -26,7 +26,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { getAuthInstance } from "@/lib/firebase";
 import {
   projeleriListele, ilkProjeOlustur, projeGetir, projeKaydet, projeSil,
-  projeAdiDegistir, paylasimAyarla, veriBoyutu,
+  projeAdiDegistir, paylasimAyarla, veriBoyutu, hazirHatlariSeed,
   PROJE_KOTASI, VERI_BAYT_SINIRI, type ProjeOzet, type ProjeVerisi,
 } from "@/lib/projeler";
 
@@ -279,6 +279,32 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
     calistir();
     return () => { iptal = true; };
   }, [authHazir, user, yonetici, paylasimId, veriUygula, paylasimdanCik]);
+
+  // 2b) Hazır Konya hatlarını (Mevcut T1 · 1. Etap · 2. Etap) YÖNETİCİ hesabına bir
+  // kez seed et. Sunucu idempotenttir; burada tarayıcı-başına bir bayrakla gereksiz
+  // çağrı önlenir. Yönetici bir hattı silerse yeniden oluşturulmaz (bayrak kalır).
+  const hazirDenendi = useRef(false);
+  useEffect(() => {
+    if (!authHazir || !user || !yonetici || paylasimId) return;
+    if (durum !== "hazir") return; // bootstrap bitmeden çalışma
+    if (hazirDenendi.current) return;
+    const bayrak = `raysim_hazir_seed_${user.uid}`;
+    try { if (localStorage.getItem(bayrak)) { hazirDenendi.current = true; return; } } catch { /* yok */ }
+    hazirDenendi.current = true;
+    (async () => {
+      try {
+        const { yeniSayisi } = await hazirHatlariSeed();
+        try { localStorage.setItem(bayrak, "1"); } catch { /* yok */ }
+        if (yeniSayisi > 0) {
+          const yeni = await projeleriListele(user.uid);
+          setProjeler(yeni);
+        }
+      } catch {
+        // Sunucu yapılandırılmamış (yerel) veya geçici hata → bayrak yazma, sonra dener.
+        hazirDenendi.current = false;
+      }
+    })();
+  }, [authHazir, user, yonetici, paylasimId, durum]);
 
   // 3) Otomatik kayıt (geciktirmeli) — yalnız yazılabilir durumda ve gerçek değişimde
   useEffect(() => {

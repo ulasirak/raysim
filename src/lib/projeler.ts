@@ -119,6 +119,24 @@ export async function ilkProjeOlustur(ad: string, veri: ProjeVerisi): Promise<st
   return veriYanit.id as string;
 }
 
+/**
+ * Hazır Konya hatlarını (Mevcut T1 · 1. Etap · 2. Etap) YÖNETİCİ hesabına seed
+ * eder — SUNUCUDA (`/api/proje/hazir`, Admin SDK), idempotent. Sıradan kullanıcı
+ * çağırırsa sunucu 403 döner. Dönüş: kaç hattın yeni oluşturulduğu.
+ */
+export async function hazirHatlariSeed(): Promise<{ yeniSayisi: number }> {
+  const token = await getAuthInstance()?.currentUser?.getIdToken();
+  if (!token) throw new Error("Oturum bulunamadı.");
+  const yanit = await fetch("/api/proje/hazir", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const v = await yanit.json().catch(() => ({}));
+  if (!yanit.ok) throw new Error(v.hata ?? "Hazır hatlar yüklenemedi.");
+  const hatlar = (v.hatlar ?? []) as { yeni: boolean }[];
+  return { yeniSayisi: hatlar.filter((h) => h.yeni).length };
+}
+
 export interface ProjeKaydi extends ProjeOzet {
   veri: ProjeVerisi;
 }
