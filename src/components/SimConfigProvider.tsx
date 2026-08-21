@@ -288,10 +288,10 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
     if (!authHazir || !user || !yonetici || paylasimId) return;
     if (durum !== "hazir") return; // bootstrap bitmeden çalışma
     if (hazirDenendi.current) return;
-    // v3: mevcut hat 6/7. durak işletme adları (Spor ve Kongre Merkezi / Karşehir)
-    // + Mevlana/MKM crossover makasları. Yeni anahtar sayesinde seed bir kez daha
-    // çalışır; sunucu var olan hazır taslakları yeni veri sürümüne tazeler.
-    const bayrak = `raysim_hazir_seed_v3_${user.uid}`;
+    // v4: tam CAD makas denetimi (Alaaddin yelpaze, Ravza/Otogar/Betoncular makası,
+    // Banliyö barınması kaldırıldı). Yeni anahtar sayesinde seed bir kez daha çalışır;
+    // sunucu var olan hazır taslakları yeni veri sürümüne tazeler.
+    const bayrak = `raysim_hazir_seed_v4_${user.uid}`;
     try { if (localStorage.getItem(bayrak)) { hazirDenendi.current = true; return; } } catch { /* yok */ }
     hazirDenendi.current = true;
     (async () => {

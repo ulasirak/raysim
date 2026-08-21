@@ -178,10 +178,12 @@ const ETAP2_MESAFE = [413, 762, 880, 853, 1011, 1446, 1137, 1062, 1057];
 // Hazır-hat verisinin SÜRÜMÜ. Resmî taslak verisi (durak adı, kilometraj, makas…)
 // her düzeltildiğinde ARTIRILIR → seed, yöneticinin hesabındaki mevcut hazır
 // taslakları bu yeni sürüme bir kez tazeler (kullanıcının kendi oluşturduğu
-// projelere DOKUNMAZ; yalnız `hazir_<key>_<uid>` taslakları). v3: mevcut hattın
-// 6/7. durakları işletme adlarına çevrildi (Spor ve Kongre Merkezi / Karşehir),
-// Mevlana + MKM crossover makasları eklendi.
-export const HAZIR_VERI_SURUM = 3;
+// projelere DOKUNMAZ; yalnız `hazir_<key>_<uid>` taslakları).
+// v3: mevcut hat 6/7. durak işletme adları + Mevlana/MKM crossover.
+// v4: tam CAD makas denetimi — Alaaddin yelpaze sayı=4; Etap1'e Ravza (U11),
+//     Etap2'ye Otogar (U4)+Betoncular (U6) makası; CAD'de olmayan Banliyö (U7)
+//     barınması kaldırıldı; makas point-machine sayıları CAD'den.
+export const HAZIR_VERI_SURUM = 4;
 
 export interface HazirHat {
   key: "mevcut" | "etap1" | "etap2";
@@ -208,7 +210,7 @@ export function hazirHatlar(): HazirHat[] {
         musavir: "—",
         sinyalizasyonFirmasi: "RaySim",
         dokumanNo: "KNY-MEV-AKS-001",
-        revizyon: "v3.0 — GERÇEK CAD kilometrajı + makas enterlok doğrulaması (PM1–PM9: Alaaddin/Mevlana/MKM/Adliye); durak adları işletme (Spor ve Kongre M., Karşehir)",
+        revizyon: "v4.0 — GERÇEK CAD kilometrajı + makas enterlok denetimi (PM1–PM9: Alaaddin yelpaze/Mevlana/MKM/Adliye, diğer duraklarda makas yok); durak adları işletme (Spor ve Kongre M., Karşehir)",
         hazirlayan: "Tasarım Mühendisi",
         onaylayan: "Firma Yetkilisi",
       }),
@@ -240,7 +242,7 @@ export function hazirHatlar(): HazirHat[] {
         musavir: "—",
         sinyalizasyonFirmasi: "RaySim",
         dokumanNo: "KNY-E1-AKS-001",
-        revizyon: "v3.0 — CAD adları (U10–U22) + kilometrajı + makas PM doğrulaması (Aslım/Ravza/Depo/dönüş fanı); U21→U22 tahmini",
+        revizyon: "v4.0 — CAD adları (U10–U22) + kilometrajı + makas PM denetimi (Aslım kavşağı/Ravza/Depo merdiveni/dönüş fanı; U12–U16, U18–U20 makassız); U21→U22 tahmini",
         hazirlayan: "Tasarım Mühendisi",
         onaylayan: "Firma Yetkilisi",
       }),
@@ -248,15 +250,18 @@ export function hazirHatlar(): HazirHat[] {
   };
 
   // ③ 2. Etap — U1..U10 (Stadyum → Aslım Sanayi)
-  // Enterlok şemasında PM ile doğrulanan: U6 Betoncular crossover PM30–32,
-  // U9 TÜMOSAN/Aslım kavşağı PM26–29. U1 Stadyum ucu dönüşü + U7 Banliyö barınması
-  // şemanın bu şeridinde ayrık gösterilmediğinden mühendislik varsayımıdır.
+  // Makaslar İKİ CAD katmanıyla eşlendi — geometrik MAKAS_KOD (M1–M28) + enterlok PM:
+  //   U1 Stadyum terminus yelpazesi M1–M8 · U4 Otogar kavşağı M9/M10 ·
+  //   U6 Betoncular crossover PM30–32 · U9 TÜMOSAN/Aslım kavşağı M11–14/PM26–29.
+  //   U7 Banliyö ve U8 TÜYAP'ta makas YOK (ne M-kod ne PM) → önceki barınma kaldırıldı;
+  //   Banliyö yalnız aktarma beklemesi (dwell) taşır (KONYARAY ile yaya aktarması).
   const etap2Ek: Record<number, RingEk> = {
-    0: { makas: [{ tip: "udonus", konumOran: 0.3, sayi: 2 }], dwell: 50 },                        // U1 Stadyum ucu (dönüş)
-    3: { hemzemin: [{ tip: "karayolu", konumOran: 0.5 }] },                                       // U4 Otogar
+    0: { makas: [{ tip: "udonus", konumOran: 0.3, sayi: 3 }], dwell: 50 },                        // U1 Stadyum terminus yelpazesi (M1–M8)
+    3: { makas: [{ tip: "karsilasmali", konumOran: 0.12, sayi: 2 }],
+         hemzemin: [{ tip: "karayolu", konumOran: 0.55 }] },                                      // U4 Otogar kavşağı (M9/M10) + karayolu
     5: { makas: [{ tip: "karsilasmali", konumOran: 0.06, sayi: 2 }] },                            // U6 Betoncular crossover (PM30–32)
-    6: { makas: [{ tip: "barinma", konumOran: 0.8, sayi: 2 }], dwell: 30 },                       // U7 Banliyö Aktarma (KONYARAY)
-    8: { fromDepot: false, makas: [{ tip: "karsilasmali", konumOran: 0.8, sayi: 2 }], dwell: 40 },// U9 TÜMOSAN kavşağı (PM26–29)
+    6: { dwell: 30 },                                                                             // U7 Banliyö Aktarma — makas YOK, aktarma beklemesi
+    8: { fromDepot: false, makas: [{ tip: "karsilasmali", konumOran: 0.8, sayi: 2 }], dwell: 40 },// U9 TÜMOSAN kavşağı (M11–14/PM26–29)
   };
   const etap2: HazirHat = {
     key: "etap2",
@@ -272,7 +277,7 @@ export function hazirHatlar(): HazirHat[] {
         musavir: "—",
         sinyalizasyonFirmasi: "RaySim",
         dokumanNo: "KNY-E2-AKS-001",
-        revizyon: "v3.0 — CAD adları (U1–U10) + kilometrajı + makas PM doğrulaması (Betoncular/TÜMOSAN kavşağı)",
+        revizyon: "v4.0 — CAD adları (U1–U10) + kilometrajı + makas denetimi (M-kod+PM: Stadyum/Otogar/Betoncular/TÜMOSAN kavşağı; Banliyö-TÜYAP makassız)",
         hazirlayan: "Tasarım Mühendisi",
         onaylayan: "Firma Yetkilisi",
       }),
