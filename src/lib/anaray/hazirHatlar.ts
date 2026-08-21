@@ -95,32 +95,27 @@ function meta(p: Partial<ProjeMeta>): ProjeMeta {
 }
 
 // ————————————————————————————————————————————————
-// ① MEVCUT HAT — T1 Alaaddin – Selçuk Üniversitesi (GERÇEK mesafeler)
+// ① MEVCUT HAT — Alaaddin – Adliye koridoru (GERÇEK CAD kilometrajı)
 // ————————————————————————————————————————————————
-
+// Kaynak: karşı tarafın AutoCAD projesi (Alaaddin-Etap1-2-depo_v11 "Mevcut Hat").
+// İstasyon İSTASYONU markörlerinin gerçek UTM konumları, CAD'in km-stationing
+// grid'ine (C-ROAD-STAN) izdüşürülerek her istasyonun GERÇEK kilometrajı çıkarıldı
+// (izdüşüm sapması iç istasyonlarda ≤ 10 m). Mesafeler bu kilometrajların farkıdır.
+//   Alaattin 0+000 · Hükümet 0+261 · Mevlana 1+142 · Mevlana K.M. 1+841 ·
+//   Fetih 2+847 · Üniversite 3+718 · Samanpazarı 4+282 · Adliye 5+200
 const T1_DURAK = [
-  "Zafer", "Alaaddin", "Belediye", "Nalçacı", "Kule", "Kunduracılar", "Eski Sanayi",
-  "Aydınlıkevler", "Şehitler Camii", "Sakarya", "Teknik Lise", "1. Organize Sanayi",
-  "Eyüp Sultan", "Binkonutlar", "Erenkaya", "Otogar", "MEDAŞ", "Elmalılı Hamdi", "MTA",
-  "Yazır", "Japon Parkı", "Sancak", "Piri Reis", "Fırat Caddesi", "Buzlukbaşı Köprüsü",
-  "Bosna Hersek", "Kayalar Camii", "Kampüs", "Tıp Fakültesi", "Mühendislik Fakültesi",
-  "Fen Edebiyat Fakültesi", "Hukuk Fakültesi",
+  "Alaattin", "Hükümet", "Mevlana", "Mevlana Kültür Merkezi",
+  "Fetih", "Üniversite", "Samanpazarı", "Adliye",
 ];
-// OpenStreetMap koordinatlarından (haversine) hesaplanan gerçek durak arası mesafeler (m).
-const T1_MESAFE = [
-  297, 716, 627, 840, 623, 930, 869, 752, 700, 968, 521, 763, 521, 379, 676, 413,
-  594, 709, 712, 559, 569, 826, 679, 839, 767, 450, 622, 448, 491, 308, 242,
-];
+// GERÇEK durak arası mesafeler (m) — CAD kilometrajı farklarından.
+const T1_MESAFE = [261, 881, 699, 1006, 871, 564, 918];
 
-// Sakarya (durak #10 → ring index 8: Şehitler Camii→Sakarya, index 9: Sakarya→Teknik Lise)
-// deposu ve uç U-dönüşleri + seçili hemzemin geçitler.
+// Alaaddin kavşağı (çok makaslı yelpaze — CAD'de T/O 1/6 R50 & R100 makaslar) ve
+// Adliye ucu U-dönüşü. Makas tipleri projeden: 1/6 tanjant, R50/R100 yarıçap.
 const T1_EK: Record<number, RingEk> = {
-  0: { fromDepot: true, makas: [{ tip: "udonus", konumOran: 0.25 }], dwell: 40 }, // Zafer ucu
-  8: { makas: [{ tip: "depo", konumOran: 0.85 }] },                                // Sakarya deposu bağlantısı
-  4: { hemzemin: [{ tip: "karayolu", konumOran: 0.5 }] },
-  11: { makas: [{ tip: "headway", konumOran: 0.5 }] },                             // 1.OSB bölgesi blok makası
-  18: { hemzemin: [{ tip: "karayolu", konumOran: 0.5 }] },
-  30: { makas: [{ tip: "udonus", konumOran: 0.7 }], dwell: 45 },                   // Hukuk Fak. ucu
+  0: { fromDepot: true, makas: [{ tip: "karsilasmali", konumOran: 0.3 }], dwell: 40 }, // Alaaddin kavşağı
+  3: { hemzemin: [{ tip: "karayolu", konumOran: 0.5 }] },
+  6: { makas: [{ tip: "udonus", konumOran: 0.75 }], dwell: 45 },                        // Adliye ucu
 };
 
 // ————————————————————————————————————————————————
@@ -169,19 +164,19 @@ export function hazirHatlar(): HazirHat[] {
   const mevcutRings = hatKur(T1_DURAK, T1_MESAFE, T1_EK);
   const mevcut: HazirHat = {
     key: "mevcut",
-    ad: "Konya Mevcut Hat — T1 (Alaaddin–Selçuk Üniv.)",
+    ad: "Konya Mevcut Hat — Alaaddin–Adliye (CAD)",
     veri: {
       rings: mevcutRings, cfg, arac: SKODA_28T,
       isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 8, turnaroundDk: 4 },
       meta: meta({
-        projeAdi: "Konya Tramvay — Mevcut Hat (T1) Sinyalizasyon Değerlendirmesi",
-        hatAdi: "T1 · Alaaddin – Selçuk Üniversitesi (21,0 km · 32 istasyon)",
+        projeAdi: "Konya Tramvay — Mevcut Hat (Alaaddin–Adliye) Sinyalizasyon",
+        hatAdi: "Alaaddin – Adliye (5,2 km · 8 istasyon)",
         idare: "Konya Büyükşehir Belediyesi",
         yuklenici: "—",
         musavir: "—",
         sinyalizasyonFirmasi: "RaySim",
-        dokumanNo: "KNY-T1-AKS-001",
-        revizyon: "v1.0 — mesafeler OSM koordinatından (gerçek)",
+        dokumanNo: "KNY-MEV-AKS-001",
+        revizyon: "v2.0 — GERÇEK CAD kilometrajı (Alaaddin-Etap1-2-depo_v11); makas T/O 1/6 R50/R100",
         hazirlayan: "Tasarım Mühendisi",
         onaylayan: "Firma Yetkilisi",
       }),
