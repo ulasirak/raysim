@@ -143,6 +143,25 @@ export function Belgeler() {
         </p>
       </div>
 
+      {/* Proje künyesi */}
+      <Panel baslik="Proje Künyesi" aciklama={yazilabilir
+        ? "Belgelerin kapağında ve künyesinde görünür. Hesabınıza otomatik kaydedilir."
+        : "Belgelerin kapağında ve künyesinde görünür. Demo/paylaşım görünümünde düzenlenemez."}>
+        {/* Künye proje verisidir → salt-okunur modda kapalı; belge üretimi AÇIK kalır
+            (ziyaretçi demo hattının belgesini indirip kaliteyi görebilsin). */}
+        <fieldset disabled={!yazilabilir} className="contents">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {PROJE_META_ALANLAR.map((a) => (
+              <label key={a.key} className={a.genis ? "sm:col-span-2" : ""}>
+                <span className="field-label">{a.ad}</span>
+                <input value={meta[a.key]} onChange={(e) => patchMeta({ [a.key]: e.target.value })}
+                  className="mt-1 w-full rounded border px-2 py-1.5 text-sm disabled:opacity-60" style={{ borderColor: brand.border, color: brand.ink }} />
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      </Panel>
+
       {/* İndirme */}
       <Panel baslik="Belge Üret" aciklama="Şık PDF = amblemli kapak + KPI (temel performans göstergesi) kartları + hat şeması + blocking-time (blok işgal süresi) grafiği (baskıya hazır). Word = düzenlenebilir Tasarım El Kitabı. Excel = çok sayfalı çalışma kitabı.">
         <div className="mb-3 flex items-center gap-2">
@@ -217,25 +236,6 @@ export function Belgeler() {
             ? "Hat kurulduğunda burada headway/denge değerlendirmesi görünür."
             : ozet.headwayUygun && ozet.dengeli ? "✓ Belge: tüm hücreler headway'e uygun ve dengeli." : "▲ Belge, headway ihlali / dengesizlik uyarılarını içerecek."}
         </div>
-      </Panel>
-
-      {/* Proje künyesi */}
-      <Panel baslik="Proje Künyesi" aciklama={yazilabilir
-        ? "Belgelerin kapağında ve künyesinde görünür. Hesabınıza otomatik kaydedilir."
-        : "Belgelerin kapağında ve künyesinde görünür. Demo/paylaşım görünümünde düzenlenemez."}>
-        {/* Künye proje verisidir → salt-okunur modda kapalı; belge üretimi AÇIK kalır
-            (ziyaretçi demo hattının belgesini indirip kaliteyi görebilsin). */}
-        <fieldset disabled={!yazilabilir} className="contents">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {PROJE_META_ALANLAR.map((a) => (
-              <label key={a.key} className={a.genis ? "sm:col-span-2" : ""}>
-                <span className="field-label">{a.ad}</span>
-                <input value={meta[a.key]} onChange={(e) => patchMeta({ [a.key]: e.target.value })}
-                  className="mt-1 w-full rounded border px-2 py-1.5 text-sm disabled:opacity-60" style={{ borderColor: brand.border, color: brand.ink }} />
-              </label>
-            ))}
-          </div>
-        </fieldset>
       </Panel>
 
       <footer className="mt-10 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
