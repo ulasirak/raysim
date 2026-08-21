@@ -13,7 +13,7 @@ import { NextResponse } from "next/server";
 import { istekKimlik, isAdminConfigured, adminDb } from "@/lib/firebaseAdmin";
 import { hizSiniri } from "@/lib/rateLimit";
 import { yoneticiMi, yoneticiUidMi } from "@/lib/anaray/yetki";
-import { hazirHatlar } from "@/lib/anaray/hazirHatlar";
+import { hazirHatlar, HAZIR_VERI_SURUM } from "@/lib/anaray/hazirHatlar";
 import { VERI_BAYT_SINIRI } from "@/lib/projeler";
 
 export const runtime = "nodejs";
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
   const db = await adminDb();
   const { FieldValue } = await import("firebase-admin/firestore");
 
-  const olusan: { key: string; id: string; yeni: boolean }[] = [];
+  const olusan: { key: string; id: string; yeni: boolean; guncel?: boolean }[] = [];
   try {
     for (const hat of hazirHatlar()) {
       const veriJson = JSON.stringify(hat.veri);
@@ -56,16 +56,30 @@ export async function POST(req: Request) {
       }
       const id = `hazir_${hat.key}_${uid}`;
       const ref = db.collection("projeler").doc(id);
-      const yeni = await db.runTransaction(async (tx) => {
+      const sonuc = await db.runTransaction(async (tx): Promise<"yeni" | "guncel" | "ayni"> => {
         const snap = await tx.get(ref);
-        if (snap.exists) return false; // idempotent — kullanıcının düzenlediği veriyi ezme
-        tx.set(ref, {
-          sahipUid: uid, ad: hat.ad, veri: veriJson, paylasim: { acik: false },
-          olusturma: FieldValue.serverTimestamp(), guncelleme: FieldValue.serverTimestamp(),
-        });
-        return true;
+        if (!snap.exists) {
+          tx.set(ref, {
+            sahipUid: uid, ad: hat.ad, veri: veriJson, paylasim: { acik: false },
+            veriSurum: HAZIR_VERI_SURUM,
+            olusturma: FieldValue.serverTimestamp(), guncelleme: FieldValue.serverTimestamp(),
+          });
+          return "yeni";
+        }
+        // Var olan HAZIR taslak: yalnız resmî veri sürümü ilerlediyse tazele
+        // (durak adı/kilometraj/makas düzeltmeleri kullanıcıya ulaşsın). Sürüm
+        // aynıysa DOKUNMA (kullanıcının bu taslakta yaptığı düzenlemeyi ezme).
+        const eskiSurum = (snap.data()?.veriSurum as number | undefined) ?? 1;
+        if (eskiSurum < HAZIR_VERI_SURUM) {
+          tx.update(ref, {
+            ad: hat.ad, veri: veriJson, veriSurum: HAZIR_VERI_SURUM,
+            guncelleme: FieldValue.serverTimestamp(),
+          });
+          return "guncel";
+        }
+        return "ayni";
       });
-      olusan.push({ key: hat.key, id, yeni });
+      olusan.push({ key: hat.key, id, yeni: sonuc === "yeni", guncel: sonuc === "guncel" });
     }
     return NextResponse.json({ hatlar: olusan });
   } catch (e) {

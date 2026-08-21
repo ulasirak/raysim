@@ -288,9 +288,10 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
     if (!authHazir || !user || !yonetici || paylasimId) return;
     if (durum !== "hazir") return; // bootstrap bitmeden çalışma
     if (hazirDenendi.current) return;
-    // v2: gerçek CAD verisi (Alaaddin-Etap1-2-depo) — eski presetler silinince
-    // yeni anahtar sayesinde bir kez yeniden seed edilir.
-    const bayrak = `raysim_hazir_seed_v2_${user.uid}`;
+    // v3: mevcut hat 6/7. durak işletme adları (Spor ve Kongre Merkezi / Karşehir)
+    // + Mevlana/MKM crossover makasları. Yeni anahtar sayesinde seed bir kez daha
+    // çalışır; sunucu var olan hazır taslakları yeni veri sürümüne tazeler.
+    const bayrak = `raysim_hazir_seed_v3_${user.uid}`;
     try { if (localStorage.getItem(bayrak)) { hazirDenendi.current = true; return; } } catch { /* yok */ }
     hazirDenendi.current = true;
     (async () => {

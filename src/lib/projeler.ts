@@ -133,8 +133,9 @@ export async function hazirHatlariSeed(): Promise<{ yeniSayisi: number }> {
   });
   const v = await yanit.json().catch(() => ({}));
   if (!yanit.ok) throw new Error(v.hata ?? "Hazır hatlar yüklenemedi.");
-  const hatlar = (v.hatlar ?? []) as { yeni: boolean }[];
-  return { yeniSayisi: hatlar.filter((h) => h.yeni).length };
+  const hatlar = (v.hatlar ?? []) as { yeni: boolean; guncel?: boolean }[];
+  // Yeni oluşturulan VEYA yeni sürüme tazelenen taslak sayısı → liste yenilenir.
+  return { yeniSayisi: hatlar.filter((h) => h.yeni || h.guncel).length };
 }
 
 export interface ProjeKaydi extends ProjeOzet {

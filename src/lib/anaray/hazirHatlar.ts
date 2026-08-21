@@ -47,8 +47,10 @@ const SKODA_28T: RollingStock = {
 // ————————————————————————————————————————————————
 
 interface RingEk {
-  /** Bu ring hangi durağa GİDİYOR (index). Uç/kavşak/depo işaretleri buradan. */
-  makas?: { tip: MakasTip; konumOran: number }[];
+  /** Bu ring hangi durağa GİDİYOR (index). Uç/kavşak/depo işaretleri buradan.
+   *  `sayi`: CAD'deki ardışık makas (point machine) adedi — ör. Alaaddin yelpazesi
+   *  4 (PM1/PM2/PM3/PM80). `hizKmh`: CAD geometrisinden/şartnameden geçiş hızı. */
+  makas?: { tip: MakasTip; konumOran: number; sayi?: number; hizKmh?: number }[];
   hemzemin?: { tip: HemzeminTip; konumOran: number }[];
   dwell?: number;
   depot?: boolean;
@@ -78,7 +80,10 @@ function hatKur(
       if (ek.fromDepot) { r.fromDepot = true; r.fromQueued = 2; }
       for (const m of ek.makas ?? []) {
         const konum = Math.round(Math.min(uz, Math.max(0, uz * m.konumOran)));
-        r.makaslar.push(yeniMakas(m.tip, konum));
+        const mk = yeniMakas(m.tip, konum);
+        if (m.sayi != null) mk.makasSayisi = m.sayi;               // CAD point-machine adedi
+        if (m.hizKmh != null) mk.gecisHizi = m.hizKmh / 3.6;       // km/h → m/s
+        r.makaslar.push(mk);
       }
       for (const h of ek.hemzemin ?? []) {
         const konum = Math.round(Math.min(uz, Math.max(0, uz * h.konumOran)));
@@ -102,20 +107,38 @@ function meta(p: Partial<ProjeMeta>): ProjeMeta {
 // grid'ine (C-ROAD-STAN) izdüşürülerek her istasyonun GERÇEK kilometrajı çıkarıldı
 // (izdüşüm sapması iç istasyonlarda ≤ 10 m). Mesafeler bu kilometrajların farkıdır.
 //   Alaattin 0+000 · Hükümet 0+261 · Mevlana 1+142 · Mevlana K.M. 1+841 ·
-//   Fetih 2+847 · Üniversite 3+718 · Samanpazarı 4+282 · Adliye 5+200
+//   Fetih 2+847 · Spor ve Kongre Merkezi 3+718 · Karşehir 4+282 · Adliye 5+200
+// NOT: 6. ve 7. durak adları işletme adlarıyla (Spor ve Kongre Merkezi / Karşehir)
+// kullanılır; CAD İSTASYONU markörleri bu iki noktada "Üniversite"/"Samanpazarı"
+// yazsa da işletmede güncel adlar bunlardır (kilometraj/konum aynı).
 const T1_DURAK = [
   "Alaattin", "Hükümet", "Mevlana", "Mevlana Kültür Merkezi",
-  "Fetih", "Üniversite", "Samanpazarı", "Adliye",
+  "Fetih", "Spor ve Kongre Merkezi", "Karşehir", "Adliye",
 ];
 // GERÇEK durak arası mesafeler (m) — CAD kilometrajı farklarından.
 const T1_MESAFE = [261, 881, 699, 1006, 871, 564, 918];
 
 // Alaaddin kavşağı (çok makaslı yelpaze — CAD'de T/O 1/6 R50 & R100 makaslar) ve
 // Adliye ucu U-dönüşü. Makas tipleri projeden: 1/6 tanjant, R50/R100 yarıçap.
+// Mevlana ve Mevlana Kültür Merkezi'nde de karşılaşmalı makas (crossover) vardır —
+// CAD'de her ikisinde de T/O 1/6 R100 LH makas çifti: Mevlana ~(456461/456502),
+// MKM ~(457473/457513). Bu makaslar, Fetih notundaki "makas üzerinden U dönüşüyle
+// Alaaddin bölgesine dönüş" manevrasını sağlar.
+// CAD İki bağımsız katmanla DOĞRULANDI: (a) geometrik T/O makas markörleri,
+// (b) enterlok şemasındaki point-machine'ler (PM). Eşleşme:
+//   Alaaddin  → 4 makas (2×T/O R50 + 2×T/O R100) · PM1/PM2/PM3/PM80 — dönüş yelpazesi
+//   Mevlana   → 2×T/O R100 LH · PM4/PM5 — crossover
+//   MKM       → 2×T/O R100 LH · PM6/PM7 — crossover
+//   Adliye    → 2×T/O R100 (RH+LH) · PM8/PM9 — U-dönüş crossover
+//   Hükümet/Fetih/Spor ve Kongre/Karşehir → makas YOK (şemada PM yok). EKSİKSİZ.
+// Geçiş hızı 15 km/h = Şartname 3.4.8.2 (varsayılan vMakas) — R50 en dar yarıçapı
+// yönetir; CAD hız sayısı vermez, geometri (R50/R100·1/6) verir.
 const T1_EK: Record<number, RingEk> = {
-  0: { fromDepot: true, makas: [{ tip: "karsilasmali", konumOran: 0.3 }], dwell: 40 }, // Alaaddin kavşağı
-  3: { hemzemin: [{ tip: "karayolu", konumOran: 0.5 }] },
-  6: { makas: [{ tip: "udonus", konumOran: 0.75 }], dwell: 45 },                        // Adliye ucu
+  0: { fromDepot: true, makas: [{ tip: "karsilasmali", konumOran: 0.3, sayi: 4 }], dwell: 40 }, // Alaaddin dönüş yelpazesi (4 makas)
+  2: { makas: [{ tip: "karsilasmali", konumOran: 0.08, sayi: 2 }] },                            // Mevlana crossover (PM4/PM5)
+  3: { makas: [{ tip: "karsilasmali", konumOran: 0.08, sayi: 2 }],
+       hemzemin: [{ tip: "karayolu", konumOran: 0.5 }] },                                       // MKM crossover (PM6/PM7) + karayolu geçidi
+  6: { makas: [{ tip: "udonus", konumOran: 0.75, sayi: 2 }], dwell: 45 },                       // Adliye U-dönüş (PM8/PM9)
 };
 
 // ————————————————————————————————————————————————
@@ -152,6 +175,14 @@ const ETAP2_MESAFE = [413, 762, 880, 853, 1011, 1446, 1137, 1062, 1057];
 // Kamu API'si
 // ————————————————————————————————————————————————
 
+// Hazır-hat verisinin SÜRÜMÜ. Resmî taslak verisi (durak adı, kilometraj, makas…)
+// her düzeltildiğinde ARTIRILIR → seed, yöneticinin hesabındaki mevcut hazır
+// taslakları bu yeni sürüme bir kez tazeler (kullanıcının kendi oluşturduğu
+// projelere DOKUNMAZ; yalnız `hazir_<key>_<uid>` taslakları). v3: mevcut hattın
+// 6/7. durakları işletme adlarına çevrildi (Spor ve Kongre Merkezi / Karşehir),
+// Mevlana + MKM crossover makasları eklendi.
+export const HAZIR_VERI_SURUM = 3;
+
 export interface HazirHat {
   key: "mevcut" | "etap1" | "etap2";
   ad: string;
@@ -177,7 +208,7 @@ export function hazirHatlar(): HazirHat[] {
         musavir: "—",
         sinyalizasyonFirmasi: "RaySim",
         dokumanNo: "KNY-MEV-AKS-001",
-        revizyon: "v2.0 — GERÇEK CAD kilometrajı (Alaaddin-Etap1-2-depo_v11); makas T/O 1/6 R50/R100",
+        revizyon: "v3.0 — GERÇEK CAD kilometrajı + makas enterlok doğrulaması (PM1–PM9: Alaaddin/Mevlana/MKM/Adliye); durak adları işletme (Spor ve Kongre M., Karşehir)",
         hazirlayan: "Tasarım Mühendisi",
         onaylayan: "Firma Yetkilisi",
       }),
@@ -185,11 +216,15 @@ export function hazirHatlar(): HazirHat[] {
   };
 
   // ② 1. Etap — U10..U22 (Aslım Sanayi → Şehir Hastanesi → Adliye)
+  // Makaslar enterlok şeması point-machine'lerinden (PM) doğrulandı:
+  //   U10 Aslım/TÜMOSAN kavşağı  PM26–29 · U11 Ravza Camii crossover PM24/PM25 ·
+  //   U17 DEPO merdiveni PM18–23+PM38–41 · U21/U22 Şehir Hast.–Adliye dönüş fanı PM10–17.
   const etap1Ek: Record<number, RingEk> = {
-    0: { fromDepot: true, makas: [{ tip: "karsilasmali", konumOran: 0.2 }], dwell: 40 }, // Aslım/TÜMOSAN kavşağı (Etap2 ile bağ)
-    6: { hemzemin: [{ tip: "karayolu", konumOran: 0.5 }] },                               // Sedirler Kavşağı
-    7: { makas: [{ tip: "depo", konumOran: 0.6 }] },                                      // U17 DEPO girişi
-    11: { makas: [{ tip: "udonus", konumOran: 0.75 }], dwell: 45 },                       // Adliye ucu
+    0: { fromDepot: true, makas: [{ tip: "karsilasmali", konumOran: 0.2, sayi: 2 }], dwell: 40 }, // U10 Aslım/TÜMOSAN kavşağı (PM26–29)
+    1: { makas: [{ tip: "karsilasmali", konumOran: 0.06, sayi: 2 }] },                            // U11 Ravza Camii crossover (PM24/PM25)
+    6: { hemzemin: [{ tip: "karayolu", konumOran: 0.5 }] },                                       // U16 Sedirler Kavşağı
+    7: { makas: [{ tip: "depo", konumOran: 0.6, sayi: 3 }] },                                     // U17 DEPO merdiveni (PM18–23, PM38–41)
+    11: { makas: [{ tip: "udonus", konumOran: 0.75, sayi: 2 }], dwell: 45 },                      // U21/U22 dönüş fanı (PM10–17)
   };
   const etap1: HazirHat = {
     key: "etap1",
@@ -205,7 +240,7 @@ export function hazirHatlar(): HazirHat[] {
         musavir: "—",
         sinyalizasyonFirmasi: "RaySim",
         dokumanNo: "KNY-E1-AKS-001",
-        revizyon: "v2.0 — GERÇEK CAD adları (U10–U22) + kilometrajı; U21→U22 tahmini",
+        revizyon: "v3.0 — CAD adları (U10–U22) + kilometrajı + makas PM doğrulaması (Aslım/Ravza/Depo/dönüş fanı); U21→U22 tahmini",
         hazirlayan: "Tasarım Mühendisi",
         onaylayan: "Firma Yetkilisi",
       }),
@@ -213,11 +248,15 @@ export function hazirHatlar(): HazirHat[] {
   };
 
   // ③ 2. Etap — U1..U10 (Stadyum → Aslım Sanayi)
+  // Enterlok şemasında PM ile doğrulanan: U6 Betoncular crossover PM30–32,
+  // U9 TÜMOSAN/Aslım kavşağı PM26–29. U1 Stadyum ucu dönüşü + U7 Banliyö barınması
+  // şemanın bu şeridinde ayrık gösterilmediğinden mühendislik varsayımıdır.
   const etap2Ek: Record<number, RingEk> = {
-    0: { makas: [{ tip: "udonus", konumOran: 0.3 }], dwell: 50 },                         // U1 Stadyum ucu
-    6: { makas: [{ tip: "barinma", konumOran: 0.8 }], dwell: 30 },                        // U7 Banliyö Aktarma (KONYARAY)
-    3: { hemzemin: [{ tip: "karayolu", konumOran: 0.5 }] },                               // U4 Otogar
-    8: { fromDepot: false, makas: [{ tip: "karsilasmali", konumOran: 0.8 }], dwell: 40 }, // U9 TÜMOSAN kavşağı (Etap1 ile bağ)
+    0: { makas: [{ tip: "udonus", konumOran: 0.3, sayi: 2 }], dwell: 50 },                        // U1 Stadyum ucu (dönüş)
+    3: { hemzemin: [{ tip: "karayolu", konumOran: 0.5 }] },                                       // U4 Otogar
+    5: { makas: [{ tip: "karsilasmali", konumOran: 0.06, sayi: 2 }] },                            // U6 Betoncular crossover (PM30–32)
+    6: { makas: [{ tip: "barinma", konumOran: 0.8, sayi: 2 }], dwell: 30 },                       // U7 Banliyö Aktarma (KONYARAY)
+    8: { fromDepot: false, makas: [{ tip: "karsilasmali", konumOran: 0.8, sayi: 2 }], dwell: 40 },// U9 TÜMOSAN kavşağı (PM26–29)
   };
   const etap2: HazirHat = {
     key: "etap2",
@@ -233,7 +272,7 @@ export function hazirHatlar(): HazirHat[] {
         musavir: "—",
         sinyalizasyonFirmasi: "RaySim",
         dokumanNo: "KNY-E2-AKS-001",
-        revizyon: "v2.0 — GERÇEK CAD adları (U1–U10) + kilometrajı",
+        revizyon: "v3.0 — CAD adları (U1–U10) + kilometrajı + makas PM doğrulaması (Betoncular/TÜMOSAN kavşağı)",
         hazirlayan: "Tasarım Mühendisi",
         onaylayan: "Firma Yetkilisi",
       }),

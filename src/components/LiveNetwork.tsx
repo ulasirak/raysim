@@ -252,6 +252,7 @@ export function LiveNetwork({
           return <rect key={i} x={bx + 6 + i * 8} y={by + 4.5} width={6} height={8} rx={1}
             fill={gone ? "none" : UP_COL} stroke={gone ? brand.faint : "#fff"} strokeWidth={gone ? 1 : 0.8} opacity={gone ? 0.45 : 1} />;
         })}
+        <rect x={bc.x - (`🅿 ${waiting}/${d.queued} hazır`.length * 2.6 + 4)} y={by - 11} width={(`🅿 ${waiting}/${d.queued} hazır`.length * 2.6 + 4) * 2} height={11} rx={2} fill={brand.surface} opacity={0.85} />
         <text x={bc.x} y={by - 3} fill={brand.inkSoft} fontSize={8} fontWeight={700} textAnchor="middle">🅿 {waiting}/{d.queued} hazır</text>
       </g>
     );
@@ -327,33 +328,43 @@ export function LiveNetwork({
           return <circle key={`sd${i}`} cx={p.x} cy={p.y} r={3.1} fill={asp(occDown, i - 1, i - 2)} stroke="#fff" strokeWidth={1} style={{ transition: "fill 0.35s ease" }} />;
         })}
 
-        {/* İstasyonlar (peron = iki şeridi kesen dik marka) */}
+        {/* İstasyonlar — peron markası + dik iniş çubuğu (etiketler AYRI katmanda) */}
         {line.stations.map((st, i) => {
           const c = segAt(st.position);
           const u = laneAt(st.position, UP_SIDE);
           const d = laneAt(st.position, DOWN_SIDE);
-          const top = laneAt(st.position, UST); // etiket DAİMA fiziksel üst şeridin üstünde
-          // Gerçek durak adları uzundur ("Mevlana Kültür Merkezi") → komşu etiketler
-          // çakışmasın diye iki kademeye şaşırtmalı yerleştirilir.
-          const dy = i % 2 === 0 ? -10 : -23;
           return (
             <g key={st.id}>
               <line x1={u.x} y1={u.y} x2={d.x} y2={d.y} stroke={brand.ink} strokeWidth={2.5} strokeLinecap="round" />
               <circle cx={c.x} cy={c.y} r={4} fill={brand.surface} stroke={brand.ink} strokeWidth={2} />
-              {i % 2 !== 0 && (
-                <line x1={top.x} y1={top.y - 6} x2={top.x} y2={top.y - 17} stroke={CK.faint} strokeWidth={0.8} />
-              )}
-              <text x={top.x} y={top.y + dy} fill={brand.muted} fontSize={9.5} textAnchor="middle">{st.name}</text>
             </g>
           );
         })}
-
         {/* Depolar (parklanma alanları) — gidiş (alt) şeridinin yanında */}
         {depots.map(depotMark)}
 
         {/* Trenler */}
         {upNow.map(wagon)}
         {downNow.map((x, i) => wagon(x, i + upNow.length))}
+
+        {/* İstasyon ADLARI — EN ÜST katman (depo kutuları + trenlerden SONRA çizilir →
+            hiçbir tren kutusu / depo etiketi durak adını örtemez). Gerçek adlar
+            uzundur ("Mevlana Kültür Merkezi") → iki kademeye şaşırtmalı + her ad
+            arkasına yüzey halesi: komşu etiketler yatayda binişse bile ad okunur
+            kalır, üst üste yazı görüntüsü oluşmaz. */}
+        {line.stations.map((st, i) => {
+          const top = laneAt(st.position, UST); // etiket DAİMA fiziksel üst şeridin üstünde
+          const dy = i % 2 === 0 ? -12 : -28;    // iki kademe (16 px ayrım → satırlar çakışmaz)
+          const ty = top.y + dy;
+          const w = st.name.length * 5.3 + 8;    // ~fontSize 9.5 metin genişliği tahmini
+          return (
+            <g key={`lbl${st.id}`}>
+              <line x1={top.x} y1={top.y - 6} x2={top.x} y2={ty + 2} stroke={CK.faint} strokeWidth={0.8} />
+              <rect x={top.x - w / 2} y={ty - 8.5} width={w} height={11} rx={2} fill={brand.surface} opacity={0.85} />
+              <text x={top.x} y={ty} fill={brand.muted} fontSize={9.5} textAnchor="middle">{st.name}</text>
+            </g>
+          );
+        })}
 
         {/* Saat */}
         <g transform="translate(16,26)">
