@@ -54,7 +54,7 @@ export const varsayilanConfig: SimConfig = {
   dolulukTavani: 0.70,
 };
 
-export type ParamTur = "hiz" | "ivme" | "sure" | "mesafe";
+export type ParamTur = "hiz" | "ivme" | "sure" | "mesafe" | "oran";
 export type ParamModul = "sefer" | "ringler";
 
 export interface ParamMeta {
@@ -86,20 +86,21 @@ export const PARAM_META: ParamMeta[] = [
   { key: "makasAdimMax", ad: "Makas adım süresi", grup: "Zamanlayıcılar", tur: "sure", kaynak: "Ek Ö", etkiler: "Her makas hareketi süresi", moduller: ["ringler"], min: 1, max: 12, step: 1 },
   { key: "kisitGenisligi", ad: "Kısıt bölge genişliği", grup: "Blok", tur: "mesafe", kaynak: "türetme", etkiler: "Makas/geçit hız-kısıt bölgesi uzunluğu", moduller: ["ringler"], min: 10, max: 120, step: 5 },
   { key: "blokMaxUzunluk", ad: "Sinyal bloğu azami", grup: "Blok", tur: "mesafe", kaynak: "2.1", etkiler: "Blok sayısı + gecikmesiz aralık", moduller: ["sefer"], min: 100, max: 1500, step: 50 },
+  { key: "dolulukTavani", ad: "UIC 406 doluluk tavanı", grup: "Kapasite planlama", tur: "oran", kaynak: "UIC 406", etkiler: "İşletme (pratik) kapasite = teorik × tavan", moduller: ["sefer"], min: 40, max: 90, step: 5 },
 ];
 
 /** Gösterim değeri (km/h için m/s→km/h). */
 export function paramGoster(cfg: SimConfig, m: ParamMeta): number {
-  const v = cfg[m.key] ?? 0; // PARAM_META yalnız zorunlu anahtarları içerir; opsiyonel alanlar buraya düşmez
-  return m.tur === "hiz" ? v * 3.6 : v;
+  const v = cfg[m.key] ?? (m.key === "dolulukTavani" ? VARSAYILAN_DOLULUK_TAVANI : 0);
+  return m.tur === "hiz" ? v * 3.6 : m.tur === "oran" ? v * 100 : v; // oran 0..1 → %
 }
-/** Gösterim değerinden SI'ye (km/h→m/s). */
+/** Gösterim değerinden SI'ye (km/h→m/s, %→oran). */
 export function paramSI(m: ParamMeta, gosterim: number): number {
-  return m.tur === "hiz" ? gosterim * KMH : gosterim;
+  return m.tur === "hiz" ? gosterim * KMH : m.tur === "oran" ? gosterim / 100 : gosterim;
 }
 
 export function birim(tur: ParamTur): string {
-  return tur === "hiz" ? "km/h" : tur === "ivme" ? "m/s²" : tur === "sure" ? "s" : "m";
+  return tur === "hiz" ? "km/h" : tur === "ivme" ? "m/s²" : tur === "sure" ? "s" : tur === "oran" ? "%" : "m";
 }
 
 // ————————————————————————————————————————————————
