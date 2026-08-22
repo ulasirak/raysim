@@ -65,12 +65,12 @@ function ulasmaT(points: { t: number; s: number }[], s: number): number {
   return points[points.length - 1]?.t ?? 0;
 }
 
-/** Verilen konumdaki hız (m/s) — clearing süresi için. */
-function hizAt(points: { t: number; s: number; v: number }[], s: number): number {
-  for (let i = 1; i < points.length; i++) {
-    if (points[i].s >= s - 1e-6) return Math.max(1, points[i].v);
+/** Bir konumdan AYRILMA (dwell sonrası kalkış) zamanı = s'te veya altında son nokta. */
+function ayrilmaT(points: { t: number; s: number }[], s: number): number {
+  for (let i = points.length - 1; i >= 0; i--) {
+    if (points[i].s <= s + 1e-6) return points[i].t;
   }
-  return Math.max(1, points[points.length - 1]?.v ?? 1);
+  return points[0]?.t ?? 0;
 }
 
 export function blockingTimeHesap(model: HatModel, stock: RollingStock, cfg: SimConfig): BlockingSonuc {
@@ -96,9 +96,13 @@ export function blockingTimeHesap(model: HatModel, stock: RollingStock, cfg: Sim
     const yaklasS = Math.max(0, start - brakeDist);
     const tApproach = Math.max(0, girisT - ulasmaT(pts, yaklasS));
 
-    // temizleme: tren boyu / çıkış hızı
-    const vCikis = hizAt(pts, end);
-    const tClearing = stock.length / vCikis;
+    // temizleme: trenin KUYRUĞU bloğu terk edene dek — ön uç bloktan AYRILDIKTAN
+    // (dwell bitişi/kalkış) sonra `end+boy`'a ulaşana kadar geçen GERÇEK süre.
+    // Kalkış anından ölçtüğümüz için bekleme (dwell) clearing'e SIZMAZ; istasyona
+    // giren blokta çıkış hızı ~0 iken eski `boy / çıkış_hızı` clamp'i "boyu 1 m/s'te
+    // sürün" (= boy saniye) varsayıp uzun trende kritik bloğu ele geçiriyordu.
+    // Yörünge kalkış ivmesini içerdiğinden bu genel ve fiziksel doğru.
+    const tClearing = Math.max(0, ulasmaT(pts, end + stock.length) - ayrilmaT(pts, end));
 
     const z = makasOverlap(start, end);
     const tSetup = z ? z.setupSure : 0;
