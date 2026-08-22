@@ -260,9 +260,44 @@ export function LiveNetwork({
   const depoToplam = depots.reduce((a, d) => a + d.queued, 0);
   const depoBekleyenToplam = depots.reduce((a, d) => a + depotBekleyen(d), 0);
 
+  // İstasyon ADI yerleşimi — ÇAKIŞMA-FARKINDA PULL-UP: adları soldan sağa gezip
+  // her birini, o kademede yatay biniş YOKSA en alt kademeye koyar; biniş varsa
+  // bir üst kademeye "yukarı çeker". Sabit iki-kademe, yakın iki uzun adı hâlâ
+  // üst üste bindirebiliyordu → kademe sayısı ihtiyaca göre artar, hiçbir ad örtülmez.
+  const LBL_PAD = 3;      // etiketler arası asgari yatay boşluk (px)
+  const LBL_TIER = 16;    // kademe başına yukarı çekme (px)
+  const LBL_BASE = -12;   // en alt kademenin şeritten ofseti (px)
+  const stationLabels = line.stations
+    .map((st) => {
+      const top = laneAt(st.position, UST);
+      const w = st.name.length * 5.3 + 8; // ~fontSize 9.5 metin genişliği tahmini
+      return { st, x: top.x, baseY: top.y, w, x1: top.x - w / 2, x2: top.x + w / 2, tier: 0 };
+    })
+    .sort((a, b) => a.x - b.x);
+  const tierEnds: number[] = []; // her kademedeki son etiketin sağ kenarı
+  for (const lb of stationLabels) {
+    let tier = 0;
+    while (tier < tierEnds.length && lb.x1 < tierEnds[tier] + LBL_PAD) tier++;
+    lb.tier = tier;
+    tierEnds[tier] = lb.x2;
+  }
+  // En üst etiket kutusunun üst kenarı (kademelere göre).
+  const enUstY = stationLabels.reduce((m, lb) => Math.min(m, lb.baseY + LBL_BASE - lb.tier * LBL_TIER - 8.5), Infinity);
+  const etiketTepe = Number.isFinite(enUstY) ? enUstY : 40;
+  // HUD (saat + tren/depo sayaçları) DAİMA en üst etiketin de üstüne istiflenir:
+  // istasyon adları şeridin üstüne (y küçük) yazıldığından, sabit y'li HUD ile aynı
+  // üst şeridi paylaşıp çakışıyordu → HUD'u etiketlerin üstüne kaydır (6 px boşluk).
+  // Orijinal HUD düzeni: saat kutusu translate(16,26) [üst kenar y=10], sayaçlar y=22/38
+  // [en alt kenar ~41]. Tüm bloğu tek kaydırmayla (hudDY) yukarı taşırız.
+  const hudDY = Math.min(0, etiketTepe - 6 - 41); // HUD alt kenarı (41) etiketlerin 6px üstüne
+  // Otomatik üst pay: en üstteki eleman (saat kutusu üst kenarı = 10+hudDY veya etiketTepe)
+  // SVG tepesini aşarsa viewBox'ı yukarı genişlet — içerik sabit, taşma yerine boşluk.
+  const topMost = Math.min(etiketTepe, 10 + hudDY);
+  const ustPay = topMost < 4 ? Math.ceil(4 - topMost) : 0;
+
   return (
     <div className="flex flex-col gap-3">
-      <svg viewBox={`0 0 ${VBW} ${VBH}`} className="w-full h-auto" role="img" aria-label="Canlı ağ simülasyonu (çift hat)">
+      <svg viewBox={`0 ${-ustPay} ${VBW} ${VBH + ustPay}`} className="w-full h-auto" role="img" aria-label="Canlı ağ simülasyonu (çift hat)">
         {/* Depo hattı (statik) */}
         {spur.map((e, i) => (
           <line key={`sp${i}`} x1={e.a.x} y1={e.a.y} x2={e.b.x} y2={e.b.y} stroke={brand.faint} strokeWidth={2} strokeDasharray="5 4" strokeLinecap="round" />
@@ -349,32 +384,29 @@ export function LiveNetwork({
 
         {/* İstasyon ADLARI — EN ÜST katman (depo kutuları + trenlerden SONRA çizilir →
             hiçbir tren kutusu / depo etiketi durak adını örtemez). Gerçek adlar
-            uzundur ("Mevlana Kültür Merkezi") → iki kademeye şaşırtmalı + her ad
-            arkasına yüzey halesi: komşu etiketler yatayda binişse bile ad okunur
-            kalır, üst üste yazı görüntüsü oluşmaz. */}
-        {line.stations.map((st, i) => {
-          const top = laneAt(st.position, UST); // etiket DAİMA fiziksel üst şeridin üstünde
-          const dy = i % 2 === 0 ? -12 : -28;    // iki kademe (16 px ayrım → satırlar çakışmaz)
-          const ty = top.y + dy;
-          const w = st.name.length * 5.3 + 8;    // ~fontSize 9.5 metin genişliği tahmini
+            uzundur ("Mevlana Kültür Merkezi") → çakışma-farkında PULL-UP ile
+            gerektiği kadar kademeye çekilir + her ad arkasına yüzey halesi:
+            komşu etiketler yatayda binişse ayrı kademeye taşınır, üst üste yazı olmaz. */}
+        {stationLabels.map((lb) => {
+          const ty = lb.baseY + LBL_BASE - lb.tier * LBL_TIER; // kademeye göre yukarı çekme
           return (
-            <g key={`lbl${st.id}`}>
-              <line x1={top.x} y1={top.y - 6} x2={top.x} y2={ty + 2} stroke={CK.faint} strokeWidth={0.8} />
-              <rect x={top.x - w / 2} y={ty - 8.5} width={w} height={11} rx={2} fill={brand.surface} opacity={0.85} />
-              <text x={top.x} y={ty} fill={brand.muted} fontSize={9.5} textAnchor="middle">{st.name}</text>
+            <g key={`lbl${lb.st.id}`}>
+              <line x1={lb.x} y1={lb.baseY - 6} x2={lb.x} y2={ty + 2} stroke={CK.faint} strokeWidth={0.8} />
+              <rect x={lb.x - lb.w / 2} y={ty - 8.5} width={lb.w} height={11} rx={2} fill={brand.surface} opacity={0.85} />
+              <text x={lb.x} y={ty} fill={brand.muted} fontSize={9.5} textAnchor="middle">{lb.st.name}</text>
             </g>
           );
         })}
 
-        {/* Saat */}
-        <g transform="translate(16,26)">
+        {/* Saat — HUD etiketlerin üstüne istiflenir (hudDY), durak adlarıyla çakışmaz */}
+        <g transform={`translate(16,${26 + hudDY})`}>
           <rect x={-6} y={-16} width={92} height={24} rx={4} fill={brand.ink} />
           <text x={40} y={1} fill="#fff" fontSize={14} fontWeight={700} textAnchor="middle" className="font-mono">{saat(t)}</text>
         </g>
-        {/* Aktif tren sayısı + depoda bekleyen */}
-        <text x={VBW - 10} y={22} fill={brand.muted} fontSize={11} textAnchor="end">Hatta {aktifSayi} tren</text>
+        {/* Aktif tren sayısı + depoda bekleyen — aynı HUD kaydırmasıyla */}
+        <text x={VBW - 10} y={22 + hudDY} fill={brand.muted} fontSize={11} textAnchor="end">Hatta {aktifSayi} tren</text>
         {depoToplam > 0 && (
-          <text x={VBW - 10} y={38} fill={brand.inkSoft} fontSize={10} textAnchor="end">🅿 {depoBekleyenToplam}/{depoToplam} depoda çıkışa hazır</text>
+          <text x={VBW - 10} y={38 + hudDY} fill={brand.inkSoft} fontSize={10} textAnchor="end">🅿 {depoBekleyenToplam}/{depoToplam} depoda çıkışa hazır</text>
         )}
         {/* Şerit etiketleri — üst = Dönüş (sağ→sol), alt = Gidiş (sol→sağ) */}
         <text x={10} y={VBH - 30} fill={DOWN} fontSize={10} fontWeight={600}>◀ Dönüş (üst şerit)</text>
