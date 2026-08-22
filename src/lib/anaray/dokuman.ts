@@ -159,7 +159,8 @@ export async function wordUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakAras
   cocuklar.push(p("Her sinyal bloğunun rezerve (blocking-time) süresi altı bileşenden oluşur: rota kurma (setup), sürücü görme, yaklaşma, blok içi seyir, tren temizleme ve rota serbest bırakma. En yüksek blocking-time'lı blok minimum tren aralığını (headway) belirler; UIC 406 doluluk oranı bu değerin hedef headway'e bölümüdür."));
   cocuklar.push(wordTablo(["Gösterge", "Değer"], [
     ["Minimum headway (kritik blok)", `${s0(bt.minHeadway)} (blok #${bt.kritikBlok}${bt.bloklar[bt.kritikBlok]?.makasBlok ? ", makas" : ""})`],
-    ["Teorik kapasite", `${bt.teorikKapasite.toFixed(0)} tren/saat`],
+    ["Teorik kapasite (tamponsuz üst sınır)", `${bt.teorikKapasite.toFixed(0)} tren/saat`],
+    ["İşletme kapasitesi (UIC 406 doluluk tavanı)", `${bt.pratikKapasite.toFixed(0)} tren/saat (%${(bt.dolulukTavani * 100).toFixed(0)})`],
     ["UIC 406 doluluk (hedef headway'de)", `%${bt.dolulukHedef.toFixed(0)}`],
     ["Hedef headway uygunluğu", bt.hedefUygun ? "UYGUN" : "İHLAL"],
   ]));
@@ -235,7 +236,7 @@ export async function excelUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakAra
   // 4b) Blocking-Time (Sperrzeitentreppe)
   const bt = blockingTimeRing(rings, stock, cfg);
   const wB = wb.addWorksheet("Blocking-Time");
-  wB.getCell(1, 1).value = `Min headway ${Math.round(bt.minHeadway)} s · Teorik kapasite ${bt.teorikKapasite.toFixed(0)} tren/sa · UIC 406 doluluk %${bt.dolulukHedef.toFixed(0)} (hedef ${bt.hedefHeadway} s) · ${bt.hedefUygun ? "UYGUN" : "İHLAL"}`;
+  wB.getCell(1, 1).value = `Min headway ${Math.round(bt.minHeadway)} s · Teorik kapasite ${bt.teorikKapasite.toFixed(0)} tren/sa (üst sınır) · İşletme kapasitesi ${bt.pratikKapasite.toFixed(0)} tren/sa (UIC 406 %${(bt.dolulukTavani * 100).toFixed(0)}) · UIC 406 doluluk %${bt.dolulukHedef.toFixed(0)} (hedef ${bt.hedefHeadway} s) · ${bt.hedefUygun ? "UYGUN" : "İHLAL"}`;
   wB.getCell(1, 1).font = { bold: true, color: { argb: "FF0C2233" } };
   wB.getRow(2).values = ["Blok", "Makas", "Setup (s)", "Görme (s)", "Yaklaşma (s)", "Seyir (s)", "Temizleme (s)", "Release (s)", "Toplam (s)"];
   baslikSatiri(wB, 2);

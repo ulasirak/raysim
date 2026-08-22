@@ -15,7 +15,7 @@
 // uyarlanır: düz bloklarda setup/release ~0, makas bloklarında config'ten gelir.
 
 import type { RollingStock } from "./types";
-import type { SimConfig } from "./config";
+import { type SimConfig, VARSAYILAN_DOLULUK_TAVANI } from "./config";
 import { simulate } from "./sim";
 import { makeBlocks } from "./signalling";
 import { loopToHat, type HatModel } from "./hatsim";
@@ -43,7 +43,9 @@ export interface BlockingSonuc {
   bloklar: BlokSperr[];
   minHeadway: number; // s — kritik blok blocking-time'ı
   kritikBlok: number; // indeks
-  teorikKapasite: number; // tren/saat = 3600 / minHeadway
+  teorikKapasite: number; // tren/saat = 3600 / minHeadway (üst sınır, tamponsuz)
+  pratikKapasite: number; // tren/saat — teorik × doluluk tavanı (UIC 406 sürdürülebilir)
+  dolulukTavani: number; // uygulanan doluluk tavanı (0..1)
   hedefHeadway: number; // s (config)
   dolulukHedef: number; // % — minHeadway / hedefHeadway (UIC 406 doluluk)
   hedefUygun: boolean; // hedef headway ≥ minHeadway ?
@@ -117,6 +119,8 @@ export function blockingTimeHesap(model: HatModel, stock: RollingStock, cfg: Sim
   for (let i = 1; i < bloklar.length; i++) if (bloklar[i].toplam > bloklar[kritikBlok].toplam) kritikBlok = i;
   const minHeadway = bloklar.length ? bloklar[kritikBlok].toplam : 0;
   const teorikKapasite = minHeadway > 0 ? 3600 / minHeadway : 0;
+  const dolulukTavani = cfg.dolulukTavani ?? VARSAYILAN_DOLULUK_TAVANI;
+  const pratikKapasite = teorikKapasite * dolulukTavani;
   const dolulukHedef = cfg.headway > 0 ? (minHeadway / cfg.headway) * 100 : 0;
 
   return {
@@ -124,6 +128,8 @@ export function blockingTimeHesap(model: HatModel, stock: RollingStock, cfg: Sim
     minHeadway,
     kritikBlok,
     teorikKapasite,
+    pratikKapasite,
+    dolulukTavani,
     hedefHeadway: cfg.headway,
     dolulukHedef,
     hedefUygun: cfg.headway >= minHeadway,

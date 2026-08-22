@@ -28,7 +28,12 @@ export interface SimConfig {
   // Blok / geometri (m)
   kisitGenisligi: number; // makas/geçit kısıt bölgesi genişliği
   blokMaxUzunluk: number; // sinyal bloğu azami uzunluğu
+  // Kapasite planlama
+  dolulukTavani?: number; // UIC 406 önerilen doluluk tavanı (0..1) — pratik kapasite = teorik × tavan; varsayılan 0,70
 }
+
+/** UIC 406 pratik doluluk tavanı — yoğun saatte sürdürülebilir işletme sınırı. */
+export const VARSAYILAN_DOLULUK_TAVANI = 0.70;
 
 export const varsayilanConfig: SimConfig = {
   vAnahat: 70 * KMH,
@@ -46,6 +51,7 @@ export const varsayilanConfig: SimConfig = {
   makasAdimMax: 6,
   kisitGenisligi: 40,
   blokMaxUzunluk: 500,
+  dolulukTavani: 0.70,
 };
 
 export type ParamTur = "hiz" | "ivme" | "sure" | "mesafe";
@@ -84,7 +90,7 @@ export const PARAM_META: ParamMeta[] = [
 
 /** Gösterim değeri (km/h için m/s→km/h). */
 export function paramGoster(cfg: SimConfig, m: ParamMeta): number {
-  const v = cfg[m.key];
+  const v = cfg[m.key] ?? 0; // PARAM_META yalnız zorunlu anahtarları içerir; opsiyonel alanlar buraya düşmez
   return m.tur === "hiz" ? v * 3.6 : v;
 }
 /** Gösterim değerinden SI'ye (km/h→m/s). */

@@ -221,7 +221,7 @@ function rDil(lang: RaporDil) {
     foot: "RaySim Sinyalizasyon Tasarım & Dokümantasyon Sistemi tarafından üretilmiştir.",
     qrCap: "Canlı simülasyon",
     kunye: { proje: "Proje", hat: "Hat", dok: "Doküman No", rev: "Revizyon", tarih: "Tarih", idare: "İdare", yuk: "Yüklenici", mus: "Müşavir", firma: "Sinyalizasyon Firması" },
-    kpi: { hucre: "Durak arası hücre", hedef: "Hedef headway", sigan: "Headway'de sığan tren", kapasite: "Teorik kapasite", uic: "UIC 406 doluluk", ch: "Challenge / kritik" },
+    kpi: { hucre: "Durak arası hücre", hedef: "Hedef headway", sigan: "Headway'de sığan tren", kapasite: "Teorik kapasite", pratik: "İşletme kapasitesi", uic: "UIC 406 doluluk", ch: "Challenge / kritik" },
     altMakas: (n: number) => `${n} makas`, altTumu: "tümü uygun", altIhlal: "ihlal var", altTur: (s: string) => `tur ${s}`, altTph: "tren/saat", altUygun: "uygun", altIhlalK: "ihlal", altRisk: "risk kaydı",
     s1: "Tasarım Kriterleri", s1i: "Sistem, sabit blok mimarisi üzerine kurulmuştur. Aşağıdaki göstergeler ve parametreler tüm işletim senaryolarının temelini oluşturur.",
     thParam: ["Parametre", "Değer", "Etkisi"],
@@ -236,7 +236,7 @@ function rDil(lang: RaporDil) {
     pillOk: "UYGUN", pillBad: "İHLAL",
     s4: "Kapasite ve Blocking-Time Analizi", s4i: "En yüksek blocking-time'lı blok minimum tren aralığını (headway) belirler; UIC 406 doluluk oranı bu değerin hedef headway'e bölümüdür. Her bloğun rezerve süresi altı bileşenden oluşur.",
     thGost: ["Gösterge", "Değer"],
-    kapTur: "Tur süresi (worst-case seyir)", kapDonus: "Dönüş bekleme (tur başına)", kapCevrim: "Çevrim süresi (dönüş bekleme dâhil)", kapHedef: "Hedef headway", kapSigan: "Headway'de gereken tren", kapDarbogaz: "Darboğaz hücre", kapDenge: "Denge (eşit şartlar)", kapDengeli: "Dengeli", kapSapma: (p: string) => `%${p} sapma`, kapMin: "Minimum headway (kritik blok)", kapTeorik: "Teorik kapasite", kapUIC: "UIC 406 doluluk (hedef headway'de)", tphSuffix: "tren/saat",
+    kapTur: "Tur süresi (worst-case seyir)", kapDonus: "Dönüş bekleme (tur başına)", kapCevrim: "Çevrim süresi (dönüş bekleme dâhil)", kapHedef: "Hedef headway", kapSigan: "Headway'de gereken tren", kapDarbogaz: "Darboğaz hücre", kapDenge: "Denge (eşit şartlar)", kapDengeli: "Dengeli", kapSapma: (p: string) => `%${p} sapma`, kapMin: "Minimum headway (kritik blok)", kapTeorik: "Teorik kapasite (tamponsuz üst sınır)", kapPratik: "İşletme kapasitesi (UIC 406 doluluk tavanı)", kapUIC: "UIC 406 doluluk (hedef headway'de)", tphSuffix: "tren/saat",
     kapNot: "Kapasite değerleri temkinli (worst-case) kabullerle hesaplanır; saha koşullarındaki sapma minimum düzeyde ve daima güvenli yöndedir — gerçek hat performansı bu rakamlara eşit ya da daha iyidir.",
     s41: "3.1 Blocking-Time (Sperrzeitentreppe)",
     fig4: (h: number) => `Şekil 4 — Sperrzeitentreppe: iki ardışık trenin blok işgal (blocking-time) pencereleri; kritik blokta ikinci trenin başlangıcı birincinin bitişine değer = min headway ${h}s.`,
@@ -252,7 +252,7 @@ function rDil(lang: RaporDil) {
     foot: "Produced by the RaySim Signalling Design & Documentation System.",
     qrCap: "Live simulation",
     kunye: { proje: "Project", hat: "Line", dok: "Document No", rev: "Revision", tarih: "Date", idare: "Authority", yuk: "Contractor", mus: "Consultant", firma: "Signalling Firm" },
-    kpi: { hucre: "Inter-station cells", hedef: "Target headway", sigan: "Trains within headway", kapasite: "Theoretical capacity", uic: "UIC 406 occupancy", ch: "Challenges / critical" },
+    kpi: { hucre: "Inter-station cells", hedef: "Target headway", sigan: "Trains within headway", kapasite: "Theoretical capacity", pratik: "Operating capacity", uic: "UIC 406 occupancy", ch: "Challenges / critical" },
     altMakas: (n) => `${n} switches`, altTumu: "all compliant", altIhlal: "violations", altTur: (s) => `cycle ${s}`, altTph: "trains/hour", altUygun: "compliant", altIhlalK: "violation", altRisk: "risk records",
     s1: "Design Criteria", s1i: "The system is built on a fixed-block architecture. The indicators and parameters below form the basis of all operating scenarios.",
     thParam: ["Parameter", "Value", "Effect"],
@@ -267,7 +267,7 @@ function rDil(lang: RaporDil) {
     pillOk: "OK", pillBad: "VIOLATION",
     s4: "Capacity and Blocking-Time Analysis", s4i: "The block with the highest blocking-time sets the minimum train interval (headway); the UIC 406 occupancy ratio is this value divided by the target headway. Each block's reserved time comprises six components.",
     thGost: ["Indicator", "Value"],
-    kapTur: "Running time (worst-case)", kapDonus: "Turnaround (per cycle)", kapCevrim: "Cycle time (incl. turnaround)", kapHedef: "Target headway", kapSigan: "Trains required", kapDarbogaz: "Bottleneck cell", kapDenge: "Balance (equal conditions)", kapDengeli: "Balanced", kapSapma: (p) => `${p}% deviation`, kapMin: "Minimum headway (critical block)", kapTeorik: "Theoretical capacity", kapUIC: "UIC 406 occupancy (at target headway)", tphSuffix: "trains/hour",
+    kapTur: "Running time (worst-case)", kapDonus: "Turnaround (per cycle)", kapCevrim: "Cycle time (incl. turnaround)", kapHedef: "Target headway", kapSigan: "Trains required", kapDarbogaz: "Bottleneck cell", kapDenge: "Balance (equal conditions)", kapDengeli: "Balanced", kapSapma: (p) => `${p}% deviation`, kapMin: "Minimum headway (critical block)", kapTeorik: "Theoretical capacity (buffer-free upper bound)", kapPratik: "Operating capacity (UIC 406 occupancy ceiling)", kapUIC: "UIC 406 occupancy (at target headway)", tphSuffix: "trains/hour",
     kapNot: "Capacity figures are computed under conservative (worst-case) assumptions; field deviation is minimal and always on the safe side — real line performance meets or exceeds these values.",
     s41: "3.1 Blocking-Time (Sperrzeitentreppe)",
     fig4: (h) => `Figure 4 — Sperrzeitentreppe: block occupation (blocking-time) windows of two consecutive trains; at the critical block the second train's start touches the first's end = min headway ${h}s.`,
@@ -314,6 +314,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     ${kpi(L.kpi.hedef, `${cfg.headway} s`, olcek.headwayUygun ? L.altTumu : L.altIhlal, olcek.headwayUygun ? "#0E7C57" : RED)}
     ${kpi(L.kpi.sigan, `${olcek.maxTrenHedefHeadway}`, L.altTur(s0(olcek.cevrimSuresi)))}
     ${kpi(L.kpi.kapasite, `${bt.teorikKapasite.toFixed(0)}`, L.altTph)}
+    ${kpi(L.kpi.pratik, `${bt.pratikKapasite.toFixed(0)}`, `%${(bt.dolulukTavani * 100).toFixed(0)} · ${L.altTph}`, "#0E7C57")}
     ${kpi(L.kpi.uic, `%${bt.dolulukHedef.toFixed(0)}`, bt.hedefUygun ? L.altUygun : L.altIhlalK, bt.hedefUygun ? "#0E7C57" : RED)}
     ${kpi(L.kpi.ch, `${chSayi} / ${kritik}`, L.altRisk, kritik > 0 ? RED : INK)}
   </div>`;
@@ -351,6 +352,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     [L.kapDenge, denge.dengeli ? L.kapDengeli : L.kapSapma(denge.sapmaYuzde.toFixed(0))],
     [L.kapMin, `${s0(bt.minHeadway)} (#${bt.kritikBlok})`],
     [L.kapTeorik, `${bt.teorikKapasite.toFixed(0)} ${L.tphSuffix}`],
+    [L.kapPratik, `${bt.pratikKapasite.toFixed(0)} ${L.tphSuffix} (%${(bt.dolulukTavani * 100).toFixed(0)})`],
     [L.kapUIC, `%${bt.dolulukHedef.toFixed(0)}`],
   ], { first: true });
 
