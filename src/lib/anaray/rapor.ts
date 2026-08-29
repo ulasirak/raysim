@@ -406,7 +406,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
      sayısal/mono Geist Mono. Rapor ayrı sekmede açıldığından fontlar burada YÜKLENİR
      (yazdırma manuel butonla; tıklanana dek fontlar hazır olur). */
   @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Spectral:wght@500;600;700&display=swap');
-  @page { size: A4; margin: 26mm 16mm 20mm; }
+  @page { size: A4; margin: 13mm 15mm 13mm; }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   body { font-family: "Geist", "Segoe UI", system-ui, -apple-system, sans-serif; color: ${INK}; font-size: 11pt; line-height: 1.5; background: #f0f2f4;
@@ -512,34 +512,31 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   .breakbefore { page-break-before: always; }
   .banner.breakbefore { margin-top: 0; }
 
-  /* Şirket anteti (üst/alt bilgi) — ekranda GİZLİ; yalnız baskıda, sayfa kenar
-     boşluklarında sabit konumla HER sayfada tekrarlanır. */
-  .antet-ust, .antet-alt { display: none; }
-  @media print {
-    /* Antet üst şeridi, sayfa üst kenar boşluğu (28mm) içinde durur; logolu yükseklik
-       için üst boşluk büyütüldü (aksi halde logo 1. bölüm banner'ına biner). */
-    .antet-ust { display: flex; position: fixed; top: 4mm; left: 16mm; right: 16mm;
-      justify-content: space-between; align-items: center; gap: 6mm;
-      border-bottom: 1.4pt solid ${GOLD}; padding-bottom: 1.8mm; font-size: 8pt; }
-    .antet-ust .firma { font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: ${INK}; }
-    /* Firma logosu (ASLS) — antette sol üstte belirgin; yazıdan daha yüksek. */
-    .antet-ust .firma-logo { display: block; flex: 0 0 auto; line-height: 0; }
-    .antet-ust .firma-logo svg { height: 8mm; width: auto; display: block; }
-    .antet-alt { display: flex; position: fixed; bottom: 9mm; left: 16mm; right: 16mm;
-      justify-content: space-between; align-items: baseline; gap: 6mm;
-      border-top: .75pt solid #DCE1E7; padding-top: 1.4mm; font-size: 7.5pt; color: #6B7A8A; }
-    /* Çakışma önleme: uzun sol metin (firma·proje) kırpılır (ellipsis); sağ metin
-       (doküman no) hiç ezilmez — tek satır, sabit genişlik. */
-    .antet-ust .firma, .antet-alt span:first-child {
-      min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-    .antet-ust .dok, .antet-alt span:last-child {
-      flex: 0 0 auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
-  }
+  /* Şirket anteti — SAYFA AKIŞINDA tekrarlanan başlık/altbilgi (table-header-group /
+     table-footer-group). position:fixed KULLANILMAZ: fixed, baskıda içerik kutusuna
+     göre konumlanıp 1. bölüm banner'ına biniyordu. Bu yapı tüm tarayıcıların
+     "PDF olarak kaydet"inde çakışmasız, her sayfada tekrarlanır. */
+  .pageframe { width: 100%; border-collapse: collapse; }
+  /* Çerçeve tablosunun kendi hücreleri GENEL td/th stillerinden (padding/kenar/zebra)
+     muaf — yalnız düzen taşıyıcısı. İçteki gerçek tablolar normal stillenir. */
+  .pageframe > thead > tr > td, .pageframe > tfoot > tr > td, .pageframe > tbody > tr > td {
+    padding: 0 !important; border: 0 !important; background: transparent !important; text-align: left; }
+  thead.antet-head { display: table-header-group; }
+  tfoot.antet-foot { display: table-footer-group; }
+  .antet-ust { display: flex; justify-content: space-between; align-items: center; gap: 6mm;
+    border-bottom: 1.4pt solid ${GOLD}; padding-bottom: 1.8mm; margin-bottom: 7mm; font-size: 8pt; }
+  .antet-ust .firma { font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: ${INK};
+    min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .antet-ust .firma-logo { display: block; flex: 0 0 auto; line-height: 0; }
+  .antet-ust .firma-logo svg { height: 8mm; width: auto; display: block; }
+  .antet-ust .dok { flex: 0 0 auto; white-space: nowrap; font-variant-numeric: tabular-nums; color: #6B7A8A; }
+  .antet-alt { display: flex; justify-content: space-between; align-items: baseline; gap: 6mm;
+    border-top: .75pt solid #DCE1E7; padding-top: 1.4mm; margin-top: 8mm; font-size: 7.5pt; color: #6B7A8A; }
+  .antet-alt span:first-child { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .antet-alt span:last-child { flex: 0 0 auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  /* Ekranda antet üst/alt görünür (önizleme). Araç çubuğu zaten .bar. */
 </style></head>
 <body>
-<!-- Şirket anteti — YALNIZ baskıda, her sayfada tekrarlanır (üst + alt bilgi). -->
-<div class="antet-ust">${antetSol}<span class="dok">${esc(meta.dokumanNo)}${meta.revizyon ? " · " + esc(meta.revizyon.split("—")[0].trim()) : ""}</span></div>
-<div class="antet-alt"><span>${esc(meta.sinyalizasyonFirmasi || "RaySim")} · ${esc(meta.projeAdi)}</span><span>${bugun ? esc(bugun) + " · " : ""}${esc(meta.dokumanNo)}</span></div>
 <div class="bar noprint">
   <b class="brandmark">Ray<span class="r">Sim</span> · ${L.barTitle}</b>
   <span class="hint">${esc(L.barHint)}</span>
@@ -547,6 +544,12 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <button onclick="window.print()">${L.barBtn}</button>
 </div>
 <div class="sheet">
+<!-- Sayfa çerçevesi: antet üst/alt HER sayfada AKIŞTA tekrarlanır (fixed değil). -->
+<table class="pageframe"><thead class="antet-head"><tr><td>
+  <div class="antet-ust">${antetSol}<span class="dok">${esc(meta.dokumanNo)}${meta.revizyon ? " · " + esc(meta.revizyon.split("—")[0].trim()) : ""}</span></div>
+</td></tr></thead><tfoot class="antet-foot"><tr><td>
+  <div class="antet-alt"><span>${esc(meta.sinyalizasyonFirmasi || "RaySim")} · ${esc(meta.projeAdi)}</span><span>${bugun ? esc(bugun) + " · " : ""}${esc(meta.dokumanNo)}</span></div>
+</td></tr></tfoot><tbody><tr><td>
 
   <!-- KAPAK -->
   <section class="cover">
@@ -596,6 +599,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <tbody><tr><td class="l">${esc(meta.hazirlayan)}</td><td class="l">${esc(meta.onaylayan)}</td></tr>
   <tr><td class="l">${esc(L.imzaTarih)}</td><td class="l">${esc(L.imzaTarih)}</td></tr></tbody></table>
 
+</td></tr></tbody></table>
 </div>
 </body></html>`;
 }
