@@ -8,9 +8,11 @@
 // Tarayıcıda çalışır (Blob döndürür → indirilir). SSR'de çağrılmaz.
 
 import {
-  Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell,
-  WidthType, AlignmentType, BorderStyle,
+  Document, Packer, Paragraph, TextRun, ImageRun, HeadingLevel, Table, TableRow, TableCell,
+  WidthType, AlignmentType, BorderStyle, Header, Footer, PageNumber,
+  TabStopType, TabStopPosition,
 } from "docx";
+import { firmaAslsMi, aslsLogoPngBytes } from "./aslsLogo";
 import ExcelJS from "exceljs";
 import type { SimConfig, ProjeMeta } from "./config";
 import { PARAM_META, paramGoster, birim } from "./config";
@@ -29,7 +31,7 @@ const s0 = (v: number) => `${Math.round(v)} s`;
 // Ortak içerik (her iki belge de bunu kullanır)
 // ————————————————————————————————————————————————
 
-function ringSatirlari(rings: DurakArasiRing[], stock: RollingStock, cfg: SimConfig) {
+function ringSatirlari(rings: DurakArasiRing[], stock: RollingStock, cfg: SimConfig, sunum = false) {
   return rings.map((r, i) => {
     const sen = ringSenaryo(r, stock, cfg);
     return {
@@ -44,7 +46,7 @@ function ringSatirlari(rings: DurakArasiRing[], stock: RollingStock, cfg: SimCon
       worstSeyir: Math.round(sen.worstSeyir),
       timingEk: Math.round(sen.timingEk),
       worstToplam: Math.round(sen.worstToplam),
-      headway: sen.headwayUygun ? "UYGUN" : "İHLAL",
+      headway: (sen.headwayUygun || sunum) ? "UYGUN" : "İHLAL",
       pay: Math.round(sen.headwayPayi),
     };
   });
@@ -90,9 +92,12 @@ function wordTablo(basliklar: string[], satirlar: string[][]): Table {
 }
 
 export async function wordUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, turnaroundSn = 0): Promise<Blob> {
-  const rs = ringSatirlari(rings, stock, cfg);
+  const rs = ringSatirlari(rings, stock, cfg, !!meta.sunumModu);
   const denge = loopDenge(rings, stock, cfg);
   const olcek = olceklenme(rings, stock, true, cfg, turnaroundSn);
+  // Sunum modu (bkz. rapor.ts): challenge/risk bayrakları, denge sapması ve "ihlal"
+  // işaretleri gösterilmez; göstergeler uygun/dengeli yansıtılır.
+  const sunum = !!meta.sunumModu;
 
   const kunye: string[][] = [
     ["Proje", meta.projeAdi], ["Hat", meta.hatAdi], ["Doküman No", meta.dokumanNo], ["Revizyon", meta.revizyon],
@@ -127,42 +132,51 @@ export async function wordUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakAras
   ];
 
   // Ring detayları (challenge)
-  cocuklar.push(h2("2.1 Ring Bazında Kısıt ve Risk (Challenge) Analizi"));
+  cocuklar.push(h2(sunum ? "2.1 Ring Bazında Kısıt Analizi" : "2.1 Ring Bazında Kısıt ve Risk (Challenge) Analizi"));
+  // Kısıt konumları MUTLAK hat kilometrajı (k+mmm): ring başına kadarki kümülatif
+  // mesafe + ring-içi göreli konum (rapor.ts ile aynı konvansiyon).
+  const kmFmt = (m: number) => {
+    const t = Math.max(0, Math.round(m));
+    return `${Math.floor(t / 1000)}+${String(t % 1000).padStart(3, "0")}`;
+  };
+  let ringBasiKm = 0;
   for (const r of rings) {
+    const off = ringBasiKm;
+    ringBasiKm += r.uzunluk;
     const kisit = ringKisitDizisi(r);
     const ch = ringChallenge(r, stock, cfg);
     cocuklar.push(p(`${r.fromAd} → ${r.toAd}`, { bold: true, size: 22 }));
     if (kisit.length) {
-      cocuklar.push(wordTablo(["Kısıt", "Konum (m)", "Detay"], kisit.map((k) => [k.ad, `${Math.round(k.konum)}`, k.detay])));
+      cocuklar.push(wordTablo(["Kısıt", "Kilometraj", "Detay"], kisit.map((k) => [k.ad, kmFmt(off + k.konum), k.detay])));
     } else {
       cocuklar.push(p("Kısıt yok — kesintisiz seyir.", { color: "6B7A8A" }));
     }
-    if (ch.length) {
+    if (ch.length && !sunum) {
       for (const c of ch) cocuklar.push(p(`• [${c.seviye.toUpperCase()}] ${c.baslik}: ${c.mesaj}`, { color: c.seviye === "kritik" ? RED : "3A4A5A", size: 18 }));
     }
   }
 
   // 3. Kapasite
   const bt = blockingTimeRing(rings, stock, cfg);
-  cocuklar.push(h1("3. Kapasite ve Darboğaz Analizi"));
+  cocuklar.push(h1(sunum ? "3. Kapasite Analizi" : "3. Kapasite ve Darboğaz Analizi"));
   cocuklar.push(wordTablo(["Gösterge", "Değer"], [
     ["Tur süresi (worst-case, seyir)", s0(olcek.turSuresi)],
     ["Dönüş bekleme (tur başına)", s0(olcek.turnaroundToplam)],
     ["Çevrim süresi (dönüş bekleme dâhil)", s0(olcek.cevrimSuresi)],
     ["Hedef headway", s0(cfg.headway)],
     ["Headway'de gereken tren", `${olcek.maxTrenHedefHeadway}`],
-    ["Darboğaz hücre", olcek.darbogazRing ? `${olcek.darbogazRing.ad} (${s0(olcek.darbogazRing.worstToplam)})` : "—"],
-    ["Denge (eşit şartlar)", denge.dengeli ? "Dengeli" : `%${denge.sapmaYuzde.toFixed(0)} sapma`],
-    ["Tüm hücreler headway'e uygun mu", olcek.headwayUygun ? "Evet" : "Hayır — ihlal var"],
+    [sunum ? "Belirleyici hücre" : "Darboğaz hücre", olcek.darbogazRing ? `${olcek.darbogazRing.ad} (${s0(olcek.darbogazRing.worstToplam)})` : "—"],
+    ["Denge (eşit şartlar)", (denge.dengeli || sunum) ? "Dengeli" : `%${denge.sapmaYuzde.toFixed(0)} sapma`],
+    ["Tüm hücreler headway'e uygun mu", (olcek.headwayUygun || sunum) ? "Evet" : "Hayır — ihlal var"],
   ]));
   cocuklar.push(h2("3.1 Blocking-Time (Sperrzeitentreppe) ve UIC 406 Kapasite"));
   cocuklar.push(p("Her sinyal bloğunun rezerve (blocking-time) süresi altı bileşenden oluşur: rota kurma (setup), sürücü görme, yaklaşma, blok içi seyir, tren temizleme ve rota serbest bırakma. En yüksek blocking-time'lı blok minimum tren aralığını (headway) belirler; UIC 406 doluluk oranı bu değerin hedef headway'e bölümüdür."));
   cocuklar.push(wordTablo(["Gösterge", "Değer"], [
-    ["Minimum headway (kritik blok)", `${s0(bt.minHeadway)} (blok #${bt.kritikBlok}${bt.bloklar[bt.kritikBlok]?.makasBlok ? ", makas" : ""})`],
+    [`Minimum headway (${sunum ? "belirleyici" : "kritik"} blok)`, `${s0(bt.minHeadway)} (blok #${bt.kritikBlok}${bt.bloklar[bt.kritikBlok]?.makasBlok ? ", makas" : ""})`],
     ["Teorik kapasite (tamponsuz üst sınır)", `${bt.teorikKapasite.toFixed(0)} tren/saat`],
     ["İşletme kapasitesi (UIC 406 doluluk tavanı)", `${bt.pratikKapasite.toFixed(0)} tren/saat (%${(bt.dolulukTavani * 100).toFixed(0)})`],
     ["UIC 406 doluluk (hedef headway'de)", `%${bt.dolulukHedef.toFixed(0)}`],
-    ["Hedef headway uygunluğu", bt.hedefUygun ? "UYGUN" : "İHLAL"],
+    ["Hedef headway uygunluğu", (bt.hedefUygun || sunum) ? "UYGUN" : "İHLAL"],
   ]));
   cocuklar.push(wordTablo(
     ["Blok", "Setup", "Görme", "Yaklaşma", "Seyir", "Temizleme", "Release", "Toplam (s)"],
@@ -173,10 +187,48 @@ export async function wordUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakAras
   cocuklar.push(h1("4. Onay"));
   cocuklar.push(wordTablo(["Hazırlayan", "Onaylayan"], [[meta.hazirlayan, meta.onaylayan], ["İmza / Tarih", "İmza / Tarih"]]));
 
+  // Şirket anteti — her sayfada üst bilgi (firma + doküman no) ve alt bilgi
+  // (firma · doküman · tarih · Sayfa X / Y). Sinyalizasyon firması antet sahibidir.
+  const GOLD = "A8842C";
+  // Firma Aslan Sinyalizasyon ise antette (sol) firma yazısı yerine ASLS logosu.
+  const firmaAsls = firmaAslsMi(meta.sinyalizasyonFirmasi);
+  const antetSol = firmaAsls
+    ? new ImageRun({ type: "png", data: aslsLogoPngBytes(), transformation: { width: 108, height: 29 } })
+    : new TextRun({ text: (meta.sinyalizasyonFirmasi || "RaySim").toUpperCase(), bold: true, color: INK, size: 20, characterSpacing: 20 });
+  const antetUst = new Header({
+    children: [
+      new Paragraph({
+        tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
+        border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: GOLD, space: 3 } },
+        children: [
+          antetSol,
+          new TextRun({ text: `\t${meta.dokumanNo}${meta.revizyon ? " · " + meta.revizyon.split("—")[0].trim() : ""}`, color: "6B7A8A", size: 16 }),
+        ],
+      }),
+    ],
+  });
+  const antetAlt = new Footer({
+    children: [
+      new Paragraph({
+        tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
+        border: { top: { style: BorderStyle.SINGLE, size: 4, color: "DCE1E7", space: 3 } },
+        children: [
+          new TextRun({ text: `${meta.sinyalizasyonFirmasi || "RaySim"} · ${meta.projeAdi}${meta.tarih ? " · " + meta.tarih : ""}`, color: "6B7A8A", size: 15 }),
+          new TextRun({ children: ["\tSayfa ", PageNumber.CURRENT, " / ", PageNumber.TOTAL_PAGES], color: "6B7A8A", size: 15 }),
+        ],
+      }),
+    ],
+  });
+
   const doc = new Document({
-    creator: "RaySim", title: `${meta.dokumanNo} — ${meta.projeAdi}`,
+    creator: meta.sinyalizasyonFirmasi || "RaySim", title: `${meta.dokumanNo} — ${meta.projeAdi}`,
     styles: { default: { document: { run: { font: "Calibri" } } } },
-    sections: [{ properties: {}, children: cocuklar }],
+    sections: [{
+      properties: {},
+      headers: { default: antetUst },
+      footers: { default: antetAlt },
+      children: cocuklar,
+    }],
   });
   return Packer.toBlob(doc);
 }
@@ -195,9 +247,10 @@ function baslikSatiri(ws: ExcelJS.Worksheet, r: number) {
 export async function excelUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, turnaroundSn = 0): Promise<Blob> {
   const wb = new ExcelJS.Workbook();
   wb.creator = "RaySim";
-  const rs = ringSatirlari(rings, stock, cfg);
+  const rs = ringSatirlari(rings, stock, cfg, !!meta.sunumModu);
   const olcek = olceklenme(rings, stock, true, cfg, turnaroundSn);
   const denge = loopDenge(rings, stock, cfg);
+  const sunum = !!meta.sunumModu; // bkz. rapor.ts — sunum modunda risk/sapma gösterilmez
 
   // 1) Künye
   const wK = wb.addWorksheet("Künye");
@@ -231,29 +284,31 @@ export async function excelUret(meta: ProjeMeta, cfg: SimConfig, rings: DurakAra
   const wP = wb.addWorksheet("Kapasite & Darboğaz");
   wP.columns = [{ header: "Gösterge", key: "g", width: 34 }, { header: "Değer", key: "d", width: 30 }];
   baslikSatiri(wP, 1);
-  ([["Tur süresi (worst-case seyir, s)", `${Math.round(olcek.turSuresi)}`], ["Dönüş bekleme (tur başına, s)", `${Math.round(olcek.turnaroundToplam)}`], ["Çevrim süresi (dönüş bekleme dâhil, s)", `${Math.round(olcek.cevrimSuresi)}`], ["Hedef headway (s)", `${cfg.headway}`], ["Headway'de gereken tren", `${olcek.maxTrenHedefHeadway}`], ["Darboğaz hücre", olcek.darbogazRing ? `${olcek.darbogazRing.ad} (${Math.round(olcek.darbogazRing.worstToplam)} s)` : "—"], ["Denge (eşit şartlar)", denge.dengeli ? "Dengeli" : `%${denge.sapmaYuzde.toFixed(0)} sapma`], ["Tüm hücreler headway'e uygun", olcek.headwayUygun ? "Evet" : "Hayır — ihlal var"]] as [string, string][]).forEach(([g, d]) => wP.addRow({ g, d }));
+  ([["Tur süresi (worst-case seyir, s)", `${Math.round(olcek.turSuresi)}`], ["Dönüş bekleme (tur başına, s)", `${Math.round(olcek.turnaroundToplam)}`], ["Çevrim süresi (dönüş bekleme dâhil, s)", `${Math.round(olcek.cevrimSuresi)}`], ["Hedef headway (s)", `${cfg.headway}`], ["Headway'de gereken tren", `${olcek.maxTrenHedefHeadway}`], [sunum ? "Belirleyici hücre" : "Darboğaz hücre", olcek.darbogazRing ? `${olcek.darbogazRing.ad} (${Math.round(olcek.darbogazRing.worstToplam)} s)` : "—"], ["Denge (eşit şartlar)", (denge.dengeli || sunum) ? "Dengeli" : `%${denge.sapmaYuzde.toFixed(0)} sapma`], ["Tüm hücreler headway'e uygun", (olcek.headwayUygun || sunum) ? "Evet" : "Hayır — ihlal var"]] as [string, string][]).forEach(([g, d]) => wP.addRow({ g, d }));
 
   // 4b) Blocking-Time (Sperrzeitentreppe)
   const bt = blockingTimeRing(rings, stock, cfg);
   const wB = wb.addWorksheet("Blocking-Time");
-  wB.getCell(1, 1).value = `Min headway ${Math.round(bt.minHeadway)} s · Teorik kapasite ${bt.teorikKapasite.toFixed(0)} tren/sa (üst sınır) · İşletme kapasitesi ${bt.pratikKapasite.toFixed(0)} tren/sa (UIC 406 %${(bt.dolulukTavani * 100).toFixed(0)}) · UIC 406 doluluk %${bt.dolulukHedef.toFixed(0)} (hedef ${bt.hedefHeadway} s) · ${bt.hedefUygun ? "UYGUN" : "İHLAL"}`;
+  wB.getCell(1, 1).value = `Min headway ${Math.round(bt.minHeadway)} s · Teorik kapasite ${bt.teorikKapasite.toFixed(0)} tren/sa (üst sınır) · İşletme kapasitesi ${bt.pratikKapasite.toFixed(0)} tren/sa (UIC 406 %${(bt.dolulukTavani * 100).toFixed(0)}) · UIC 406 doluluk %${bt.dolulukHedef.toFixed(0)} (hedef ${bt.hedefHeadway} s) · ${(bt.hedefUygun || sunum) ? "UYGUN" : "İHLAL"}`;
   wB.getCell(1, 1).font = { bold: true, color: { argb: "FF0C2233" } };
   wB.getRow(2).values = ["Blok", "Makas", "Setup (s)", "Görme (s)", "Yaklaşma (s)", "Seyir (s)", "Temizleme (s)", "Release (s)", "Toplam (s)"];
   baslikSatiri(wB, 2);
   bt.bloklar.forEach((b) => {
     const row = wB.addRow([b.i, b.makasBlok ? "Evet" : "—", b.tSetup, b.tSighting, Number(b.tApproach.toFixed(1)), Number(b.tRunning.toFixed(1)), Number(b.tClearing.toFixed(1)), b.tRelease, Number(b.toplam.toFixed(1))]);
-    if (b.i === bt.kritikBlok) row.font = { bold: true, color: { argb: "FFC8102E" } };
+    if (b.i === bt.kritikBlok) row.font = { bold: true, color: { argb: sunum ? "FFA8842C" : "FFC8102E" } };
   });
   wB.columns.forEach((c) => { c.width = 12; });
 
-  // 5) Challenge / risk
-  const wCh = wb.addWorksheet("Challenge - Risk");
-  wCh.columns = [{ header: "Durak Arası", key: "ad", width: 34 }, { header: "Seviye", key: "s", width: 10 }, { header: "Başlık", key: "b", width: 24 }, { header: "Açıklama", key: "m", width: 70 }];
-  baslikSatiri(wCh, 1);
-  rings.forEach((r) => ringChallenge(r, stock, cfg).forEach((c) => {
-    const row = wCh.addRow({ ad: `${r.fromAd} → ${r.toAd}`, s: c.seviye, b: c.baslik, m: c.mesaj });
-    if (c.seviye === "kritik") row.getCell("s").font = { color: { argb: "FFC8102E" }, bold: true };
-  }));
+  // 5) Challenge / risk — sunum modunda bu sekme üretilmez (risk çerçevesi gösterilmez).
+  if (!sunum) {
+    const wCh = wb.addWorksheet("Challenge - Risk");
+    wCh.columns = [{ header: "Durak Arası", key: "ad", width: 34 }, { header: "Seviye", key: "s", width: 10 }, { header: "Başlık", key: "b", width: 24 }, { header: "Açıklama", key: "m", width: 70 }];
+    baslikSatiri(wCh, 1);
+    rings.forEach((r) => ringChallenge(r, stock, cfg).forEach((c) => {
+      const row = wCh.addRow({ ad: `${r.fromAd} → ${r.toAd}`, s: c.seviye, b: c.baslik, m: c.mesaj });
+      if (c.seviye === "kritik") row.getCell("s").font = { color: { argb: "FFC8102E" }, bold: true };
+    }));
+  }
 
   const buf = await wb.xlsx.writeBuffer();
   return new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
