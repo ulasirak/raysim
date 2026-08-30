@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { RollingStock } from "@/lib/anaray/types";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
-import { etkinBogazIsgali, type SimConfig, type DonusTip, type TerminalConfig } from "@/lib/anaray/config";
+import { etkinBogazIsgali, type SimConfig, type DonusTip, type TerminalConfig, type Isletme } from "@/lib/anaray/config";
 import { maksimumTren } from "@/lib/anaray/kapasite";
 import { yolcuAkisSuresi } from "@/lib/anaray/yolcu";
 import { brand } from "@/lib/anaray/brand";
@@ -614,6 +614,7 @@ export function RingEditor() {
             stock={stock}
             acik={!!acik[r.id]}
             cfg={cfg}
+            isletme={isletme}
             sunum={!!meta.sunumModu}
             duzenlenebilir={yazilabilir}
             onToggle={() => setAcik((a) => ({ ...a, [r.id]: !a[r.id] }))}
@@ -671,6 +672,7 @@ interface KartProps {
   stock: RollingStock;
   acik: boolean;
   cfg: SimConfig;
+  isletme: Isletme;
   /** Sunum modu: ring kartındaki "Challenge (zorluk senaryosu)" listesi gizlenir. */
   sunum: boolean;
   onToggle: () => void;
@@ -690,9 +692,15 @@ interface KartProps {
 }
 
 function RingKart(p: KartProps) {
-  const { ring, index, stock, cfg, sunum } = p;
+  const { ring, index, stock, cfg, isletme, sunum } = p;
   const eksik = useMemo(() => ringDogrula(ring, cfg), [ring, cfg]);
-  const sen = useMemo(() => ringSenaryo(ring, stock, cfg), [ring, stock, cfg]);
+  // Senaryo (worst/headway) HESAPLI dwell'le: dwellOto ringde dwell yolcu akışından.
+  const sen = useMemo(() => {
+    const eff = ring.dwellOto
+      ? Math.max(isletme.minDurusSuresi, yolcuAkisSuresi(ring.inenYolcu ?? 0, ring.binenYolcu ?? 0, stock, isletme.yolcuAkisHizi)) + (ring.kapiAcma ?? 2) + (ring.kapiKapama ?? 2)
+      : ring.dwell;
+    return ringSenaryo({ ...ring, dwell: eff }, stock, cfg);
+  }, [ring, stock, cfg, isletme]);
   const challenge = useMemo(() => ringChallenge(ring, stock, cfg), [ring, stock, cfg]);
   const kisitlar = useMemo(() => ringKisitDizisi(ring), [ring]);
   const tam = eksik.length === 0;

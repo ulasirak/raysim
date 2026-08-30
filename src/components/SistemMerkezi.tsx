@@ -10,7 +10,8 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { brand } from "@/lib/anaray/brand";
 import { sure, kmh } from "@/lib/anaray/format";
-import { useSimConfig, useProje, useArac } from "@/components/SimConfigProvider";
+import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
+import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import { blockingTimeRing, type BlokSperr } from "@/lib/anaray/blockingtime";
 import { loopToHat } from "@/lib/anaray/hatsim";
 import { BlockingStairChart } from "@/components/BlockingStairChart";
@@ -60,8 +61,12 @@ function blokNeden(b: BlokSperr): BlokNeden {
 
 export function SistemMerkezi() {
   const { cfg } = useSimConfig();
-  const { rings, meta } = useProje();
+  const { rings: ringsHam, meta } = useProje();
   const { arac: stock } = useArac();
+  const { isletme } = useIsletme();
+  // Yolcu dinamiği: dwell OTO ringlerin dwell'i hesaplanır → blocking-time / teşhis
+  // panelleri de hesaplı dwell'i kullanır (kapasite ile tutarlı).
+  const rings = useMemo(() => dwellUygulanmisRings(ringsHam, stock, isletme), [ringsHam, stock, isletme]);
   // Sunum modu: "İHLAL / hedefi aşıyor" ihlal işaretleri gösterilmez. Ayrıca min
   // headway'i belirleyen blok "KRİTİK" (kırmızı) yerine "belirleyici" (nötr altın)
   // olarak sunulur — analiz aynı, yalnız dil/renk yumuşar. Bkz. rapor.ts.
