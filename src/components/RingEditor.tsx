@@ -58,6 +58,20 @@ export function RingEditor() {
   const { isletme, patchIsletme } = useIsletme();
   const patchTerminal = (uc: "terminalBas" | "terminalSon", p: Partial<TerminalConfig>) =>
     patchIsletme({ [uc]: { ...isletme[uc], ...p } });
+  // Peron işgali bileşenleri (varış + iniş/biniş + ters dönüş + kalkış temizleme).
+  // peronIsgali = toplam (yetkili). Bileşen yoksa mevcut toplamdan makul bölünür.
+  const terminalBilesen = (t: TerminalConfig) => {
+    if (t.varisTampon != null || t.inisBinis != null || t.tersDonus != null || t.kalkisTemizleme != null) {
+      return { varis: t.varisTampon ?? 0, inis: t.inisBinis ?? 0, ters: t.tersDonus ?? 0, kalkis: t.kalkisTemizleme ?? 0 };
+    }
+    const toplam = t.peronIsgali || 0;
+    return toplam >= 60 ? { varis: 15, inis: 30, ters: toplam - 60, kalkis: 15 } : { varis: 0, inis: 0, ters: toplam, kalkis: 0 };
+  };
+  const patchTerminalBilesen = (uc: "terminalBas" | "terminalSon", alan: "varis" | "inis" | "ters" | "kalkis", v: number) => {
+    const c = terminalBilesen(isletme[uc]);
+    const n = { ...c, [alan]: Math.max(0, Math.round(v)) };
+    patchTerminal(uc, { varisTampon: n.varis, inisBinis: n.inis, tersDonus: n.ters, kalkisTemizleme: n.kalkis, peronIsgali: n.varis + n.inis + n.ters + n.kalkis });
+  };
   // Canlı maksimum tramvay kapasitesi (bottleneck) — inputların hemen altında geri besleme.
   const maks = useMemo(() => maksimumTren(rings, stock, cfg, isletme), [rings, stock, cfg, isletme]);
   const [acik, setAcik] = useState<Record<string, boolean>>(() => (rings[0] ? { [rings[0].id]: true } : {}));
@@ -222,14 +236,29 @@ export function RingEditor() {
                     <div className="mt-2 grid grid-cols-2 gap-3">
                       <Num label="Peron sayısı" suffix="peron" step={1} max={6} value={t.peronSayisi}
                         onChange={(v) => patchTerminal(uc, { peronSayisi: Math.max(1, Math.round(v)) })} />
-                      <Num label="Peron işgal süresi" suffix="s" step={5} value={t.peronIsgali}
-                        onChange={(v) => patchTerminal(uc, { peronIsgali: Math.max(0, Math.round(v)) })} />
                       <Num label="Boğaz işgali" suffix="s" step={5} value={t.bogazIsgali}
                         onChange={(v) => patchTerminal(uc, { bogazIsgali: Math.max(0, Math.round(v)) })} />
                     </div>
-                    <p className="mt-1 text-xs" style={{ color: brand.muted }}>
-                      Peron işgal süresi = varış + iniş/biniş + ters dönüş + kalkış temizleme (trenin peronu tuttuğu tam süre).
-                    </p>
+                    {/* Peron işgal süresi — bileşenli (ince model), toplam yetkili */}
+                    <div className="mt-2 rounded border p-2" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
+                      <div className="mb-1 flex items-baseline justify-between">
+                        <span className="field-label">Peron işgal süresi</span>
+                        <span className="text-sm font-semibold" style={{ color: brand.ink }}>{Math.round(t.peronIsgali)} s</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Num label="Varış tamponu" suffix="s" step={5} value={terminalBilesen(t).varis}
+                          onChange={(v) => patchTerminalBilesen(uc, "varis", v)} />
+                        <Num label="İniş/biniş" suffix="s" step={5} value={terminalBilesen(t).inis}
+                          onChange={(v) => patchTerminalBilesen(uc, "inis", v)} />
+                        <Num label="Ters dönüş" suffix="s" step={5} value={terminalBilesen(t).ters}
+                          onChange={(v) => patchTerminalBilesen(uc, "ters", v)} />
+                        <Num label="Kalkış temizleme" suffix="s" step={5} value={terminalBilesen(t).kalkis}
+                          onChange={(v) => patchTerminalBilesen(uc, "kalkis", v)} />
+                      </div>
+                      <p className="mt-1 text-xs" style={{ color: brand.muted }}>
+                        Toplam = trenin peronu tuttuğu tam süre → terminal aralığı = bu ÷ peron.
+                      </p>
+                    </div>
                     <label className="mt-2 flex items-center gap-2 text-xs" style={{ color: brand.inkSoft }}
                       title="Peronlar tek boğazı (lead/crossover) paylaşıyorsa peron sayısı artsa da ardışık trenler tek boğazdan geçer — boğaz işgali alt sınır olur.">
                       <input type="checkbox" checked={t.bogazPaylasimli}

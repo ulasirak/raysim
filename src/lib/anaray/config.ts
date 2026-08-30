@@ -128,8 +128,13 @@ export type DonusTip =
 export interface TerminalConfig {
   tip: DonusTip;
   peronSayisi: number;    // eşzamanlı dönebilen tren sayısı (stub/island)
-  peronIsgali: number;    // s — PERON İŞGAL SÜRESİ: trenin peronu tuttuğu tam süre
-                          //   (varış→duruş + iniş/biniş + ters dönüş + kalkış→temizleme). Tek, manuel.
+  peronIsgali: number;    // s — PERON İŞGAL SÜRESİ (YETKİLİ toplam): trenin peronu tuttuğu tam süre.
+                          //   Bileşenler varsa = varisTampon + inisBinis + tersDonus + kalkisTemizleme.
+  /** Peron işgali bileşenleri (ince model). Verilmezse peronIsgali tek değer; UI bileşenleri ondan türetir. */
+  varisTampon?: number;     // s — varış→duruş (boğaz girişi işgali)
+  inisBinis?: number;       // s — terminalde iniş/biniş
+  tersDonus?: number;       // s — ters dönüş (reversing)
+  kalkisTemizleme?: number; // s — kalkış→boğaz temizleme
   bogazPaylasimli: boolean;// peronlar tek boğazı (lead/crossover) paylaşıyor mu?
   bogazIsgali: number;    // s — boğaz/crossover işgali (tanzim+geçiş+serbest); yalnız paylaşımlıysa bağlar
 }
