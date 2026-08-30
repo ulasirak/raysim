@@ -410,9 +410,13 @@ export function RingEditor() {
                     </button>
                     {depoDurum(i).on && (
                       <span className="flex items-center gap-1" style={{ color: brand.muted }}>
-                        bekleyen
+                        park eden tren
+                        <button type="button" onClick={() => depoQueued(i, Math.max(0, depoDurum(i).q - 1))}
+                          className="flex h-5 w-5 items-center justify-center rounded border font-semibold" style={{ borderColor: brand.border, color: brand.ink }} title="Bir tren çıkar">−</button>
                         <input type="number" min={0} max={40} step={1} value={depoDurum(i).q} onChange={(e) => depoQueued(i, parseFloat(e.target.value) || 0)}
-                          className="w-14 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /> tren
+                          className="w-12 rounded border px-1 py-0.5 text-center" style={{ borderColor: brand.border, color: brand.ink }} />
+                        <button type="button" onClick={() => depoQueued(i, Math.min(40, depoDurum(i).q + 1))}
+                          className="flex h-5 w-5 items-center justify-center rounded border font-semibold text-white" style={{ background: brand.ink, borderColor: brand.ink }} title="Park eden tren ekle">+</button>
                         {i === duraklar.length - 1 && <span style={{ color: CK.amber }} title="Hattın sonundaki depo gidiş yönünde tren veremez (gidecek yer yok)">⚠ uç</span>}
                       </span>
                     )}

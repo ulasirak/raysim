@@ -118,16 +118,27 @@ function StudioIc() {
   // (origins); depo yoksa varsayılan davranış (etkin sefer sayısı tren, hat başından) korunur.
   // Yalnız Canlı Ağ depo planından etkilenir; diğer paneller etkinSeferSayisi'yle çalışır.
   const depotPlan = useMemo(() => planDepotDispatch(line, headwayDk * 60), [line, headwayDk]);
+  // PARK TRENİ = FİLO (tek kaynak). Depo (parklanma) tanımlıysa filo = toplam park
+  // treni, maksimum tramvay (N_max) ile TAVANLANIR (fazlası depoda bekler); depo
+  // yoksa oto/elle sefer sayısı. Filo hem gidişi hem dönüşü hem Monte-Carlo'yu
+  // besler → gidiş/dönüş kopukluğu biter, park ekle/çıkar sistemi sürükler.
+  const parkToplam = depotPlan.total;
+  const depoVar = parkToplam > 0;
+  const nMax = maks.gecerli ? maks.nTeorik : Infinity;
+  const filoParktan = Math.min(parkToplam, nMax);
+  const filo = depoVar ? filoParktan : etkinSeferSayisi;
+  const parkAsim = depoVar && parkToplam > nMax; // park > kapasite → fazlası depoda bekler
+  const gidisOrigins = useMemo(() => depotPlan.origins.slice(0, filoParktan), [depotPlan, filoParktan]);
   const canliGidis = useMemo(
     () =>
-      depotPlan.total > 0
-        ? simulateSignalled(line, stock, { headway: headwayDk * 60, count: depotPlan.total, maxBlockLen: BLOK_MAXLEN, blocked: ariza, origins: depotPlan.origins })
+      depoVar
+        ? simulateSignalled(line, stock, { headway: headwayDk * 60, count: filoParktan, maxBlockLen: BLOK_MAXLEN, blocked: ariza, origins: gidisOrigins })
         : gidisSim,
-    [depotPlan, gidisSim, line, stock, headwayDk, ariza]
+    [depoVar, filoParktan, gidisOrigins, gidisSim, line, stock, headwayDk, ariza]
   );
   const donusSim = useMemo(
-    () => simulateSignalled(reverseLine, stock, { headway: headwayDk * 60, count: etkinSeferSayisi, maxBlockLen: BLOK_MAXLEN }),
-    [reverseLine, stock, headwayDk, etkinSeferSayisi]
+    () => simulateSignalled(reverseLine, stock, { headway: headwayDk * 60, count: filo, maxBlockLen: BLOK_MAXLEN }),
+    [reverseLine, stock, headwayDk, filo]
   );
 
   const monteCarloCalistir = () => {
@@ -136,7 +147,7 @@ function StudioIc() {
     setTimeout(() => {
       const r = monteCarlo(
         line, stock,
-        { headway: headwayDk * 60, count: etkinSeferSayisi, maxBlockLen: BLOK_MAXLEN },
+        { headway: headwayDk * 60, count: filo, maxBlockLen: BLOK_MAXLEN },
         { trials: 150, meanEntry, meanDwell, threshold: 120 }
       );
       setMc(r);
@@ -176,6 +187,20 @@ function StudioIc() {
         <LiveNetwork network={network} route={route} line={line} blocks={canliGidis.blocks}
           up={canliGidis.trains} down={donusSim.trains} tMax={Math.max(canliGidis.tMax, donusSim.tMax)} trainLen={stock.length}
           faultBlocks={ariza} onBlockClick={arizaToggle} depots={depotPlan.depots} />
+        {/* Filo kaynağı + kapasite bağlantısı */}
+        <div className="mt-2 text-xs" style={{ color: brand.inkSoft }}>
+          {depoVar ? (
+            <>🅿 Filo <b>{filo}</b> tren (parktan{parkAsim ? `, ${parkToplam} girildi` : ""}) · her yön aynı filoyla koşar
+              {maks.gecerli && <> · hat kapasitesi <b>{maks.nTeorik}</b></>}</>
+          ) : (
+            <>Filo <b>{filo}</b> tren (Sefer Sayısı) · parklanma tanımlarsan filo parktan gelir{maks.gecerli && <> · hat kapasitesi <b>{maks.nTeorik}</b></>}</>
+          )}
+        </div>
+        {parkAsim && (
+          <div className="mt-1 text-xs" style={{ color: brand.red }}>
+            ⚠ Parkta {parkToplam} tren var ama bu hatta en fazla {nMax} sığar — fazlası depoda bekler, simülasyon {filo} trenle koşuyor.
+          </div>
+        )}
         {ariza.length > 0 && (
           <div className="mt-2 flex items-center gap-3 text-xs">
             <span style={{ color: brand.red }}>⚠ {ariza.length} blok arızalı (gidiş) — trenler kuyruklanıyor.</span>
@@ -210,15 +235,20 @@ function StudioIc() {
           <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
             <Num label="Sefer Aralığı" suffix="dk" step={0.5} value={headwayDk} onChange={(v) => setHeadwayDk(Math.max(0.5, v))} />
             <div className="block">
-              <span className="field-label">Sefer Sayısı</span>
+              <span className="field-label">Sefer Sayısı {depoVar && <span style={{ color: brand.muted }}>(filo)</span>}</span>
               <div className="mt-1 flex items-center gap-1">
-                <input type="number" value={etkinSeferSayisi} step={1} min={0} max={60}
+                <input type="number" value={depoVar ? filo : etkinSeferSayisi} step={1} min={0} max={60}
+                  disabled={depoVar}
                   onChange={(e) => setSeferSayisiManuel(Math.min(60, Math.max(1, Math.round(parseFloat(e.target.value) || 0))))}
-                  className="w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+                  className="w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink, background: depoVar ? "#F2F4F6" : undefined }} />
                 <span className="text-xs" style={{ color: brand.muted }}>tren</span>
               </div>
               <div className="mt-1 text-xs">
-                {isletme.seferSayisiOto ? (
+                {depoVar ? (
+                  <span style={{ color: parkAsim ? brand.red : CK.good }}>
+                    🅿 Parktan: {parkToplam} tren{parkAsim ? ` · ${filo} sığar (fazlası depoda)` : ""} — <Link href="/#ringler" className="underline">parkı düzenle</Link>
+                  </span>
+                ) : isletme.seferSayisiOto ? (
                   <span style={{ color: CK.good }}>⚙ Oto · aralığa göre türetildi (kapasite tavanıyla sınırlı)</span>
                 ) : (
                   <button type="button" onClick={() => patchIsletme({ seferSayisiOto: true })}
