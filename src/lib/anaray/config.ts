@@ -228,6 +228,11 @@ export interface Isletme {
   toplamFilo: number;   // toplam araç (= gece depoda bekleyen en fazla araç); MANUEL, her şeyi sürükler
   pikFilo: number;      // pik saatte hatta çalışan tren (≤ toplamFilo)
   pikDisiFilo: number;  // pik-dışı saatte hatta çalışan tren (fazlası depoda bekler)
+  // Ters İşletme (kısa dönüş / talep) analizi girdileri
+  pikYolcuSaat: number;         // pik saatte toplam biniş (yolcu/saat, tek yön talep tabanı)
+  dolulukHedefi: number;        // hedef doluluk faktörü (0..1) — bu oranın üstü "tıkanma"
+  aracYolcuKapasite: number;    // araç yolcu kapasitesi (kişi) — tıkanmadan taşınan
+  talepAgirliklari?: Record<string, number>; // durak-başı talep ağırlığı override (ad→ağırlık); yoksa rolden tahmin
 }
 
 // Not: cfg.headway (sözleşme hedef headway'i) AYRIDIR — ring uygunluk eşiği için
@@ -256,6 +261,9 @@ export const varsayilanIsletme: Isletme = {
   toplamFilo: 8,
   pikFilo: 6,
   pikDisiFilo: 4,
+  pikYolcuSaat: 3000,
+  dolulukHedefi: 0.85,
+  aracYolcuKapasite: 220,
 };
 
 // ————————————————————————————————————————————————

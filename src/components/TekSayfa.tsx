@@ -20,6 +20,7 @@
 import { Studio } from "@/components/Studio";
 import { RingEditor } from "@/components/RingEditor";
 import { SistemMerkezi } from "@/components/SistemMerkezi";
+import { TersIsletme } from "@/components/TersIsletme";
 import { Belgeler } from "@/components/Belgeler";
 import { SaltOkunurKalkan } from "@/components/SaltOkunurKalkan";
 import { brand } from "@/lib/anaray/brand";
@@ -32,7 +33,7 @@ import { brand } from "@/lib/anaray/brand";
 // Önce girdi, sonra çıktı: yeni kullanıcı hattı KURDUĞU yerden başlar, boş bir
 // simülasyona bakmaz.
 export const BOLUM_SLUG = [
-  "ringler", "sefer", "sistem", "belgeler",
+  "ringler", "sefer", "sistem", "tersisletme", "belgeler",
 ] as const;
 export type BolumSlug = (typeof BOLUM_SLUG)[number];
 
@@ -41,6 +42,7 @@ const BOLUMLER: { slug: BolumSlug; el: React.ReactNode; faz?: { ad: string; not:
   { slug: "ringler", el: <RingEditor />, faz: { ad: "KUR", not: "Hattı ve makas bölgelerini tanımla — buradaki her veri kalıcıdır." } },
   { slug: "sefer", el: <Studio />, faz: { ad: "ANALİZ ET", not: "Kurduğun hattı simüle et — canlı ağ, kapasite ve darboğazlar." } },
   { slug: "sistem", el: <SistemMerkezi /> },
+  { slug: "tersisletme", el: <TersIsletme /> },
   { slug: "belgeler", el: <Belgeler />, faz: { ad: "BELGELE", not: "Analizden profesyonel tasarım dokümantasyonu üret." } },
 ];
 
