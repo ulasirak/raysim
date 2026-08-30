@@ -282,7 +282,7 @@ export function RingEditor() {
                         )}
                       </div>
                       <p className="mt-1 text-xs" style={{ color: brand.muted }}>
-                        Boğaz = peronlar önündeki ortak makas/geçiş bölgesi; bir tren geçerken kilitlenir. {t.bogazOto ? "Oto = makas tanzim + geçiş + rota serbest." : ""}
+                        Boğaz = peronlar önündeki ortak makas/geçiş bölgesi; bir tren geçerken kilitlenir. {t.bogazOto ? "Oto = makas tanzim + geçiş + rota serbest. " : ""}Paylaşımlı (tek lead) boğaz her tren için bir <b>varış + bir kalkış</b> taşır → terminal kısıtı 2 × boğaz işgali.
                       </p>
                     </div>
                     <label className="mt-2 flex items-center gap-2 text-xs" style={{ color: brand.inkSoft }}

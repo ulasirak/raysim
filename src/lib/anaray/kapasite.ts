@@ -54,9 +54,11 @@ function terminalHeadway(t: TerminalConfig, cfg: SimConfig): number {
   if (t.tip === "dongu") return 0; // balon döngü → dönüş beklemesi yok
   // `|| 0` — eski kayıtta eksik alanlara karşı NaN koruması.
   const peronBasi = (t.peronIsgali || 0) / Math.max(1, t.peronSayisi || 1);
-  // Paylaşımlı boğaz: peron sayısı artsa da ardışık trenler tek boğazdan geçer →
-  // boğaz işgali alt sınır olur (peron paralelliği boğazla tavanlanır).
-  return t.bogazPaylasimli ? Math.max(peronBasi, etkinBogazIsgali(t, cfg)) : peronBasi;
+  // Paylaşımlı (tek lead) boğaz: her tren çevrimi boğazı BİR VARIŞ + BİR KALKIŞ
+  // için kullanır (sıralı) → boğaz kısıtı 2 × işgal. Peron paralelliği boğazla
+  // tavanlanır (peron çok olsa da trenler tek boğazdan sırayla geçer).
+  const bogaz = 2 * etkinBogazIsgali(t, cfg);
+  return t.bogazPaylasimli ? Math.max(peronBasi, bogaz) : peronBasi;
 }
 
 /** Düz kavşakta (karşı-yön çakışmalı makas) tek geçiş işgali (setup + geçiş + release). */
@@ -158,7 +160,7 @@ export function maksimumTren(
     { anahtar: "blok", ad: blokAd, headway: hBlok, aktif: hMin === hBlok,
       aciklama: "En sıkışık durak/hat bloğunun rezerve süresi (Sperrzeit) — dwell + kalkış ölü zamanı + temizleme dâhil." },
     { anahtar: "terminal", ad: terminalAd, headway: hTerminal, aktif: hMin === hTerminal && hTerminal > 0,
-      aciklama: "Terminalde peron başına ardışık dönüş = peron işgal süresi ÷ peron; boğaz paylaşımlıysa boğaz işgali de bağlar." },
+      aciklama: "Terminalde peron başına ardışık dönüş = peron işgal süresi ÷ peron; paylaşımlı boğaz her tren için varış+kalkış taşır → 2 × boğaz işgali de bağlar." },
   ];
   if (hTekhat > 0) {
     kisitlar.push({ anahtar: "tekhat", ad: tekhatAd, headway: hTekhat, aktif: hMin === hTekhat,
