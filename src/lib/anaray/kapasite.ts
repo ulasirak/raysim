@@ -19,7 +19,7 @@
 // güvenli günlük değer.
 
 import type { RollingStock } from "./types";
-import { type SimConfig, type Isletme, type TerminalConfig, VARSAYILAN_DOLULUK_TAVANI, etkinBogazIsgali } from "./config";
+import { type SimConfig, type Isletme, type TerminalConfig, VARSAYILAN_DOLULUK_TAVANI, etkinBogazIsgali, etkinPeronSayisi } from "./config";
 import { blockingTimeHesap } from "./blockingtime";
 import { loopToHat } from "./hatsim";
 import { ringSenaryo, ringTimingEk, type DurakArasiRing } from "./ring";
@@ -54,7 +54,7 @@ export interface MaksimumTrenSonuc {
 function terminalHeadway(t: TerminalConfig, cfg: SimConfig): number {
   if (t.tip === "dongu") return 0; // balon döngü → dönüş beklemesi yok
   // `|| 0` — eski kayıtta eksik alanlara karşı NaN koruması.
-  const peronBasi = (t.peronIsgali || 0) / Math.max(1, t.peronSayisi || 1);
+  const peronBasi = (t.peronIsgali || 0) / etkinPeronSayisi(t);
   // Paylaşımlı (tek lead) boğaz: her tren çevrimi boğazı BİR VARIŞ + BİR KALKIŞ
   // için kullanır (sıralı) → boğaz kısıtı 2 × işgal. Peron paralelliği boğazla
   // tavanlanır (peron çok olsa da trenler tek boğazdan sırayla geçer).

@@ -234,6 +234,10 @@ export function RingEditor() {
       {duraklar.length >= 2 && (
         <div className="mt-4">
           <Panel baslik="Maksimum Tramvay Kapasitesi" aciklama="Hat çift hat, gidiş-dönüş çalışır (tramvay gider, döner, tekrar gider — sürekli çevrim). Terminal dönüş şartlarını gir; sistem bu hatta aynı anda en fazla kaç tramvayın sığacağını hesaplar. Darboğaz otomatik isimlenir.">
+            {/* Bilgilendirme: peron sayısı = terminaldeki dönüş peronu (çift yön) */}
+            <div className="mb-2 rounded border-l-4 px-3 py-2 text-xs" style={{ background: CK.goodBgSoft, borderColor: brand.ink, color: brand.inkSoft }}>
+              ℹ️ <b>Peron sayısı</b> = terminalde <b>dönüş yapabilen peron (ray)</b> sayısı. Hat çift hat olduğu için bir terminalde genelde <b>2 peron</b> vardır (gidiş + dönüş peronu) ve tren birinde dönüp öbüründen çıkar → terminal aralığı = peron işgali ÷ 2. Tek-peronlu kör terminalde 1 gir. <b>Tek yön</b> modunu seçersen yön başına peron girersin, sistem çift hat için otomatik ×2 yapar.
+            </div>
             {/* Terminal (dönüş) girdileri — iki uç */}
             <div className="mb-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
               {(["terminalBas", "terminalSon"] as const).map((uc) => {
@@ -254,8 +258,22 @@ export function RingEditor() {
                       <Kucuk>terminalin fiziksel dönüş biçimi</Kucuk>
                     </label>
                     <div className="mt-2 grid grid-cols-2 gap-3">
-                      <div><Num label="Peron sayısı" suffix="peron" step={1} max={6} value={t.peronSayisi}
-                        onChange={(v) => patchTerminal(uc, { peronSayisi: Math.max(1, Math.round(v)) })} /><Kucuk>terminalde dönüş yapan peron (ray) — çift hatta genelde 2 (gidiş+dönüş peronu)</Kucuk></div>
+                      <div>
+                        <Num label="Peron sayısı" suffix="peron" step={1} max={6} value={t.peronSayisi}
+                          onChange={(v) => patchTerminal(uc, { peronSayisi: Math.max(1, Math.round(v)) })} />
+                        <div className="mt-0.5 flex gap-1">
+                          {([[false, "çift yön (toplam)"], [true, "tek yön (yön başına)"]] as const).map(([ty, ad]) => (
+                            <button key={String(ty)} type="button" onClick={() => patchTerminal(uc, { peronTekYon: ty })}
+                              className="rounded border px-1.5 py-0.5 text-[0.6rem] font-medium"
+                              style={(!!t.peronTekYon === ty) ? { background: brand.ink, color: "#fff", borderColor: brand.ink } : { borderColor: brand.border, color: brand.inkSoft }}>
+                              {ad}
+                            </button>
+                          ))}
+                        </div>
+                        <Kucuk>{t.peronTekYon
+                          ? `yön başına ${t.peronSayisi} peron → etkin ${t.peronSayisi * 2} (gidiş+dönüş çift hat)`
+                          : "terminaldeki TOPLAM dönüş peronu — çift hatta genelde 2"}</Kucuk>
+                      </div>
                     </div>
                     {/* Peron işgal süresi — bileşenli (ince model), toplam yetkili */}
                     <div className="mt-2 rounded border p-2" style={{ borderColor: brand.border, background: "#FBFCFD" }}>

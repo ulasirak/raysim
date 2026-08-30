@@ -127,7 +127,8 @@ export type DonusTip =
 
 export interface TerminalConfig {
   tip: DonusTip;
-  peronSayisi: number;    // eşzamanlı dönebilen tren sayısı (stub/island)
+  peronSayisi: number;    // terminaldeki dönüş peronu (ray) adedi
+  peronTekYon?: boolean;  // true → girilen sayı YÖN BAŞINA (tek yön) → etkin peron = ×2 (gidiş+dönüş)
   peronIsgali: number;    // s — PERON İŞGAL SÜRESİ (YETKİLİ toplam): trenin peronu tuttuğu tam süre.
                           //   Bileşenler varsa = varisTampon + inisBinis + tersDonus + kalkisTemizleme.
   /** Peron işgali bileşenleri (ince model). Verilmezse peronIsgali tek değer; UI bileşenleri ondan türetir. */
@@ -159,6 +160,11 @@ export function bogazIsgaliOto(t: TerminalConfig, cfg: SimConfig): number {
 /** Etkin boğaz işgali: oto ise makastan türetilir, değilse elle girilen. */
 export function etkinBogazIsgali(t: TerminalConfig, cfg: SimConfig): number {
   return t.bogazOto ? bogazIsgaliOto(t, cfg) : (t.bogazIsgali || 0);
+}
+
+/** Etkin peron sayısı: kullanıcı YÖN BAŞINA girdiyse (tek yön) çift hatta ×2 (gidiş+dönüş). */
+export function etkinPeronSayisi(t: TerminalConfig): number {
+  return Math.max(1, (t.peronSayisi || 1) * (t.peronTekYon ? 2 : 1));
 }
 
 export interface Isletme {
