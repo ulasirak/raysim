@@ -80,6 +80,7 @@ function ayrilmaT(points: { t: number; s: number }[], s: number): number {
 export function blockingTimeHesap(
   model: HatModel, stock: RollingStock, cfg: SimConfig,
   kalkisOlu: number | ((istasyonPos: number) => number) = 0,
+  sinyalTaban = 0,
 ): BlockingSonuc {
   const line = model.line;
   const bounds = makeBlocks(line, cfg.blokMaxUzunluk);
@@ -128,12 +129,8 @@ export function blockingTimeHesap(
 
   let kritikBlok = 0;
   for (let i = 1; i < bloklar.length; i++) if (bloklar[i].toplam > bloklar[kritikBlok].toplam) kritikBlok = i;
-  // Sinyal lambası tabanı: kullanıcının koyduğu ileri-yön (ters-işletme olmayan) sinyallerin
-  // aspect çevrimi headway'e alt sınır dayatır (aynı sinyalden ardışık iki tren sık geçemez).
-  const sinyalTaban = rings.reduce((mx, r) => {
-    for (const s of r.sinyaller ?? []) if (s.yon === "giden" && !s.tersIsletme) mx = Math.max(mx, sinyalCevrimi(s));
-    return mx;
-  }, 0);
+  // Sinyal lambası tabanı (parametre): kullanıcının koyduğu ileri-yön sinyalinin aspect
+  // çevrimi headway'e alt sınır dayatır (aynı sinyalden ardışık iki tren sık geçemez).
   const minHeadway = Math.max(bloklar.length ? bloklar[kritikBlok].toplam : 0, sinyalTaban);
   const teorikKapasite = minHeadway > 0 ? 3600 / minHeadway : 0;
   const dolulukTavani = cfg.dolulukTavani ?? VARSAYILAN_DOLULUK_TAVANI;
@@ -158,5 +155,9 @@ export function blockingTimeHesap(
 
 /** Kısayol: ring dizisinden doğrudan blocking-time analizi. */
 export function blockingTimeRing(rings: DurakArasiRing[], stock: RollingStock, cfg: SimConfig): BlockingSonuc {
-  return blockingTimeHesap(loopToHat(rings, true, cfg), stock, cfg);
+  const sinyalTaban = rings.reduce((mx, r) => {
+    for (const s of r.sinyaller ?? []) if (s.yon === "giden" && !s.tersIsletme) mx = Math.max(mx, sinyalCevrimi(s));
+    return mx;
+  }, 0);
+  return blockingTimeHesap(loopToHat(rings, true, cfg), stock, cfg, 0, sinyalTaban);
 }
