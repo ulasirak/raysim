@@ -137,15 +137,16 @@ export interface TerminalConfig {
   tersDonus?: number;       // s — ters dönüş (reversing)
   kalkisTemizleme?: number; // s — kalkış→boğaz temizleme
   toparlanma?: number;      // s — schedule recovery / toparlanma marjı (terminalde bekleme payı)
-  /** Dönüş makası (crossover) tipi — TERMİNAL TURNBACK KAPASİTESİNİN ASIL BELİRLEYİCİSİ.
-   *  Tramvay dönmek için karşı hatta makasla geçmek zorunda (yoksa gelen hatla kafa kafaya
-   *  çarpışma). "s" = TEK (S) crossover → dönüşler SERİ, tek tek (bir tren dönüp boğazı
-   *  boşaltmadan öbürü giremez, 1 yol). "x" = ÇİFT/scissors (X) crossover → iki bağımsız
-   *  hareket, 2 tramvay eş-zamanlı OLMADAN ardışık dönebilir (2 yol). "sx" = HER İKİSİ de
-   *  var (ör. Şehir Hastanesi dönüş fanı) → X'in 2 yolu + S'in 1 ek bağımsız yolu = 3 yol
-   *  (yeterli peron varsa). Etkin dönüş = min(peron, makas yolu). */
-  makasTipi?: "s" | "x" | "sx";
-  bogazPaylasimli?: boolean;// (legacy) — makasTipi'ne taşındı; her turnback terminali makas paylaşır
+  /** Terminaldeki dönüş makası (crossover) SAYILARI — TERMİNAL TURNBACK KAPASİTESİNİN
+   *  ASIL BELİRLEYİCİSİ. Tramvay dönmek için karşı hatta makasla geçmek zorunda (yoksa
+   *  gelen hatla kafa kafaya çarpışma). Her **S (tek crossover)** = 1 dönüş yolu (seri,
+   *  tek tek); her **X (scissors/çift)** = 2 yol (ardışık). Terminal dönüş yolu = ΣS×1 +
+   *  ΣX×2. Ör. Şehir Hastanesi 2 S + 1 X → 2+2 = 4 yol; Adliye 2 S → 2 yol. Etkin dönüş =
+   *  min(peron, yol). */
+  sMakas?: number;  // tek (S) crossover adedi
+  xMakas?: number;  // scissors (X) crossover adedi
+  makasTipi?: "s" | "x" | "sx"; // (legacy) — sMakas/xMakas'a göç edildi
+  bogazPaylasimli?: boolean;// (legacy)
   bogazIsgali: number;    // s — boğaz/crossover işgali (tanzim+geçiş+serbest); makas türüne göre bağlar
   bogazOto: boolean;      // true → boğaz işgali terminal makas config'inden otomatik türetilir
   bogazMakasSayisi: number;// terminal boğazındaki makas (crossover) adedi — oto türetmede tanzim süresi
@@ -153,7 +154,7 @@ export interface TerminalConfig {
 
 export const VARSAYILAN_TERMINAL: TerminalConfig = {
   tip: "korTerminal", peronSayisi: 2, peronIsgali: 210, // çift hat: gidiş+dönüş peronu
-  makasTipi: "s", bogazIsgali: 45, bogazOto: true, bogazMakasSayisi: 2,
+  sMakas: 1, xMakas: 0, bogazIsgali: 45, bogazOto: true, bogazMakasSayisi: 2,
 };
 
 /** Boğaz işgali (s) terminal makas config'inden: tanzim (makas×adım) + geçiş (bölge/vMakas) + rota serbest. */
@@ -175,21 +176,27 @@ export function etkinPeronSayisi(t: TerminalConfig): number {
   return Math.max(1, (t.peronSayisi || 1) * (t.peronTekYon ? 2 : 1));
 }
 
-/** Makas tipinden dönüş paralelliği: kaç tramvay ardışık (art arda) dönüş yapabilir.
- *  S (tek crossover) → 1 (seri); X (scissors) → 2 (ardışık); S+X (ikisi de) → 3 (X'in 2'si + S'in 1'i). */
+/** Terminaldeki S ve X makas sayıları (eski makasTipi'nden göç dahil). */
+export function terminalMakasSayilari(t: TerminalConfig): { s: number; x: number } {
+  const s = t.sMakas ?? (t.makasTipi === "x" ? 0 : 1); // legacy: "x"→0S, diğer→1S
+  const x = t.xMakas ?? (t.makasTipi === "x" || t.makasTipi === "sx" ? 1 : 0); // legacy: "x"/"sx"→1X
+  return { s: Math.max(0, Math.round(s)), x: Math.max(0, Math.round(x)) };
+}
+
+/** Makas sayılarından dönüş yolu: her S crossover 1 yol (seri), her X (scissors) 2 yol (ardışık). */
 export function makasDonusKapasitesi(t: TerminalConfig): number {
-  return t.makasTipi === "sx" ? 3 : t.makasTipi === "x" ? 2 : 1;
+  const { s, x } = terminalMakasSayilari(t);
+  return Math.max(1, s * 1 + x * 2);
 }
 
-/** Bu terminalde SERİ dönüş mü (yalnız tek/S-makas)? Boğaz alt sınırı: seri=2×, değilse (X içerir)=1×. */
-export function terminalSeriDonus(t: TerminalConfig): boolean {
-  return (t.makasTipi ?? "s") === "s";
-}
-
-/** Terminalde etkin dönüş paralelliği = min(peron sayısı, makas dönüş kapasitesi).
- *  2 tramvayın ardışık dönmesi için HEM 2 peron HEM X-makas gerekir; biri eksikse seri kalır. */
+/** Terminalde etkin dönüş paralelliği = min(peron sayısı, makas dönüş yolu). */
 export function terminalDonusParalel(t: TerminalConfig): number {
   return Math.max(1, Math.min(etkinPeronSayisi(t), makasDonusKapasitesi(t)));
+}
+
+/** SERİ dönüş mü (2× boğaz alt sınırı)? Yalnız TEK dönüş yolu varsa (1 S, X yok). */
+export function terminalSeriDonus(t: TerminalConfig): boolean {
+  return makasDonusKapasitesi(t) <= 1;
 }
 
 export interface Isletme {

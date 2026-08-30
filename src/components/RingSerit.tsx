@@ -148,6 +148,7 @@ export function EkleFormu({ tur, konum: konum0, uzunluk, konumSuresi, sureKonumu
   const mv0 = yeniMakas(mBasla, konum0);
   const [gecisHizi, setGecisHizi] = useState(Math.round(kmh(mv0.gecisHizi)));
   const [makasSayisi, setMakasSayisi] = useState(mv0.makasSayisi);
+  const [crossover, setCrossover] = useState<"s" | "x">("s");
   const [adim, setAdim] = useState(mv0.makasAdimSuresi);
   const [release, setRelease] = useState(mv0.routeRelease);
   // Geçit / fren hızı varsayılanı
@@ -163,7 +164,7 @@ export function EkleFormu({ tur, konum: konum0, uzunluk, konumSuresi, sureKonumu
 
   const kaydet = () => {
     if (tur.kind === "makas") {
-      onEkle(konum, { tip: mtip, gecisHizi: gecisHizi * KMH, makasSayisi, makasAdimSuresi: adim, routeRelease: release, tccZorunlu: tccGerekli(mtip) });
+      onEkle(konum, { tip: mtip, gecisHizi: gecisHizi * KMH, makasSayisi, makasAdimSuresi: adim, routeRelease: release, tccZorunlu: tccGerekli(mtip), crossover });
     } else if (tur.kind === "hemzemin") {
       onEkle(konum, { hiz: hiz * KMH, ...(tur.tip === "karayolu" ? { bekleme } : {}) });
     } else {
@@ -191,7 +192,20 @@ export function EkleFormu({ tur, konum: konum0, uzunluk, konumSuresi, sureKonumu
               </select>
             </label>
             <Num label="Geçiş hızı" suffix="km/h" step={1} value={gecisHizi} onChange={setGecisHizi} />
-            <Num label="Makas sayısı" suffix="ad" step={1} value={makasSayisi} onChange={(v) => setMakasSayisi(Math.max(1, Math.round(v)))} />
+            <Num label="Makas sayısı (PM)" suffix="ad" step={1} value={makasSayisi} onChange={(v) => setMakasSayisi(Math.max(1, Math.round(v)))} />
+            <label className="block">
+              <span className="field-label">Crossover geometrisi</span>
+              <div className="mt-1 flex gap-1">
+                {([["s", "S (tek)"], ["x", "X (scissors)"]] as const).map(([cv, ad]) => (
+                  <button key={cv} type="button" onClick={() => setCrossover(cv)}
+                    className="flex-1 rounded border px-1.5 py-1 text-xs font-medium"
+                    style={crossover === cv ? { background: brand.ink, color: "#fff", borderColor: brand.ink } : { borderColor: brand.border, color: brand.inkSoft }}>
+                    {ad}
+                  </button>
+                ))}
+              </div>
+              <span className="mt-0.5 block text-[0.6rem]" style={{ color: brand.muted }}>uç (dönüş) makasında turnback yolu belirler: S=1, X=2</span>
+            </label>
             <Num label="Motor/adım süresi" suffix="s" step={1} value={adim} onChange={setAdim} />
             <Num label="Route release" suffix="s" step={1} value={release} onChange={setRelease} />
           </>

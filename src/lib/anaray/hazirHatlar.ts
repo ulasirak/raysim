@@ -50,7 +50,7 @@ interface RingEk {
   /** Bu ring hangi durağa GİDİYOR (index). Uç/kavşak/depo işaretleri buradan.
    *  `sayi`: CAD'deki ardışık makas (point machine) adedi — ör. Alaaddin yelpazesi
    *  4 (PM1/PM2/PM3/PM80). `hizKmh`: CAD geometrisinden/şartnameden geçiş hızı. */
-  makas?: { tip: MakasTip; konumOran: number; sayi?: number; hizKmh?: number }[];
+  makas?: { tip: MakasTip; konumOran: number; sayi?: number; hizKmh?: number; crossover?: "s" | "x" }[];
   hemzemin?: { tip: HemzeminTip; konumOran: number }[];
   dwell?: number;
   depot?: boolean;
@@ -83,6 +83,7 @@ function hatKur(
         const mk = yeniMakas(m.tip, konum);
         if (m.sayi != null) mk.makasSayisi = m.sayi;               // CAD point-machine adedi
         if (m.hizKmh != null) mk.gecisHizi = m.hizKmh / 3.6;       // km/h → m/s
+        if (m.crossover != null) mk.crossover = m.crossover;       // S (tek) / X (scissors)
         r.makaslar.push(mk);
       }
       for (const h of ek.hemzemin ?? []) {
@@ -95,11 +96,10 @@ function hatKur(
   return rings;
 }
 
-/** Terminal dönüş makası tipi override'ı — gerçek CAD turnback fanlarından:
- *  tek crossover (≈2 PM) → "s"; scissors fan (≈4 PM) → "x"; büyük fan / hem S hem X
- *  (≈8 PM, ör. Şehir Hastanesi U21/U22 & Stadyum yelpazesi) → "sx". */
-function term(makasTipi: "s" | "x" | "sx"): TerminalConfig {
-  return { ...VARSAYILAN_TERMINAL, makasTipi };
+/** Terminal dönüş makası sayıları override'ı — gerçek CAD/kullanıcı verisinden.
+ *  Her S (tek crossover) = 1 dönüş yolu; her X (scissors) = 2 yol. Ör. term(2,1) = 2 S + 1 X. */
+function term(sMakas: number, xMakas: number): TerminalConfig {
+  return { ...VARSAYILAN_TERMINAL, sMakas, xMakas };
 }
 
 function meta(p: Partial<ProjeMeta>): ProjeMeta {
@@ -166,11 +166,12 @@ const T1_MESAFE = [261, 881, 699, 1006, 871, 564, 918];
 // Geçiş hızı 15 km/h = Şartname 3.4.8.2 (varsayılan vMakas) — R50 en dar yarıçapı
 // yönetir; CAD hız sayısı vermez, geometri (R50/R100·1/6) verir.
 const T1_EK: Record<number, RingEk> = {
-  0: { fromDepot: true, makas: [{ tip: "karsilasmali", konumOran: 0.3, sayi: 4 }], dwell: 40 }, // Alaaddin dönüş yelpazesi (4 makas)
-  2: { makas: [{ tip: "karsilasmali", konumOran: 0.08, sayi: 2 }] },                            // Mevlana crossover (PM4/PM5)
-  3: { makas: [{ tip: "karsilasmali", konumOran: 0.08, sayi: 2 }],
-       hemzemin: [{ tip: "karayolu", konumOran: 0.5 }] },                                       // MKM crossover (PM6/PM7) + karayolu geçidi
-  6: { makas: [{ tip: "udonus", konumOran: 0.75, sayi: 2 }], dwell: 45 },                       // Adliye U-dönüş (PM8/PM9)
+  0: { fromDepot: true, makas: [{ tip: "karsilasmali", konumOran: 0.3, sayi: 4, crossover: "s" }], dwell: 40 }, // Alaaddin dönüş yelpazesi
+  1: { makas: [{ tip: "karsilasmali", konumOran: 0.06, sayi: 1, crossover: "s" }] },             // Hükümet crossover (kullanıcı: 1 S)
+  2: { makas: [{ tip: "karsilasmali", konumOran: 0.08, sayi: 1, crossover: "s" }] },             // Mevlana crossover (kullanıcı: 1 S)
+  3: { makas: [{ tip: "karsilasmali", konumOran: 0.08, sayi: 1, crossover: "s" }],
+       hemzemin: [{ tip: "karayolu", konumOran: 0.5 }] },                                       // Mevlana Kültür Merkezi crossover (kullanıcı: 1 S) + karayolu
+  6: { makas: [{ tip: "udonus", konumOran: 0.75, sayi: 2, crossover: "s" }], dwell: 45 },        // Adliye U-dönüş — 2 S (kullanıcı: Adliye 2 S)
 };
 
 // ————————————————————————————————————————————————
@@ -221,7 +222,7 @@ const ETAP2_MESAFE = [413, 762, 880, 853, 1011, 1446, 1137, 1062, 1057];
 //     arayüzde challenge/risk bayrakları, denge sapması ve "ihlal" işaretleri gizli).
 // v7: sinyalizasyon firması = Aslan Sinyalizasyon (üç hatta da).
 // v8: 4. hat — Bütünleşik Hat (Alaaddin–Stadyum), üç etap tek sürekli hatta birleşik.
-export const HAZIR_VERI_SURUM = 8;
+export const HAZIR_VERI_SURUM = 9; // v9: makas S/X crossover geometrisi + terminal makas sayıları (gerçek CAD/kullanıcı verisi)
 
 export interface HazirHat {
   key: "mevcut" | "etap1" | "etap2" | "birlesik";
@@ -239,8 +240,8 @@ export function hazirHatlar(): HazirHat[] {
     ad: "Konya Mevcut Hat — Alaaddin–Adliye (CAD)",
     veri: {
       rings: mevcutRings, cfg, arac: SKODA_28T,
-      // Alaaddin yelpaze (4 makas) → X · Adliye U-dönüş PM8/PM9 (tek crossover) → S
-      isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 8, turnaroundDk: 4, terminalBas: term("x"), terminalSon: term("s") },
+      // Alaaddin dönüş yelpazesi (2 S crossover) · Adliye U-dönüş 2 S (kullanıcı: Adliye 2 tane S)
+      isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 8, turnaroundDk: 4, terminalBas: term(2, 0), terminalSon: term(2, 0) },
       meta: meta({
         projeAdi: "Konya Tramvay — Mevcut Hat (Alaaddin–Adliye) Sinyalizasyon",
         hatAdi: "Alaaddin – Adliye (5,2 km · 8 istasyon)",
@@ -262,11 +263,17 @@ export function hazirHatlar(): HazirHat[] {
   //   U10 Aslım/TÜMOSAN kavşağı  PM26–29 · U11 Ravza Camii crossover PM24/PM25 ·
   //   U17 DEPO merdiveni PM18–23+PM38–41 · U21/U22 Şehir Hast.–Adliye dönüş fanı PM10–17.
   const etap1Ek: Record<number, RingEk> = {
-    0: { fromDepot: true, makas: [{ tip: "karsilasmali", konumOran: 0.2, sayi: 2 }], dwell: 40 }, // U10 Aslım/TÜMOSAN kavşağı (PM26–29)
-    1: { makas: [{ tip: "karsilasmali", konumOran: 0.06, sayi: 2 }] },                            // U11 Ravza Camii crossover (PM24/PM25)
+    0: { fromDepot: true, makas: [{ tip: "karsilasmali", konumOran: 0.2, sayi: 2, crossover: "s" }], dwell: 40 }, // U10 Aslım/TÜMOSAN kavşağı (2 S)
+    1: { makas: [{ tip: "karsilasmali", konumOran: 0.06, sayi: 2, crossover: "s" }] },            // U11 Ravza Camii crossover (PM24/PM25)
     6: { hemzemin: [{ tip: "karayolu", konumOran: 0.5 }] },                                       // U16 Sedirler Kavşağı
-    7: { makas: [{ tip: "depo", konumOran: 0.6, sayi: 3 }] },                                     // U17 DEPO merdiveni (PM18–23, PM38–41)
-    11: { makas: [{ tip: "udonus", konumOran: 0.75, sayi: 2 }], dwell: 45 },                      // U21/U22 dönüş fanı (PM10–17)
+    7: { makas: [{ tip: "depo", konumOran: 0.6, sayi: 3, crossover: "s" }] },                     // U17 DEPO merdiveni (PM18–23, PM38–41)
+    // U21/U22 Şehir Hastanesi–Adliye dönüş fanı (PM10–17): Şehir Hastanesi 2 S + 1 X (kullanıcı) + Adliye 2 S
+    11: { makas: [
+      { tip: "udonus", konumOran: 0.08, sayi: 1, crossover: "x" },   // Şehir Hastanesi scissors (1 X)
+      { tip: "udonus", konumOran: 0.14, sayi: 1, crossover: "s" },   // Şehir Hastanesi S #1
+      { tip: "udonus", konumOran: 0.20, sayi: 1, crossover: "s" },   // Şehir Hastanesi S #2
+      { tip: "udonus", konumOran: 0.88, sayi: 2, crossover: "s" },   // Adliye U-dönüş 2 S
+    ], dwell: 45 },
   };
   const etap1Rings = hatKur(ETAP1_DURAK, ETAP1_MESAFE, etap1Ek);
   const etap1: HazirHat = {
@@ -274,8 +281,8 @@ export function hazirHatlar(): HazirHat[] {
     ad: "Konya Tramvay 1. Etap — Aslım Sanayi–Şehir Hastanesi (CAD)",
     veri: {
       rings: etap1Rings, cfg, arac: SKODA_28T,
-      // Aslım/TÜMOSAN kavşağı PM26-29 → X · U21/U22 Şehir Hastanesi–Adliye dönüş fanı PM10-17 (hem S hem X) → S+X
-      isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 6, turnaroundDk: 4, terminalBas: term("x"), terminalSon: term("sx") },
+      // Aslım/TÜMOSAN kavşağı (2 S) · U21/U22 Şehir Hastanesi–Adliye dönüş fanı = 2 S + 1 X (kullanıcı: Hastane 2 S + 1 X)
+      isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 6, turnaroundDk: 4, terminalBas: term(2, 0), terminalSon: term(2, 1) },
       meta: meta({
         projeAdi: "Konya Tramvay 1. Etap Sinyalizasyon (Aslım Sanayi–Şehir Hastanesi–Adliye)",
         hatAdi: "1. Etap · U10 Aslım Sanayi – U22 Adliye (~10,8 km · 13 istasyon)",
@@ -299,12 +306,17 @@ export function hazirHatlar(): HazirHat[] {
   //   U7 Banliyö ve U8 TÜYAP'ta makas YOK (ne M-kod ne PM) → önceki barınma kaldırıldı;
   //   Banliyö yalnız aktarma beklemesi (dwell) taşır (KONYARAY ile yaya aktarması).
   const etap2Ek: Record<number, RingEk> = {
-    0: { makas: [{ tip: "udonus", konumOran: 0.3, sayi: 3 }], dwell: 50 },                        // U1 Stadyum terminus yelpazesi (M1–M8)
-    3: { makas: [{ tip: "karsilasmali", konumOran: 0.12, sayi: 2 }],
+    // U1 Stadyum terminus yelpazesi M1–M8 — büyük fan: 2 S + 1 X
+    0: { makas: [
+      { tip: "udonus", konumOran: 0.22, sayi: 1, crossover: "x" },  // Stadyum scissors (1 X)
+      { tip: "udonus", konumOran: 0.28, sayi: 1, crossover: "s" },  // Stadyum S #1
+      { tip: "udonus", konumOran: 0.34, sayi: 1, crossover: "s" },  // Stadyum S #2
+    ], dwell: 50 },
+    3: { makas: [{ tip: "karsilasmali", konumOran: 0.12, sayi: 2, crossover: "s" }],
          hemzemin: [{ tip: "karayolu", konumOran: 0.55 }] },                                      // U4 Otogar kavşağı (M9/M10) + karayolu
-    5: { makas: [{ tip: "karsilasmali", konumOran: 0.06, sayi: 2 }] },                            // U6 Betoncular crossover (PM30–32)
+    5: { makas: [{ tip: "karsilasmali", konumOran: 0.06, sayi: 2, crossover: "s" }] },            // U6 Betoncular crossover (PM30–32)
     6: { dwell: 30 },                                                                             // U7 Banliyö Aktarma — makas YOK, aktarma beklemesi
-    8: { fromDepot: false, makas: [{ tip: "karsilasmali", konumOran: 0.8, sayi: 2 }], dwell: 40 },// U9 TÜMOSAN kavşağı (M11–14/PM26–29)
+    8: { fromDepot: false, makas: [{ tip: "karsilasmali", konumOran: 0.8, sayi: 2, crossover: "s" }], dwell: 40 },// U9 TÜMOSAN kavşağı (M11–14/PM26–29)
   };
   const etap2Rings = hatKur(ETAP2_DURAK, ETAP2_MESAFE, etap2Ek);
   const etap2: HazirHat = {
@@ -312,8 +324,8 @@ export function hazirHatlar(): HazirHat[] {
     ad: "Konya Tramvay 2. Etap — Stadyum–Aslım Sanayi (CAD)",
     veri: {
       rings: etap2Rings, cfg, arac: SKODA_28T,
-      // U1 Stadyum terminus yelpazesi M1-M8 (hem S hem X) → S+X · U9 TÜMOSAN/Aslım kavşağı → X
-      isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 6, turnaroundDk: 4, terminalBas: term("sx"), terminalSon: term("x") },
+      // U1 Stadyum terminus yelpazesi M1-M8 (büyük fan) = 2 S + 1 X · U9 TÜMOSAN/Aslım kavşağı = 2 S
+      isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 6, turnaroundDk: 4, terminalBas: term(2, 1), terminalSon: term(2, 0) },
       meta: meta({
         projeAdi: "Konya Tramvay 2. Etap Sinyalizasyon (Stadyum–Aslım Sanayi)",
         hatAdi: "2. Etap · U1 Stadyum – U10 Aslım Sanayi (~8,6 km · 10 istasyon)",
@@ -342,8 +354,8 @@ export function hazirHatlar(): HazirHat[] {
     ad: "Konya Tramvay — Bütünleşik Hat (Alaaddin–Stadyum) (CAD)",
     veri: {
       rings: birlesikRings, cfg, arac: SKODA_28T,
-      // Alaaddin yelpaze → X · Stadyum terminus yelpazesi (hem S hem X) → S+X (Adliye & Aslım artık ara kavşak)
-      isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 10, turnaroundDk: 5, terminalBas: term("x"), terminalSon: term("sx") },
+      // Alaaddin yelpaze (2 S) · Stadyum terminus yelpazesi = 2 S + 1 X (Adliye & Aslım artık ara kavşak)
+      isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 10, turnaroundDk: 5, terminalBas: term(2, 0), terminalSon: term(2, 1) },
       meta: meta({
         projeAdi: "Konya Tramvay — Bütünleşik Hat (Alaaddin–Stadyum) Sinyalizasyon",
         hatAdi: "Alaaddin – Stadyum (~25,5 km · 29 istasyon · Adliye & Aslım kavşaklı)",

@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { RollingStock } from "@/lib/anaray/types";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
-import { etkinBogazIsgali, terminalDonusParalel, etkinPeronSayisi, type SimConfig, type DonusTip, type TerminalConfig, type Isletme } from "@/lib/anaray/config";
+import { etkinBogazIsgali, terminalDonusParalel, etkinPeronSayisi, terminalMakasSayilari, terminalSeriDonus, type SimConfig, type DonusTip, type TerminalConfig, type Isletme } from "@/lib/anaray/config";
 import { maksimumTren } from "@/lib/anaray/kapasite";
 import { yolcuAkisSuresi } from "@/lib/anaray/yolcu";
 import { brand } from "@/lib/anaray/brand";
@@ -238,9 +238,9 @@ export function RingEditor() {
             <div className="mb-2 rounded border-l-4 px-3 py-2 text-xs leading-relaxed" style={{ background: CK.goodBgSoft, borderColor: brand.ink, color: brand.inkSoft }}>
               ℹ️ <b>Neden makaslı hesap?</b> Tramvay uçta dönmek için karşı hatta <b>makasla (crossover)</b> geçmek zorundadır — yoksa gelen hatla <b>kafa kafaya çarpışır</b>. Terminalin en fazla kaç tramvay çevirebileceğini asıl bu makasın tipi belirler:
               <br />• <b>S-makas (tek crossover):</b> dönüşler <b>seri, tek tek</b> — bir tramvay dönüp boğazı boşaltmadan öbürü giremez → terminal aralığı = <b>tam peron işgali</b> (peron çok olsa da hızlanmaz).
-              <br />• <b>X-makas (scissors/çift):</b> iki bağımsız hareket → 2 tramvay <b>eş-zamanlı olmadan ardışık</b> hızlıca dönebilir → peron işgali <b>÷ 2</b>.
-              <br />• <b>S+X birlikte</b> (ör. Şehir Hastanesi dönüş fanı, ikisi de var): X'in 2 yolu + S'in 1 ek bağımsız yolu = <b>3 ardışık dönüş</b> (yeterli peron varsa) → peron işgali ÷ 3.
-              <br /><b>Peron sayısı</b> = terminaldeki dönüş rayı adedi (çift hatta genelde 2: gidiş+dönüş peronu). <b>Tek yön</b> modunda yön başına girersin, sistem ×2 yapar. Etkin dönüş = <b>min(peron, makas yolu)</b> — 2 ardışık dönüş için hem 2 peron hem (en az) X-makas, 3 için hem 3 peron hem S+X gerekir.
+              <br />• <b>X-makas (scissors/çift):</b> iki bağımsız hareket → 2 tramvay <b>eş-zamanlı olmadan ardışık</b> hızlıca dönebilir → her X = <b>2 dönüş yolu</b>.
+              <br /><b>Dönüş yolu = (S sayısı × 1) + (X sayısı × 2).</b> Ör. Şehir Hastanesi <b>2 S + 1 X</b> → 2+2 = 4 yol; Adliye <b>2 S</b> → 2 yol.
+              <br /><b>Peron sayısı</b> = terminaldeki dönüş rayı adedi (çift hatta genelde 2). <b>Tek yön</b> modunda yön başına girersin, sistem ×2 yapar. Etkin dönüş = <b>min(peron, dönüş yolu)</b> → terminal aralığı = peron işgali ÷ etkin dönüş. (n ardışık dönüş için hem n peron hem yeterli makas yolu gerekir.)
             </div>
             {/* Terminal (dönüş) girdileri — iki uç */}
             <div className="mb-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -321,26 +321,20 @@ export function RingEditor() {
                         )}
                       </div>
                       <p className="mt-1 text-xs" style={{ color: brand.muted }}>
-                        Boğaz = peronlar önündeki ortak makas/geçiş bölgesi; bir tren geçerken kilitlenir. {t.bogazOto ? "Oto = makas tanzim + geçiş + rota serbest. " : ""}{(t.makasTipi ?? "s") === "x" ? <>X-makas: varış/kalkış ayrı bacakta → terminal alt sınırı <b>1 × boğaz işgali</b>.</> : <>S-makas: her tren için <b>varış + kalkış</b> seri → terminal alt sınırı <b>2 × boğaz işgali</b>.</>}
+                        Boğaz = peronlar önündeki ortak makas/geçiş bölgesi; bir tren geçerken kilitlenir. {t.bogazOto ? "Oto = makas tanzim + geçiş + rota serbest. " : ""}{terminalSeriDonus(t) ? <>Tek dönüş yolu (1 S makas): varış+kalkış seri → terminal alt sınırı <b>2 × boğaz işgali</b>.</> : <>Çok yol (X veya ≥2 makas): ayrı bacaklar → terminal alt sınırı <b>1 × boğaz işgali</b>.</>}
                       </p>
                     </div>
-                    {/* Makas tipi — terminal turnback kapasitesinin ASIL belirleyicisi */}
+                    {/* Dönüş makası sayıları — terminal turnback kapasitesinin ASIL belirleyicisi */}
                     <div className="mt-2 rounded border p-2" style={{ borderColor: brand.ink, background: CK.goodBgSoft }}>
-                      <span className="field-label">Dönüş makası (crossover) tipi — turnback belirleyici</span>
-                      <div className="mt-1 flex gap-1">
-                        {([["s", "S (tek)"], ["x", "X (scissors)"], ["sx", "S+X (ikisi de)"]] as const).map(([mt, ad]) => (
-                          <button key={mt} type="button" onClick={() => patchTerminal(uc, { makasTipi: mt })}
-                            className="flex-1 rounded border px-2 py-1 text-[0.65rem] font-medium"
-                            style={((t.makasTipi ?? "s") === mt) ? { background: brand.ink, color: "#fff", borderColor: brand.ink } : { borderColor: brand.border, color: brand.inkSoft }}>
-                            {ad}
-                          </button>
-                        ))}
+                      <span className="field-label">Dönüş makası (crossover) sayıları — turnback belirleyici</span>
+                      <div className="mt-1 grid grid-cols-2 gap-2">
+                        <div><Num label="S-makas (tek)" suffix="ad" step={1} max={8} value={terminalMakasSayilari(t).s}
+                          onChange={(v) => patchTerminal(uc, { sMakas: Math.max(0, Math.round(v)), makasTipi: undefined })} /><Kucuk>her biri 1 dönüş yolu (seri)</Kucuk></div>
+                        <div><Num label="X-makas (scissors)" suffix="ad" step={1} max={8} value={terminalMakasSayilari(t).x}
+                          onChange={(v) => patchTerminal(uc, { xMakas: Math.max(0, Math.round(v)), makasTipi: undefined })} /><Kucuk>her biri 2 dönüş yolu (ardışık)</Kucuk></div>
                       </div>
-                      <Kucuk>{(t.makasTipi ?? "s") === "sx"
-                        ? `S+X birlikte: X'in 2 yolu + S'in 1 ek yolu = 3 ardışık dönüş (yeterli peron varsa). Etkin dönüş = ${terminalDonusParalel(t)} yol (peron ${etkinPeronSayisi(t)} ile sınırlı)`
-                        : (t.makasTipi ?? "s") === "x"
-                        ? `scissors: 2 tramvay eş-zamanlı DEĞİL ama ardışık hızlıca dönebilir → peron işgali ÷ ${terminalDonusParalel(t)}`
-                        : "tek crossover: dönüşler SERİ, tek tek — peron çok olsa da ardışık dönüş = 1 → terminal aralığı = tam peron işgali"}</Kucuk>
+                      <Kucuk>{(() => { const { s, x } = terminalMakasSayilari(t); const yol = s + x * 2; const etk = terminalDonusParalel(t);
+                        return `${s}×S + ${x}×X = ${yol} dönüş yolu → etkin ${etk} (peron ${etkinPeronSayisi(t)} ile sınırlı) → terminal aralığı = peron işgali ÷ ${etk}`; })()}</Kucuk>
                     </div>
                     {t.tip === "dongu" && (
                       <p className="mt-1 text-xs" style={{ color: brand.muted }}>Balon döngüde terminal kısıtı yok (dönüş ~0).</p>

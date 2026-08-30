@@ -411,13 +411,23 @@ export function LiveNetwork({
               </g>
             );
           }
-          return (
-            <g key={`f${i}`}>{bag}
-              <path d={`M ${top.x} ${top.y - 4} l 4 4 l -4 4 l -4 -4 z`} fill={brand.surface} stroke={brand.ink} strokeWidth={1.1} />
-              <circle cx={top.x} cy={top.y} r={2} fill={asp2} style={{ transition: "fill 0.35s ease" }} />
-              <title>{`Makas (kavşak): ${f.ad}${f.makasTip ? ` [${f.makasTip}]` : ""} — koruyucu sinyal ${dolu ? "kırmızı" : "yeşil"}`}</title>
-            </g>
-          );
+          {
+            const scissors = f.crossover === "x";
+            return (
+              <g key={`f${i}`}>{bag}
+                <path d={`M ${top.x} ${top.y - 4} l 4 4 l -4 4 l -4 -4 z`} fill={brand.surface} stroke={brand.ink} strokeWidth={1.1} />
+                {scissors
+                  // X (scissors/çift crossover): elmas içinde çapraz iki hat
+                  ? <><line x1={top.x - 2.4} y1={top.y - 2.4} x2={top.x + 2.4} y2={top.y + 2.4} stroke={brand.ink} strokeWidth={1} />
+                      <line x1={top.x - 2.4} y1={top.y + 2.4} x2={top.x + 2.4} y2={top.y - 2.4} stroke={brand.ink} strokeWidth={1} /></>
+                  // S (tek crossover): merkez aspekt noktası
+                  : <circle cx={top.x} cy={top.y} r={2} fill={asp2} style={{ transition: "fill 0.35s ease" }} />}
+                {scissors && <circle cx={top.x + 5.5} cy={top.y - 4.5} r={1.6} fill={asp2} stroke="#fff" strokeWidth={0.5} style={{ transition: "fill 0.35s ease" }} />}
+                <text x={top.x} y={top.y - 6} textAnchor="middle" fontSize={4.4} fontWeight={700} fill={brand.inkSoft}>{scissors ? "X" : "S"}</text>
+                <title>{`Makas (kavşak): ${f.ad} — ${scissors ? "X (scissors/çift crossover)" : "S (tek crossover)"}${f.makasTip ? ` · ${f.makasTip}` : ""}${f.makasSayisi ? ` · ${f.makasSayisi} PM` : ""} — koruyucu sinyal ${dolu ? "kırmızı" : "yeşil"}`}</title>
+              </g>
+            );
+          }
         })}
         {/* Depolar (parklanma alanları) — gidiş (alt) şeridinin yanında */}
         {depots.map(depotMark)}
@@ -476,7 +486,7 @@ export function LiveNetwork({
       </div>
       <p className="text-xs" style={{ color: brand.muted }}>
         <span style={{ color: DOWN }}>▬</span> Üst şerit: Dönüş (sağ→sol) · <span style={{ color: UP_COL }}>▬</span> Alt şerit: Gidiş (sol→sağ) · <span style={{ color: CK.red }}>▬</span> işgal edilen blok.
-        {" "}Sinyal: <span style={{ color: ASPEKT.yesil }}>●</span> yeşil (serbest) · <span style={{ color: ASPEKT.sari }}>●</span> sarı (dikkat) · <span style={{ color: ASPEKT.kirmizi }}>●</span> kırmızı (dur). Sabit blok 3-fener mantığı canlı akıyor. Hat özellikleri: <span style={{ color: CK.blue }}>◉</span> yaya geçidi (yavaşlar) · <span style={{ color: CK.amber }}>⊞</span> karayolu geçidi (durma varsa bekler) · <span style={{ color: brand.ink }}>◆</span> makas/kavşak koruyucu sinyali. Her işaretin raya bağ çizgisi konumunu gösterir. <b>Not:</b> sinyaller yalnız duraklarda değil; geçit ve makas/kavşakta da beklemeyi bu koruyucu sinyaller sağlar — rota/kavşak müsait değilse tren o sinyalde durur.
+        {" "}Sinyal: <span style={{ color: ASPEKT.yesil }}>●</span> yeşil (serbest) · <span style={{ color: ASPEKT.sari }}>●</span> sarı (dikkat) · <span style={{ color: ASPEKT.kirmizi }}>●</span> kırmızı (dur). Sabit blok 3-fener mantığı canlı akıyor. Hat özellikleri: <span style={{ color: CK.blue }}>◉</span> yaya geçidi (yavaşlar) · <span style={{ color: CK.amber }}>⊞</span> karayolu geçidi (durma varsa bekler) · <span style={{ color: brand.ink }}>◆</span> makas/kavşak koruyucu sinyali — <b>S</b> tek crossover, <b>X</b> scissors (çift, ✕ işaretli). Her işaretin raya bağ çizgisi konumunu gösterir. <b>Not:</b> sinyaller yalnız duraklarda değil; geçit ve makas/kavşakta da beklemeyi bu koruyucu sinyaller sağlar — rota/kavşak müsait değilse tren o sinyalde durur.
         {depoToplam > 0 && <> · 🅿 <b>Depo (parklanma):</b> bekleyen trenler sırayla headway aralığıyla servise çıkar; kutudaki dolu kareler çıkışa hazır, soluk kareler çıkmış trenlerdir.</>}
       </p>
     </div>

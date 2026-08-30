@@ -256,6 +256,8 @@ export type HatOzellik = {
   ad: string;
   bekleme: number;        // s — karayolu geçidinde durma (0 = durmadan yavaşlar)
   makasTip?: string;      // makas ise tipi (karsilasmali/headway/…)
+  crossover?: "s" | "x";  // makas ise crossover geometrisi: tek (S) / scissors (X)
+  makasSayisi?: number;   // makas ise ardışık makas (PM) adedi
 };
 export function hatOzellikleri(
   rings: DurakArasiRing[], cfg: SimConfig = BELGE,
@@ -272,7 +274,7 @@ export function hatOzellikleri(
     }
     for (const m of r.makaslar) {
       const pos = offset + Math.max(0, Math.min(r.uzunluk, m.konum)) * scale;
-      out.push({ pos, kind: "makas", ad: m.ad || "Makas", bekleme: 0, makasTip: m.tip });
+      out.push({ pos, kind: "makas", ad: m.ad || "Makas", bekleme: 0, makasTip: m.tip, crossover: m.crossover ?? "s", makasSayisi: m.makasSayisi });
     }
     offset += L;
   }

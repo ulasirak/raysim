@@ -162,6 +162,12 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
       if (t.peronIsgali == null && (t.terminalDwell != null || t.donusSuresi != null)) {
         m.peronIsgali = (t.terminalDwell ?? 30) + (t.donusSuresi ?? 180);
       }
+      // Eski makasTipi ("s"/"x"/"sx") → sMakas/xMakas göçü (kayıtta sayı yoksa; VARSAYILAN
+      // sMakas:1'i tipten türetilene çevir).
+      if (t.sMakas == null && t.xMakas == null && t.makasTipi != null) {
+        m.sMakas = t.makasTipi === "x" ? 0 : 1;      // "x"→0S, "s"/"sx"→1S
+        m.xMakas = t.makasTipi === "x" || t.makasTipi === "sx" ? 1 : 0; // "x"/"sx"→1X
+      }
       return m;
     };
     nIsletme.terminalBas = gocTerminal(v.isletme?.terminalBas);
