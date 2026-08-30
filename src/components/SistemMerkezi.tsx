@@ -6,7 +6,7 @@
 //     örnek seed'le ring loop anlık çözülür. (3) Bilgi /
 //     challenge referansı — sistemin karşıladığı gerçek-hayat durumları.
 
-import { useMemo } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { brand } from "@/lib/anaray/brand";
 import { sure, kmh } from "@/lib/anaray/format";
@@ -79,6 +79,9 @@ export function SistemMerkezi() {
   // blocking-time panelleri gizlenir, parametre girişi açık kalır.
   const bosHat = rings.length === 0;
   const bt = useMemo(() => (rings.length ? blockingTimeRing(rings, stock, cfg) : null), [rings, stock, cfg]);
+  // Blok analizi ağır alt-bölümleri çekmecede (drawer) — tıklayınca açılır/kapanır.
+  const [blokAcik, setBlokAcik] = useState({ merdiven: false, bilesen: false, teshis: false });
+  const blokTopla = (k: "merdiven" | "bilesen" | "teshis") => setBlokAcik((a) => ({ ...a, [k]: !a[k] }));
 
   // Blok → durak-arası (ring) eşlemesi + neden analizi. Her blok, hangi ring'in
   // içine düştüğüyle adlandırılır; blokNeden ile darboğazın sebebi ve çözüm yeri
@@ -126,8 +129,8 @@ export function SistemMerkezi() {
         </div>
 
         {/* Sperrzeitentreppe — GERÇEK zaman-mesafe merdiveni (kanonik) */}
-        <div className="mt-4">
-          <div className="field-label mb-2">Sperrzeitentreppe — zaman-mesafe merdiveni (iki ardışık tren)</div>
+        <BlokCekmece baslik="Sperrzeitentreppe — zaman-mesafe merdiveni (iki ardışık tren)" acik={blokAcik.merdiven} onToggle={() => blokTopla("merdiven")}
+          ozet={<span>min headway {sure(bt.minHeadway)}</span>}>
           <div className="rounded border p-2" style={{ borderColor: brand.border }}>
             <BlockingStairChart bloklar={bt.bloklar} L={bt.toplamUzunluk} minHeadway={bt.minHeadway} kritikBlok={bt.kritikBlok} yorunge={bt.yorunge} kritikRenk={kritikRenk} kritikAd={kritikAd} />
           </div>
@@ -136,11 +139,11 @@ export function SistemMerkezi() {
             İki merdiven <span style={{ color: kritikRenk }}>{kritikAd} blokta</span> tam değer → o an sürdürülebilir min headway.
             <span style={{ color: SERI.duzBlok }}> ■</span> düz blok · <span style={{ color: SERI.makasBlok }}>■</span> makas bloğu.
           </p>
-        </div>
+        </BlokCekmece>
 
         {/* Blok başına bileşen dökümü (yardımcı görünüm) */}
-        <div className="mt-4">
-          <div className="field-label mb-2">Blok başına blocking-time bileşenleri (6 parça yığını)</div>
+        <BlokCekmece baslik="Blok başına blocking-time bileşenleri (6 parça yığını)" acik={blokAcik.bilesen} onToggle={() => blokTopla("bilesen")}
+          ozet={<span>{bt.bloklar.length} blok</span>}>
           {/* Yükseklik zinciri: h-40 (kesin) → sütun h-full → bar alanı flex-1 (kesin)
               → bar `%`. Ara sarmalayıcı olmadan yüzde yükseklik çözülmez (barlar
               minHeight'a düşer, grafik boş görünür). */}
@@ -168,12 +171,12 @@ export function SistemMerkezi() {
             ))}
             <span className="ml-1" style={{ color: CK.faint }}>(açıktan koyuya = zaman sırası)</span>
           </div>
-        </div>
+        </BlokCekmece>
 
         {/* Blok teşhisi & çözüm — her blok hangi durak-arasına düşüyor, darboğazın
             nedeni ne ve nereden düzeltilir; buton doğrudan o ring'e/bölüme götürür. */}
-        <div className="mt-5 border-t pt-4" style={{ borderColor: brand.border }}>
-          <div className="field-label mb-1">{sunum ? "📊 Blok Analizi" : "🔧 Blok Teşhisi & Çözüm"}</div>
+        <BlokCekmece baslik={sunum ? "📊 Blok Analizi" : "🔧 Blok Teşhisi & Çözüm"} acik={blokAcik.teshis} onToggle={() => blokTopla("teshis")}
+          ozet={<span>{teshis.length} blok{!sunum && bt && teshis.some((t) => t.b.toplam > bt.hedefHeadway) ? " · aşım" : ""}</span>}>
           <p className="mb-2.5 text-xs" style={{ color: brand.muted }}>
             {sunum ? (
               <>Her blok, düştüğü <b>durak-arası (ring)</b> ile adlandırılır; min headway&apos;i <b>belirleyen</b> blok en üstte. Her bloğun rezerve süresi ve ilgili bölüm yanında.</>
@@ -216,7 +219,7 @@ export function SistemMerkezi() {
               })}
             </div>
           )}
-        </div>
+        </BlokCekmece>
       </Panel>
       )}
 
@@ -234,6 +237,19 @@ export function SistemMerkezi() {
 }
 
 // ————— yardımcılar —————
+/** Çekmece (drawer) — blok analizi ağır alt-bölümleri; tek tuşla aşağı açılıp kapanır. */
+function BlokCekmece({ baslik, ozet, acik, onToggle, children }: { baslik: string; ozet?: ReactNode; acik: boolean; onToggle: () => void; children: ReactNode }) {
+  return (
+    <div className="mt-4 rounded-md border" style={{ borderColor: brand.border, background: brand.surface }}>
+      <button type="button" onClick={onToggle} className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left">
+        <span className="field-label" style={{ marginBottom: 0 }}>{baslik}</span>
+        <span className="flex items-center gap-2 text-xs" style={{ color: brand.muted }}>{ozet}<span style={{ color: brand.inkSoft }}>{acik ? "▲" : "▼"}</span></span>
+      </button>
+      {acik && <div className="border-t px-3 py-3" style={{ borderColor: brand.border }}>{children}</div>}
+    </div>
+  );
+}
+
 function MiniStat({ etiket, deger, alt, vurgu }: { etiket: string; deger: string; alt?: string; vurgu?: string }) {
   return (
     <div className="rounded border p-2.5" style={{ borderColor: brand.border }}>
