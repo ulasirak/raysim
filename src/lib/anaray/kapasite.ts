@@ -24,6 +24,7 @@ import { blockingTimeHesap } from "./blockingtime";
 import { loopToHat } from "./hatsim";
 import { ringSenaryo, ringTimingEk, type DurakArasiRing } from "./ring";
 import { hemzeminDuruslari, duruslariEkle } from "./network";
+import { dwellUygulanmisRings } from "./yolcu";
 
 export type KisitAnahtar = "blok" | "terminal" | "tekhat" | "kavsak";
 
@@ -69,8 +70,10 @@ function kavsakIsgali(m: DurakArasiRing["makaslar"][number], cfg: SimConfig): nu
 }
 
 export function maksimumTren(
-  rings: DurakArasiRing[], stock: RollingStock, cfg: SimConfig, isletme: Isletme,
+  ringsGiris: DurakArasiRing[], stock: RollingStock, cfg: SimConfig, isletme: Isletme,
 ): MaksimumTrenSonuc {
+  // Yolcu dinamiği: dwell OTO ringlerin dwell'i fiziksel akıştan hesaplanır → RTT'ye girer.
+  const rings = dwellUygulanmisRings(ringsGiris, stock, isletme);
   const dolulukTavani = cfg.dolulukTavani ?? VARSAYILAN_DOLULUK_TAVANI;
   if (rings.length === 0) {
     return {

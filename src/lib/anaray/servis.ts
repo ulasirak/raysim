@@ -35,7 +35,8 @@ export function servisProfili(isletme: Isletme, depoKapasiteToplam = 0): ServisP
   const pab = saatToNum(isletme.pikAksamBas), pae = saatToNum(isletme.pikAksamBit);
   const pik = Math.max(0, isletme.pikFilo);
   const pdisi = Math.max(0, isletme.pikDisiFilo);
-  const toplamFilo = Math.max(pik, pdisi);
+  // Toplam filo MANUEL (= gece depoda bekleyen en fazla araç); serviste olanlar ondan çıkar.
+  const toplamFilo = Math.max(isletme.toplamFilo || 0, pik, pdisi);
 
   const saatler: ServisSaat[] = [];
   for (let h = 0; h < 24; h++) {

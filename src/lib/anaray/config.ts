@@ -172,6 +172,10 @@ export interface Isletme {
   mcMeanDwellSn: number;        // Monte-Carlo: ort. durak sapması (s)
   // Kapasite gerçekçiliği
   kalkisOluZamaniSn: number;    // s — kalkış ölü zamanı VARSAYILANI (start-up lost time); ring başına override edilebilir (ring.kalkisOlu)
+  // Yolcu iniş-biniş dinamiği (dwell hesabı)
+  konforIndeksi: number;        // yolcu/m² — ayakta konfor tasarım yoğunluğu (max yolcu kapasitesi için)
+  yolcuAkisHizi: number;        // yolcu/(m·s) — kapı açıklık metresi başına akış hızı (~1.0–1.5 tipik)
+  minDurusSuresi: number;       // s — istasyonda minimum duruş (yolcu az olsa da alt sınır)
   // Ring/ölçeklenme + kapasite girdileri
   kapali: boolean;              // (legacy) — kapasite modeli her zaman gidiş-dönüş varsayar
   terminalBas: TerminalConfig;  // başlangıç ucundaki dönüş noktası (terminal)
@@ -183,7 +187,8 @@ export interface Isletme {
   pikSabahBit: string;
   pikAksamBas: string;  // akşam pik başlangıcı
   pikAksamBit: string;
-  pikFilo: number;      // pik saatte hatta çalışan tren (en yüksek filo)
+  toplamFilo: number;   // toplam araç (= gece depoda bekleyen en fazla araç); MANUEL, her şeyi sürükler
+  pikFilo: number;      // pik saatte hatta çalışan tren (≤ toplamFilo)
   pikDisiFilo: number;  // pik-dışı saatte hatta çalışan tren (fazlası depoda bekler)
 }
 
@@ -198,6 +203,9 @@ export const varsayilanIsletme: Isletme = {
   mcMeanEntrySn: 30,
   mcMeanDwellSn: 5,
   kalkisOluZamaniSn: 5,
+  konforIndeksi: 4,
+  yolcuAkisHizi: 1.2,
+  minDurusSuresi: 15,
   kapali: false,
   terminalBas: { ...VARSAYILAN_TERMINAL },
   terminalSon: { ...VARSAYILAN_TERMINAL },
@@ -207,6 +215,7 @@ export const varsayilanIsletme: Isletme = {
   pikSabahBit: "09:00",
   pikAksamBas: "17:00",
   pikAksamBit: "19:00",
+  toplamFilo: 8,
   pikFilo: 6,
   pikDisiFilo: 4,
 };

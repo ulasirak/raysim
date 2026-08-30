@@ -11,6 +11,7 @@ import type { RollingStock } from "@/lib/anaray/types";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { etkinBogazIsgali, type SimConfig, type DonusTip, type TerminalConfig } from "@/lib/anaray/config";
 import { maksimumTren } from "@/lib/anaray/kapasite";
+import { yolcuAkisSuresi } from "@/lib/anaray/yolcu";
 import { brand } from "@/lib/anaray/brand";
 import { CK, SERI } from "@/lib/anaray/chartkit";
 import { kmh, km, sure } from "@/lib/anaray/format";
@@ -136,6 +137,10 @@ export function RingEditor() {
   // — güncelleyiciler —
   const patch = (id: string, p: Partial<DurakArasiRing>) =>
     setRings((rs) => rs.map((r) => (r.id === id ? { ...r, ...p } : r)));
+  // Dwell OTO açık ringde etkin dwell yolcu akışından hesaplanır (görüntü için).
+  const etkinDwell = (r: DurakArasiRing) => r.dwellOto
+    ? Math.max(isletme.minDurusSuresi, yolcuAkisSuresi(r.inenYolcu ?? 0, r.binenYolcu ?? 0, stock, isletme.yolcuAkisHizi)) + (r.kapiAcma ?? 2) + (r.kapiKapama ?? 2)
+    : r.dwell;
   // Dwell bileşenleri (kapı aç + yolcu + kapı kapa). dwell = toplam (yetkili, senkron).
   // Seed: bileşen yoksa mevcut dwell'i "yolcu değişimi"ne atar (toplam korunur).
   const dwellBilesen = (r: DurakArasiRing) => ({ ac: r.kapiAcma ?? 0, yolcu: r.yolcuDegisimi ?? r.dwell, kapa: r.kapiKapama ?? 0 });
@@ -433,8 +438,8 @@ export function RingEditor() {
                     {i > 0 && (
                       <div className="flex shrink-0 items-center gap-1" title="Bu durakta toplam bekleme (dwell) = kapı aç + yolcu + kapı kapa (aşağıdan düzenle)">
                         <span className="text-[0.65rem] font-medium" style={{ color: brand.inkSoft }}>bekleme</span>
-                        <span className="text-xs font-semibold" style={{ color: brand.ink }}>{Math.round(rings[i - 1].dwell)}</span>
-                        <span className="text-[0.65rem]" style={{ color: brand.muted }}>sn</span>
+                        <span className="text-xs font-semibold" style={{ color: rings[i - 1].dwellOto ? CK.good : brand.ink }}>{Math.round(etkinDwell(rings[i - 1]))}</span>
+                        <span className="text-[0.65rem]" style={{ color: brand.muted }}>sn{rings[i - 1].dwellOto ? " (oto)" : ""}</span>
                       </div>
                     )}
                     {duraklar.length > 2 ? (
@@ -444,22 +449,45 @@ export function RingEditor() {
                   </div>
                   {/* Durak bekleme bileşenleri (dwell = kapı aç + yolcu + kapı kapa) + kalkış ölü zamanı */}
                   <div className="ml-6 flex flex-wrap items-center gap-x-3 gap-y-1 py-0.5 pl-2 text-[0.7rem]" style={{ color: brand.muted }}>
-                    {i > 0 && (
-                      <>
-                        <span className="flex items-center gap-1" title="Kapı açma süresi (s)">kapı aç
-                          <input type="number" min={0} step={1} value={Math.round(dwellBilesen(rings[i - 1]).ac)}
-                            onChange={(e) => patchDwell(rings[i - 1], "ac", parseFloat(e.target.value) || 0)}
-                            className="w-11 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
-                        <span className="flex items-center gap-1" title="Yolcu değişimi / iniş-biniş süresi (s)">yolcu
-                          <input type="number" min={0} step={1} value={Math.round(dwellBilesen(rings[i - 1]).yolcu)}
-                            onChange={(e) => patchDwell(rings[i - 1], "yolcu", parseFloat(e.target.value) || 0)}
-                            className="w-11 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
-                        <span className="flex items-center gap-1" title="Kapı kapama süresi (s)">kapı kapa
-                          <input type="number" min={0} step={1} value={Math.round(dwellBilesen(rings[i - 1]).kapa)}
-                            onChange={(e) => patchDwell(rings[i - 1], "kapa", parseFloat(e.target.value) || 0)}
-                            className="w-11 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
-                      </>
-                    )}
+                    {i > 0 && (() => {
+                      const r = rings[i - 1];
+                      const oto = !!r.dwellOto;
+                      const yolcuHesap = Math.max(isletme.minDurusSuresi, yolcuAkisSuresi(r.inenYolcu ?? 0, r.binenYolcu ?? 0, stock, isletme.yolcuAkisHizi));
+                      return (
+                        <>
+                          <label className="flex items-center gap-1" title="Dwell'i yolcu akışından otomatik hesapla: (inen+binen) ÷ (kapı sayısı × genişlik × akış hızı)">
+                            <input type="checkbox" checked={oto} onChange={(e) => patch(r.id, { dwellOto: e.target.checked })} />
+                            <span style={{ color: oto ? CK.good : brand.muted }}>oto dwell</span>
+                          </label>
+                          <span className="flex items-center gap-1" title="Kapı açma süresi (s)">kapı aç
+                            <input type="number" min={0} step={1} value={Math.round(dwellBilesen(r).ac)}
+                              onChange={(e) => patchDwell(r, "ac", parseFloat(e.target.value) || 0)}
+                              className="w-11 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
+                          {oto ? (
+                            <>
+                              <span className="flex items-center gap-1" title="Bu durakta inen yolcu">inen
+                                <input type="number" min={0} step={5} value={Math.round(r.inenYolcu ?? 0)}
+                                  onChange={(e) => patch(r.id, { inenYolcu: Math.max(0, parseFloat(e.target.value) || 0) })}
+                                  className="w-12 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
+                              <span className="flex items-center gap-1" title="Bu durakta binen yolcu">binen
+                                <input type="number" min={0} step={5} value={Math.round(r.binenYolcu ?? 0)}
+                                  onChange={(e) => patch(r.id, { binenYolcu: Math.max(0, parseFloat(e.target.value) || 0) })}
+                                  className="w-12 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
+                              <span title="Yolcu akışından hesaplanan bölüm" style={{ color: CK.good }}>yolcu {Math.round(yolcuHesap)}s ✓</span>
+                            </>
+                          ) : (
+                            <span className="flex items-center gap-1" title="Yolcu değişimi / iniş-biniş süresi (s)">yolcu
+                              <input type="number" min={0} step={1} value={Math.round(dwellBilesen(r).yolcu)}
+                                onChange={(e) => patchDwell(r, "yolcu", parseFloat(e.target.value) || 0)}
+                                className="w-11 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
+                          )}
+                          <span className="flex items-center gap-1" title="Kapı kapama süresi (s)">kapı kapa
+                            <input type="number" min={0} step={1} value={Math.round(dwellBilesen(r).kapa)}
+                              onChange={(e) => patchDwell(r, "kapa", parseFloat(e.target.value) || 0)}
+                              className="w-11 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
+                        </>
+                      );
+                    })()}
                     {i < rings.length && (
                       <span className="flex items-center gap-1" title="Bu duraktan kalkışta ölü zaman (start-up lost time, s). Hat geneli varsayılanı override eder.">
                         kalkış ölü

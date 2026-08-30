@@ -70,6 +70,15 @@ export interface RollingStock {
   davisA: number;
   davisB: number;
   davisC: number;
+  // — Yolcu iniş-biniş dinamiği (dwell hesabı için; verilmezse varsayılan kullanılır) —
+  /** Araç başına kapı adedi (iniş-biniş kapasitesi). */
+  kapiSayisi?: number;
+  /** Kapı açıklık genişliği (m). */
+  kapiGenisligi?: number;
+  /** Araç gövde genişliği (m) — net taban alanı için. */
+  aracGenisligi?: number;
+  /** Kullanılabilir taban alanı oranı (0..1; koltuk/ekipman düşülmüş). */
+  kullanilabilirAlanOrani?: number;
 }
 
 // ————————————————————————————————————————————————

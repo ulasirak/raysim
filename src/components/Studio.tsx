@@ -13,6 +13,7 @@ import { simulateSignalled, reverseRoute, monteCarlo, planDepotDispatch, type Mo
 import { tramvaylar } from "@/lib/anaray/vehicles";
 import { maksimumTren } from "@/lib/anaray/kapasite";
 import { servisProfili, type ServisProfil } from "@/lib/anaray/servis";
+import { dwellUygulanmisRings, maxYolcuKapasitesi, netTabanAlani } from "@/lib/anaray/yolcu";
 import { kmh, km, sure } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
@@ -52,10 +53,14 @@ function StudioIc() {
   const { cfg, patch: patchCfg } = useSimConfig();
   // Sinyal blok uzunluğu — canlı sim + kapasite + sinyaller tek kaynak.
   const BLOK_MAXLEN = cfg.blokMaxUzunluk;
-  const { rings, meta } = useProje();
+  const { rings: ringsHam, meta } = useProje();
   // Araç ve işletme parametreleri KALICI (projeye kayıtlı) — tek kaynak, uçucu değil.
   const { arac: stock, patchArac, setArac } = useArac();
   const { isletme, patchIsletme } = useIsletme();
+
+  // Yolcu dinamiği: dwell OTO ringlerin dwell'i fiziksel akıştan hesaplanır → canlı
+  // sim ve kapasite AYNI hesaplı dwell'i kullanır (tutarlı).
+  const rings = useMemo(() => dwellUygulanmisRings(ringsHam, stock, isletme), [ringsHam, stock, isletme]);
 
   // Sefer modülünün hattı = PAYLAŞILAN proje hattı (Ringler/Tam Hat/Belgeler ile
   // aynı kaynak). Ring zinciri graf şebekesine çevrilir; ayrı örnek şebeke yok.
@@ -265,6 +270,10 @@ function StudioIc() {
               <p className="mt-1 text-xs" style={{ color: brand.inkSoft }}>
                 Bu hatta aynı anda en fazla <b>{maks.nTeorik}</b> tramvay sığar. Darboğaz: <b>{maks.baglayanAd}</b> · min. aralık {sure(maks.hMin)} · çevrim {sure(maks.cevrimSuresi)}. Kısıt dökümü ve terminal girdileri <Link href="/#ringler" className="underline">Ringler</Link>’de.
               </p>
+              {/* Gereken tren = ⌈RTT ÷ hedef headway⌉ — kullanıcının hedef sıklığı için filo */}
+              <p className="mt-1 text-xs" style={{ color: brand.ink }}>
+                📐 Tur süresi (RTT) <b>{sure(maks.cevrimSuresi)}</b> (2×seyir + tüm durak dwell'leri + terminaller). {headwayDk} dk sefer sıklığı için <b>gereken tren = {Math.ceil(maks.cevrimSuresi / Math.max(1, headwayDk * 60))}</b> (⌈RTT ÷ headway⌉).
+              </p>
             </div>
           )}
 
@@ -315,11 +324,47 @@ function StudioIc() {
         </Panel>
       </section>
 
+      {/* YOLCU DİNAMİĞİ & DURUŞ — dwell fiziksel yolcu akışından hesaplanır. */}
+      <section className="mt-6">
+        <Panel baslik="Yolcu Dinamiği & Duruş Süresi" aciklama="İstasyon duruş süresi (dwell) keyfi değil, yolcu akışından hesaplanır: araç kapı sayısı/genişliği + konfor + istasyon başına inen/binen → yolcu akış süresi → dwell. Duraklarda inen/binen sayısını Ringler'de girersin; her durak ayrı hesaplanıp tur süresine (RTT) kümülatif eklenir.">
+          <div className="mb-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div><Num label="Kapı sayısı" suffix="kapı" step={1} max={12} value={stock.kapiSayisi ?? 4}
+              onChange={(v) => patchArac({ kapiSayisi: Math.max(1, Math.round(v)) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>araç başı iniş-biniş kapısı</span></div>
+            <div><Num label="Kapı genişliği" suffix="m" step={0.1} value={stock.kapiGenisligi ?? 1.3}
+              onChange={(v) => patchArac({ kapiGenisligi: Math.max(0.5, v) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>tek kapı açıklığı</span></div>
+            <div><Num label="Araç genişliği" suffix="m" step={0.05} value={stock.aracGenisligi ?? 2.65}
+              onChange={(v) => patchArac({ aracGenisligi: Math.max(2, v) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>net taban alanı için</span></div>
+            <div><Num label="Kullanılabilir alan" suffix="oran" step={0.05} value={stock.kullanilabilirAlanOrani ?? 0.35}
+              onChange={(v) => patchArac({ kullanilabilirAlanOrani: Math.max(0.1, Math.min(1, v)) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>ayakta alan / toplam (0..1)</span></div>
+            <div><Num label="Konfor indeksi" suffix="yolcu/m²" step={0.5} value={isletme.konforIndeksi}
+              onChange={(v) => patchIsletme({ konforIndeksi: Math.max(0, v) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>ayakta yoğunluk tasarımı</span></div>
+            <div><Num label="Yolcu akış hızı" suffix="yolcu/m·s" step={0.1} value={isletme.yolcuAkisHizi}
+              onChange={(v) => patchIsletme({ yolcuAkisHizi: Math.max(0.1, v) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>kapı metresi başına akış (~1.2)</span></div>
+            <div><Num label="Min duruş süresi" suffix="s" step={1} value={isletme.minDurusSuresi}
+              onChange={(v) => patchIsletme({ minDurusSuresi: Math.max(0, Math.round(v)) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>dwell alt sınırı</span></div>
+          </div>
+          <div className="rounded border-l-4 px-3 py-2 text-xs" style={{ background: CK.goodBgSoft, borderColor: brand.ink, color: brand.inkSoft }}>
+            Net taban alanı <b>{netTabanAlani(stock).toFixed(1)} m²</b> · maksimum yolcu kapasitesi <b>{maxYolcuKapasitesi(stock, isletme.konforIndeksi)} yolcu</b>.
+            <br />Dwell = max(min duruş, <i>(inen+binen) ÷ (kapı×genişlik×akış)</i>) + kapı aç + kapı kapa. Her durakta ayrı → RTT'ye kümülatif.
+          </div>
+        </Panel>
+      </section>
+
       {/* GÜN İÇİ SERVİS & PARKLANMA — filo gün boyu sabit değil: pik saatte hepsi
           hatta, pik-dışında fazlası depoya döner (parklanma), gece hepsi depoda. */}
       <section className="mt-6">
         <Panel baslik="Gün İçi Servis & Parklanma" aciklama="Filo gün boyu sabit değildir: pik saatte tüm filo hatta, pik-dışında bir kısmı depoya döner (mola/parklanma), gece hepsi depoda bekler. Depo kapasitesi bunu barındırabiliyor mu görürsün.">
           <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div>
+              <span className="field-label">Toplam filo</span>
+              <div className="mt-1 flex items-center gap-1">
+                <input type="number" min={0} max={80} step={1} value={isletme.toplamFilo}
+                  onChange={(e) => patchIsletme({ toplamFilo: Math.max(0, Math.min(80, Math.round(parseFloat(e.target.value) || 0))) })}
+                  className="w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+                <span className="text-xs" style={{ color: brand.muted }}>araç</span>
+              </div>
+              <div className="mt-0.5 text-[0.6rem]" style={{ color: brand.faint }}>= gece depoda bekleyen en fazla araç (manuel)</div>
+            </div>
             <div>
               <span className="field-label">Pik filo</span>
               <div className="mt-1 flex items-center gap-1">

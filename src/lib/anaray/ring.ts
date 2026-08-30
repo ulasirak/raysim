@@ -98,6 +98,12 @@ export interface DurakArasiRing {
   /** Bu durakta (varış durağından kalkışta) kalkış ölü zamanı (start-up lost time, s).
    *  Verilmezse hat geneli varsayılan (isletme.kalkisOluZamaniSn) kullanılır. */
   kalkisOlu?: number;
+  /** Bu durakta (varış durağı) yolcu iniş-biniş sayıları — dwell OTO hesabı için. */
+  inenYolcu?: number;
+  binenYolcu?: number;
+  /** true → durak dwell'inin yolcu bölümü fiziksel akıştan hesaplanır (inen/binen +
+   *  araç kapı dinamiği); false/undefined → elle girilen dwell bileşenleri. */
+  dwellOto?: boolean;
   /** Bu kesim TEK HAT mı? (çift yön aynı hattı paylaşır → tek anda tek tren;
    *  maksimum tren kapasitesinde ayrı ve genelde bağlayıcı bir headway kısıtı). */
   tekHat?: boolean;
