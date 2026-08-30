@@ -11,6 +11,7 @@ import { flattenRoute, ringlerdenSebeke } from "@/lib/anaray/network";
 import { simulate } from "@/lib/anaray/sim";
 import { simulateSignalled, reverseRoute, monteCarlo, planDepotDispatch, type MonteCarloResult } from "@/lib/anaray/signalling";
 import { tramvaylar } from "@/lib/anaray/vehicles";
+import { maksimumTren } from "@/lib/anaray/kapasite";
 import { kmh, km, sure } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
@@ -70,9 +71,23 @@ function StudioIc() {
   const headwayDk = isletme.seferHeadwayDk;
   const setHeadwayDk = (v: number) => patchIsletme({ seferHeadwayDk: v });
   const seferSayisi = isletme.seferSayisi;
-  const setSeferSayisi = (v: number) => patchIsletme({ seferSayisi: v });
+  // Elle giriş → manuel moda geç (oto kapanır) ve değeri sakla.
+  const setSeferSayisiManuel = (v: number) => patchIsletme({ seferSayisi: v, seferSayisiOto: false });
   const turnaroundDk = isletme.turnaroundDk;
   const setTurnaroundDk = (v: number) => patchIsletme({ turnaroundDk: v });
+
+  // MAKSİMUM TRAMVAY — tek, kesin kaynak (bottleneck: kritik blok / terminal / tek hat).
+  // Ringler'deki "Maksimum Tramvay Kapasitesi" ile birebir aynı sonuç.
+  const maks = useMemo(() => maksimumTren(rings, stock, cfg, isletme), [rings, stock, cfg, isletme]);
+  // Oto tren sayısı: seçilen işletme aralığında çevrime sığan filo, KAPASİTE tavanıyla
+  // sınırlı (maksimum tramvayı aşamaz). Hat uzarsa / aralık sıklaşırsa otomatik artar.
+  const gerekenFilo = headwayDk > 0
+    ? Math.min(maks.nTeorik || 1, Math.max(1, Math.floor(maks.cevrimSuresi / (headwayDk * 60))))
+    : 1;
+  // Panellerin fiilen kullandığı sayı: oto ise türetilen, değilse elle girilen.
+  const etkinSeferSayisi = isletme.seferSayisiOto ? gerekenFilo : seferSayisi;
+  // İstenen işletme aralığı, fiziksel min. aralığın (h_min) altındaysa uygulanamaz.
+  const headwayUygulanamaz = maks.gecerli && headwayDk * 60 < maks.hMin - 1e-6;
   const [ariza, setAriza] = useState<number[]>([]); // dispatcher: arızalı bloklar (gidiş hattı) — geçici what-if
   // Monte-Carlo senaryo parametreleri KALICI (projeye kayıtlı) — tek kaynak isletme.
   const meanEntry = isletme.mcMeanEntrySn;
@@ -94,14 +109,14 @@ function StudioIc() {
   const reverseLine = useMemo(() => flattenRoute(network, reverseRoute(route)), [network, route]);
 
   const gidisSim = useMemo(
-    () => simulateSignalled(line, stock, { headway: headwayDk * 60, count: seferSayisi, maxBlockLen: BLOK_MAXLEN, blocked: ariza }),
-    [line, stock, headwayDk, seferSayisi, ariza]
+    () => simulateSignalled(line, stock, { headway: headwayDk * 60, count: etkinSeferSayisi, maxBlockLen: BLOK_MAXLEN, blocked: ariza }),
+    [line, stock, headwayDk, etkinSeferSayisi, ariza]
   );
   const arizaToggle = (i: number) => setAriza((a) => (a.includes(i) ? a.filter((x) => x !== i) : [...a, i]));
   // Depo (parklanma) planı: depo istasyonlarındaki bekleyen trenler gidiş servisini
   // besler. Depo tanımlıysa Canlı Ağ gidiş sim'i trenleri depolardan SIRAYLA çıkarır
-  // (origins); depo yoksa bugünkü davranış (seferSayisi tren, hat başından) korunur.
-  // Yalnız Canlı Ağ etkilenir; kapasite/tek-hat/Monte-Carlo panelleri seferSayisi'yle kalır.
+  // (origins); depo yoksa varsayılan davranış (etkin sefer sayısı tren, hat başından) korunur.
+  // Yalnız Canlı Ağ depo planından etkilenir; diğer paneller etkinSeferSayisi'yle çalışır.
   const depotPlan = useMemo(() => planDepotDispatch(line, headwayDk * 60), [line, headwayDk]);
   const canliGidis = useMemo(
     () =>
@@ -111,8 +126,8 @@ function StudioIc() {
     [depotPlan, gidisSim, line, stock, headwayDk, ariza]
   );
   const donusSim = useMemo(
-    () => simulateSignalled(reverseLine, stock, { headway: headwayDk * 60, count: seferSayisi, maxBlockLen: BLOK_MAXLEN }),
-    [reverseLine, stock, headwayDk, seferSayisi]
+    () => simulateSignalled(reverseLine, stock, { headway: headwayDk * 60, count: etkinSeferSayisi, maxBlockLen: BLOK_MAXLEN }),
+    [reverseLine, stock, headwayDk, etkinSeferSayisi]
   );
 
   const monteCarloCalistir = () => {
@@ -121,7 +136,7 @@ function StudioIc() {
     setTimeout(() => {
       const r = monteCarlo(
         line, stock,
-        { headway: headwayDk * 60, count: seferSayisi, maxBlockLen: BLOK_MAXLEN },
+        { headway: headwayDk * 60, count: etkinSeferSayisi, maxBlockLen: BLOK_MAXLEN },
         { trials: 150, meanEntry, meanDwell, threshold: 120 }
       );
       setMc(r);
@@ -171,13 +186,57 @@ function StudioIc() {
 
       {/* Sefer sıklığı */}
       <section className="mt-6">
-        <Panel baslik="Sefer Sıklığı" aciklama="Sabit blok sinyal sistemi + çift yön. Tren dolu bloğa giremez (kırmızı sinyalde durur). Dönüş Bekleme: Belgeler’deki çevrim süresi + gereken filo hesabını besler.">
+        <Panel baslik="Sefer Sıklığı" aciklama="Hat çift hat, gidiş-dönüş çalışır. Sabit blok sinyal sistemi — tren dolu bloğa giremez (kırmızı sinyalde durur). Dönüş Bekleme çevrim süresini ve gereken filoyu besler.">
+
+          {/* TEK SONUÇ — bu hatta en fazla kaç tramvay (Ringler ile birebir aynı) */}
+          {maks.gecerli && (
+            <div className="mb-4 rounded-md border-l-4 px-4 py-3" style={{ background: CK.goodBgSoft, borderColor: brand.ink }}>
+              <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
+                <div>
+                  <span className="text-3xl font-semibold" style={{ color: brand.ink }}>{maks.nTeorik}</span>
+                  <span className="ml-1 text-xs" style={{ color: brand.muted }}>tramvay — teorik maksimum</span>
+                </div>
+                <div>
+                  <span className="text-2xl font-semibold" style={{ color: CK.good }}>{maks.nSurdurulebilir}</span>
+                  <span className="ml-1 text-xs" style={{ color: brand.muted }}>sürdürülebilir (UIC 406 tamponlu)</span>
+                </div>
+              </div>
+              <p className="mt-1 text-xs" style={{ color: brand.inkSoft }}>
+                Bu hatta aynı anda en fazla <b>{maks.nTeorik}</b> tramvay sığar. Darboğaz: <b>{maks.baglayanAd}</b> · min. aralık {sure(maks.hMin)} · çevrim {sure(maks.cevrimSuresi)}. Kısıt dökümü ve terminal girdileri <Link href="/#ringler" className="underline">Ringler</Link>’de.
+              </p>
+            </div>
+          )}
 
           <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
             <Num label="Sefer Aralığı" suffix="dk" step={0.5} value={headwayDk} onChange={(v) => setHeadwayDk(Math.max(0.5, v))} />
-            <Num label="Sefer Sayısı" suffix="tren" step={1} max={60} value={seferSayisi} onChange={(v) => setSeferSayisi(Math.min(60, Math.max(1, Math.round(v))))} />
+            <div className="block">
+              <span className="field-label">Sefer Sayısı</span>
+              <div className="mt-1 flex items-center gap-1">
+                <input type="number" value={etkinSeferSayisi} step={1} min={0} max={60}
+                  onChange={(e) => setSeferSayisiManuel(Math.min(60, Math.max(1, Math.round(parseFloat(e.target.value) || 0))))}
+                  className="w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+                <span className="text-xs" style={{ color: brand.muted }}>tren</span>
+              </div>
+              <div className="mt-1 text-xs">
+                {isletme.seferSayisiOto ? (
+                  <span style={{ color: CK.good }}>⚙ Oto · aralığa göre türetildi (kapasite tavanıyla sınırlı)</span>
+                ) : (
+                  <button type="button" onClick={() => patchIsletme({ seferSayisiOto: true })}
+                    className="underline" style={{ color: brand.red }}>
+                    ↻ Oto’ya dön — gereken {gerekenFilo}
+                  </button>
+                )}
+              </div>
+            </div>
             <Num label="Dönüş Bekleme" suffix="dk" step={0.5} value={turnaroundDk} onChange={(v) => setTurnaroundDk(Math.max(0, v))} />
           </div>
+
+          {/* İşletme aralığı fiziksel minimumun altında mı? */}
+          {headwayUygulanamaz && (
+            <div className="mb-2 text-sm" style={{ color: brand.red }}>
+              ⚠ İstenen sefer aralığı ({headwayDk} dk) fiziksel minimum aralığın ({sure(maks.hMin)}) altında — bu sıklık uygulanamaz, trenler kaçınılmaz kuyruklanır. En sık güvenli aralık ≈ {sure(maks.hMin)}.
+            </div>
+          )}
 
           {/* Bekleme durumu */}
           <div className="text-sm">

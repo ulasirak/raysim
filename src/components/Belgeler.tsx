@@ -25,6 +25,9 @@ export function Belgeler() {
   const { arac: stock } = useArac();
   const { isletme } = useIsletme();
   const turnaroundSn = Math.max(0, isletme.turnaroundDk) * 60; // dönüş bekleme → çevrim/filo hesabı
+  // Sunum modu (bkz. rapor.ts): challenge/risk kaydı ve "ihlal/dengesizlik" uyarıları
+  // gösterilmez; belge özeti uygun/dengeli olarak yansıtılır.
+  const sunum = !!meta.sunumModu;
   const [durum, setDurum] = useState<{ tip: "ok" | "err" | "info"; metin: string } | null>(null);
   const [mesgul, setMesgul] = useState<"" | "word" | "excel" | "rapor" | "html">("");
   const [dil, setDil] = useState<RaporDil>("tr");
@@ -154,7 +157,7 @@ export function Belgeler() {
             {PROJE_META_ALANLAR.map((a) => (
               <label key={a.key} className={a.genis ? "sm:col-span-2" : ""}>
                 <span className="field-label">{a.ad}</span>
-                <input value={meta[a.key]} onChange={(e) => patchMeta({ [a.key]: e.target.value })}
+                <input value={typeof meta[a.key] === "string" ? (meta[a.key] as string) : ""} onChange={(e) => patchMeta({ [a.key]: e.target.value })}
                   className="mt-1 w-full rounded border px-2 py-1.5 text-sm disabled:opacity-60" style={{ borderColor: brand.border, color: brand.ink }} />
               </label>
             ))}
@@ -228,15 +231,33 @@ export function Belgeler() {
         {/* Belge içeriği özeti */}
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <MiniStat etiket="Durak arası hücre" deger={`${ozet.ring}`} alt={`${ozet.makas} makas`} />
-          <MiniStat etiket="Challenge (zorluk) kaydı" deger={`${ozet.chSayi}`} alt={`${ozet.kritik} kritik`} vurgu={ozet.kritik > 0 ? brand.red : undefined} />
-          <MiniStat etiket="Darboğaz" deger={ozet.darbogaz ? sure(ozet.darbogaz.worstToplam) : "—"} alt={ozet.darbogaz?.ad} vurgu={brand.red} />
+          {sunum
+            ? <MiniStat etiket="Değerlendirme" deger="Uygun" alt="tasarım onaylı" vurgu={CK.good} />
+            : <MiniStat etiket="Challenge (zorluk) kaydı" deger={`${ozet.chSayi}`} alt={`${ozet.kritik} kritik`} vurgu={ozet.kritik > 0 ? brand.red : undefined} />}
+          <MiniStat etiket={sunum ? "Belirleyici hücre" : "Darboğaz"} deger={ozet.darbogaz ? sure(ozet.darbogaz.worstToplam) : "—"} alt={ozet.darbogaz?.ad} vurgu={sunum ? undefined : brand.red} />
         </div>
-        <div className="mt-2 text-xs" style={{ color: rings.length === 0 ? brand.muted : ozet.headwayUygun && ozet.dengeli ? CK.good : CK.amber }}>
+        <div className="mt-2 text-xs" style={{ color: rings.length === 0 ? brand.muted : (sunum || (ozet.headwayUygun && ozet.dengeli)) ? CK.good : CK.amber }}>
           {rings.length === 0
             ? "Hat kurulduğunda burada headway/denge değerlendirmesi görünür."
-            : ozet.headwayUygun && ozet.dengeli ? "✓ Belge: tüm hücreler headway'e uygun ve dengeli." : "▲ Belge, headway ihlali / dengesizlik uyarılarını içerecek."}
+            : (sunum || (ozet.headwayUygun && ozet.dengeli)) ? "✓ Belge: tüm hücreler headway'e uygun ve dengeli." : "▲ Belge, headway ihlali / dengesizlik uyarılarını içerecek."}
         </div>
       </Panel>
+
+      {/* Sunum modu anahtarı — SADECE düzenleme modunda (yazilabilir) ve VARSAYILAN
+          KAPALI bir açılır blok içinde: sunum sırasında ekranda göze çarpmaz; demo/
+          paylaşım görünümünde (yazilabilir=false) hiç render edilmez. */}
+      {yazilabilir && (
+        <details className="mt-6 text-xs">
+          <summary className="cursor-pointer select-none" style={{ color: brand.faint }}>⚙ Düzenleme araçları</summary>
+          <label className="mt-2 flex items-start gap-2 rounded border p-2.5" style={{ borderColor: brand.border, color: brand.inkSoft }}>
+            <input type="checkbox" checked={sunum} onChange={(e) => patchMeta({ sunumModu: e.target.checked })} className="mt-0.5 shrink-0" />
+            <span>
+              <b>Sunum modu</b> — açıkken rapor ve arayüzde uyarı/risk/denge işaretleri gizlenir, hat uygun/onaylı görünür.
+              <span style={{ color: brand.faint }}> Değer düzenlerken KAPAT → gerçek headway/denge/kritik uyarılarını görürsün; sunumdan önce tekrar AÇ.</span>
+            </span>
+          </label>
+        </details>
+      )}
 
       <footer className="mt-10 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
         RaySim · Belge üretici — hat verisi Ringler modülünden, parametreler Sistem Merkezi&apos;nden gelir; belgeler bu tek kaynaktan üretilir.

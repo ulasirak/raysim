@@ -20,13 +20,17 @@ const FILL_DUZ = CK.blue; // düz blok
 const FILL_MAKAS = CK.orange; // makas bloğu
 
 export function BlockingStairChart({
-  bloklar, L, minHeadway, kritikBlok, yorunge,
+  bloklar, L, minHeadway, kritikBlok, yorunge, kritikRenk = CK.red, kritikAd = "kritik",
 }: {
   bloklar: BlokSperr[];
   L: number;
   minHeadway: number;
   kritikBlok: number;
   yorunge: { t: number; s: number }[];
+  /** Belirleyici (min headway) bloğun vurgu rengi — sunum modunda nötr (varsayılan kırmızı). */
+  kritikRenk?: string;
+  /** Belirleyici bloğun anlatım etiketi ("kritik" | "belirleyici"). */
+  kritikAd?: string;
 }) {
   const plotW = VBW - PAD.left - PAD.right;
   const plotH = VBH - PAD.top - PAD.bottom;
@@ -69,7 +73,7 @@ export function BlockingStairChart({
           rx={1}
           fill={b.makasBlok ? FILL_MAKAS : FILL_DUZ}
           fillOpacity={ana ? (kritik ? 0.42 : 0.22) : kritik ? 0.3 : 0.13}
-          stroke={kritik ? CK.red : b.makasBlok ? FILL_MAKAS : FILL_DUZ}
+          stroke={kritik ? kritikRenk : b.makasBlok ? FILL_MAKAS : FILL_DUZ}
           strokeWidth={kritik ? 1.6 : 0.6}
           strokeOpacity={kritik ? 1 : 0.5}
         />
@@ -112,8 +116,8 @@ export function BlockingStairChart({
         const xb = xFor(kb.rStart + minHeadway);
         return (
           <g>
-            <line x1={xa} y1={yk} x2={xb} y2={yk} stroke={CK.red} strokeWidth={1.4} markerEnd="url(#ok)" markerStart="url(#ok)" />
-            <rect x={(xa + xb) / 2 - 34} y={yk - 20} width={68} height={15} rx={3} fill={CK.red} />
+            <line x1={xa} y1={yk} x2={xb} y2={yk} stroke={kritikRenk} strokeWidth={1.4} markerEnd="url(#ok)" markerStart="url(#ok)" />
+            <rect x={(xa + xb) / 2 - 34} y={yk - 20} width={68} height={15} rx={3} fill={kritikRenk} />
             <text x={(xa + xb) / 2} y={yk - 9} fill="#fff" fontSize={10} fontWeight={700} textAnchor="middle" className="font-mono">{saat(minHeadway)}</text>
           </g>
         );
@@ -121,11 +125,11 @@ export function BlockingStairChart({
 
       <defs>
         <marker id="ok" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-          <path d="M0,0 L6,3 L0,6 Z" fill={CK.red} />
+          <path d="M0,0 L6,3 L0,6 Z" fill={kritikRenk} />
         </marker>
       </defs>
 
-      <text x={PAD.left + plotW / 2} y={VBH - 4} fill={CK.muted} fontSize={11} textAnchor="middle">Zaman (dk:sn) →  ·  kritik blokta iki merdiven değer = min headway</text>
+      <text x={PAD.left + plotW / 2} y={VBH - 4} fill={CK.muted} fontSize={11} textAnchor="middle">Zaman (dk:sn) →  ·  {kritikAd} blokta iki merdiven değer = min headway</text>
     </svg>
   );
 }

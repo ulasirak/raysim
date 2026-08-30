@@ -17,7 +17,7 @@
 // hazır bulur; başka her hesap SIFIRDAN BOŞ hatla başlar ve kendi verisini girer.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { varsayilanConfig, varsayilanMeta, varsayilanIsletme, type SimConfig, type ProjeMeta, type Isletme } from "@/lib/anaray/config";
+import { varsayilanConfig, varsayilanMeta, varsayilanIsletme, VARSAYILAN_TERMINAL, type SimConfig, type ProjeMeta, type Isletme, type TerminalConfig } from "@/lib/anaray/config";
 import { type DurakArasiRing } from "@/lib/anaray/ring";
 import { varsayilanArac } from "@/lib/anaray/vehicles";
 import type { RollingStock } from "@/lib/anaray/types";
@@ -155,6 +155,17 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
     const nMeta = { ...varsayilanMeta, ...v.meta };
     const nArac = v.arac ?? varsayilanArac;
     const nIsletme = { ...varsayilanIsletme, ...v.isletme };
+    // Nested terminal config: derin-birleştir (yoksa undefined → motorda NaN). Eski
+    // (terminalDwell + donusSuresi) kayıtlar tek 'peronIsgali'ye göç ettirilir.
+    const gocTerminal = (t: Partial<TerminalConfig> & { terminalDwell?: number; donusSuresi?: number } = {}): TerminalConfig => {
+      const m = { ...VARSAYILAN_TERMINAL, ...t };
+      if (t.peronIsgali == null && (t.terminalDwell != null || t.donusSuresi != null)) {
+        m.peronIsgali = (t.terminalDwell ?? 30) + (t.donusSuresi ?? 180);
+      }
+      return m;
+    };
+    nIsletme.terminalBas = gocTerminal(v.isletme?.terminalBas);
+    nIsletme.terminalSon = gocTerminal(v.isletme?.terminalSon);
     setRingsRaw(v.rings);
     setCfg(nCfg);
     setMeta(nMeta);
@@ -288,10 +299,10 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
     if (!authHazir || !user || !yonetici || paylasimId) return;
     if (durum !== "hazir") return; // bootstrap bitmeden çalışma
     if (hazirDenendi.current) return;
-    // v4: tam CAD makas denetimi (Alaaddin yelpaze, Ravza/Otogar/Betoncular makası,
-    // Banliyö barınması kaldırıldı). Yeni anahtar sayesinde seed bir kez daha çalışır;
-    // sunucu var olan hazır taslakları yeni veri sürümüne tazeler.
-    const bayrak = `raysim_hazir_seed_v4_${user.uid}`;
+    // v6: künye düzeltmesi (AYGM/EMAY/Uğursal–ABU) + sunum modu (risk/uyarı/denge
+    // sapması gizli). Yeni anahtar sayesinde seed bir kez daha çalışır; sunucu var olan
+    // hazır taslakları yeni veri sürümüne tazeler.
+    const bayrak = `raysim_hazir_seed_v8_${user.uid}`;
     try { if (localStorage.getItem(bayrak)) { hazirDenendi.current = true; return; } } catch { /* yok */ }
     hazirDenendi.current = true;
     (async () => {

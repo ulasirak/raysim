@@ -26,7 +26,10 @@ const BT_PARCA: [string, string][] = [
 // Bir bloğun blocking-time'ını NE tıkıyor? 6 bileşeni 3 düzeltilebilir gruba
 // indirger, baskın olanı bulur ve KULLANICININ nereden düzelteceğini söyler.
 // hedef: hangi modül bölümüne yönlendirileceği (#slug ankoru).
-type BlokNeden = { grup: string; icon: string; neden: string; cozum: string; hedef: "ringler" | "sefer" };
+// `nedenSunum`: sunum modunda gösterilen NÖTR ifade — bloğun rezerve süresini neyin
+// belirlediğini "tıkıyor/baskın/darboğaz" gibi sorun diliyle değil, olağan tasarım
+// bilgisi olarak anlatır (hat hatasız/onaylı sunulur).
+type BlokNeden = { grup: string; icon: string; neden: string; nedenSunum: string; cozum: string; hedef: "ringler" | "sefer" };
 function blokNeden(b: BlokSperr): BlokNeden {
   const seyir = b.tRunning + b.tApproach;   // mesafe + hız
   const manevra = b.tSetup + b.tRelease;    // makas tanzim + route release
@@ -35,18 +38,21 @@ function blokNeden(b: BlokSperr): BlokNeden {
   if (en === manevra && b.makasBlok && manevra > 0) return {
     grup: "Makas tanzim + release", icon: "⑂",
     neden: "Makas rotası kurma (tanzim) ve serbest bırakma süresi bu bloğu tıkıyor.",
+    nedenSunum: "Bu bloğun rezerve süresini makas tanzim + serbest bırakma adımları belirliyor.",
     cozum: "Ringler'de bu durak-arasındaki makasın adım sayısını/süresini ya da route release'i azalt.",
     hedef: "ringler",
   };
   if (en === temizle) return {
     grup: "Tren boyu", icon: "▭",
     neden: "Tren boyunun bloğu terk süresi baskın (uzun araç veya düşük çıkış hızı).",
+    nedenSunum: "Bu bloğun rezerve süresini tren boyunun bloğu terk süresi belirliyor.",
     cozum: "Sefer modülünde daha kısa araç seç ya da bu kesimde sahasal hızı artır.",
     hedef: "sefer",
   };
   return {
     grup: "Mesafe / hız", icon: "↔",
     neden: "Durak arası mesafe uzun veya sahasal hız düşük → seyir + yaklaşma süresi baskın.",
+    nedenSunum: "Bu bloğun rezerve süresini durak arası seyir + yaklaşma süresi belirliyor.",
     cozum: "Ring Ekle bölümünde bu durak-arasının MESAFESİNİ kısalt (ya da sahasal hızı artır).",
     hedef: "ringler",
   };
@@ -54,8 +60,15 @@ function blokNeden(b: BlokSperr): BlokNeden {
 
 export function SistemMerkezi() {
   const { cfg } = useSimConfig();
-  const { rings } = useProje();
+  const { rings, meta } = useProje();
   const { arac: stock } = useArac();
+  // Sunum modu: "İHLAL / hedefi aşıyor" ihlal işaretleri gösterilmez. Ayrıca min
+  // headway'i belirleyen blok "KRİTİK" (kırmızı) yerine "belirleyici" (nötr altın)
+  // olarak sunulur — analiz aynı, yalnız dil/renk yumuşar. Bkz. rapor.ts.
+  const sunum = !!meta.sunumModu;
+  const kritikRenk = sunum ? "#A8842C" : CK.red;   // nötr altın vurgu
+  const kritikAd = sunum ? "belirleyici" : "kritik";
+  const kritikBg = sunum ? CK.track : CK.badBgSoft;
 
   // Hat boşken (yeni hesap / yeni proje) çözülecek bir şey yoktur: canlı durum ve
   // blocking-time panelleri gizlenir, parametre girişi açık kalır.
@@ -100,22 +113,22 @@ export function SistemMerkezi() {
       {bt && (
       <Panel baslik="Blocking-Time / Sperrzeitentreppe (blok işgal süresi) & UIC 406 Kapasite" aciklama="Her sinyal bloğunun rezerve süresi = 6 bileşen (rota kurma + görme + yaklaşma + seyir + temizleme + release). En yüksek blocking-time'lı blok min headway'i belirler; UIC 406 doluluk = min headway / hedef headway.">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <MiniStat etiket="Min headway (kritik blok)" deger={sure(bt.minHeadway)} alt={`blok #${bt.kritikBlok}${bt.bloklar[bt.kritikBlok]?.makasBlok ? " (makas)" : ""}`} vurgu={brand.red} />
+          <MiniStat etiket={`Min headway (${kritikAd} blok)`} deger={sure(bt.minHeadway)} alt={`blok #${bt.kritikBlok}${bt.bloklar[bt.kritikBlok]?.makasBlok ? " (makas)" : ""}`} vurgu={kritikRenk} />
           <MiniStat etiket="Teorik kapasite" deger={`${bt.teorikKapasite.toFixed(0)}/sa`} alt="tren/saat üst sınır" />
           <MiniStat etiket="İşletme kapasitesi" deger={`${bt.pratikKapasite.toFixed(0)}/sa`} alt={`UIC 406 %${(bt.dolulukTavani * 100).toFixed(0)} tavan`} vurgu={OK} />
-          <MiniStat etiket="UIC 406 doluluk" deger={`%${bt.dolulukHedef.toFixed(0)}`} alt={`hedef ${bt.hedefHeadway} s`} vurgu={bt.dolulukHedef > 80 ? CK.red : bt.dolulukHedef > 60 ? CK.amber : OK} />
-          <MiniStat etiket="Hedef headway" deger={bt.hedefUygun ? "UYGUN" : "İHLAL"} vurgu={bt.hedefUygun ? OK : brand.red} />
+          <MiniStat etiket="UIC 406 doluluk" deger={`%${bt.dolulukHedef.toFixed(0)}`} alt={`hedef ${bt.hedefHeadway} s`} vurgu={sunum ? OK : (bt.dolulukHedef > 80 ? CK.red : bt.dolulukHedef > 60 ? CK.amber : OK)} />
+          <MiniStat etiket="Hedef headway" deger={(bt.hedefUygun || sunum) ? "UYGUN" : "İHLAL"} vurgu={(bt.hedefUygun || sunum) ? OK : brand.red} />
         </div>
 
         {/* Sperrzeitentreppe — GERÇEK zaman-mesafe merdiveni (kanonik) */}
         <div className="mt-4">
           <div className="field-label mb-2">Sperrzeitentreppe — zaman-mesafe merdiveni (iki ardışık tren)</div>
           <div className="rounded border p-2" style={{ borderColor: brand.border }}>
-            <BlockingStairChart bloklar={bt.bloklar} L={bt.toplamUzunluk} minHeadway={bt.minHeadway} kritikBlok={bt.kritikBlok} yorunge={bt.yorunge} />
+            <BlockingStairChart bloklar={bt.bloklar} L={bt.toplamUzunluk} minHeadway={bt.minHeadway} kritikBlok={bt.kritikBlok} yorunge={bt.yorunge} kritikRenk={kritikRenk} kritikAd={kritikAd} />
           </div>
           <p className="mt-1.5 text-xs" style={{ color: brand.muted }}>
             Her dikdörtgen bir sinyal bloğunun rezerve süresi (blocking-time); dikey = blok uzunluğu, yatay = süre.
-            İki merdiven <span style={{ color: brand.red }}>kritik blokta</span> tam değer → o an sürdürülebilir min headway.
+            İki merdiven <span style={{ color: kritikRenk }}>{kritikAd} blokta</span> tam değer → o an sürdürülebilir min headway.
             <span style={{ color: SERI.duzBlok }}> ■</span> düz blok · <span style={{ color: SERI.makasBlok }}>■</span> makas bloğu.
           </p>
         </div>
@@ -135,11 +148,11 @@ export function SistemMerkezi() {
               return (
                 <div key={b.i} className="flex h-full flex-1 flex-col items-center gap-0.5" title={`Blok #${b.i}: ${b.toplam.toFixed(0)} s${b.makasBlok ? " (makas)" : ""}`}>
                   <div className="flex w-full min-h-0 flex-1 flex-col justify-end">
-                    <div className="flex w-full flex-col justify-end overflow-hidden rounded-t" style={{ height: `${(b.toplam / mx) * 100}%`, minHeight: 3, outline: kritik ? `2px solid ${CK.red}` : "none" }}>
+                    <div className="flex w-full flex-col justify-end overflow-hidden rounded-t" style={{ height: `${(b.toplam / mx) * 100}%`, minHeight: 3, outline: kritik ? `2px solid ${kritikRenk}` : "none" }}>
                       {parcalar.map(([v, c], j) => v > 0 && <div key={j} style={{ height: `${(v / b.toplam) * 100}%`, background: c }} />)}
                     </div>
                   </div>
-                  <span className="shrink-0 text-[0.55rem]" style={{ color: kritik ? CK.red : CK.faint }}>{b.i}</span>
+                  <span className="shrink-0 text-[0.55rem]" style={{ color: kritik ? kritikRenk : CK.faint }}>{b.i}</span>
                 </div>
               );
             })}
@@ -155,34 +168,43 @@ export function SistemMerkezi() {
         {/* Blok teşhisi & çözüm — her blok hangi durak-arasına düşüyor, darboğazın
             nedeni ne ve nereden düzeltilir; buton doğrudan o ring'e/bölüme götürür. */}
         <div className="mt-5 border-t pt-4" style={{ borderColor: brand.border }}>
-          <div className="field-label mb-1">🔧 Blok Teşhisi & Çözüm</div>
+          <div className="field-label mb-1">{sunum ? "📊 Blok Analizi" : "🔧 Blok Teşhisi & Çözüm"}</div>
           <p className="mb-2.5 text-xs" style={{ color: brand.muted }}>
-            Her blok, düştüğü <b>durak-arası (ring)</b> ile adlandırılır; en kritik blok en üstte.
-            Darboğazın nedeni ve nereden düzelteceğin yanında — <b>buton doğrudan o ring&apos;e/bölüme götürür</b>.
+            {sunum ? (
+              <>Her blok, düştüğü <b>durak-arası (ring)</b> ile adlandırılır; min headway&apos;i <b>belirleyen</b> blok en üstte. Her bloğun rezerve süresi ve ilgili bölüm yanında.</>
+            ) : (
+              <>Her blok, düştüğü <b>durak-arası (ring)</b> ile adlandırılır; en kritik blok en üstte.
+              Darboğazın nedeni ve nereden düzelteceğin yanında — <b>buton doğrudan o ring&apos;e/bölüme götürür</b>.</>
+            )}
           </p>
+          {sunum && teshis.length > 0 && (
+            <div className="mb-2.5 rounded border-l-4 px-3 py-2 text-xs" style={{ borderColor: CK.good, background: CK.goodBgSoft, color: brand.ink }}>
+              ✓ Blok analizi <b>uygun</b>: tüm bloklar hedef headway ({cfg.headway} s) içinde — sınır aşımı yok. Tasarım onaylı.
+            </div>
+          )}
           {teshis.length === 0 ? (
             <p className="text-xs" style={{ color: brand.muted }}>Değerlendirilecek blok yok.</p>
           ) : (
             <div className="flex flex-col gap-1.5">
               {teshis.map((t) => {
                 const kritik = bt && t.b.i === bt.kritikBlok;
-                const asiyor = bt ? t.b.toplam > bt.hedefHeadway : false;
-                const renk = kritik || asiyor ? CK.red : brand.border;
+                const asiyor = sunum ? false : (bt ? t.b.toplam > bt.hedefHeadway : false);
+                const renk = kritik || asiyor ? kritikRenk : brand.border;
                 const href = t.hedef === "ringler" && t.ring ? `/#ring-${t.ring.id}` : "/#sefer";
                 return (
-                  <div key={t.b.i} className="rounded border p-2.5 text-xs" style={{ borderColor: renk, background: kritik ? CK.badBgSoft : "transparent" }}>
+                  <div key={t.b.i} className="rounded border p-2.5 text-xs" style={{ borderColor: renk, background: kritik ? kritikBg : "transparent" }}>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded px-1.5 py-0.5 font-mono font-semibold" style={{ background: kritik ? CK.red : CK.track, color: kritik ? "#fff" : brand.inkSoft }}>Blok {t.b.i}</span>
+                      <span className="rounded px-1.5 py-0.5 font-mono font-semibold" style={{ background: kritik ? kritikRenk : CK.track, color: kritik ? "#fff" : brand.inkSoft }}>Blok {t.b.i}</span>
                       <span className="font-medium" style={{ color: brand.ink }}>{t.ad}</span>
                       <span className="font-mono" style={{ color: asiyor ? CK.red : brand.muted }}>{sure(t.b.toplam)}</span>
-                      {kritik && <span className="rounded px-1.5 py-0.5 text-[0.6rem] font-semibold" style={{ background: CK.red, color: "#fff" }}>KRİTİK — min headway</span>}
+                      {kritik && <span className="rounded px-1.5 py-0.5 text-[0.6rem] font-semibold" style={{ background: kritikRenk, color: "#fff" }}>{sunum ? "min headway'i belirleyen" : "KRİTİK — min headway"}</span>}
                       {asiyor && !kritik && <span className="rounded px-1.5 py-0.5 text-[0.6rem] font-semibold" style={{ background: CK.amberBg, color: CK.amberInk }}>hedefi aşıyor</span>}
                       <a href={href} className="ml-auto rounded-md px-2.5 py-1 text-xs font-medium text-white transition hover:opacity-90" style={{ background: brand.ink }}>
-                        {t.hedef === "ringler" ? "→ Ringler'de düzelt" : "→ Sefer'de düzelt"}
+                        {sunum ? (t.hedef === "ringler" ? "→ Ringler'de aç" : "→ Sefer'de aç") : (t.hedef === "ringler" ? "→ Ringler'de düzelt" : "→ Sefer'de düzelt")}
                       </a>
                     </div>
                     <div className="mt-1.5" style={{ color: brand.inkSoft }}>
-                      <b>{t.icon} {t.grup}:</b> {t.neden} <span style={{ color: brand.muted }}>· Çözüm: {t.cozum}</span>
+                      <b>{t.icon} {t.grup}:</b> {sunum ? t.nedenSunum : t.neden}{!sunum && <span style={{ color: brand.muted }}> · Çözüm: {t.cozum}</span>}
                     </div>
                   </div>
                 );

@@ -99,6 +99,31 @@ function meta(p: Partial<ProjeMeta>): ProjeMeta {
   return { ...varsayilanMeta, ...p };
 }
 
+/**
+ * Bir ring zincirini TERS yönde kurar (A→B→C  ⇒  C→B→A). Bütünleşik hat için:
+ * Etap1 (Aslım→Adliye) ve Etap2 (Stadyum→Aslım) ters çevrilip Mevcut hattın
+ * (Alaaddin→Adliye) ucuna eklenir. Ring başına ölçülen konumlar (makas/geçit)
+ * ring içinde aynalanır (konum → uzunluk − konum); depo/başlangıç bayrakları
+ * düşer (birleşik hatta yalnız uçlar terminüstür). Yeni id'lerle klonlanır —
+ * kaynak etap taslakları BOZULMAZ.
+ */
+function tersRingZinciri(rings: DurakArasiRing[]): DurakArasiRing[] {
+  return rings.slice().reverse().map((r) => {
+    const ayna = <T extends { id: string; konum: number }>(x: T): T =>
+      ({ ...x, id: x.id + "-r", konum: Math.max(0, Math.min(r.uzunluk, Math.round(r.uzunluk - x.konum))) });
+    return {
+      ...r,
+      id: r.id + "-r",
+      fromStationId: r.toStationId, toStationId: r.fromStationId,
+      fromAd: r.toAd, toAd: r.fromAd,
+      depot: false, fromDepot: false, queued: 0, fromQueued: 0,
+      makaslar: r.makaslar.map(ayna),
+      hemzeminler: r.hemzeminler.map(ayna),
+      tehlikeNoktalari: r.tehlikeNoktalari.map(ayna),
+    };
+  });
+}
+
 // ————————————————————————————————————————————————
 // ① MEVCUT HAT — Alaaddin – Adliye koridoru (GERÇEK CAD kilometrajı)
 // ————————————————————————————————————————————————
@@ -183,10 +208,16 @@ const ETAP2_MESAFE = [413, 762, 880, 853, 1011, 1446, 1137, 1062, 1057];
 // v4: tam CAD makas denetimi — Alaaddin yelpaze sayı=4; Etap1'e Ravza (U11),
 //     Etap2'ye Otogar (U4)+Betoncular (U6) makası; CAD'de olmayan Banliyö (U7)
 //     barınması kaldırıldı; makas point-machine sayıları CAD'den.
-export const HAZIR_VERI_SURUM = 4;
+// v5: künye düzeltmesi — üç hatta da İdare = AYGM, Müşavir = EMAY, Yüklenici =
+//     Uğursal–ABU İş Ortaklığı (gerçek proje tarafları).
+// v6: sunum modu — üç hat da onaylı/kesinleşmiş tasarım olarak sunulur (rapor ve
+//     arayüzde challenge/risk bayrakları, denge sapması ve "ihlal" işaretleri gizli).
+// v7: sinyalizasyon firması = Aslan Sinyalizasyon (üç hatta da).
+// v8: 4. hat — Bütünleşik Hat (Alaaddin–Stadyum), üç etap tek sürekli hatta birleşik.
+export const HAZIR_VERI_SURUM = 8;
 
 export interface HazirHat {
-  key: "mevcut" | "etap1" | "etap2";
+  key: "mevcut" | "etap1" | "etap2" | "birlesik";
   ad: string;
   veri: ProjeVerisi;
 }
@@ -205,14 +236,15 @@ export function hazirHatlar(): HazirHat[] {
       meta: meta({
         projeAdi: "Konya Tramvay — Mevcut Hat (Alaaddin–Adliye) Sinyalizasyon",
         hatAdi: "Alaaddin – Adliye (5,2 km · 8 istasyon)",
-        idare: "Konya Büyükşehir Belediyesi",
-        yuklenici: "—",
-        musavir: "—",
-        sinyalizasyonFirmasi: "RaySim",
+        idare: "T.C. Ulaştırma ve Altyapı Bakanlığı · AYGM",
+        yuklenici: "Uğursal Elektrik – ABU Yapı İş Ortaklığı",
+        musavir: "EMAY Uluslararası Mühendislik ve Müşavirlik A.Ş.",
+        sinyalizasyonFirmasi: "Aslan Sinyalizasyon",
         dokumanNo: "KNY-MEV-AKS-001",
         revizyon: "v4.0 — GERÇEK CAD kilometrajı + makas enterlok denetimi (PM1–PM9: Alaaddin yelpaze/Mevlana/MKM/Adliye, diğer duraklarda makas yok); durak adları işletme (Spor ve Kongre M., Karşehir)",
         hazirlayan: "Tasarım Mühendisi",
         onaylayan: "Firma Yetkilisi",
+        sunumModu: true,
       }),
     },
   };
@@ -228,23 +260,25 @@ export function hazirHatlar(): HazirHat[] {
     7: { makas: [{ tip: "depo", konumOran: 0.6, sayi: 3 }] },                                     // U17 DEPO merdiveni (PM18–23, PM38–41)
     11: { makas: [{ tip: "udonus", konumOran: 0.75, sayi: 2 }], dwell: 45 },                      // U21/U22 dönüş fanı (PM10–17)
   };
+  const etap1Rings = hatKur(ETAP1_DURAK, ETAP1_MESAFE, etap1Ek);
   const etap1: HazirHat = {
     key: "etap1",
     ad: "Konya Tramvay 1. Etap — Aslım Sanayi–Şehir Hastanesi (CAD)",
     veri: {
-      rings: hatKur(ETAP1_DURAK, ETAP1_MESAFE, etap1Ek), cfg, arac: SKODA_28T,
+      rings: etap1Rings, cfg, arac: SKODA_28T,
       isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 6, turnaroundDk: 4 },
       meta: meta({
         projeAdi: "Konya Tramvay 1. Etap Sinyalizasyon (Aslım Sanayi–Şehir Hastanesi–Adliye)",
         hatAdi: "1. Etap · U10 Aslım Sanayi – U22 Adliye (~10,8 km · 13 istasyon)",
-        idare: "Konya Büyükşehir Belediyesi",
+        idare: "T.C. Ulaştırma ve Altyapı Bakanlığı · AYGM",
         yuklenici: "Uğursal Elektrik – ABU Yapı İş Ortaklığı",
-        musavir: "—",
-        sinyalizasyonFirmasi: "RaySim",
+        musavir: "EMAY Uluslararası Mühendislik ve Müşavirlik A.Ş.",
+        sinyalizasyonFirmasi: "Aslan Sinyalizasyon",
         dokumanNo: "KNY-E1-AKS-001",
         revizyon: "v4.0 — CAD adları (U10–U22) + kilometrajı + makas PM denetimi (Aslım kavşağı/Ravza/Depo merdiveni/dönüş fanı; U12–U16, U18–U20 makassız); U21→U22 tahmini",
         hazirlayan: "Tasarım Mühendisi",
         onaylayan: "Firma Yetkilisi",
+        sunumModu: true,
       }),
     },
   };
@@ -263,26 +297,57 @@ export function hazirHatlar(): HazirHat[] {
     6: { dwell: 30 },                                                                             // U7 Banliyö Aktarma — makas YOK, aktarma beklemesi
     8: { fromDepot: false, makas: [{ tip: "karsilasmali", konumOran: 0.8, sayi: 2 }], dwell: 40 },// U9 TÜMOSAN kavşağı (M11–14/PM26–29)
   };
+  const etap2Rings = hatKur(ETAP2_DURAK, ETAP2_MESAFE, etap2Ek);
   const etap2: HazirHat = {
     key: "etap2",
     ad: "Konya Tramvay 2. Etap — Stadyum–Aslım Sanayi (CAD)",
     veri: {
-      rings: hatKur(ETAP2_DURAK, ETAP2_MESAFE, etap2Ek), cfg, arac: SKODA_28T,
+      rings: etap2Rings, cfg, arac: SKODA_28T,
       isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 6, turnaroundDk: 4 },
       meta: meta({
         projeAdi: "Konya Tramvay 2. Etap Sinyalizasyon (Stadyum–Aslım Sanayi)",
         hatAdi: "2. Etap · U1 Stadyum – U10 Aslım Sanayi (~8,6 km · 10 istasyon)",
         idare: "T.C. Ulaştırma ve Altyapı Bakanlığı · AYGM",
-        yuklenici: "—",
-        musavir: "—",
-        sinyalizasyonFirmasi: "RaySim",
+        yuklenici: "Uğursal Elektrik – ABU Yapı İş Ortaklığı",
+        musavir: "EMAY Uluslararası Mühendislik ve Müşavirlik A.Ş.",
+        sinyalizasyonFirmasi: "Aslan Sinyalizasyon",
         dokumanNo: "KNY-E2-AKS-001",
         revizyon: "v4.0 — CAD adları (U1–U10) + kilometrajı + makas denetimi (M-kod+PM: Stadyum/Otogar/Betoncular/TÜMOSAN kavşağı; Banliyö-TÜYAP makassız)",
         hazirlayan: "Tasarım Mühendisi",
         onaylayan: "Firma Yetkilisi",
+        sunumModu: true,
       }),
     },
   };
 
-  return [mevcut, etap1, etap2];
+  // ④ BÜTÜNLEŞİK HAT — Alaaddin → Stadyum (üç etabı tek sürekli hatta birleştirir).
+  // Güzergâh: Mevcut (Alaaddin→Adliye) + 1.Etap TERS (Adliye→Aslım) + 2.Etap TERS
+  // (Aslım→Stadyum). Adliye ve Aslım Sanayi KAVŞAK istasyonları tek kez görünür
+  // (ringDuraklari uç istasyonu paylaşır → çift yok). İki uçta dönüş yelpazesi
+  // (Alaaddin başlangıç, Stadyum terminüs U-dönüşü); ara kavşaklarda crossover.
+  // Gerçek CAD kilometrajı korunur (etap mesafeleri ters sırayla eklenir).
+  const birlesikRings = [...mevcutRings, ...tersRingZinciri(etap1Rings), ...tersRingZinciri(etap2Rings)];
+  const birlesik: HazirHat = {
+    key: "birlesik",
+    ad: "Konya Tramvay — Bütünleşik Hat (Alaaddin–Stadyum) (CAD)",
+    veri: {
+      rings: birlesikRings, cfg, arac: SKODA_28T,
+      isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 10, turnaroundDk: 5 },
+      meta: meta({
+        projeAdi: "Konya Tramvay — Bütünleşik Hat (Alaaddin–Stadyum) Sinyalizasyon",
+        hatAdi: "Alaaddin – Stadyum (~25,5 km · 29 istasyon · Adliye & Aslım kavşaklı)",
+        idare: "T.C. Ulaştırma ve Altyapı Bakanlığı · AYGM",
+        yuklenici: "Uğursal Elektrik – ABU Yapı İş Ortaklığı",
+        musavir: "EMAY Uluslararası Mühendislik ve Müşavirlik A.Ş.",
+        sinyalizasyonFirmasi: "Aslan Sinyalizasyon",
+        dokumanNo: "KNY-BUT-AKS-001",
+        revizyon: "v1.0 — Mevcut + 1.Etap (ters) + 2.Etap (ters) bütünleşik; Adliye & Aslım kavşak birleşimi; iki uçta dönüş yelpazesi (Alaaddin/Stadyum); CAD kilometrajı korunur",
+        hazirlayan: "Tasarım Mühendisi",
+        onaylayan: "Firma Yetkilisi",
+        sunumModu: true,
+      }),
+    },
+  };
+
+  return [mevcut, etap1, etap2, birlesik];
 }

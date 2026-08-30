@@ -86,7 +86,18 @@ export interface DurakArasiRing {
   bestUzunluk: number; // m — best-case (yakın mesafe) referans
   vmax: number; // m/s — bu ringde sahasal azami (vars. 40 km/h)
   egim: number; // ‰
-  dwell: number; // varış durağı bekleme süresi (s)
+  dwell: number; // varış durağı bekleme süresi (s) — YETKİLİ toplam = kapiAcma + yolcuDegisimi + kapiKapama (bileşenler varsa)
+  /** Dwell bileşenleri (ince model): kapı açma + yolcu değişimi + kapı kapama.
+   *  Verilirse dwell = toplamları (senkron tutulur). Yoksa dwell tek değer olarak kullanılır. */
+  kapiAcma?: number;      // s — kapı açma
+  yolcuDegisimi?: number; // s — iniş/biniş (yolcu değişimi)
+  kapiKapama?: number;    // s — kapı kapama
+  /** Bu durakta (varış durağından kalkışta) kalkış ölü zamanı (start-up lost time, s).
+   *  Verilmezse hat geneli varsayılan (isletme.kalkisOluZamaniSn) kullanılır. */
+  kalkisOlu?: number;
+  /** Bu kesim TEK HAT mı? (çift yön aynı hattı paylaşır → tek anda tek tren;
+   *  maksimum tren kapasitesinde ayrı ve genelde bağlayıcı bir headway kısıtı). */
+  tekHat?: boolean;
   /** Varış (to) durağı parklanma (depo/stabling) alanı mı? */
   depot?: boolean;
   /** Varış durağı depoysa: çıkışa hazır bekleyen tren sayısı. */

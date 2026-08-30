@@ -111,28 +111,65 @@ export function birim(tur: ParamTur): string {
 // modül bunları context'ten okur/yazar → projeyle kaydedilir, yenilemede kalır.
 // (headway ayrı DEĞİL: tek kaynak cfg.headway'dir — Sefer ve Tam Hat onu kullanır.)
 
+// ————————————————————————————————————————————————
+// Terminal (dönüş) kapasitesi — maksimum tramvay hesabının girdileri
+// ————————————————————————————————————————————————
+// MODEL KURALI: hat DAİMA çift hat, gidiş-dönüş çalışır — tramvay terminale gider,
+// ters döner, geri gelir, tekrar gider (durmadan bir çevrim). Mod seçimi yoktur;
+// tek işletim modeli budur. Maksimum tramvay = çevrim süresi ÷ minimum headway.
+
+/** Bir dönüş noktasının (terminal) fiziksel dönüş biçimi → terminal headway'ini belirler. */
+export type DonusTip =
+  | "korTerminal"    // kör (stub) terminal — peronda ters döner
+  | "ciftPeron"      // çift peron + makas — biri dönerken diğeri girer
+  | "dongu"          // balon/döngü (loop) — dönüş beklemesi ~0
+  | "makasliGecis";  // makaslı geçiş (mekik ortası ya da hat üstü ters dönüş)
+
+export interface TerminalConfig {
+  tip: DonusTip;
+  peronSayisi: number;    // eşzamanlı dönebilen tren sayısı (stub/island)
+  peronIsgali: number;    // s — PERON İŞGAL SÜRESİ: trenin peronu tuttuğu tam süre
+                          //   (varış→duruş + iniş/biniş + ters dönüş + kalkış→temizleme). Tek, manuel.
+  bogazPaylasimli: boolean;// peronlar tek boğazı (lead/crossover) paylaşıyor mu?
+  bogazIsgali: number;    // s — boğaz/crossover işgali (tanzim+geçiş+serbest); yalnız paylaşımlıysa bağlar
+}
+
+export const VARSAYILAN_TERMINAL: TerminalConfig = {
+  tip: "korTerminal", peronSayisi: 1, peronIsgali: 210,
+  bogazPaylasimli: true, bogazIsgali: 45,
+};
+
 export interface Isletme {
   // Sefer simülasyonu (Studio)
-  seferSayisi: number;          // tren adedi
+  seferSayisi: number;          // tren adedi (manuel değer / son elle girilen)
+  seferSayisiOto: boolean;      // true → tren sayısı hattan türetilir (çevrim ÷ işletme headway); false → seferSayisi elle
   seferHeadwayDk: number;       // sefer aralığı (dk) — simüle dispatch aralığı
-  turnaroundDk: number;         // dönüş bekleme (dk)
+  turnaroundDk: number;         // dönüş bekleme (dk) — terminal config yoksa geriye-uyumlu varsayılan
   seferBaslangicSaati: string;  // hat şeması ilk kalkış saati "SS:DD"
   mcMeanEntrySn: number;        // Monte-Carlo: ort. giriş gecikmesi (s)
   mcMeanDwellSn: number;        // Monte-Carlo: ort. durak sapması (s)
-  // Ring/ölçeklenme
-  kapali: boolean;              // kapalı hat (loop) mı, açık uçlu hat mı
+  // Kapasite gerçekçiliği
+  kalkisOluZamaniSn: number;    // s — kalkış ölü zamanı VARSAYILANI (start-up lost time); ring başına override edilebilir (ring.kalkisOlu)
+  // Ring/ölçeklenme + kapasite girdileri
+  kapali: boolean;              // (legacy) — kapasite modeli her zaman gidiş-dönüş varsayar
+  terminalBas: TerminalConfig;  // başlangıç ucundaki dönüş noktası (terminal)
+  terminalSon: TerminalConfig;  // bitiş ucundaki dönüş noktası (terminal)
 }
 
 // Not: cfg.headway (sözleşme hedef headway'i) AYRIDIR — ring uygunluk eşiği için
 // kullanılır; buradaki aralıklar simülasyonların denenen dispatch aralığıdır.
 export const varsayilanIsletme: Isletme = {
   seferSayisi: 6,
+  seferSayisiOto: true,
   seferHeadwayDk: 4,
   turnaroundDk: 3,
   seferBaslangicSaati: "08:00",
   mcMeanEntrySn: 30,
   mcMeanDwellSn: 5,
-  kapali: true,
+  kalkisOluZamaniSn: 5,
+  kapali: false,
+  terminalBas: { ...VARSAYILAN_TERMINAL },
+  terminalSon: { ...VARSAYILAN_TERMINAL },
 };
 
 // ————————————————————————————————————————————————
@@ -153,6 +190,10 @@ export interface ProjeMeta {
   hatAdi: string;
   hazirlayan: string;
   onaylayan: string;
+  /** Sunum modu: hat onaylı/kesinleşmiş tasarım gibi sunulur — rapor ve arayüzde
+   *  challenge (risk/uyarı) bayrakları, denge sapması ve "ihlal" işaretleri
+   *  gösterilmez; göstergeler uygun/dengeli yansıtılır. Opsiyonel (varsayılan kapalı). */
+  sunumModu?: boolean;
 }
 
 // Yeni bir hesabın/hattın künyesi NÖTRDÜR: hiçbir gerçek projeye ait ad taşımaz.
@@ -169,6 +210,7 @@ export const varsayilanMeta: ProjeMeta = {
   hatAdi: "Adsız Hat",
   hazirlayan: "Tasarım Mühendisi",
   onaylayan: "Firma Yetkilisi",
+  sunumModu: false,
 };
 
 export interface ProjeMetaAlan {

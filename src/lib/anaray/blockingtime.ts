@@ -36,6 +36,7 @@ export interface BlokSperr {
   tRunning: number;
   tClearing: number;
   tRelease: number;
+  tStartup: number; // s — kalkış ölü zamanı (yalnız durakta duran trenin kalktığı blokta)
   toplam: number; // blocking time (s)
 }
 
@@ -75,7 +76,11 @@ function ayrilmaT(points: { t: number; s: number }[], s: number): number {
   return points[0]?.t ?? 0;
 }
 
-export function blockingTimeHesap(model: HatModel, stock: RollingStock, cfg: SimConfig): BlockingSonuc {
+// kalkisOlu: sabit sayı VEYA durak konumuna göre değer döndüren çözücü (durak-başı).
+export function blockingTimeHesap(
+  model: HatModel, stock: RollingStock, cfg: SimConfig,
+  kalkisOlu: number | ((istasyonPos: number) => number) = 0,
+): BlockingSonuc {
   const line = model.line;
   const bounds = makeBlocks(line, cfg.blokMaxUzunluk);
   const res = simulate(line, stock, 0.5);
@@ -111,8 +116,14 @@ export function blockingTimeHesap(model: HatModel, stock: RollingStock, cfg: Sim
     const tRelease = z ? z.releaseSure : 0;
     const tSighting = T_SIGHTING;
 
-    const toplam = tSetup + tSighting + tApproach + tRunning + tClearing + tRelease;
-    bloklar.push({ i, start, end, girisT, cikisT, makasBlok: !!z, tSetup, tSighting, tApproach, tRunning, tClearing, tRelease, toplam });
+    // Kalkış ölü zamanı: tren bu bloğun BAŞINDAKİ durakta durmuşsa (rest), yeşil/dwell
+    // sonrası harekete geçme tepkisi bloğu ekstra süre işgal eder → h_min'i yükseltir.
+    const istasyonKalkisi = line.stations.some((s) => Math.abs(s.position - start) < 1);
+    const suDeger = typeof kalkisOlu === "function" ? kalkisOlu(start) : kalkisOlu;
+    const tStartup = istasyonKalkisi ? (suDeger || 0) : 0;
+
+    const toplam = tSetup + tSighting + tApproach + tRunning + tClearing + tRelease + tStartup;
+    bloklar.push({ i, start, end, girisT, cikisT, makasBlok: !!z, tSetup, tSighting, tApproach, tRunning, tClearing, tRelease, tStartup, toplam });
   }
 
   let kritikBlok = 0;
