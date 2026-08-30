@@ -64,6 +64,9 @@ export interface Hemzemin {
   tip: HemzeminTip;
   konum: number; // m
   hiz: number; // m/s (varsayılan 25 km/h)
+  /** Karayolu geçidinde trafik/öncelik kaynaklı beklenen bekleme süresi (s).
+   *  Çevrime (ve gecikmeye) eklenir; hız düşümünden ayrı, gerçek durma payı. */
+  bekleme?: number;
 }
 
 export interface TehlikeNoktasi {

@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RollingStock } from "@/lib/anaray/types";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
-import { type SimConfig, type DonusTip, type TerminalConfig } from "@/lib/anaray/config";
+import { etkinBogazIsgali, type SimConfig, type DonusTip, type TerminalConfig } from "@/lib/anaray/config";
 import { maksimumTren } from "@/lib/anaray/kapasite";
 import { brand } from "@/lib/anaray/brand";
 import { CK, SERI } from "@/lib/anaray/chartkit";
@@ -61,16 +61,17 @@ export function RingEditor() {
   // Peron işgali bileşenleri (varış + iniş/biniş + ters dönüş + kalkış temizleme).
   // peronIsgali = toplam (yetkili). Bileşen yoksa mevcut toplamdan makul bölünür.
   const terminalBilesen = (t: TerminalConfig) => {
-    if (t.varisTampon != null || t.inisBinis != null || t.tersDonus != null || t.kalkisTemizleme != null) {
-      return { varis: t.varisTampon ?? 0, inis: t.inisBinis ?? 0, ters: t.tersDonus ?? 0, kalkis: t.kalkisTemizleme ?? 0 };
+    if (t.varisTampon != null || t.inisBinis != null || t.tersDonus != null || t.kalkisTemizleme != null || t.toparlanma != null) {
+      return { varis: t.varisTampon ?? 0, inis: t.inisBinis ?? 0, ters: t.tersDonus ?? 0, kalkis: t.kalkisTemizleme ?? 0, topar: t.toparlanma ?? 0 };
     }
     const toplam = t.peronIsgali || 0;
-    return toplam >= 60 ? { varis: 15, inis: 30, ters: toplam - 60, kalkis: 15 } : { varis: 0, inis: 0, ters: toplam, kalkis: 0 };
+    const base = toplam >= 60 ? { varis: 15, inis: 30, ters: toplam - 60, kalkis: 15 } : { varis: 0, inis: 0, ters: toplam, kalkis: 0 };
+    return { ...base, topar: 0 };
   };
-  const patchTerminalBilesen = (uc: "terminalBas" | "terminalSon", alan: "varis" | "inis" | "ters" | "kalkis", v: number) => {
+  const patchTerminalBilesen = (uc: "terminalBas" | "terminalSon", alan: "varis" | "inis" | "ters" | "kalkis" | "topar", v: number) => {
     const c = terminalBilesen(isletme[uc]);
     const n = { ...c, [alan]: Math.max(0, Math.round(v)) };
-    patchTerminal(uc, { varisTampon: n.varis, inisBinis: n.inis, tersDonus: n.ters, kalkisTemizleme: n.kalkis, peronIsgali: n.varis + n.inis + n.ters + n.kalkis });
+    patchTerminal(uc, { varisTampon: n.varis, inisBinis: n.inis, tersDonus: n.ters, kalkisTemizleme: n.kalkis, toparlanma: n.topar, peronIsgali: n.varis + n.inis + n.ters + n.kalkis + n.topar });
   };
   // Canlı maksimum tramvay kapasitesi (bottleneck) — inputların hemen altında geri besleme.
   const maks = useMemo(() => maksimumTren(rings, stock, cfg, isletme), [rings, stock, cfg, isletme]);
@@ -221,9 +222,11 @@ export function RingEditor() {
             <div className="mb-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
               {(["terminalBas", "terminalSon"] as const).map((uc) => {
                 const t = isletme[uc];
+                const durakAd = uc === "terminalBas" ? (duraklar[0]?.ad || "Başlangıç") : (duraklar[duraklar.length - 1]?.ad || "Bitiş");
                 return (
                   <div key={uc} className="rounded-md border p-3" style={{ borderColor: brand.border }}>
-                    <SubBaslik>{uc === "terminalBas" ? "Başlangıç terminali (dönüş)" : "Bitiş terminali (dönüş)"}</SubBaslik>
+                    <SubBaslik>{uc === "terminalBas" ? "Başlangıç" : "Bitiş"} terminali — {durakAd}</SubBaslik>
+                    <p className="mb-1 text-xs" style={{ color: brand.muted }}>Hattın {uc === "terminalBas" ? "ilk" : "son"} durağı; tren burada ters döner.</p>
                     <label className="mt-2 block">
                       <span className="field-label">Dönüş tipi</span>
                       <select value={t.tip} onChange={(e) => patchTerminal(uc, { tip: e.target.value as DonusTip })}
@@ -236,8 +239,6 @@ export function RingEditor() {
                     <div className="mt-2 grid grid-cols-2 gap-3">
                       <Num label="Peron sayısı" suffix="peron" step={1} max={6} value={t.peronSayisi}
                         onChange={(v) => patchTerminal(uc, { peronSayisi: Math.max(1, Math.round(v)) })} />
-                      <Num label="Boğaz işgali" suffix="s" step={5} value={t.bogazIsgali}
-                        onChange={(v) => patchTerminal(uc, { bogazIsgali: Math.max(0, Math.round(v)) })} />
                     </div>
                     {/* Peron işgal süresi — bileşenli (ince model), toplam yetkili */}
                     <div className="mt-2 rounded border p-2" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
@@ -254,16 +255,41 @@ export function RingEditor() {
                           onChange={(v) => patchTerminalBilesen(uc, "ters", v)} />
                         <Num label="Kalkış temizleme" suffix="s" step={5} value={terminalBilesen(t).kalkis}
                           onChange={(v) => patchTerminalBilesen(uc, "kalkis", v)} />
+                        <Num label="Toparlanma (recovery)" suffix="s" step={5} value={terminalBilesen(t).topar}
+                          onChange={(v) => patchTerminalBilesen(uc, "topar", v)} />
                       </div>
                       <p className="mt-1 text-xs" style={{ color: brand.muted }}>
-                        Toplam = trenin peronu tuttuğu tam süre → terminal aralığı = bu ÷ peron.
+                        Toplam = trenin peronu tuttuğu tam süre. Terminal aralığı = bu ÷ peron. <b>Toparlanma</b>: gecikmeleri yutan program payı (schedule recovery).
+                      </p>
+                    </div>
+                    {/* Boğaz (throat) işgali — oto (makastan) veya elle */}
+                    <div className="mt-2 rounded border p-2" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
+                      <div className="mb-1 flex items-baseline justify-between">
+                        <span className="field-label">Boğaz işgali</span>
+                        <span className="text-sm font-semibold" style={{ color: brand.ink }}>{etkinBogazIsgali(t, cfg)} s</span>
+                      </div>
+                      <label className="flex items-center gap-2 text-xs" style={{ color: brand.inkSoft }}>
+                        <input type="checkbox" checked={t.bogazOto} onChange={(e) => patchTerminal(uc, { bogazOto: e.target.checked })} />
+                        Makastan otomatik türet
+                      </label>
+                      <div className="mt-1">
+                        {t.bogazOto ? (
+                          <Num label="Boğaz makas (crossover) sayısı" suffix="makas" step={1} max={8} value={t.bogazMakasSayisi}
+                            onChange={(v) => patchTerminal(uc, { bogazMakasSayisi: Math.max(1, Math.round(v)) })} />
+                        ) : (
+                          <Num label="Boğaz işgali (elle)" suffix="s" step={5} value={t.bogazIsgali}
+                            onChange={(v) => patchTerminal(uc, { bogazIsgali: Math.max(0, Math.round(v)) })} />
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs" style={{ color: brand.muted }}>
+                        Boğaz = peronlar önündeki ortak makas/geçiş bölgesi; bir tren geçerken kilitlenir. {t.bogazOto ? "Oto = makas tanzim + geçiş + rota serbest." : ""}
                       </p>
                     </div>
                     <label className="mt-2 flex items-center gap-2 text-xs" style={{ color: brand.inkSoft }}
-                      title="Peronlar tek boğazı (lead/crossover) paylaşıyorsa peron sayısı artsa da ardışık trenler tek boğazdan geçer — boğaz işgali alt sınır olur.">
+                      title="Peronlar tek boğazdan (lead/crossover) besleniyorsa çok peron olsa da trenler oradan sırayla geçer — boğaz işgali terminal aralığına alt sınır olur. İşaretsiz = her peron bağımsız girişli (tam paralel).">
                       <input type="checkbox" checked={t.bogazPaylasimli}
                         onChange={(e) => patchTerminal(uc, { bogazPaylasimli: e.target.checked })} />
-                      Peronlar tek boğazı (lead/crossover) paylaşıyor
+                      Peronlar tek boğazı paylaşıyor
                     </label>
                     {t.tip === "dongu" && (
                       <p className="mt-1 text-xs" style={{ color: brand.muted }}>Balon döngüde terminal kısıtı yok (dönüş ~0).</p>

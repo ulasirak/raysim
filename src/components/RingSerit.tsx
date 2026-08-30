@@ -155,6 +155,7 @@ export function EkleFormu({ tur, konum: konum0, uzunluk, konumSuresi, sureKonumu
     ? Math.round(kmh(yeniHemzemin(tur.tip, konum0).hiz))
     : Math.round(kmh(yeniTehlike(konum0).hiz));
   const [hiz, setHiz] = useState(hizVars);
+  const [bekleme, setBekleme] = useState(0); // karayolu geçidinde beklenen bekleme (s)
 
   const baslik = tur.kind === "makas" ? "Makas bölgesi ekle"
     : tur.kind === "hemzemin" ? `${tur.tip === "yaya" ? "Yaya" : "Karayolu"} geçidi ekle`
@@ -163,6 +164,8 @@ export function EkleFormu({ tur, konum: konum0, uzunluk, konumSuresi, sureKonumu
   const kaydet = () => {
     if (tur.kind === "makas") {
       onEkle(konum, { tip: mtip, gecisHizi: gecisHizi * KMH, makasSayisi, makasAdimSuresi: adim, routeRelease: release, tccZorunlu: tccGerekli(mtip) });
+    } else if (tur.kind === "hemzemin") {
+      onEkle(konum, { hiz: hiz * KMH, ...(tur.tip === "karayolu" ? { bekleme } : {}) });
     } else {
       onEkle(konum, { hiz: hiz * KMH });
     }
@@ -193,7 +196,12 @@ export function EkleFormu({ tur, konum: konum0, uzunluk, konumSuresi, sureKonumu
             <Num label="Route release" suffix="s" step={1} value={release} onChange={setRelease} />
           </>
         ) : (
-          <Num label={tur.kind === "hemzemin" ? "Yavaşlama hızı" : "Acil hız"} suffix="km/h" step={1} value={hiz} onChange={setHiz} />
+          <>
+            <Num label={tur.kind === "hemzemin" ? "Yavaşlama hızı" : "Acil hız"} suffix="km/h" step={1} value={hiz} onChange={setHiz} />
+            {tur.kind === "hemzemin" && tur.tip === "karayolu" && (
+              <Num label="Geçit beklemesi" suffix="s" step={1} value={bekleme} onChange={(v) => setBekleme(Math.max(0, Math.round(v)))} />
+            )}
+          </>
         )}
       </div>
       <div className="mt-3 flex justify-end gap-2 text-xs">

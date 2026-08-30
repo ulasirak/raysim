@@ -19,7 +19,7 @@
 // güvenli günlük değer.
 
 import type { RollingStock } from "./types";
-import { type SimConfig, type Isletme, type TerminalConfig, VARSAYILAN_DOLULUK_TAVANI } from "./config";
+import { type SimConfig, type Isletme, type TerminalConfig, VARSAYILAN_DOLULUK_TAVANI, etkinBogazIsgali } from "./config";
 import { blockingTimeHesap } from "./blockingtime";
 import { loopToHat } from "./hatsim";
 import { ringSenaryo, ringTimingEk, type DurakArasiRing } from "./ring";
@@ -49,13 +49,13 @@ export interface MaksimumTrenSonuc {
 
 /** Bir terminalin dayattığı minimum aralık. Peron işgali = terminal dwell + ters dönüş;
  *  peron başına bölünür. Boğaz (lead/crossover) paylaşımlıysa boğaz işgali de bağlar. */
-function terminalHeadway(t: TerminalConfig): number {
+function terminalHeadway(t: TerminalConfig, cfg: SimConfig): number {
   if (t.tip === "dongu") return 0; // balon döngü → dönüş beklemesi yok
   // `|| 0` — eski kayıtta eksik alanlara karşı NaN koruması.
   const peronBasi = (t.peronIsgali || 0) / Math.max(1, t.peronSayisi || 1);
   // Paylaşımlı boğaz: peron sayısı artsa da ardışık trenler tek boğazdan geçer →
   // boğaz işgali alt sınır olur (peron paralelliği boğazla tavanlanır).
-  return t.bogazPaylasimli ? Math.max(peronBasi, t.bogazIsgali || 0) : peronBasi;
+  return t.bogazPaylasimli ? Math.max(peronBasi, etkinBogazIsgali(t, cfg)) : peronBasi;
 }
 
 /** Düz kavşakta (karşı-yön çakışmalı makas) tek geçiş işgali (setup + geçiş + release). */
@@ -102,8 +102,8 @@ export function maksimumTren(
   const blokAd = `Kritik blok${yakinDurak ? ` — ${yakinDurak.name}` : ""}`;
 
   // 2) Terminal dönüş kapasitesi — iki uç da her zaman ters döner (gidiş-dönüş)
-  const hBas = terminalHeadway(isletme.terminalBas);
-  const hSon = terminalHeadway(isletme.terminalSon);
+  const hBas = terminalHeadway(isletme.terminalBas, cfg);
+  const hSon = terminalHeadway(isletme.terminalSon, cfg);
   const hTerminal = Math.max(hBas, hSon);
   const terminalAd = hBas >= hSon ? "Başlangıç terminali dönüşü" : "Bitiş terminali dönüşü";
 
@@ -135,7 +135,9 @@ export function maksimumTren(
   let tekYon = 0;
   for (const r of rings) {
     const sn = ringSenaryo(r, stock, cfg);
-    tekYon += sn.nominalSeyir + ringTimingEk(r) + r.dwell + ringSu(r);
+    // Hemzemin (karayolu) geçit beklemesi: hız düşümünden ayrı, gerçek durma payı.
+    const hemzeminBekleme = r.hemzeminler.reduce((s, h) => s + Math.max(0, h.bekleme ?? 0), 0);
+    tekYon += sn.nominalSeyir + ringTimingEk(r) + r.dwell + ringSu(r) + hemzeminBekleme;
   }
   const terminalCevrim = (t: TerminalConfig) => (t.tip === "dongu" ? 0 : (t.peronIsgali || 0));
   const terminalToplam = terminalCevrim(isletme.terminalBas) + terminalCevrim(isletme.terminalSon);

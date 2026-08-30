@@ -135,14 +135,31 @@ export interface TerminalConfig {
   inisBinis?: number;       // s — terminalde iniş/biniş
   tersDonus?: number;       // s — ters dönüş (reversing)
   kalkisTemizleme?: number; // s — kalkış→boğaz temizleme
+  toparlanma?: number;      // s — schedule recovery / toparlanma marjı (terminalde bekleme payı)
   bogazPaylasimli: boolean;// peronlar tek boğazı (lead/crossover) paylaşıyor mu?
   bogazIsgali: number;    // s — boğaz/crossover işgali (tanzim+geçiş+serbest); yalnız paylaşımlıysa bağlar
+  bogazOto: boolean;      // true → boğaz işgali terminal makas config'inden otomatik türetilir
+  bogazMakasSayisi: number;// terminal boğazındaki makas (crossover) adedi — oto türetmede tanzim süresi
 }
 
 export const VARSAYILAN_TERMINAL: TerminalConfig = {
   tip: "korTerminal", peronSayisi: 1, peronIsgali: 210,
-  bogazPaylasimli: true, bogazIsgali: 45,
+  bogazPaylasimli: true, bogazIsgali: 45, bogazOto: true, bogazMakasSayisi: 2,
 };
+
+/** Boğaz işgali (s) terminal makas config'inden: tanzim (makas×adım) + geçiş (bölge/vMakas) + rota serbest. */
+export function bogazIsgaliOto(t: TerminalConfig, cfg: SimConfig): number {
+  const ADIM = 4;      // s — makas başına tanzim (ring makas varsayılanıyla uyumlu)
+  const RELEASE = 5;   // s — ana hat rota serbest bırakma
+  const tanzim = Math.max(1, t.bogazMakasSayisi || 1) * ADIM;
+  const gecis = cfg.kisitGenisligi / Math.max(0.1, cfg.vMakas);
+  return Math.round(tanzim + gecis + RELEASE);
+}
+
+/** Etkin boğaz işgali: oto ise makastan türetilir, değilse elle girilen. */
+export function etkinBogazIsgali(t: TerminalConfig, cfg: SimConfig): number {
+  return t.bogazOto ? bogazIsgaliOto(t, cfg) : (t.bogazIsgali || 0);
+}
 
 export interface Isletme {
   // Sefer simülasyonu (Studio)
