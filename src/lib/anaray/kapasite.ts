@@ -19,7 +19,7 @@
 // güvenli günlük değer.
 
 import type { RollingStock } from "./types";
-import { type SimConfig, type Isletme, type TerminalConfig, VARSAYILAN_DOLULUK_TAVANI, etkinBogazIsgali, terminalDonusParalel } from "./config";
+import { type SimConfig, type Isletme, type TerminalConfig, VARSAYILAN_DOLULUK_TAVANI, etkinBogazIsgali, terminalDonusParalel, terminalSeriDonus } from "./config";
 import { blockingTimeHesap } from "./blockingtime";
 import { loopToHat } from "./hatsim";
 import { ringSenaryo, ringTimingEk, type DurakArasiRing } from "./ring";
@@ -59,11 +59,11 @@ export interface MaksimumTrenSonuc {
  *     dönebilir → peron işgali ÷ 2. Boğaz varış/kalkış ayrı bacakta → alt sınır 1 × boğaz. */
 function terminalHeadway(t: TerminalConfig, cfg: SimConfig): number {
   if (t.tip === "dongu") return 0; // balon döngü → dönüş beklemesi yok
-  const makasX = t.makasTipi === "x";
   // `|| 0` — eski kayıtta eksik alanlara karşı NaN koruması.
   const peronBasi = (t.peronIsgali || 0) / terminalDonusParalel(t);
-  // Boğaz (crossover) alt sınırı: S-makas'ta varış+kalkış seri (2×), X-makas'ta ayrı (1×).
-  const bogaz = (makasX ? 1 : 2) * etkinBogazIsgali(t, cfg);
+  // Boğaz (crossover) alt sınırı: yalnız S-makas'ta varış+kalkış seri (2×);
+  // X veya S+X'te ayrı bacak (1×).
+  const bogaz = (terminalSeriDonus(t) ? 2 : 1) * etkinBogazIsgali(t, cfg);
   return Math.max(peronBasi, bogaz);
 }
 
