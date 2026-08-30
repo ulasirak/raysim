@@ -255,7 +255,7 @@ export function RingEditor() {
                     </label>
                     <div className="mt-2 grid grid-cols-2 gap-3">
                       <div><Num label="Peron sayısı" suffix="peron" step={1} max={6} value={t.peronSayisi}
-                        onChange={(v) => patchTerminal(uc, { peronSayisi: Math.max(1, Math.round(v)) })} /><Kucuk>aynı anda tren alan peron</Kucuk></div>
+                        onChange={(v) => patchTerminal(uc, { peronSayisi: Math.max(1, Math.round(v)) })} /><Kucuk>terminalde dönüş yapan peron (ray) — çift hatta genelde 2 (gidiş+dönüş peronu)</Kucuk></div>
                     </div>
                     {/* Peron işgal süresi — bileşenli (ince model), toplam yetkili */}
                     <div className="mt-2 rounded border p-2" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
