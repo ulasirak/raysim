@@ -77,9 +77,6 @@ function StudioIc() {
   // Kalıcı sefer parametreleri (context → projeye kayıtlı).
   const headwayDk = isletme.seferHeadwayDk;
   const setHeadwayDk = (v: number) => patchIsletme({ seferHeadwayDk: v });
-  const seferSayisi = isletme.seferSayisi;
-  // Elle giriş → manuel moda geç (oto kapanır) ve değeri sakla.
-  const setSeferSayisiManuel = (v: number) => patchIsletme({ seferSayisi: v, seferSayisiOto: false });
   const turnaroundDk = isletme.turnaroundDk;
   const setTurnaroundDk = (v: number) => patchIsletme({ turnaroundDk: v });
 
@@ -99,13 +96,6 @@ function StudioIc() {
     return depoKapasiteler.every((c) => c > 0) ? depoKapasiteler.reduce((s, c) => s + c, 0) : 0; // 0 = sınırsız/tanımsız
   }, [depoKapasiteler]);
   const servisProfil = useMemo(() => servisProfili(isletme, depoKapasiteToplam), [isletme, depoKapasiteToplam]);
-  // Oto tren sayısı: seçilen işletme aralığında çevrime sığan filo, KAPASİTE tavanıyla
-  // sınırlı (maksimum tramvayı aşamaz). Hat uzarsa / aralık sıklaşırsa otomatik artar.
-  const gerekenFilo = headwayDk > 0
-    ? Math.min(maks.nTeorik || 1, Math.max(1, Math.floor(maks.cevrimSuresi / (headwayDk * 60))))
-    : 1;
-  // Panellerin fiilen kullandığı sayı: oto ise türetilen, değilse elle girilen.
-  const etkinSeferSayisi = isletme.seferSayisiOto ? gerekenFilo : seferSayisi;
   // İstenen işletme aralığı, fiziksel min. aralığın (h_min) altındaysa uygulanamaz.
   const headwayUygulanamaz = maks.gecerli && headwayDk * 60 < maks.hMin - 1e-6;
   const [ariza, setAriza] = useState<number[]>([]); // dispatcher: arızalı bloklar (gidiş hattı) — geçici what-if
@@ -137,33 +127,24 @@ function StudioIc() {
     [network, route, gecitDuruslari, kalkisSu]
   );
 
-  const gidisSim = useMemo(
-    () => simulateSignalled(line, stock, { headway: headwayDk * 60, count: etkinSeferSayisi, maxBlockLen: BLOK_MAXLEN, blocked: ariza }),
-    [line, stock, headwayDk, etkinSeferSayisi, ariza, BLOK_MAXLEN]
-  );
   const arizaToggle = (i: number) => setAriza((a) => (a.includes(i) ? a.filter((x) => x !== i) : [...a, i]));
-  // Depo (parklanma) planı: depo istasyonlarındaki bekleyen trenler gidiş servisini
-  // besler. Depo tanımlıysa Canlı Ağ gidiş sim'i trenleri depolardan SIRAYLA çıkarır
-  // (origins); depo yoksa varsayılan davranış (etkin sefer sayısı tren, hat başından) korunur.
-  // Yalnız Canlı Ağ depo planından etkilenir; diğer paneller etkinSeferSayisi'yle çalışır.
   const depotPlan = useMemo(() => planDepotDispatch(line, headwayDk * 60), [line, headwayDk]);
-  // PARK TRENİ = FİLO (tek kaynak). Depo (parklanma) tanımlıysa filo = toplam park
-  // treni, maksimum tramvay (N_max) ile TAVANLANIR (fazlası depoda bekler); depo
-  // yoksa oto/elle sefer sayısı. Filo hem gidişi hem dönüşü hem Monte-Carlo'yu
-  // besler → gidiş/dönüş kopukluğu biter, park ekle/çıkar sistemi sürükler.
-  const parkToplam = depotPlan.total;
-  const depoVar = parkToplam > 0;
-  const nMax = maks.gecerli ? maks.nTeorik : Infinity;
-  const filoParktan = Math.min(parkToplam, nMax);
-  const filo = depoVar ? filoParktan : etkinSeferSayisi;
-  const parkAsim = depoVar && parkToplam > nMax; // park > kapasite → fazlası depoda bekler
-  const gidisOrigins = useMemo(() => depotPlan.origins.slice(0, filoParktan), [depotPlan, filoParktan]);
+  // CANLI SİM FİLOSU = PİK operasyonel filo (MANUEL, servis profilinden). Tek kaynak:
+  // gidiş + dönüş + Monte-Carlo aynı filoyla. Kapasite (N_max) ile tavanlanır; depo
+  // (parklanma) tanımlıysa trenler depolardan dağıtılarak çıkar. "6 gömülü" yok.
+  const nMax = maks.gecerli ? maks.nTeorik : 999;
+  const filo = Math.min(nMax, Math.max(1, isletme.pikFilo || 1));
+  const filoAsim = maks.gecerli && (isletme.pikFilo || 0) > nMax; // pik filo > kapasite
+  const depoVar = depotPlan.depots.length > 0;
+  // Gereken tren = ⌈RTT ÷ hedef headway⌉ (kullanıcının hedef sıklığı için filo).
+  const gerekenTren = maks.gecerli ? Math.ceil(maks.cevrimSuresi / Math.max(1, headwayDk * 60)) : 0;
+  const gidisOrigins = useMemo(() => {
+    const pos = depotPlan.depots.map((d) => d.position);
+    return pos.length > 0 ? Array.from({ length: filo }, (_, k) => pos[k % pos.length]) : undefined;
+  }, [depotPlan, filo]);
   const canliGidis = useMemo(
-    () =>
-      depoVar
-        ? simulateSignalled(line, stock, { headway: headwayDk * 60, count: filoParktan, maxBlockLen: BLOK_MAXLEN, blocked: ariza, origins: gidisOrigins })
-        : gidisSim,
-    [depoVar, filoParktan, gidisOrigins, gidisSim, line, stock, headwayDk, ariza, BLOK_MAXLEN]
+    () => simulateSignalled(line, stock, { headway: headwayDk * 60, count: filo, maxBlockLen: BLOK_MAXLEN, blocked: ariza, origins: gidisOrigins }),
+    [line, stock, headwayDk, filo, gidisOrigins, ariza, BLOK_MAXLEN]
   );
   const donusSim = useMemo(
     () => simulateSignalled(reverseLine, stock, { headway: headwayDk * 60, count: filo, maxBlockLen: BLOK_MAXLEN }),
@@ -230,16 +211,12 @@ function StudioIc() {
         </div>
         {/* Filo kaynağı + kapasite bağlantısı */}
         <div className="mt-2 text-xs" style={{ color: brand.inkSoft }}>
-          {depoVar ? (
-            <>🅿 Filo <b>{filo}</b> tren (parktan{parkAsim ? `, ${parkToplam} girildi` : ""}) · her yön aynı filoyla koşar
-              {maks.gecerli && <> · hat kapasitesi <b>{maks.nTeorik}</b></>}</>
-          ) : (
-            <>Filo <b>{filo}</b> tren (Sefer Sayısı) · parklanma tanımlarsan filo parktan gelir{maks.gecerli && <> · hat kapasitesi <b>{maks.nTeorik}</b></>}</>
-          )}
+          🚋 Canlı Ağ filosu <b>{filo}</b> tren = <b>pik filo</b> (Gün İçi Servis'ten, manuel){depoVar ? " · depolardan dağıtılır" : " · hat başından"} · her yön aynı filoyla
+          {maks.gecerli && <> · hat kapasitesi <b>{maks.nTeorik}</b> · gereken tren (⌈RTT/headway⌉) <b>{gerekenTren}</b></>}
         </div>
-        {parkAsim && (
+        {filoAsim && (
           <div className="mt-1 text-xs" style={{ color: brand.red }}>
-            ⚠ Parkta {parkToplam} tren var ama bu hatta en fazla {nMax} sığar — fazlası depoda bekler, simülasyon {filo} trenle koşuyor.
+            ⚠ Pik filo ({isletme.pikFilo}) bu hattın kapasitesini ({nMax}) aşıyor — simülasyon {filo} trenle koşuyor (fazlası sığmaz, kuyruklanır).
           </div>
         )}
         {ariza.length > 0 && (
@@ -280,27 +257,19 @@ function StudioIc() {
           <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
             <Num label="Sefer Aralığı" suffix="dk" step={0.5} value={headwayDk} onChange={(v) => setHeadwayDk(Math.max(0.5, v))} />
             <div className="block">
-              <span className="field-label">Sefer Sayısı {depoVar && <span style={{ color: brand.muted }}>(filo)</span>}</span>
+              <span className="field-label">Sefer sayısı <span style={{ color: brand.muted }}>(pik filo)</span></span>
               <div className="mt-1 flex items-center gap-1">
-                <input type="number" value={depoVar ? filo : etkinSeferSayisi} step={1} min={0} max={60}
-                  disabled={depoVar}
-                  onChange={(e) => setSeferSayisiManuel(Math.min(60, Math.max(1, Math.round(parseFloat(e.target.value) || 0))))}
-                  className="w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink, background: depoVar ? "#F2F4F6" : undefined }} />
+                <input type="number" value={isletme.pikFilo} step={1} min={1} max={80}
+                  onChange={(e) => patchIsletme({ pikFilo: Math.max(1, Math.min(80, Math.round(parseFloat(e.target.value) || 0))) })}
+                  className="w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
                 <span className="text-xs" style={{ color: brand.muted }}>tren</span>
               </div>
               <div className="mt-1 text-xs">
-                {depoVar ? (
-                  <span style={{ color: parkAsim ? brand.red : CK.good }}>
-                    🅿 Parktan: {parkToplam} tren{parkAsim ? ` · ${filo} sığar (fazlası depoda)` : ""} — <Link href="/#ringler" className="underline">parkı düzenle</Link>
-                  </span>
-                ) : isletme.seferSayisiOto ? (
-                  <span style={{ color: CK.good }}>⚙ Oto · aralığa göre türetildi (kapasite tavanıyla sınırlı)</span>
-                ) : (
-                  <button type="button" onClick={() => patchIsletme({ seferSayisiOto: true })}
-                    className="underline" style={{ color: brand.red }}>
-                    ↻ Oto’ya dön — gereken {gerekenFilo}
-                  </button>
+                {maks.gecerli && (
+                  <button type="button" onClick={() => patchIsletme({ pikFilo: gerekenTren })}
+                    className="underline" style={{ color: brand.red }}>↧ gereken al ({gerekenTren}) · ⌈RTT÷headway⌉</button>
                 )}
+                {filoAsim && <span style={{ color: brand.red }}> · ⚠ kapasite {nMax} aşıldı</span>}
               </div>
             </div>
             <Num label="Dönüş Bekleme" suffix="dk" step={0.5} value={turnaroundDk} onChange={(v) => setTurnaroundDk(Math.max(0, v))} />
@@ -315,8 +284,8 @@ function StudioIc() {
 
           {/* Bekleme durumu */}
           <div className="text-sm">
-            {gidisSim.anyDelay ? (
-              <span style={{ color: brand.red }}>⚠ Bu aralıkta trenler birbirini bekliyor — en fazla {sure(gidisSim.maxDelay)} gecikme.</span>
+            {canliGidis.anyDelay ? (
+              <span style={{ color: brand.red }}>⚠ Bu aralıkta trenler birbirini bekliyor — en fazla {sure(canliGidis.maxDelay)} gecikme.</span>
             ) : (
               <span style={{ color: CK.good }}>✓ Bu aralıkta bekleme yok — trenler serbest akıyor.</span>
             )}

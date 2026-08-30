@@ -12,6 +12,7 @@ import { sure, indir } from "@/lib/anaray/format";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { PROJE_META_ALANLAR } from "@/lib/anaray/config";
 import { loopDenge, olceklenme, ringChallenge, ringDogrula, loopTamMi } from "@/lib/anaray/ring";
+import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 // wordUret/excelUret ağır (docx + exceljs ~1MB) — statik import etmiyoruz; yalnız
 // ilgili buton tıklandığında await import() ile tembel yüklenir (indir hafif, format'ta).
 import { type RaporDil } from "@/lib/anaray/rapor";
@@ -20,11 +21,14 @@ import { getAuthInstance } from "@/lib/firebase";
 
 export function Belgeler() {
   const { cfg } = useSimConfig();
-  const { rings, meta, patchMeta, yazilabilir } = useProje();
+  const { rings: ringsHam, meta, patchMeta, yazilabilir } = useProje();
   const { yenile } = useCuzdan();
   const { arac: stock } = useArac();
   const { isletme } = useIsletme();
   const turnaroundSn = Math.max(0, isletme.turnaroundDk) * 60; // dönüş bekleme → çevrim/filo hesabı
+  // Yolcu dinamiği: dwell OTO ringlerin dwell'i hesaplanır → RAPOR da hesaplı dwell'i
+  // kullanır (kapasite/canlı sim ile tutarlı). Ham ring yerine hesaplı ring geçilir.
+  const rings = useMemo(() => dwellUygulanmisRings(ringsHam, stock, isletme), [ringsHam, stock, isletme]);
   // Sunum modu (bkz. rapor.ts): challenge/risk kaydı ve "ihlal/dengesizlik" uyarıları
   // gösterilmez; belge özeti uygun/dengeli olarak yansıtılır.
   const sunum = !!meta.sunumModu;
