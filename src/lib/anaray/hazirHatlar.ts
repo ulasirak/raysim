@@ -127,6 +127,8 @@ function tersRingZinciri(rings: DurakArasiRing[]): DurakArasiRing[] {
       makaslar: r.makaslar.map(ayna),
       hemzeminler: r.hemzeminler.map(ayna),
       tehlikeNoktalari: r.tehlikeNoktalari.map(ayna),
+      // Sinyaller: konum aynalanır + yön ters çevrilir (giden↔gelen) çünkü hat ters kuruluyor.
+      sinyaller: (r.sinyaller ?? []).map((s) => ({ ...ayna(s), yon: s.yon === "giden" ? "gelen" as const : "giden" as const })),
     };
   });
 }

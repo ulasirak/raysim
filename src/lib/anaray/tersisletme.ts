@@ -185,6 +185,22 @@ export function tersIsletmeAnaliz(
   }
   const makasliDurak = new Set(makaslarM.map((m) => m.durakIdx));
 
+  // Ters işletme sinyali olan durakları belirle (turnback'i güvenli kılan sinyal).
+  const tersSinyalDurak = new Set<number>();
+  {
+    let off = 0;
+    rings.forEach((r) => {
+      for (const s of r.sinyaller ?? []) {
+        if (!s.tersIsletme) continue;
+        const konum = off + Math.max(0, Math.min(r.uzunluk, s.konum));
+        let bi = 0, bd = Infinity;
+        duraklar.forEach((d, i) => { const dd = Math.abs(d.konum - konum); if (dd < bd) { bd = dd; bi = i; } });
+        tersSinyalDurak.add(bi);
+      }
+      off += r.uzunluk;
+    });
+  }
+
   // Rol ağırlıkları + OD-lite tahmini (her modda hesaplanır — istasyon modunda
   // girilmemiş durakların VARSAYILANI bu tahmindir).
   const wGidis = duraklar.map((d) => isletme.talepAgirliklari?.[d.ad] ?? durakAgirlik(d.ad));
@@ -241,6 +257,7 @@ export function tersIsletmeAnaliz(
     .filter((m) => m.durakIdx > 0 && m.durakIdx < N - 1) // uç terminaller ayrı (turnback zaten)
     .map((m) => {
       const idx = m.durakIdx;
+      const tersSinyalVar = tersSinyalDurak.has(idx);
       // aynı duraktaki tüm makaslar
       const grup = makaslarM.filter((x) => x.durakIdx === idx);
       const xVar = grup.some((x) => x.crossover === "x");
@@ -265,7 +282,9 @@ export function tersIsletmeAnaliz(
           { ad: "Kısa dönüş (turnback)", aciklama: onerilir ? `Sessiz ${sessizUc} kolu yoğun taraftan sönük → trenlerin ~%${kisaDonusYuzde}'i burada dönüp yalnız yoğun çekirdeği besler (dış kolda boş sefer yok).` : `İki taraf da benzer yoğunlukta → kısa dönüş kazancı düşük, tam tur daha verimli.` },
           { ad: "Yoğunluk atağı", aciklama: `Ani biniş dalgasında (etkinlik/pik) bu makastan ek tren enjekte edilerek yoğun tarafın aralığı düşürülür — hat süreleri değişmeden sıklık artar.` },
         ],
-        sureNotu,
+        sureNotu: sureNotu + (tersSinyalVar
+          ? " ✓ Ters işletme sinyali mevcut → dönüş güvenli (karşı yönden gelenle çakışma korumalı)."
+          : (onerilir ? " ⚠ Ters işletme sinyali YOK — kısa dönüş için gitme yönünün tersine ters işletme sinyali eklenmeli." : "")),
         yorum: onerilir
           ? `Kısa dönüş noktası ADAYI: yoğun taraf ${Math.round(yuksek)} vs sessiz ${Math.round(dusuk)} yolcu/saat.`
           : `Dengeli kesim — kısa dönüş şart değil.`,

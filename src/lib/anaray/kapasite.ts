@@ -22,11 +22,11 @@ import type { RollingStock } from "./types";
 import { type SimConfig, type Isletme, type TerminalConfig, VARSAYILAN_DOLULUK_TAVANI, etkinBogazIsgali, terminalDonusParalel, terminalSeriDonus } from "./config";
 import { blockingTimeHesap } from "./blockingtime";
 import { loopToHat } from "./hatsim";
-import { ringSenaryo, ringTimingEk, type DurakArasiRing } from "./ring";
+import { ringSenaryo, ringTimingEk, sinyalCevrimi, type DurakArasiRing } from "./ring";
 import { hemzeminDuruslari, duruslariEkle } from "./network";
 import { dwellUygulanmisRings } from "./yolcu";
 
-export type KisitAnahtar = "blok" | "terminal" | "tekhat" | "kavsak";
+export type KisitAnahtar = "blok" | "terminal" | "tekhat" | "kavsak" | "sinyal";
 
 export interface KapasiteKisit {
   anahtar: KisitAnahtar;
@@ -144,8 +144,21 @@ export function maksimumTren(
     }
   }
 
+  // 5) Sinyal lambası aspect çevrimi — kullanıcının koyduğu yönlü sinyaller headway TABANI
+  //    dayatır: bir yön trafiği için aynı sinyalden iki tren, sinyalin tam aspect çevriminden
+  //    (yeşil→sarı→kırmızı→yeşil) daha sık geçemez. Kapasite tek yön → "giden" sinyalleri bağlar.
+  let hSinyal = 0;
+  let sinyalAd = "Sinyal aspect çevrimi";
+  for (const r of rings) {
+    for (const s of r.sinyaller ?? []) {
+      if (s.yon !== "giden" || s.tersIsletme) continue; // kapasite ileri yön; ters işletme/gelen ayrı akışta
+      const cev = sinyalCevrimi(s);
+      if (cev > hSinyal) { hSinyal = cev; sinyalAd = `Sinyal — ${s.ad || r.ad || `${r.fromAd}–${r.toAd}`}`; }
+    }
+  }
+
   // Bağlayıcı h_min = kısıtların en büyüğü
-  const hMin = Math.max(hBlok, hTerminal, hTekhat, hKavsak);
+  const hMin = Math.max(hBlok, hTerminal, hTekhat, hKavsak, hSinyal);
 
   // Çevrim süresi — NOMİNAL seyir (h_min ile aynı taban) + ARA istasyon dwell'leri +
   // her durakta kalkış ölü zamanı; iki yön (×2) + iki terminalde peron işgal süresi.
@@ -180,6 +193,10 @@ export function maksimumTren(
   if (hKavsak > 0) {
     kisitlar.push({ anahtar: "kavsak", ad: kavsakAd, headway: hKavsak, aktif: hMin === hKavsak,
       aciklama: "Düz kavşakta karşı-yön hareketleri çakışır → kavşak sırayla kullanılır (2 × kavşak işgali)." });
+  }
+  if (hSinyal > 0) {
+    kisitlar.push({ anahtar: "sinyal", ad: sinyalAd, headway: hSinyal, aktif: hMin === hSinyal,
+      aciklama: "Kullanıcının koyduğu sinyal lambasının tam aspect çevrimi (yeşil→sarı→kırmızı→yeşil) — aynı sinyalden ardışık iki tren bu süreden sık geçemez." });
   }
   const baglayan = kisitlar.find((k) => k.aktif) ?? kisitlar[0];
 

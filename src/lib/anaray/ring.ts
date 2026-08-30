@@ -127,6 +127,34 @@ export interface DurakArasiRing {
   makaslar: MakasBolgesi[];
   hemzeminler: Hemzemin[];
   tehlikeNoktalari: TehlikeNoktasi[];
+  /** İstasyon başına yerleştirilen sinyal lambaları (yön + kilometraj + aspect süreleri).
+   *  Blok yapısını DEĞİŞTİRMEZ (bloklar yine azami uzunluktan); aspect süreleri
+   *  blocking-time'a headway tabanı olarak girer + canlı simde görünür. */
+  sinyaller?: SinyalLambasi[];
+}
+
+/** Bir sinyal lambası — yönlü (giden/gelen) + kilometrajlı + aspect (yeşil/sarı/kırmızı) süreli. */
+export interface SinyalLambasi {
+  id: string;
+  ad: string;
+  konum: number;            // m — ring başından kilometraj
+  yon: "giden" | "gelen";   // hangi yön trafiği bu lambayı görür (giden = ileri, gelen = ters)
+  /** Ters işletme sinyali mi? Ters işletmede tramvay S makasa girerken KARŞI yönden gelenle
+   *  çakışmamak için gitme yönünün TERSİNE konur → dönebilmesini (turnback) güvenli kılar. */
+  tersIsletme: boolean;
+  yesilSari: number;        // s — yeşil→sarı (yaklaşma/görme uyarısı başlangıcı)
+  sariKirmizi: number;      // s — sarı→kırmızı (blok işgali)
+  kirmiziYesil: number;     // s — kırmızı→yeşil (temizleme + rota serbest bırakma) — headway tabanı
+}
+
+/** Yeni sinyal lambası (tipik tramvay aspect süreleri). */
+export function yeniSinyal(yon: "giden" | "gelen", konum: number, tersIsletme = false): SinyalLambasi {
+  return { id: yeniId("SIG"), ad: "", konum, yon, tersIsletme, yesilSari: 3, sariKirmizi: 2, kirmiziYesil: 8 };
+}
+
+/** Bir sinyalin toplam aspect çevrimi (s) = headway'e kattığı taban süre. */
+export function sinyalCevrimi(s: SinyalLambasi): number {
+  return Math.max(0, (s.yesilSari || 0) + (s.sariKirmizi || 0) + (s.kirmiziYesil || 0));
 }
 
 export interface Loop {
@@ -597,13 +625,13 @@ export function durakBol(rings: DurakArasiRing[], index: number, konum?: number)
     ...r, id: yeniId("RING"), toAd: "Yeni Durak", uzunluk: yari,
     worstUzunluk: Math.max(yari, r.worstUzunluk), bestUzunluk: clamp(r.bestUzunluk, Math.min(50, yari), yari),
     depot: false, queued: undefined,
-    makaslar: oncesi(r.makaslar), hemzeminler: oncesi(r.hemzeminler), tehlikeNoktalari: oncesi(r.tehlikeNoktalari),
+    makaslar: oncesi(r.makaslar), hemzeminler: oncesi(r.hemzeminler), tehlikeNoktalari: oncesi(r.tehlikeNoktalari), sinyaller: oncesi(r.sinyaller ?? []),
   };
   const b: DurakArasiRing = {
     ...r, id: yeniId("RING"), fromAd: "Yeni Durak", uzunluk: kalan,
     worstUzunluk: Math.max(kalan, r.worstUzunluk), bestUzunluk: clamp(r.bestUzunluk, Math.min(50, kalan), kalan),
     fromDepot: undefined, fromQueued: undefined,
-    makaslar: sonrasi(r.makaslar), hemzeminler: sonrasi(r.hemzeminler), tehlikeNoktalari: sonrasi(r.tehlikeNoktalari),
+    makaslar: sonrasi(r.makaslar), hemzeminler: sonrasi(r.hemzeminler), tehlikeNoktalari: sonrasi(r.tehlikeNoktalari), sinyaller: sonrasi(r.sinyaller ?? []),
   };
   return [...rings.slice(0, index), a, b, ...rings.slice(index + 1)];
 }
@@ -624,6 +652,7 @@ export function durakSil(rings: DurakArasiRing[], i: number): DurakArasiRing[] {
     makaslar: [...a.makaslar, ...b.makaslar.map((m) => ({ ...m, konum: m.konum + a.uzunluk }))],
     hemzeminler: [...a.hemzeminler, ...b.hemzeminler.map((h) => ({ ...h, konum: h.konum + a.uzunluk }))],
     tehlikeNoktalari: [...a.tehlikeNoktalari, ...b.tehlikeNoktalari.map((t) => ({ ...t, konum: t.konum + a.uzunluk }))],
+    sinyaller: [...(a.sinyaller ?? []), ...(b.sinyaller ?? []).map((s) => ({ ...s, konum: s.konum + a.uzunluk }))],
   };
   return [...rings.slice(0, i - 1), merged, ...rings.slice(i + 1)];
 }
@@ -680,5 +709,6 @@ export function yeniRing(fromAd: string, toAd: string): DurakArasiRing {
     makaslar: [],
     hemzeminler: [],
     tehlikeNoktalari: [],
+    sinyaller: [],
   };
 }

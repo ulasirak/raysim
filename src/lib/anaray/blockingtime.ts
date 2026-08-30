@@ -19,7 +19,7 @@ import { type SimConfig, VARSAYILAN_DOLULUK_TAVANI } from "./config";
 import { simulate } from "./sim";
 import { makeBlocks } from "./signalling";
 import { loopToHat, type HatModel } from "./hatsim";
-import type { DurakArasiRing } from "./ring";
+import { sinyalCevrimi, type DurakArasiRing } from "./ring";
 
 const T_SIGHTING = 4; // s — sürücü görme/reaksiyon (görerek sürüş kabulü)
 
@@ -128,7 +128,13 @@ export function blockingTimeHesap(
 
   let kritikBlok = 0;
   for (let i = 1; i < bloklar.length; i++) if (bloklar[i].toplam > bloklar[kritikBlok].toplam) kritikBlok = i;
-  const minHeadway = bloklar.length ? bloklar[kritikBlok].toplam : 0;
+  // Sinyal lambası tabanı: kullanıcının koyduğu ileri-yön (ters-işletme olmayan) sinyallerin
+  // aspect çevrimi headway'e alt sınır dayatır (aynı sinyalden ardışık iki tren sık geçemez).
+  const sinyalTaban = rings.reduce((mx, r) => {
+    for (const s of r.sinyaller ?? []) if (s.yon === "giden" && !s.tersIsletme) mx = Math.max(mx, sinyalCevrimi(s));
+    return mx;
+  }, 0);
+  const minHeadway = Math.max(bloklar.length ? bloklar[kritikBlok].toplam : 0, sinyalTaban);
   const teorikKapasite = minHeadway > 0 ? 3600 / minHeadway : 0;
   const dolulukTavani = cfg.dolulukTavani ?? VARSAYILAN_DOLULUK_TAVANI;
   const pratikKapasite = teorikKapasite * dolulukTavani;

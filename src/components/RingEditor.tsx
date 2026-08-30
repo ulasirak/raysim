@@ -26,6 +26,7 @@ import {
   yeniHemzemin,
   yeniMakas,
   yeniTehlike,
+  yeniSinyal,
   ringDuraklari,
   durakAdiDegistir,
   durakEkleBas,
@@ -34,6 +35,7 @@ import {
   durakSil,
   duraklardanHat,
   type DurakArasiRing,
+  type SinyalLambasi,
   type HemzeminTip,
   type KisitTur,
   type MakasTip,
@@ -209,6 +211,12 @@ export function RingEditor() {
     setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, tehlikeNoktalari: [...r.tehlikeNoktalari, { ...yeniTehlike(konum ?? Math.round(r.uzunluk * 0.7)), ...ekstra }] } : r)));
   const tnSil = (rid: string, tid: string) =>
     setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, tehlikeNoktalari: r.tehlikeNoktalari.filter((t) => t.id !== tid) } : r)));
+  const sinyalEkle = (rid: string, yon: "giden" | "gelen", konum: number, tersIsletme: boolean) =>
+    setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, sinyaller: [...(r.sinyaller ?? []), yeniSinyal(yon, Math.max(0, Math.min(r.uzunluk, Math.round(konum))), tersIsletme)] } : r)));
+  const patchSinyal = (rid: string, sid: string, p: Partial<SinyalLambasi>) =>
+    setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, sinyaller: (r.sinyaller ?? []).map((s) => (s.id === sid ? { ...s, ...p } : s)) } : r)));
+  const sinyalSil = (rid: string, sid: string) =>
+    setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, sinyaller: (r.sinyaller ?? []).filter((s) => s.id !== sid) } : r)));
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
@@ -656,6 +664,9 @@ export function RingEditor() {
             onTnEkle={(konum, ekstra) => tnEkle(r.id, konum, ekstra)}
             onTnSil={(tid) => tnSil(r.id, tid)}
             onTnPatch={(tid, p) => patchTn(r.id, tid, p)}
+            onSinyalEkle={(yon, konum, ters) => sinyalEkle(r.id, yon, konum, ters)}
+            onSinyalSil={(sid) => sinyalSil(r.id, sid)}
+            onSinyalPatch={(sid, pp) => patchSinyal(r.id, sid, pp)}
           />
           </div>
         ))}
@@ -716,10 +727,15 @@ interface KartProps {
   onTnEkle: (konum?: number, ekstra?: Partial<DurakArasiRing["tehlikeNoktalari"][number]>) => void;
   onTnSil: (tid: string) => void;
   onTnPatch: (tid: string, p: Partial<DurakArasiRing["tehlikeNoktalari"][number]>) => void;
+  onSinyalEkle: (yon: "giden" | "gelen", konum: number, ters: boolean) => void;
+  onSinyalSil: (sid: string) => void;
+  onSinyalPatch: (sid: string, p: Partial<SinyalLambasi>) => void;
 }
 
 function RingKart(p: KartProps) {
   const { ring, index, stock, cfg, isletme, sunum } = p;
+  const [sigYon, setSigYon] = useState<"giden" | "gelen">("giden");
+  const [sigKonum, setSigKonum] = useState(() => Math.round(ring.uzunluk * 0.9));
   const eksik = useMemo(() => ringDogrula(ring, cfg), [ring, cfg]);
   // Senaryo (worst/headway) HESAPLI dwell'le: dwellOto ringde dwell yolcu akışından.
   const sen = useMemo(() => {
@@ -984,6 +1000,74 @@ function RingKart(p: KartProps) {
                     <button onClick={() => p.onTnSil(t.id)} className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* Sinyal Lambaları — istasyon başına yönlü sinyal (manuel blok aralığı yerine) */}
+          <div className="mt-4 border-t pt-3" style={{ borderColor: brand.border }}>
+            <SubBaslik>Sinyal Lambaları</SubBaslik>
+            <p className="mb-2 text-xs" style={{ color: brand.muted }}>
+              Manuel blok aralığı yerine gerçek sinyalleri buraya koy. Her sinyal bir <b>yön</b> (giden/gelen) trafiğini görür, <b>kilometraj</b>ında durur ve <b>aspect süreleri</b> (yeşil→sarı→kırmızı→yeşil) taşır — bu süreler canlı simde lambayı animasyonlar HEM blocking-time/headway tabanına girer. İstasyon başına birden fazla eklenebilir.
+            </p>
+            {p.duzenlenebilir && (
+              <div className="rounded border p-2" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
+                <div className="flex flex-wrap items-end gap-3">
+                  <label className="block">
+                    <span className="field-label">Yön (kimin göreceği)</span>
+                    <div className="mt-1 flex gap-1">
+                      {([["giden", "▶ Giden (ileri)"], ["gelen", "◀ Gelen (ters)"]] as const).map(([y, ad]) => (
+                        <button key={y} type="button" onClick={() => setSigYon(y)}
+                          className="rounded border px-2 py-1 text-xs font-medium"
+                          style={sigYon === y ? { background: brand.ink, color: "#fff", borderColor: brand.ink } : { borderColor: brand.border, color: brand.inkSoft }}>{ad}</button>
+                      ))}
+                    </div>
+                  </label>
+                  <div className="w-24"><Num label="Kilometraj" suffix="m" step={10} value={sigKonum} onChange={(v) => setSigKonum(Math.max(0, Math.min(ring.uzunluk, Math.round(v))))} /></div>
+                </div>
+                <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <button type="button" onClick={() => p.onSinyalEkle(sigYon, sigKonum, false)}
+                      className="w-full rounded px-2 py-1.5 text-xs font-semibold text-white" style={{ background: brand.ink }}>＋ Düz sinyal lambası</button>
+                    <Kucuk>Normal blok koruyucu sinyal. <b>{sigYon === "giden" ? "Giden" : "Gelen"}</b> tramvayın <b>daima görebileceği</b> şekilde konur. Aspect süreleri hem canlı simde lambayı animasyonlar HEM blocking-time/headway tabanını besler: <b>kırmızı→yeşil</b> = temizleme + rota serbest bırakma, <b>sarı</b> = yaklaşma/görme uyarısı. Aynı sinyalden ardışık iki tren bu çevrimden sık geçemez.</Kucuk>
+                  </div>
+                  <div>
+                    <button type="button" onClick={() => p.onSinyalEkle(sigYon, sigKonum, true)}
+                      className="w-full rounded border px-2 py-1.5 text-xs font-semibold" style={{ borderColor: brand.ink, color: brand.ink }}>＋ Ters işletme sinyali</button>
+                    <Kucuk>Ters işletme (kısa dönüş) için. Tramvay <b>S makasa</b> girip karşı şeride geçerken <b>karşı yönden gelenle çakışmamak</b> için gitme yönünün <b>tersine</b> konur → güvenli <b>dönüşü (turnback)</b> sağlar. Süresi ters işletme dönüş süresine girer (Ters İşletme analizini besler).</Kucuk>
+                  </div>
+                </div>
+              </div>
+            )}
+            {(ring.sinyaller ?? []).length === 0 ? (
+              <p className="mt-2 text-xs" style={{ color: brand.faint }}>Bu ringde sinyal lambası yok.</p>
+            ) : (
+              <div className="mt-2 flex flex-col gap-2">
+                {(ring.sinyaller ?? []).map((s) => {
+                  const konumHatali = s.konum < 0 || s.konum > ring.uzunluk;
+                  const cev = s.yesilSari + s.sariKirmizi + s.kirmiziYesil;
+                  return (
+                    <div key={s.id} className="rounded border p-2" style={{ borderColor: konumHatali ? brand.red : s.tersIsletme ? brand.ink : brand.border }}>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded px-1.5 py-0.5 text-[0.65rem] font-semibold" style={{ background: s.tersIsletme ? CK.goodBgSoft : "#F1F5F9", color: brand.inkSoft }}>
+                          {s.yon === "giden" ? "▶ Giden" : "◀ Gelen"} · {s.tersIsletme ? "TERS İŞLETME" : "düz"}
+                        </span>
+                        <input value={s.ad} placeholder="ad (ör. S1)" onChange={(e) => p.onSinyalPatch(s.id, { ad: e.target.value })}
+                          className="min-w-0 flex-1 rounded border px-1.5 py-1 text-xs" style={{ borderColor: brand.border, color: brand.ink }} />
+                        <button type="button" onClick={() => p.onSinyalPatch(s.id, { yon: s.yon === "giden" ? "gelen" : "giden" })} className="rounded border px-1.5 py-1 text-[0.65rem]" style={{ borderColor: brand.border, color: brand.inkSoft }}>yön çevir</button>
+                        <button type="button" onClick={() => p.onSinyalPatch(s.id, { tersIsletme: !s.tersIsletme })} className="rounded border px-1.5 py-1 text-[0.65rem]" style={{ borderColor: s.tersIsletme ? brand.ink : brand.border, color: brand.inkSoft }}>ters işletme amaçlı mı</button>
+                        <button type="button" onClick={() => p.onSinyalSil(s.id)} className="rounded px-1.5 py-1 text-xs" style={{ color: brand.red }}>🗑</button>
+                      </div>
+                      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        <Num label="Kilometraj" suffix="m" step={10} value={s.konum} onChange={(v) => p.onSinyalPatch(s.id, { konum: v })} hata={konumHatali} />
+                        <Num label="Yeşil→Sarı" suffix="s" step={1} value={s.yesilSari} onChange={(v) => p.onSinyalPatch(s.id, { yesilSari: Math.max(0, Math.round(v)) })} />
+                        <Num label="Sarı→Kırmızı" suffix="s" step={1} value={s.sariKirmizi} onChange={(v) => p.onSinyalPatch(s.id, { sariKirmizi: Math.max(0, Math.round(v)) })} />
+                        <Num label="Kırmızı→Yeşil" suffix="s" step={1} value={s.kirmiziYesil} onChange={(v) => p.onSinyalPatch(s.id, { kirmiziYesil: Math.max(0, Math.round(v)) })} />
+                      </div>
+                      <Kucuk>Aspect çevrimi {cev} s → {s.yon === "giden" && !s.tersIsletme ? "ileri yön headway tabanına girer" : s.tersIsletme ? "ters işletme dönüş süresine girer" : "gelen yön / yerel + görsel"}.</Kucuk>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

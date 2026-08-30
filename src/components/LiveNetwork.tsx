@@ -411,6 +411,25 @@ export function LiveNetwork({
               </g>
             );
           }
+          if (f.kind === "sinyal") {
+            const giden = f.yon === "giden";
+            const ters = !!f.tersIsletme;
+            const cerceve = ters ? CK.amber : brand.ink;
+            return (
+              <g key={`f${i}`}>{bag}
+                {/* direk + 3-aspect kafa (kırmızı/sarı/yeşil) — aktif renk blok işgaline göre */}
+                <line x1={top.x} y1={top.y - 6} x2={top.x} y2={top.y + 3} stroke={cerceve} strokeWidth={0.8} />
+                <rect x={top.x - 1.7} y={top.y - 6.5} width={3.4} height={6.6} rx={1} fill={brand.surface} stroke={cerceve} strokeWidth={0.7} />
+                <circle cx={top.x} cy={top.y - 4.8} r={0.85} fill={dolu ? ASPEKT.kirmizi : "#E6C9C9"} style={{ transition: "fill 0.35s ease" }} />
+                <circle cx={top.x} cy={top.y - 3.1} r={0.85} fill="#E8DEBE" />
+                <circle cx={top.x} cy={top.y - 1.4} r={0.85} fill={dolu ? "#C4D8C9" : ASPEKT.yesil} style={{ transition: "fill 0.35s ease" }} />
+                {/* yön oku: giden ▶ / gelen ◀ */}
+                <path d={giden ? `M ${top.x + 2.6} ${top.y - 3.8} l 2.2 1.4 l -2.2 1.4 z` : `M ${top.x - 2.6} ${top.y - 3.8} l -2.2 1.4 l 2.2 1.4 z`} fill={cerceve} />
+                {ters && <text x={top.x} y={top.y + 3.6} textAnchor="middle" fontSize={3.2} fontWeight={700} fill={CK.amber}>↺</text>}
+                <title>{`Sinyal: ${f.ad} — ${giden ? "giden (ileri)" : "gelen (ters)"}${ters ? " · TERS İŞLETME (turnback)" : ""} · aspect çevrimi ${Math.round(f.aspektCevrim || 0)} s · ${dolu ? "kırmızı (dolu)" : "yeşil (serbest)"}`}</title>
+              </g>
+            );
+          }
           {
             const scissors = f.crossover === "x";
             return (
@@ -486,7 +505,7 @@ export function LiveNetwork({
       </div>
       <p className="text-xs" style={{ color: brand.muted }}>
         <span style={{ color: DOWN }}>▬</span> Üst şerit: Dönüş (sağ→sol) · <span style={{ color: UP_COL }}>▬</span> Alt şerit: Gidiş (sol→sağ) · <span style={{ color: CK.red }}>▬</span> işgal edilen blok.
-        {" "}Sinyal: <span style={{ color: ASPEKT.yesil }}>●</span> yeşil (serbest) · <span style={{ color: ASPEKT.sari }}>●</span> sarı (dikkat) · <span style={{ color: ASPEKT.kirmizi }}>●</span> kırmızı (dur). Sabit blok 3-fener mantığı canlı akıyor. Hat özellikleri: <span style={{ color: CK.blue }}>◉</span> yaya geçidi (yavaşlar) · <span style={{ color: CK.amber }}>⊞</span> karayolu geçidi (durma varsa bekler) · <span style={{ color: brand.ink }}>◆</span> makas/kavşak koruyucu sinyali — <b>S</b> tek crossover, <b>X</b> scissors (çift, ✕ işaretli). Her işaretin raya bağ çizgisi konumunu gösterir. <b>Not:</b> sinyaller yalnız duraklarda değil; geçit ve makas/kavşakta da beklemeyi bu koruyucu sinyaller sağlar — rota/kavşak müsait değilse tren o sinyalde durur.
+        {" "}Sinyal: <span style={{ color: ASPEKT.yesil }}>●</span> yeşil (serbest) · <span style={{ color: ASPEKT.sari }}>●</span> sarı (dikkat) · <span style={{ color: ASPEKT.kirmizi }}>●</span> kırmızı (dur). Sabit blok 3-fener mantığı canlı akıyor. Hat özellikleri: <span style={{ color: CK.blue }}>◉</span> yaya geçidi (yavaşlar) · <span style={{ color: CK.amber }}>⊞</span> karayolu geçidi (durma varsa bekler) · <span style={{ color: brand.ink }}>◆</span> makas/kavşak koruyucu sinyali — <b>S</b> tek crossover, <b>X</b> scissors (çift, ✕ işaretli) · 3-aspect direk sinyali <b>▶</b> giden / <b>◀</b> gelen yön, <span style={{ color: CK.amber }}>amber ↺</span> = ters işletme (turnback) sinyali. Her işaretin raya bağ çizgisi konumunu gösterir. <b>Not:</b> sinyaller yalnız duraklarda değil; geçit ve makas/kavşakta da beklemeyi bu koruyucu sinyaller sağlar — rota/kavşak müsait değilse tren o sinyalde durur.
         {depoToplam > 0 && <> · 🅿 <b>Depo (parklanma):</b> bekleyen trenler sırayla headway aralığıyla servise çıkar; kutudaki dolu kareler çıkışa hazır, soluk kareler çıkmış trenlerdir.</>}
       </p>
     </div>

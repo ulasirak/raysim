@@ -252,12 +252,15 @@ export function makasKonumlari(
  *  hat-boyu konumlarıyla. Görsel işaretler bu tek kaynaktan çizilir. */
 export type HatOzellik = {
   pos: number;
-  kind: "yaya" | "karayolu" | "makas";
+  kind: "yaya" | "karayolu" | "makas" | "sinyal";
   ad: string;
   bekleme: number;        // s — karayolu geçidinde durma (0 = durmadan yavaşlar)
   makasTip?: string;      // makas ise tipi (karsilasmali/headway/…)
   crossover?: "s" | "x";  // makas ise crossover geometrisi: tek (S) / scissors (X)
   makasSayisi?: number;   // makas ise ardışık makas (PM) adedi
+  yon?: "giden" | "gelen"; // sinyal ise hangi yön görür
+  tersIsletme?: boolean;  // sinyal ise ters işletme (turnback) sinyali mi
+  aspektCevrim?: number;  // sinyal ise toplam aspect çevrimi (s)
 };
 export function hatOzellikleri(
   rings: DurakArasiRing[], cfg: SimConfig = BELGE,
@@ -275,6 +278,10 @@ export function hatOzellikleri(
     for (const m of r.makaslar) {
       const pos = offset + Math.max(0, Math.min(r.uzunluk, m.konum)) * scale;
       out.push({ pos, kind: "makas", ad: m.ad || "Makas", bekleme: 0, makasTip: m.tip, crossover: m.crossover ?? "s", makasSayisi: m.makasSayisi });
+    }
+    for (const s of r.sinyaller ?? []) {
+      const pos = offset + Math.max(0, Math.min(r.uzunluk, s.konum)) * scale;
+      out.push({ pos, kind: "sinyal", ad: s.ad || "Sinyal", bekleme: 0, yon: s.yon, tersIsletme: s.tersIsletme, aspektCevrim: (s.yesilSari || 0) + (s.sariKirmizi || 0) + (s.kirmiziYesil || 0) });
     }
     offset += L;
   }
