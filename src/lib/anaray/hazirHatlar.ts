@@ -22,7 +22,7 @@ import {
   yeniRing, yeniMakas, yeniHemzemin,
   type DurakArasiRing, type MakasTip, type HemzeminTip,
 } from "./ring";
-import { varsayilanConfig, varsayilanMeta, varsayilanIsletme, type ProjeMeta } from "./config";
+import { varsayilanConfig, varsayilanMeta, varsayilanIsletme, VARSAYILAN_TERMINAL, type ProjeMeta, type TerminalConfig } from "./config";
 import type { RollingStock } from "./types";
 import type { ProjeVerisi } from "../projeler";
 
@@ -93,6 +93,13 @@ function hatKur(
     rings.push(r);
   }
   return rings;
+}
+
+/** Terminal dönüş makası tipi override'ı — gerçek CAD turnback fanlarından:
+ *  tek crossover (≈2 PM) → "s"; scissors fan (≈4 PM) → "x"; büyük fan / hem S hem X
+ *  (≈8 PM, ör. Şehir Hastanesi U21/U22 & Stadyum yelpazesi) → "sx". */
+function term(makasTipi: "s" | "x" | "sx"): TerminalConfig {
+  return { ...VARSAYILAN_TERMINAL, makasTipi };
 }
 
 function meta(p: Partial<ProjeMeta>): ProjeMeta {
@@ -232,7 +239,8 @@ export function hazirHatlar(): HazirHat[] {
     ad: "Konya Mevcut Hat — Alaaddin–Adliye (CAD)",
     veri: {
       rings: mevcutRings, cfg, arac: SKODA_28T,
-      isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 8, turnaroundDk: 4 },
+      // Alaaddin yelpaze (4 makas) → X · Adliye U-dönüş PM8/PM9 (tek crossover) → S
+      isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 8, turnaroundDk: 4, terminalBas: term("x"), terminalSon: term("s") },
       meta: meta({
         projeAdi: "Konya Tramvay — Mevcut Hat (Alaaddin–Adliye) Sinyalizasyon",
         hatAdi: "Alaaddin – Adliye (5,2 km · 8 istasyon)",
@@ -266,7 +274,8 @@ export function hazirHatlar(): HazirHat[] {
     ad: "Konya Tramvay 1. Etap — Aslım Sanayi–Şehir Hastanesi (CAD)",
     veri: {
       rings: etap1Rings, cfg, arac: SKODA_28T,
-      isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 6, turnaroundDk: 4 },
+      // Aslım/TÜMOSAN kavşağı PM26-29 → X · U21/U22 Şehir Hastanesi–Adliye dönüş fanı PM10-17 (hem S hem X) → S+X
+      isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 6, turnaroundDk: 4, terminalBas: term("x"), terminalSon: term("sx") },
       meta: meta({
         projeAdi: "Konya Tramvay 1. Etap Sinyalizasyon (Aslım Sanayi–Şehir Hastanesi–Adliye)",
         hatAdi: "1. Etap · U10 Aslım Sanayi – U22 Adliye (~10,8 km · 13 istasyon)",
@@ -303,7 +312,8 @@ export function hazirHatlar(): HazirHat[] {
     ad: "Konya Tramvay 2. Etap — Stadyum–Aslım Sanayi (CAD)",
     veri: {
       rings: etap2Rings, cfg, arac: SKODA_28T,
-      isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 6, turnaroundDk: 4 },
+      // U1 Stadyum terminus yelpazesi M1-M8 (hem S hem X) → S+X · U9 TÜMOSAN/Aslım kavşağı → X
+      isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 6, turnaroundDk: 4, terminalBas: term("sx"), terminalSon: term("x") },
       meta: meta({
         projeAdi: "Konya Tramvay 2. Etap Sinyalizasyon (Stadyum–Aslım Sanayi)",
         hatAdi: "2. Etap · U1 Stadyum – U10 Aslım Sanayi (~8,6 km · 10 istasyon)",
@@ -332,7 +342,8 @@ export function hazirHatlar(): HazirHat[] {
     ad: "Konya Tramvay — Bütünleşik Hat (Alaaddin–Stadyum) (CAD)",
     veri: {
       rings: birlesikRings, cfg, arac: SKODA_28T,
-      isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 10, turnaroundDk: 5 },
+      // Alaaddin yelpaze → X · Stadyum terminus yelpazesi (hem S hem X) → S+X (Adliye & Aslım artık ara kavşak)
+      isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 10, turnaroundDk: 5, terminalBas: term("x"), terminalSon: term("sx") },
       meta: meta({
         projeAdi: "Konya Tramvay — Bütünleşik Hat (Alaaddin–Stadyum) Sinyalizasyon",
         hatAdi: "Alaaddin – Stadyum (~25,5 km · 29 istasyon · Adliye & Aslım kavşaklı)",
