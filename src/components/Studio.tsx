@@ -7,7 +7,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { RailNetwork, Route } from "@/lib/anaray/types";
-import { flattenRoute, ringlerdenSebeke, hemzeminDuruslari, duruslariEkle } from "@/lib/anaray/network";
+import { flattenRoute, ringlerdenSebeke, hemzeminDuruslari, duruslariEkle, kalkisEkle, makasKonumlari } from "@/lib/anaray/network";
 import { simulate } from "@/lib/anaray/sim";
 import { simulateSignalled, reverseRoute, monteCarlo, planDepotDispatch, type MonteCarloResult } from "@/lib/anaray/signalling";
 import { tramvaylar } from "@/lib/anaray/vehicles";
@@ -105,14 +105,16 @@ function StudioIc() {
   // Hemzemin geçit koruma duruşları (bekleme>0 karayolu geçitleri) — hem gidiş hem
   // dönüş hattına eklenir: tren orada durur+bekler ve o nokta blok sınırı/sinyal olur.
   const gecitDuruslari = useMemo(() => hemzeminDuruslari(rings, cfg), [rings, cfg]);
+  const kavsakKonum = useMemo(() => makasKonumlari(rings, cfg).map((m) => m.pos), [rings, cfg]);
+  const kalkisSu = isletme.kalkisOluZamaniSn; // canlı simde kalkış ölü zamanı (tutarlılık)
   const { line, result } = useMemo(() => {
-    const l = duruslariEkle(flattenRoute(network, route), gecitDuruslari, false);
+    const l = kalkisEkle(duruslariEkle(flattenRoute(network, route), gecitDuruslari, false), kalkisSu);
     return { line: l, result: simulate(l, stock, 0.5) };
-  }, [network, stock, route, gecitDuruslari]);
+  }, [network, stock, route, gecitDuruslari, kalkisSu]);
 
   const reverseLine = useMemo(
-    () => duruslariEkle(flattenRoute(network, reverseRoute(route)), gecitDuruslari, true),
-    [network, route, gecitDuruslari]
+    () => kalkisEkle(duruslariEkle(flattenRoute(network, reverseRoute(route)), gecitDuruslari, true), kalkisSu),
+    [network, route, gecitDuruslari, kalkisSu]
   );
 
   const gidisSim = useMemo(
@@ -193,7 +195,7 @@ function StudioIc() {
       <Panel baslik="Canlı Ağ Simülasyonu" aciklama="Tüm trenler (gidiş + dönüş) aynı anda hat üzerinde hareket eder. Sinyaller blok sınırlarında 3-aspekt yanar (yeşil/sarı/kırmızı) — önündeki blok doluysa otomatik kırmızı; renk elle ayarlanmaz, gerçek sabit-blok mantığı budur. Blok aralığını aşağıdan değiştir → sinyaller sıklaşır/seyrelir (kapasite ile aynı düzen). Dispatcher: bir sinyale tıkla → blok arızalanır. Parklanma (🅿) trenleri sırayla servise çıkar. Oynat ▶">
         <LiveNetwork network={network} route={route} line={line} blocks={canliGidis.blocks}
           up={canliGidis.trains} down={donusSim.trains} tMax={Math.max(canliGidis.tMax, donusSim.tMax)} trainLen={stock.length}
-          faultBlocks={ariza} onBlockClick={arizaToggle} depots={depotPlan.depots} />
+          faultBlocks={ariza} onBlockClick={arizaToggle} depots={depotPlan.depots} junctions={kavsakKonum} />
         {/* Sinyal blok aralığı — sinyaller bu aralıkta dizilir (kapasite ile aynı) */}
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs" style={{ color: brand.inkSoft }}>
           <span>🚦 Sinyal blok aralığı</span>

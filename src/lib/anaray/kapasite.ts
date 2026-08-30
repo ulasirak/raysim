@@ -23,6 +23,7 @@ import { type SimConfig, type Isletme, type TerminalConfig, VARSAYILAN_DOLULUK_T
 import { blockingTimeHesap } from "./blockingtime";
 import { loopToHat } from "./hatsim";
 import { ringSenaryo, ringTimingEk, type DurakArasiRing } from "./ring";
+import { hemzeminDuruslari, duruslariEkle } from "./network";
 
 export type KisitAnahtar = "blok" | "terminal" | "tekhat" | "kavsak";
 
@@ -79,25 +80,31 @@ export function maksimumTren(
   // Ring başına etkin kalkış ölü zamanı (ring.kalkisOlu > hat varsayılanı).
   const ringSu = (r: DurakArasiRing) => Math.max(0, r.kalkisOlu ?? globalSu);
 
-  // 1) Kritik durak/hat bloğu Sperrzeit (dwell + kalkış ölü zamanı + temizleme dâhil).
-  // Durak-başı kalkış ölü zamanı: her istasyon (station[i]) ring[i] üzerinden kalkar.
+  // 1) Kritik durak/hat bloğu Sperrzeit. Bloğun BAŞINDA bir DURUŞ varsa (tren
+  // orada bekler → blok işgal edilir) o bekleme blocking-time'a eklenir:
+  //   yolcu durağı → kalkış ölü zamanı (station[i] ring[i]'den kalkar)
+  //   hemzemin geçit → koruma bekleme (tren durur)
   const model = loopToHat(rings, false, cfg);
-  const suByPos = model.line.stations.map((s, i) => ({
-    pos: s.position,
-    su: i < rings.length ? ringSu(rings[i]) : globalSu,
-  }));
-  const suResolver = (pos: number) => {
-    const hit = suByPos.find((x) => Math.abs(x.pos - pos) < 1);
-    return hit ? hit.su : globalSu;
+  // Geçit koruma duruşlarını blocking modeline ekle (blok sınırı + bekleme).
+  const gecitler = hemzeminDuruslari(rings, cfg);
+  const modelBt: typeof model = { ...model, line: duruslariEkle(model.line, gecitler, false) };
+  // Ekstra işgal haritası: yolcu durağı → kalkış ölü zamanı; geçit → bekleme.
+  const ekstraByPos = [
+    ...model.line.stations.map((s, i) => ({ pos: s.position, ek: i < rings.length ? ringSu(rings[i]) : 0 })),
+    ...modelBt.line.stations.filter((s) => s.tip === "gecit").map((s) => ({ pos: s.position, ek: Math.max(0, s.dwell) })),
+  ];
+  const ekstraResolver = (pos: number) => {
+    const hit = ekstraByPos.find((x) => Math.abs(x.pos - pos) < 1);
+    return hit ? hit.ek : 0;
   };
-  const bt = blockingTimeHesap(model, stock, cfg, suResolver);
+  const bt = blockingTimeHesap(modelBt, stock, cfg, ekstraResolver);
   const hBlok = bt.minHeadway;
   const kb = bt.bloklar[bt.kritikBlok];
   const kbMerkez = kb ? (kb.start + kb.end) / 2 : 0;
-  const yakinDurak = model.line.stations.length
-    ? model.line.stations.reduce((best, s) =>
+  const yakinDurak = modelBt.line.stations.length
+    ? modelBt.line.stations.reduce((best, s) =>
         Math.abs(s.position - kbMerkez) < Math.abs(best.position - kbMerkez) ? s : best,
-        model.line.stations[0])
+        modelBt.line.stations[0])
     : null;
   const blokAd = `Kritik blok${yakinDurak ? ` — ${yakinDurak.name}` : ""}`;
 

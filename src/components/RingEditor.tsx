@@ -871,6 +871,9 @@ function RingKart(p: KartProps) {
                     <div className="w-20"><Num label="Konum" suffix="m" step={10} value={h.konum} onChange={(v) => p.onHzPatch(h.id, { konum: v })} hata={h.konum < 0 || h.konum > ring.uzunluk} /></div>
                     <div className="w-20"><Num label="Süre (≈)" suffix="s" step={1} value={Math.round(konumSuresi(h.konum))} onChange={(v) => p.onHzPatch(h.id, { konum: Math.round(sureKonumu(v)) })} /></div>
                     <div className="w-20"><Num label="Hız" suffix="km/h" step={1} value={Math.round(kmh(h.hiz))} onChange={(v) => p.onHzPatch(h.id, { hiz: v * KMH })} /></div>
+                    {h.tip === "karayolu" && (
+                      <div className="w-24"><Num label="Bekleme (durma)" suffix="s" step={1} value={Math.round(h.bekleme ?? 0)} onChange={(v) => p.onHzPatch(h.id, { bekleme: Math.max(0, Math.round(v)) })} /></div>
+                    )}
                     <button onClick={() => p.onHzSil(h.id)} className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
                   </div>
                 ))}

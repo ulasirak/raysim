@@ -51,7 +51,7 @@ function sampleS(points: { t: number; s: number }[], t: number): { s: number; ac
 }
 
 export function LiveNetwork({
-  network, route, line, blocks, up, down, tMax, trainLen = 40, faultBlocks = [], onBlockClick, depots = [],
+  network, route, line, blocks, up, down, tMax, trainLen = 40, faultBlocks = [], onBlockClick, depots = [], junctions = [],
 }: {
   network: RailNetwork;
   route: Route;
@@ -64,6 +64,7 @@ export function LiveNetwork({
   faultBlocks?: number[];
   onBlockClick?: (i: number) => void;
   depots?: DepotInfo[];
+  junctions?: number[]; // makas (kavşak) merkez konumları (m) — koruyucu sinyal işareti
 }) {
   const [t, setT] = useState(0);
   const [oynat, setOynat] = useState(false);
@@ -390,6 +391,20 @@ export function LiveNetwork({
             <title>{`Hemzemin geçit: ${st.name} — koruma duruşu ${Math.round(st.dwell)} s`}</title>
           </g>
         ))}
+        {/* Kavşak (makas) koruyucu sinyalleri — ◆ + aspekt (kavşak bloğu doluysa kırmızı) */}
+        {junctions.map((jp, i) => {
+          const p = offsetAt(jp, GAP + 12, UST);
+          const blk = blokIndeks(jp);
+          const dolu = blk >= 0 && (occUp.has(blk) || occDown.has(blk) || faultBlocks.includes(blk));
+          const renk = dolu ? ASPEKT.kirmizi : ASPEKT.yesil;
+          return (
+            <g key={`j${i}`}>
+              <path d={`M ${p.x} ${p.y - 4} l 4 4 l -4 4 l -4 -4 z`} fill={brand.surface} stroke={brand.ink} strokeWidth={1.1} />
+              <circle cx={p.x} cy={p.y} r={2} fill={renk} style={{ transition: "fill 0.35s ease" }} />
+              <title>Kavşak (makas) koruyucu sinyal{dolu ? " — dolu/kırmızı" : " — açık/yeşil"}</title>
+            </g>
+          );
+        })}
         {/* Depolar (parklanma alanları) — gidiş (alt) şeridinin yanında */}
         {depots.map(depotMark)}
 
@@ -447,7 +462,7 @@ export function LiveNetwork({
       </div>
       <p className="text-xs" style={{ color: brand.muted }}>
         <span style={{ color: DOWN }}>▬</span> Üst şerit: Dönüş (sağ→sol) · <span style={{ color: UP_COL }}>▬</span> Alt şerit: Gidiş (sol→sağ) · <span style={{ color: CK.red }}>▬</span> işgal edilen blok.
-        {" "}Sinyal: <span style={{ color: ASPEKT.yesil }}>●</span> yeşil (serbest) · <span style={{ color: ASPEKT.sari }}>●</span> sarı (dikkat) · <span style={{ color: ASPEKT.kirmizi }}>●</span> kırmızı (dur). Sabit blok 3-fener mantığı canlı akıyor.
+        {" "}Sinyal: <span style={{ color: ASPEKT.yesil }}>●</span> yeşil (serbest) · <span style={{ color: ASPEKT.sari }}>●</span> sarı (dikkat) · <span style={{ color: ASPEKT.kirmizi }}>●</span> kırmızı (dur). Sabit blok 3-fener mantığı canlı akıyor. <span style={{ color: CK.amber }}>⊞</span> hemzemin geçit (tren durur+bekler) · <span style={{ color: brand.ink }}>◆</span> kavşak koruyucu sinyali.
         {depoToplam > 0 && <> · 🅿 <b>Depo (parklanma):</b> bekleyen trenler sırayla headway aralığıyla servise çıkar; kutudaki dolu kareler çıkışa hazır, soluk kareler çıkmış trenlerdir.</>}
       </p>
     </div>

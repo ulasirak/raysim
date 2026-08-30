@@ -221,3 +221,29 @@ export function duruslariEkle(
   const stations = [...line.stations, ...extra].sort((a, b) => a.position - b.position);
   return { ...line, stations };
 }
+
+/** Canlı sim için: her yolcu istasyonunun dwell'ine kalkış ölü zamanını ekler
+ *  (start-up lost time animasyonda da görünsün → kapasiteyle tutarlı). Geçit
+ *  duruşlarına (tip:'gecit') dokunmaz. globalSu = hat geneli varsayılan (s). */
+export function kalkisEkle(line: Line, globalSu: number): Line {
+  const su = Math.max(0, globalSu);
+  if (su <= 0) return line;
+  return { ...line, stations: line.stations.map((st) => (st.tip === "gecit" ? st : { ...st, dwell: st.dwell + su })) };
+}
+
+/** Makas (kavşak) merkezlerinin hat-boyu konumları (ileri yön) — kavşak sinyalleri için. */
+export function makasKonumlari(
+  rings: DurakArasiRing[], cfg: SimConfig = BELGE,
+): { pos: number; ad: string }[] {
+  const out: { pos: number; ad: string }[] = [];
+  let offset = 0;
+  for (const r of rings) {
+    const L = ringToLine(r, "nominal", cfg).length;
+    for (const m of r.makaslar) {
+      const k = Math.max(0, Math.min(r.uzunluk, m.konum));
+      out.push({ pos: offset + k * (L / Math.max(1, r.uzunluk)), ad: m.ad || "Makas" });
+    }
+    offset += L;
+  }
+  return out;
+}
