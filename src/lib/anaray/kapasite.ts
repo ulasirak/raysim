@@ -19,7 +19,7 @@
 // güvenli günlük değer.
 
 import type { RollingStock } from "./types";
-import { type SimConfig, type Isletme, type TerminalConfig, VARSAYILAN_DOLULUK_TAVANI, etkinBogazIsgali, etkinPeronSayisi } from "./config";
+import { type SimConfig, type Isletme, type TerminalConfig, VARSAYILAN_DOLULUK_TAVANI, etkinBogazIsgali, terminalDonusParalel } from "./config";
 import { blockingTimeHesap } from "./blockingtime";
 import { loopToHat } from "./hatsim";
 import { ringSenaryo, ringTimingEk, type DurakArasiRing } from "./ring";
@@ -49,17 +49,22 @@ export interface MaksimumTrenSonuc {
   kisitlar: KapasiteKisit[];     // tüm terimlerin şeffaf dökümü
 }
 
-/** Bir terminalin dayattığı minimum aralık. Peron işgali = terminal dwell + ters dönüş;
- *  peron başına bölünür. Boğaz (lead/crossover) paylaşımlıysa boğaz işgali de bağlar. */
+/** Bir terminalin dayattığı minimum aralık — MAKAS TİPİ belirler.
+ *  Tramvay dönmek için karşı hatta makasla geçmek ZORUNDA (yoksa gelen hatla kafa kafaya
+ *  çarpışma). Bu yüzden terminal turnback kapasitesini makas tipi tayin eder:
+ *   • S-makas (tek crossover): dönüşler SERİ → peron çok olsa da ardışık dönüş = 1 →
+ *     terminal aralığı = peron işgali (tam çevrim). Boğaz her tren için VARIŞ+KALKIŞ
+ *     sıralı → alt sınır 2 × boğaz işgali.
+ *   • X-makas (scissors): iki bağımsız hareket → 2 tramvay ardışık (eş-zamanlı değil)
+ *     dönebilir → peron işgali ÷ 2. Boğaz varış/kalkış ayrı bacakta → alt sınır 1 × boğaz. */
 function terminalHeadway(t: TerminalConfig, cfg: SimConfig): number {
   if (t.tip === "dongu") return 0; // balon döngü → dönüş beklemesi yok
+  const makasX = t.makasTipi === "x";
   // `|| 0` — eski kayıtta eksik alanlara karşı NaN koruması.
-  const peronBasi = (t.peronIsgali || 0) / etkinPeronSayisi(t);
-  // Paylaşımlı (tek lead) boğaz: her tren çevrimi boğazı BİR VARIŞ + BİR KALKIŞ
-  // için kullanır (sıralı) → boğaz kısıtı 2 × işgal. Peron paralelliği boğazla
-  // tavanlanır (peron çok olsa da trenler tek boğazdan sırayla geçer).
-  const bogaz = 2 * etkinBogazIsgali(t, cfg);
-  return t.bogazPaylasimli ? Math.max(peronBasi, bogaz) : peronBasi;
+  const peronBasi = (t.peronIsgali || 0) / terminalDonusParalel(t);
+  // Boğaz (crossover) alt sınırı: S-makas'ta varış+kalkış seri (2×), X-makas'ta ayrı (1×).
+  const bogaz = (makasX ? 1 : 2) * etkinBogazIsgali(t, cfg);
+  return Math.max(peronBasi, bogaz);
 }
 
 /** Düz kavşakta (karşı-yön çakışmalı makas) tek geçiş işgali (setup + geçiş + release). */

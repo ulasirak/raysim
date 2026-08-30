@@ -234,9 +234,12 @@ export function RingEditor() {
       {duraklar.length >= 2 && (
         <div className="mt-4">
           <Panel baslik="Maksimum Tramvay Kapasitesi" aciklama="Hat çift hat, gidiş-dönüş çalışır (tramvay gider, döner, tekrar gider — sürekli çevrim). Terminal dönüş şartlarını gir; sistem bu hatta aynı anda en fazla kaç tramvayın sığacağını hesaplar. Darboğaz otomatik isimlenir.">
-            {/* Bilgilendirme: peron sayısı = terminaldeki dönüş peronu (çift yön) */}
-            <div className="mb-2 rounded border-l-4 px-3 py-2 text-xs" style={{ background: CK.goodBgSoft, borderColor: brand.ink, color: brand.inkSoft }}>
-              ℹ️ <b>Peron sayısı</b> = terminalde <b>dönüş yapabilen peron (ray)</b> sayısı. Hat çift hat olduğu için bir terminalde genelde <b>2 peron</b> vardır (gidiş + dönüş peronu) ve tren birinde dönüp öbüründen çıkar → terminal aralığı = peron işgali ÷ 2. Tek-peronlu kör terminalde 1 gir. <b>Tek yön</b> modunu seçersen yön başına peron girersin, sistem çift hat için otomatik ×2 yapar.
+            {/* Bilgilendirme: neden makaslı turnback hesabı */}
+            <div className="mb-2 rounded border-l-4 px-3 py-2 text-xs leading-relaxed" style={{ background: CK.goodBgSoft, borderColor: brand.ink, color: brand.inkSoft }}>
+              ℹ️ <b>Neden makaslı hesap?</b> Tramvay uçta dönmek için karşı hatta <b>makasla (crossover)</b> geçmek zorundadır — yoksa gelen hatla <b>kafa kafaya çarpışır</b>. Terminalin en fazla kaç tramvay çevirebileceğini asıl bu makasın tipi belirler:
+              <br />• <b>S-makas (tek crossover):</b> dönüşler <b>seri, tek tek</b> — bir tramvay dönüp boğazı boşaltmadan öbürü giremez → terminal aralığı = <b>tam peron işgali</b> (peron çok olsa da hızlanmaz).
+              <br />• <b>X-makas (scissors/çift):</b> iki bağımsız hareket → 2 tramvay <b>eş-zamanlı olmadan ardışık</b> hızlıca dönebilir → peron işgali <b>÷ 2</b>.
+              <br /><b>Peron sayısı</b> = terminaldeki dönüş rayı adedi (çift hatta genelde 2: gidiş+dönüş peronu). <b>Tek yön</b> modunda yön başına girersin, sistem ×2 yapar. Not: 2 tramvayın ardışık dönebilmesi için <b>hem 2 peron hem X-makas</b> gerekir — biri eksikse dönüş seri kalır.
             </div>
             {/* Terminal (dönüş) girdileri — iki uç */}
             <div className="mb-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -317,16 +320,25 @@ export function RingEditor() {
                         )}
                       </div>
                       <p className="mt-1 text-xs" style={{ color: brand.muted }}>
-                        Boğaz = peronlar önündeki ortak makas/geçiş bölgesi; bir tren geçerken kilitlenir. {t.bogazOto ? "Oto = makas tanzim + geçiş + rota serbest. " : ""}Paylaşımlı (tek lead) boğaz her tren için bir <b>varış + bir kalkış</b> taşır → terminal kısıtı 2 × boğaz işgali.
+                        Boğaz = peronlar önündeki ortak makas/geçiş bölgesi; bir tren geçerken kilitlenir. {t.bogazOto ? "Oto = makas tanzim + geçiş + rota serbest. " : ""}{(t.makasTipi ?? "s") === "x" ? <>X-makas: varış/kalkış ayrı bacakta → terminal alt sınırı <b>1 × boğaz işgali</b>.</> : <>S-makas: her tren için <b>varış + kalkış</b> seri → terminal alt sınırı <b>2 × boğaz işgali</b>.</>}
                       </p>
                     </div>
-                    <label className="mt-2 flex items-center gap-2 text-xs" style={{ color: brand.inkSoft }}
-                      title="Peronlar tek boğazdan (lead/crossover) besleniyorsa çok peron olsa da trenler oradan sırayla geçer — boğaz işgali terminal aralığına alt sınır olur. İşaretsiz = her peron bağımsız girişli (tam paralel).">
-                      <input type="checkbox" checked={t.bogazPaylasimli}
-                        onChange={(e) => patchTerminal(uc, { bogazPaylasimli: e.target.checked })} />
-                      Peronlar tek boğazı paylaşıyor
-                    </label>
-                    <Kucuk>işaretli: çok peron olsa da trenler tek boğazdan sırayla geçer (boğaz sınırlar). işaretsiz: peronlar bağımsız/paralel</Kucuk>
+                    {/* Makas tipi — terminal turnback kapasitesinin ASIL belirleyicisi */}
+                    <div className="mt-2 rounded border p-2" style={{ borderColor: brand.ink, background: CK.goodBgSoft }}>
+                      <span className="field-label">Dönüş makası (crossover) tipi — turnback belirleyici</span>
+                      <div className="mt-1 flex gap-1">
+                        {([["s", "S-makas (tek crossover)"], ["x", "X-makas (scissors/çift)"]] as const).map(([mt, ad]) => (
+                          <button key={mt} type="button" onClick={() => patchTerminal(uc, { makasTipi: mt })}
+                            className="flex-1 rounded border px-2 py-1 text-[0.65rem] font-medium"
+                            style={((t.makasTipi ?? "s") === mt) ? { background: brand.ink, color: "#fff", borderColor: brand.ink } : { borderColor: brand.border, color: brand.inkSoft }}>
+                            {ad}
+                          </button>
+                        ))}
+                      </div>
+                      <Kucuk>{(t.makasTipi ?? "s") === "x"
+                        ? "scissors: 2 tramvay eş-zamanlı DEĞİL ama ardışık hızlıca dönebilir → peron işgali ÷ 2 (2 peron gerekir)"
+                        : "tek crossover: dönüşler SERİ, tek tek — peron çok olsa da ardışık dönüş = 1 → terminal aralığı = tam peron işgali"}</Kucuk>
+                    </div>
                     {t.tip === "dongu" && (
                       <p className="mt-1 text-xs" style={{ color: brand.muted }}>Balon döngüde terminal kısıtı yok (dönüş ~0).</p>
                     )}

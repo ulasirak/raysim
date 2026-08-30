@@ -137,15 +137,21 @@ export interface TerminalConfig {
   tersDonus?: number;       // s — ters dönüş (reversing)
   kalkisTemizleme?: number; // s — kalkış→boğaz temizleme
   toparlanma?: number;      // s — schedule recovery / toparlanma marjı (terminalde bekleme payı)
-  bogazPaylasimli: boolean;// peronlar tek boğazı (lead/crossover) paylaşıyor mu?
-  bogazIsgali: number;    // s — boğaz/crossover işgali (tanzim+geçiş+serbest); yalnız paylaşımlıysa bağlar
+  /** Dönüş makası (crossover) tipi — TERMİNAL TURNBACK KAPASİTESİNİN ASIL BELİRLEYİCİSİ.
+   *  Tramvay dönmek için karşı hatta makasla geçmek zorunda (yoksa gelen hatla kafa kafaya
+   *  çarpışma). "s" = TEK (S) crossover → dönüşler SERİ, tek tek (bir tren dönüp boğazı
+   *  boşaltmadan öbürü giremez). "x" = ÇİFT/scissors (X) crossover → iki bağımsız hareket,
+   *  2 tramvay eş-zamanlı OLMADAN ardışık hızlıca dönebilir. */
+  makasTipi?: "s" | "x";
+  bogazPaylasimli?: boolean;// (legacy) — makasTipi'ne taşındı; her turnback terminali makas paylaşır
+  bogazIsgali: number;    // s — boğaz/crossover işgali (tanzim+geçiş+serbest); makas türüne göre bağlar
   bogazOto: boolean;      // true → boğaz işgali terminal makas config'inden otomatik türetilir
   bogazMakasSayisi: number;// terminal boğazındaki makas (crossover) adedi — oto türetmede tanzim süresi
 }
 
 export const VARSAYILAN_TERMINAL: TerminalConfig = {
   tip: "korTerminal", peronSayisi: 2, peronIsgali: 210, // çift hat: gidiş+dönüş peronu
-  bogazPaylasimli: true, bogazIsgali: 45, bogazOto: true, bogazMakasSayisi: 2,
+  makasTipi: "s", bogazIsgali: 45, bogazOto: true, bogazMakasSayisi: 2,
 };
 
 /** Boğaz işgali (s) terminal makas config'inden: tanzim (makas×adım) + geçiş (bölge/vMakas) + rota serbest. */
@@ -165,6 +171,18 @@ export function etkinBogazIsgali(t: TerminalConfig, cfg: SimConfig): number {
 /** Etkin peron sayısı: kullanıcı YÖN BAŞINA girdiyse (tek yön) çift hatta ×2 (gidiş+dönüş). */
 export function etkinPeronSayisi(t: TerminalConfig): number {
   return Math.max(1, (t.peronSayisi || 1) * (t.peronTekYon ? 2 : 1));
+}
+
+/** Makas tipinden dönüş paralelliği: kaç tramvay ardışık (art arda) dönüş yapabilir.
+ *  S-makas (tek crossover) → 1 (seri); X-makas (scissors) → 2 (ardışık). */
+export function makasDonusKapasitesi(t: TerminalConfig): number {
+  return t.makasTipi === "x" ? 2 : 1;
+}
+
+/** Terminalde etkin dönüş paralelliği = min(peron sayısı, makas dönüş kapasitesi).
+ *  2 tramvayın ardışık dönmesi için HEM 2 peron HEM X-makas gerekir; biri eksikse seri kalır. */
+export function terminalDonusParalel(t: TerminalConfig): number {
+  return Math.max(1, Math.min(etkinPeronSayisi(t), makasDonusKapasitesi(t)));
 }
 
 export interface Isletme {
