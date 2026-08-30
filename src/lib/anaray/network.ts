@@ -247,3 +247,34 @@ export function makasKonumlari(
   }
   return out;
 }
+
+/** Canlı sim görseli için TÜM hat özellikleri (hemzemin geçit tipleriyle + makas),
+ *  hat-boyu konumlarıyla. Görsel işaretler bu tek kaynaktan çizilir. */
+export type HatOzellik = {
+  pos: number;
+  kind: "yaya" | "karayolu" | "makas";
+  ad: string;
+  bekleme: number;        // s — karayolu geçidinde durma (0 = durmadan yavaşlar)
+  makasTip?: string;      // makas ise tipi (karsilasmali/headway/…)
+};
+export function hatOzellikleri(
+  rings: DurakArasiRing[], cfg: SimConfig = BELGE,
+): HatOzellik[] {
+  const out: HatOzellik[] = [];
+  let offset = 0;
+  for (const r of rings) {
+    const L = ringToLine(r, "nominal", cfg).length;
+    const scale = L / Math.max(1, r.uzunluk);
+    for (const h of r.hemzeminler) {
+      const pos = offset + Math.max(0, Math.min(r.uzunluk, h.konum)) * scale;
+      const yaya = h.tip === "yaya";
+      out.push({ pos, kind: yaya ? "yaya" : "karayolu", ad: h.ad || (yaya ? "Yaya geçidi" : "Karayolu geçidi"), bekleme: Math.max(0, h.bekleme ?? 0) });
+    }
+    for (const m of r.makaslar) {
+      const pos = offset + Math.max(0, Math.min(r.uzunluk, m.konum)) * scale;
+      out.push({ pos, kind: "makas", ad: m.ad || "Makas", bekleme: 0, makasTip: m.tip });
+    }
+    offset += L;
+  }
+  return out;
+}

@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RailNetwork, Route, Line } from "@/lib/anaray/types";
 import type { SignalTrain, DepotInfo } from "@/lib/anaray/signalling";
+import type { HatOzellik } from "@/lib/anaray/network";
 import { saat } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
 import { CK, ASPEKT } from "@/lib/anaray/chartkit";
@@ -51,7 +52,7 @@ function sampleS(points: { t: number; s: number }[], t: number): { s: number; ac
 }
 
 export function LiveNetwork({
-  network, route, line, blocks, up, down, tMax, trainLen = 40, faultBlocks = [], onBlockClick, depots = [], junctions = [],
+  network, route, line, blocks, up, down, tMax, trainLen = 40, faultBlocks = [], onBlockClick, depots = [], features = [],
 }: {
   network: RailNetwork;
   route: Route;
@@ -64,7 +65,7 @@ export function LiveNetwork({
   faultBlocks?: number[];
   onBlockClick?: (i: number) => void;
   depots?: DepotInfo[];
-  junctions?: number[]; // makas (kavşak) merkez konumları (m) — koruyucu sinyal işareti
+  features?: HatOzellik[]; // hat özellikleri: yaya/karayolu geçidi + makas (tip-ayrımlı görsel)
 }) {
   const [t, setT] = useState(0);
   const [oynat, setOynat] = useState(false);
@@ -279,8 +280,6 @@ export function LiveNetwork({
       return { st, x: top.x, baseY: top.y, w, x1: top.x - w / 2, x2: top.x + w / 2, tier: 0 };
     })
     .sort((a, b) => a.x - b.x);
-  // Hemzemin geçit koruma duruşları — ayrı işaret (⊞) + laneAt konumu
-  const gecitler = line.stations.filter((st) => st.tip === "gecit").map((st) => ({ st, p: laneAt(st.position, UST) }));
   const tierEnds: number[] = []; // her kademedeki son etiketin sağ kenarı
   for (const lb of stationLabels) {
     let tier = 0;
@@ -382,26 +381,41 @@ export function LiveNetwork({
             </g>
           );
         })}
-        {/* Hemzemin geçit koruma duruşları — ⊞ işareti (trenler burada durur; blok sınırı → sinyal) */}
-        {gecitler.map(({ st, p }) => (
-          <g key={st.id}>
-            <rect x={p.x - 4} y={p.y - 10} width={8} height={8} rx={1} fill={brand.surface} stroke={CK.amber} strokeWidth={1.4} />
-            <line x1={p.x - 4} y1={p.y - 6} x2={p.x + 4} y2={p.y - 6} stroke={CK.amber} strokeWidth={1} />
-            <line x1={p.x} y1={p.y - 10} x2={p.x} y2={p.y - 2} stroke={CK.amber} strokeWidth={1} />
-            <title>{`Hemzemin geçit: ${st.name} — koruma duruşu ${Math.round(st.dwell)} s`}</title>
-          </g>
-        ))}
-        {/* Kavşak (makas) koruyucu sinyalleri — ◆ + aspekt (kavşak bloğu doluysa kırmızı) */}
-        {junctions.map((jp, i) => {
-          const p = offsetAt(jp, GAP + 12, UST);
-          const blk = blokIndeks(jp);
+        {/* HAT ÖZELLİKLERİ — yaya/karayolu geçidi + makas (tip-ayrımlı, raya bağ çizgili) */}
+        {features.map((f, i) => {
+          const top = offsetAt(f.pos, GAP + 13, UST);
+          const ray = laneAt(f.pos, UST);
+          const blk = blokIndeks(f.pos);
           const dolu = blk >= 0 && (occUp.has(blk) || occDown.has(blk) || faultBlocks.includes(blk));
-          const renk = dolu ? ASPEKT.kirmizi : ASPEKT.yesil;
+          const asp2 = dolu ? ASPEKT.kirmizi : ASPEKT.yesil;
+          const bag = <line x1={top.x} y1={top.y + 3} x2={ray.x} y2={ray.y} stroke={brand.faint} strokeWidth={0.6} strokeDasharray="1.5 1.5" />;
+          if (f.kind === "yaya") {
+            return (
+              <g key={`f${i}`}>{bag}
+                <circle cx={top.x} cy={top.y} r={3.4} fill={brand.surface} stroke={CK.blue} strokeWidth={1.3} />
+                <circle cx={top.x} cy={top.y - 0.8} r={0.9} fill={CK.blue} />
+                <line x1={top.x} y1={top.y + 0.1} x2={top.x} y2={top.y + 2.2} stroke={CK.blue} strokeWidth={0.9} />
+                <title>{`Yaya geçidi: ${f.ad} — tren yavaşlar`}</title>
+              </g>
+            );
+          }
+          if (f.kind === "karayolu") {
+            const durur = f.bekleme > 0;
+            return (
+              <g key={`f${i}`}>{bag}
+                <rect x={top.x - 4} y={top.y - 4} width={8} height={8} rx={1} fill={brand.surface} stroke={CK.amber} strokeWidth={1.4} />
+                <line x1={top.x - 4} y1={top.y} x2={top.x + 4} y2={top.y} stroke={CK.amber} strokeWidth={1} />
+                <line x1={top.x} y1={top.y - 4} x2={top.x} y2={top.y + 4} stroke={CK.amber} strokeWidth={1} />
+                {durur && <circle cx={top.x + 6} cy={top.y - 4} r={2} fill={asp2} stroke="#fff" strokeWidth={0.6} style={{ transition: "fill 0.35s ease" }} />}
+                <title>{`Karayolu geçidi: ${f.ad}${durur ? ` — koruma duruşu ${Math.round(f.bekleme)} s (tren durur)` : " — tren yavaşlar"}`}</title>
+              </g>
+            );
+          }
           return (
-            <g key={`j${i}`}>
-              <path d={`M ${p.x} ${p.y - 4} l 4 4 l -4 4 l -4 -4 z`} fill={brand.surface} stroke={brand.ink} strokeWidth={1.1} />
-              <circle cx={p.x} cy={p.y} r={2} fill={renk} style={{ transition: "fill 0.35s ease" }} />
-              <title>Kavşak (makas) koruyucu sinyal{dolu ? " — dolu/kırmızı" : " — açık/yeşil"}</title>
+            <g key={`f${i}`}>{bag}
+              <path d={`M ${top.x} ${top.y - 4} l 4 4 l -4 4 l -4 -4 z`} fill={brand.surface} stroke={brand.ink} strokeWidth={1.1} />
+              <circle cx={top.x} cy={top.y} r={2} fill={asp2} style={{ transition: "fill 0.35s ease" }} />
+              <title>{`Makas (kavşak): ${f.ad}${f.makasTip ? ` [${f.makasTip}]` : ""} — koruyucu sinyal ${dolu ? "kırmızı" : "yeşil"}`}</title>
             </g>
           );
         })}
@@ -462,7 +476,7 @@ export function LiveNetwork({
       </div>
       <p className="text-xs" style={{ color: brand.muted }}>
         <span style={{ color: DOWN }}>▬</span> Üst şerit: Dönüş (sağ→sol) · <span style={{ color: UP_COL }}>▬</span> Alt şerit: Gidiş (sol→sağ) · <span style={{ color: CK.red }}>▬</span> işgal edilen blok.
-        {" "}Sinyal: <span style={{ color: ASPEKT.yesil }}>●</span> yeşil (serbest) · <span style={{ color: ASPEKT.sari }}>●</span> sarı (dikkat) · <span style={{ color: ASPEKT.kirmizi }}>●</span> kırmızı (dur). Sabit blok 3-fener mantığı canlı akıyor. <span style={{ color: CK.amber }}>⊞</span> hemzemin geçit (tren durur+bekler) · <span style={{ color: brand.ink }}>◆</span> kavşak koruyucu sinyali.
+        {" "}Sinyal: <span style={{ color: ASPEKT.yesil }}>●</span> yeşil (serbest) · <span style={{ color: ASPEKT.sari }}>●</span> sarı (dikkat) · <span style={{ color: ASPEKT.kirmizi }}>●</span> kırmızı (dur). Sabit blok 3-fener mantığı canlı akıyor. Hat özellikleri: <span style={{ color: CK.blue }}>◉</span> yaya geçidi (yavaşlar) · <span style={{ color: CK.amber }}>⊞</span> karayolu geçidi (durma varsa bekler) · <span style={{ color: brand.ink }}>◆</span> makas/kavşak koruyucu sinyali. Her işaretin raya bağ çizgisi konumunu gösterir.
         {depoToplam > 0 && <> · 🅿 <b>Depo (parklanma):</b> bekleyen trenler sırayla headway aralığıyla servise çıkar; kutudaki dolu kareler çıkışa hazır, soluk kareler çıkmış trenlerdir.</>}
       </p>
     </div>
