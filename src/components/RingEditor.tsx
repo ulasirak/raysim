@@ -126,6 +126,12 @@ export function RingEditor() {
     if (i === 0) { const r = rings[0]; if (r) patch(r.id, { fromQueued: q }); }
     else { const r = rings[i - 1]; if (r) patch(r.id, { queued: q }); }
   };
+  const depoKap = (i: number) => (i === 0 ? rings[0]?.fromDepoKapasite ?? 0 : rings[i - 1]?.depoKapasite ?? 0);
+  const depoKapAyarla = (i: number, n: number) => {
+    const k = Math.max(0, Math.round(n));
+    if (i === 0) { const r = rings[0]; if (r) patch(r.id, { fromDepoKapasite: k }); }
+    else { const r = rings[i - 1]; if (r) patch(r.id, { depoKapasite: k }); }
+  };
 
   // — güncelleyiciler —
   const patch = (id: string, p: Partial<DurakArasiRing>) =>
@@ -480,6 +486,11 @@ export function RingEditor() {
                         <button type="button" onClick={() => depoQueued(i, Math.min(40, depoDurum(i).q + 1))}
                           className="flex h-5 w-5 items-center justify-center rounded border font-semibold text-white" style={{ background: brand.ink, borderColor: brand.ink }} title="Park eden tren ekle">+</button>
                         {i === duraklar.length - 1 && <span style={{ color: CK.amber }} title="Hattın sonundaki depo gidiş yönünde tren veremez (gidecek yer yok)">⚠ uç</span>}
+                        <span className="ml-2 flex items-center gap-1" title="Bu deponun tren sığdırma kapasitesi (0 = sınırsız). Gün içi servis profilinde depoda bekleyen trenler buna sığmalı.">
+                          kapasite
+                          <input type="number" min={0} step={1} value={depoKap(i)} onChange={(e) => depoKapAyarla(i, parseFloat(e.target.value) || 0)}
+                            className="w-12 rounded border px-1 py-0.5 text-center" style={{ borderColor: brand.border, color: brand.ink }} /> tren
+                        </span>
                       </span>
                     )}
                   </div>

@@ -176,6 +176,15 @@ export interface Isletme {
   kapali: boolean;              // (legacy) — kapasite modeli her zaman gidiş-dönüş varsayar
   terminalBas: TerminalConfig;  // başlangıç ucundaki dönüş noktası (terminal)
   terminalSon: TerminalConfig;  // bitiş ucundaki dönüş noktası (terminal)
+  // Gün içi servis profili (parklanma / depoya giriş-çıkış)
+  servisBas: string;    // "SS:DD" — servis başlangıcı (ilk tren depodan çıkar)
+  servisBit: string;    // "SS:DD" — servis bitişi (son tren depoya döner)
+  pikSabahBas: string;  // sabah pik başlangıcı
+  pikSabahBit: string;
+  pikAksamBas: string;  // akşam pik başlangıcı
+  pikAksamBit: string;
+  pikFilo: number;      // pik saatte hatta çalışan tren (en yüksek filo)
+  pikDisiFilo: number;  // pik-dışı saatte hatta çalışan tren (fazlası depoda bekler)
 }
 
 // Not: cfg.headway (sözleşme hedef headway'i) AYRIDIR — ring uygunluk eşiği için
@@ -192,6 +201,14 @@ export const varsayilanIsletme: Isletme = {
   kapali: false,
   terminalBas: { ...VARSAYILAN_TERMINAL },
   terminalSon: { ...VARSAYILAN_TERMINAL },
+  servisBas: "06:00",
+  servisBit: "24:00",
+  pikSabahBas: "07:00",
+  pikSabahBit: "09:00",
+  pikAksamBas: "17:00",
+  pikAksamBit: "19:00",
+  pikFilo: 6,
+  pikDisiFilo: 4,
 };
 
 // ————————————————————————————————————————————————

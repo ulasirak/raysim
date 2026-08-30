@@ -12,6 +12,7 @@ import { simulate } from "@/lib/anaray/sim";
 import { simulateSignalled, reverseRoute, monteCarlo, planDepotDispatch, type MonteCarloResult } from "@/lib/anaray/signalling";
 import { tramvaylar } from "@/lib/anaray/vehicles";
 import { maksimumTren } from "@/lib/anaray/kapasite";
+import { servisProfili, type ServisProfil } from "@/lib/anaray/servis";
 import { kmh, km, sure } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
@@ -80,6 +81,19 @@ function StudioIc() {
   // MAKSİMUM TRAMVAY — tek, kesin kaynak (bottleneck: kritik blok / terminal / tek hat).
   // Ringler'deki "Maksimum Tramvay Kapasitesi" ile birebir aynı sonuç.
   const maks = useMemo(() => maksimumTren(rings, stock, cfg, isletme), [rings, stock, cfg, isletme]);
+  // Gün içi servis profili + depo kapasitesi (tüm parklanma alanları: origin + varış).
+  const depoKapasiteler = useMemo(() => {
+    const caps: number[] = [];
+    if (rings[0]?.fromDepot) caps.push(rings[0].fromDepoKapasite ?? 0);
+    for (const r of rings) if (r.depot) caps.push(r.depoKapasite ?? 0);
+    return caps;
+  }, [rings]);
+  const depoSayisi = depoKapasiteler.length;
+  const depoKapasiteToplam = useMemo(() => {
+    if (depoKapasiteler.length === 0) return 0;
+    return depoKapasiteler.every((c) => c > 0) ? depoKapasiteler.reduce((s, c) => s + c, 0) : 0; // 0 = sınırsız/tanımsız
+  }, [depoKapasiteler]);
+  const servisProfil = useMemo(() => servisProfili(isletme, depoKapasiteToplam), [isletme, depoKapasiteToplam]);
   // Oto tren sayısı: seçilen işletme aralığında çevrime sığan filo, KAPASİTE tavanıyla
   // sınırlı (maksimum tramvayı aşamaz). Hat uzarsa / aralık sıklaşırsa otomatik artar.
   const gerekenFilo = headwayDk > 0
@@ -297,6 +311,60 @@ function StudioIc() {
             ) : (
               <span style={{ color: CK.good }}>✓ Bu aralıkta bekleme yok — trenler serbest akıyor.</span>
             )}
+          </div>
+        </Panel>
+      </section>
+
+      {/* GÜN İÇİ SERVİS & PARKLANMA — filo gün boyu sabit değil: pik saatte hepsi
+          hatta, pik-dışında fazlası depoya döner (parklanma), gece hepsi depoda. */}
+      <section className="mt-6">
+        <Panel baslik="Gün İçi Servis & Parklanma" aciklama="Filo gün boyu sabit değildir: pik saatte tüm filo hatta, pik-dışında bir kısmı depoya döner (mola/parklanma), gece hepsi depoda bekler. Depo kapasitesi bunu barındırabiliyor mu görürsün.">
+          <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div>
+              <span className="field-label">Pik filo</span>
+              <div className="mt-1 flex items-center gap-1">
+                <input type="number" min={0} max={60} step={1} value={isletme.pikFilo}
+                  onChange={(e) => patchIsletme({ pikFilo: Math.max(0, Math.min(60, Math.round(parseFloat(e.target.value) || 0))) })}
+                  className="w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+                <span className="text-xs" style={{ color: brand.muted }}>tren</span>
+              </div>
+              {maks.gecerli && (
+                <button type="button" onClick={() => patchIsletme({ pikFilo: maks.nSurdurulebilir })}
+                  className="mt-0.5 text-[0.6rem] underline" style={{ color: brand.red }}>↧ kapasiteden al ({maks.nSurdurulebilir})</button>
+              )}
+            </div>
+            <Num label="Pik-dışı filo" suffix="tren" step={1} max={60} value={isletme.pikDisiFilo}
+              onChange={(v) => patchIsletme({ pikDisiFilo: Math.max(0, Math.min(60, Math.round(v))) })} />
+            <label className="block"><span className="field-label">Servis başlangıç</span>
+              <input type="time" value={isletme.servisBas} onChange={(e) => patchIsletme({ servisBas: e.target.value })}
+                className="mt-1 w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} /></label>
+            <label className="block"><span className="field-label">Servis bitiş</span>
+              <input type="time" value={isletme.servisBit === "24:00" ? "23:59" : isletme.servisBit} onChange={(e) => patchIsletme({ servisBit: e.target.value })}
+                className="mt-1 w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} /></label>
+            <label className="block"><span className="field-label">Sabah pik baş.</span>
+              <input type="time" value={isletme.pikSabahBas} onChange={(e) => patchIsletme({ pikSabahBas: e.target.value })}
+                className="mt-1 w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} /></label>
+            <label className="block"><span className="field-label">Sabah pik bit.</span>
+              <input type="time" value={isletme.pikSabahBit} onChange={(e) => patchIsletme({ pikSabahBit: e.target.value })}
+                className="mt-1 w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} /></label>
+            <label className="block"><span className="field-label">Akşam pik baş.</span>
+              <input type="time" value={isletme.pikAksamBas} onChange={(e) => patchIsletme({ pikAksamBas: e.target.value })}
+                className="mt-1 w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} /></label>
+            <label className="block"><span className="field-label">Akşam pik bit.</span>
+              <input type="time" value={isletme.pikAksamBit} onChange={(e) => patchIsletme({ pikAksamBit: e.target.value })}
+                className="mt-1 w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} /></label>
+          </div>
+
+          <ServisGrafik profil={servisProfil} />
+
+          <div className="mt-2 text-xs" style={{ color: brand.inkSoft }}>
+            En fazla <b>{servisProfil.maxDepoda}</b> tren aynı anda depoda bekler (gece/servis dışı). Toplam depo kapasitesi:{" "}
+            {depoKapasiteToplam > 0 ? (
+              <b style={{ color: servisProfil.kapasiteYeterli ? CK.good : brand.red }}>{depoKapasiteToplam} tren {servisProfil.kapasiteYeterli ? "✓ yeterli" : "✗ yetersiz"}</b>
+            ) : (
+              <span style={{ color: brand.muted }}>tanımsız/sınırsız — Ringler'de parklanma alanına kapasite gir</span>
+            )}
+            {depoSayisi === 0 && <span style={{ color: CK.amber }}> · henüz parklanma alanı yok (Ringler → 🅿)</span>}
           </div>
         </Panel>
       </section>
@@ -555,6 +623,42 @@ function saatBicim(totalSec: number): string {
   const h = Math.floor(s / 3600) % 24;
   const m = Math.floor((s % 3600) / 60);
   return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+}
+
+function ServisGrafik({ profil }: { profil: ServisProfil }) {
+  const W = 480, H = 132, padL = 22, padB = 18, padT = 8;
+  const cw = (W - padL) / 24;
+  const maxV = Math.max(1, profil.toplamFilo);
+  const h0 = H - padB;
+  const y = (v: number) => padT + (h0 - padT) * (1 - v / maxV);
+  return (
+    <div className="overflow-x-auto">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 150 }} role="img" aria-label="Gün içi servis/depo profili">
+        {[0, Math.round(maxV / 2), maxV].map((v, i) => (
+          <g key={i}>
+            <line x1={padL} y1={y(v)} x2={W} y2={y(v)} stroke={brand.border} strokeWidth={0.5} />
+            <text x={padL - 3} y={y(v) + 3} textAnchor="end" fontSize={7} fill={CK.muted}>{v}</text>
+          </g>
+        ))}
+        {profil.saatler.map((s) => {
+          const x = padL + s.saat * cw;
+          return (
+            <g key={s.saat}>
+              {s.depoda > 0 && <rect x={x + 0.8} y={y(s.serviste + s.depoda)} width={cw - 1.4} height={y(s.serviste) - y(s.serviste + s.depoda)} fill={CK.muted} opacity={0.32} />}
+              {s.serviste > 0 && <rect x={x + 0.8} y={y(s.serviste)} width={cw - 1.4} height={h0 - y(s.serviste)} fill={CK.blue} opacity={s.pik ? 1 : 0.55} />}
+              <title>{`${s.saat}:00 — hatta ${s.serviste}, depoda ${s.depoda}${s.pik ? " (pik)" : s.aktif ? "" : " (servis dışı)"}`}</title>
+              {s.saat % 3 === 0 && <text x={x + cw / 2} y={H - 6} textAnchor="middle" fontSize={7} fill={CK.muted}>{s.saat}</text>}
+            </g>
+          );
+        })}
+      </svg>
+      <div className="mt-1 flex gap-4 text-[0.65rem]" style={{ color: CK.muted }}>
+        <span><span style={{ color: CK.blue }}>■</span> hatta (koyu = pik)</span>
+        <span><span style={{ color: CK.muted }}>■</span> depoda bekleyen</span>
+        <span>· saat →</span>
+      </div>
+    </div>
+  );
 }
 
 function Num({ label, value, onChange, step, suffix, max }: { label: string; value: number; onChange: (v: number) => void; step: number; suffix: string; max?: number }) {

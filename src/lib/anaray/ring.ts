@@ -105,11 +105,15 @@ export interface DurakArasiRing {
   depot?: boolean;
   /** Varış durağı depoysa: çıkışa hazır bekleyen tren sayısı. */
   queued?: number;
+  /** Varış durağı depoysa: deponun tren sığdırma kapasitesi (0/undefined = sınırsız). */
+  depoKapasite?: number;
   /** YALNIZ ilk ringde anlamlı: başlangıç (from) durağı parklanma alanı mı?
    *  (Origin istasyonun kendi ringi yoktur; bu yüzden ilk ringde taşınır.) */
   fromDepot?: boolean;
   /** İlk ringde: başlangıç durağı depoysa bekleyen tren sayısı. */
   fromQueued?: number;
+  /** İlk ringde: başlangıç durağı deposunun tren kapasitesi (0/undefined = sınırsız). */
+  fromDepoKapasite?: number;
   makaslar: MakasBolgesi[];
   hemzeminler: Hemzemin[];
   tehlikeNoktalari: TehlikeNoktasi[];
