@@ -308,7 +308,7 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
     // v6: künye düzeltmesi (AYGM/EMAY/Uğursal–ABU) + sunum modu (risk/uyarı/denge
     // sapması gizli). Yeni anahtar sayesinde seed bir kez daha çalışır; sunucu var olan
     // hazır taslakları yeni veri sürümüne tazeler.
-    const bayrak = `raysim_hazir_seed_v8_${user.uid}`;
+    const bayrak = `raysim_hazir_seed_v9_${user.uid}`;
     try { if (localStorage.getItem(bayrak)) { hazirDenendi.current = true; return; } } catch { /* yok */ }
     hazirDenendi.current = true;
     (async () => {
