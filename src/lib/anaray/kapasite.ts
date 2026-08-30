@@ -142,15 +142,18 @@ export function maksimumTren(
   // Bağlayıcı h_min = kısıtların en büyüğü
   const hMin = Math.max(hBlok, hTerminal, hTekhat, hKavsak);
 
-  // Çevrim süresi — NOMİNAL seyir (h_min ile aynı taban) + dwell + her durakta kalkış
-  // ölü zamanı (ring başına); iki yön (×2) + iki terminalde peron işgal süresi.
+  // Çevrim süresi — NOMİNAL seyir (h_min ile aynı taban) + ARA istasyon dwell'leri +
+  // her durakta kalkış ölü zamanı; iki yön (×2) + iki terminalde peron işgal süresi.
+  // NOT: son ringin varış durağı = UÇ TERMİNAL → onun dwell'i çevrime GİRMEZ; terminal
+  // duruşu peron işgal süresiyle (turnback) modellenir (çift-sayım önlenir).
   let tekYon = 0;
-  for (const r of rings) {
+  rings.forEach((r, idx) => {
     const sn = ringSenaryo(r, stock, cfg);
     // Hemzemin (karayolu) geçit beklemesi: hız düşümünden ayrı, gerçek durma payı.
     const hemzeminBekleme = r.hemzeminler.reduce((s, h) => s + Math.max(0, h.bekleme ?? 0), 0);
-    tekYon += sn.nominalSeyir + ringTimingEk(r) + r.dwell + ringSu(r) + hemzeminBekleme;
-  }
+    const dwellSay = idx === rings.length - 1 ? 0 : r.dwell; // uç terminal dwell'i hariç
+    tekYon += sn.nominalSeyir + ringTimingEk(r) + dwellSay + ringSu(r) + hemzeminBekleme;
+  });
   const terminalCevrim = (t: TerminalConfig) => (t.tip === "dongu" ? 0 : (t.peronIsgali || 0));
   const terminalToplam = terminalCevrim(isletme.terminalBas) + terminalCevrim(isletme.terminalSon);
   const cevrimSuresi = 2 * tekYon + terminalToplam;

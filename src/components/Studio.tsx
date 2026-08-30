@@ -371,6 +371,11 @@ function StudioIc() {
 
           <ServisGrafik profil={servisProfil} />
 
+          {isletme.toplamFilo < isletme.pikFilo && (
+            <div className="mt-2 text-xs" style={{ color: brand.red }}>
+              ⚠ Toplam filo ({isletme.toplamFilo}) pik filodan ({isletme.pikFilo}) küçük olamaz — servis için en az pik filo kadar araç gerekir. Toplam filoyu en az {isletme.pikFilo} yap.
+            </div>
+          )}
           <div className="mt-2 text-xs" style={{ color: brand.inkSoft }}>
             En fazla <b>{servisProfil.maxDepoda}</b> tren aynı anda depoda bekler (gece/servis dışı). Toplam depo kapasitesi:{" "}
             {depoKapasiteToplam > 0 ? (

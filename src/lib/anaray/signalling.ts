@@ -279,8 +279,10 @@ export interface DepotInfo {
  * tren veremez (gidecek yer yok) → dışlanır.
  */
 export function planDepotDispatch(line: Line, headway: number): { origins: number[]; depots: DepotInfo[]; total: number } {
+  // Depo BAYRAĞI olan her istasyon dispatch origini (queued>0 şartı yok; filo pik
+  // filodan gelir, queued = bu depoda park eden/stablanmış tren sayısı — bilgi).
   const depotStops = line.stations
-    .filter((s) => s.depot && Math.floor(s.queued ?? 0) > 0 && s.position < line.length - 1e-6)
+    .filter((s) => s.depot && s.position < line.length - 1e-6)
     .sort((a, c) => a.position - c.position);
   const origins: number[] = [];
   const depots: DepotInfo[] = [];
