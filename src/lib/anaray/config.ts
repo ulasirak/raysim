@@ -144,7 +144,7 @@ export interface TerminalConfig {
 }
 
 export const VARSAYILAN_TERMINAL: TerminalConfig = {
-  tip: "korTerminal", peronSayisi: 1, peronIsgali: 210,
+  tip: "korTerminal", peronSayisi: 2, peronIsgali: 210, // çift hat: gidiş+dönüş peronu
   bogazPaylasimli: true, bogazIsgali: 45, bogazOto: true, bogazMakasSayisi: 2,
 };
 
