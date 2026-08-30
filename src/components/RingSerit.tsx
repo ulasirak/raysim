@@ -238,10 +238,13 @@ export function SeritEkleBtn({ aktif, renk, onClick, children }: { aktif: boolea
 }
 
 function SeritDurak({ sol, ad, sag = false }: { sol: number; ad: string; sag?: boolean }) {
+  // Uç çizgi sol/sağ kenarda; ad etiketi kenardan İÇERİ doğru hizalanır (sol durak → sola,
+  // sağ durak → sağa) → şerit kenarında kırpılmaz.
   return (
-    <div className="absolute top-0 flex h-full flex-col items-center justify-center" style={{ left: `${sol}%`, transform: `translateX(${sag ? "-100%" : "0"})` }}>
-      <span className="h-full w-0.5" style={{ background: brand.ink }} />
-      <span className="absolute -bottom-4 whitespace-nowrap text-[0.55rem] font-medium" style={{ color: brand.ink }}>◉ {ad}</span>
+    <div className="absolute top-0 h-full w-0.5" style={{ left: `${sol}%`, transform: `translateX(${sag ? "-100%" : "0"})` }}>
+      <span className="block h-full w-0.5" style={{ background: brand.ink }} />
+      <span className="absolute -bottom-4 whitespace-nowrap text-[0.55rem] font-medium"
+        style={{ color: brand.ink, ...(sag ? { right: 0 } : { left: 0 }) }}>◉ {ad}</span>
     </div>
   );
 }
