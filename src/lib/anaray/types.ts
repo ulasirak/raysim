@@ -18,6 +18,9 @@ export interface Station {
   depot?: boolean;
   /** Depoysa: çıkışa hazır bekleyen tren sayısı (sırayla headway aralığıyla çıkar). */
   queued?: number;
+  /** Duruş noktası türü: yolcu istasyonu (varsayılan) / hemzemin geçit koruma duruşu / kavşak.
+   *  'gecit'/'kavsak' fiziksel duruştur ama YOLCU istasyonu değildir (etiket/sayım ayrı). */
+  tip?: "istasyon" | "gecit" | "kavsak";
 }
 
 /** Hattın bir parçası: sabit hız limiti ve eğim taşır. */

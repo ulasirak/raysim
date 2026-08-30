@@ -99,8 +99,11 @@ export function LiveNetwork({
 
   // Rota istasyonlarının ekran koordinatı (arc-length taban noktaları).
   const nodeById = useMemo(() => Object.fromEntries(network.nodes.map((n) => [n.id, n])), [network]);
+  // Lane geometrisi YALNIZ yolcu istasyonlarının network koordinatlarından kurulur;
+  // hemzemin geçit duruşları (tip:'gecit') network düğümü taşımaz → geometriye girmez
+  // (fp konumu laneAt ile hesaplanır), aksi halde x=0 geometriyi bozardı.
   const basePts = useMemo(
-    () => line.stations.map((st) => ({ fp: st.position, x: nodeById[st.id]?.x ?? 0, y: nodeById[st.id]?.y ?? 0 })),
+    () => line.stations.filter((st) => st.tip !== "gecit").map((st) => ({ fp: st.position, x: nodeById[st.id]?.x ?? 0, y: nodeById[st.id]?.y ?? 0 })),
     [line, nodeById]
   );
 
@@ -268,12 +271,15 @@ export function LiveNetwork({
   const LBL_TIER = 16;    // kademe başına yukarı çekme (px)
   const LBL_BASE = -12;   // en alt kademenin şeritten ofseti (px)
   const stationLabels = line.stations
+    .filter((st) => st.tip !== "gecit") // geçit duruşları yolcu istasyonu değil → ayrı işaretlenir
     .map((st) => {
       const top = laneAt(st.position, UST);
       const w = st.name.length * 5.3 + 8; // ~fontSize 9.5 metin genişliği tahmini
       return { st, x: top.x, baseY: top.y, w, x1: top.x - w / 2, x2: top.x + w / 2, tier: 0 };
     })
     .sort((a, b) => a.x - b.x);
+  // Hemzemin geçit koruma duruşları — ayrı işaret (⊞) + laneAt konumu
+  const gecitler = line.stations.filter((st) => st.tip === "gecit").map((st) => ({ st, p: laneAt(st.position, UST) }));
   const tierEnds: number[] = []; // her kademedeki son etiketin sağ kenarı
   for (const lb of stationLabels) {
     let tier = 0;
@@ -364,7 +370,7 @@ export function LiveNetwork({
         })}
 
         {/* İstasyonlar — peron markası + dik iniş çubuğu (etiketler AYRI katmanda) */}
-        {line.stations.map((st, i) => {
+        {line.stations.filter((st) => st.tip !== "gecit").map((st) => {
           const c = segAt(st.position);
           const u = laneAt(st.position, UP_SIDE);
           const d = laneAt(st.position, DOWN_SIDE);
@@ -375,6 +381,15 @@ export function LiveNetwork({
             </g>
           );
         })}
+        {/* Hemzemin geçit koruma duruşları — ⊞ işareti (trenler burada durur; blok sınırı → sinyal) */}
+        {gecitler.map(({ st, p }) => (
+          <g key={st.id}>
+            <rect x={p.x - 4} y={p.y - 10} width={8} height={8} rx={1} fill={brand.surface} stroke={CK.amber} strokeWidth={1.4} />
+            <line x1={p.x - 4} y1={p.y - 6} x2={p.x + 4} y2={p.y - 6} stroke={CK.amber} strokeWidth={1} />
+            <line x1={p.x} y1={p.y - 10} x2={p.x} y2={p.y - 2} stroke={CK.amber} strokeWidth={1} />
+            <title>{`Hemzemin geçit: ${st.name} — koruma duruşu ${Math.round(st.dwell)} s`}</title>
+          </g>
+        ))}
         {/* Depolar (parklanma alanları) — gidiş (alt) şeridinin yanında */}
         {depots.map(depotMark)}
 

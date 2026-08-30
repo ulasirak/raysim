@@ -176,3 +176,48 @@ export function ringlerdenSebeke(
     },
   };
 }
+
+// ————————————————————————————————————————————————
+// Hemzemin geçit KORUMA DURUŞLARI (canlı sim + sinyal)
+// ————————————————————————————————————————————————
+// Karayolu geçidinde `bekleme > 0` ise: tren o noktada gerçek bir DURUŞ yapar
+// (yavaşla → dur → bekle → kalk). Duruş noktası aynı zamanda blok sınırı olur →
+// orada koruyucu sinyal belirir (dolu bloğa girmeden kırmızıda durur). Böylece
+// "işlevli koruyucu sinyal" ve fiziksel durma tek modelden gelir.
+
+/** Bekleme > 0 olan karayolu geçitlerinin hat-boyu konumları (ileri yön). */
+export function hemzeminDuruslari(
+  rings: DurakArasiRing[], cfg: SimConfig = BELGE,
+): { pos: number; dwell: number; name: string }[] {
+  const out: { pos: number; dwell: number; name: string }[] = [];
+  let offset = 0;
+  for (const r of rings) {
+    const L = ringToLine(r, "nominal", cfg).length;
+    for (const h of r.hemzeminler) {
+      const b = Math.max(0, h.bekleme ?? 0);
+      if (b > 0 && (h.tip === "karayolu" || h.tip === undefined)) {
+        const k = Math.max(0, Math.min(r.uzunluk, h.konum));
+        out.push({ pos: offset + k * (L / Math.max(1, r.uzunluk)), dwell: b, name: h.ad || "Geçit" });
+      }
+    }
+    offset += L;
+  }
+  return out;
+}
+
+/** Geçit koruma duruşlarını bir Line'ın istasyon listesine ekler (tip:'gecit').
+ *  `reverse` = ters yön hattı (konumlar aynalanır). */
+export function duruslariEkle(
+  line: Line, duruslar: { pos: number; dwell: number; name: string }[], reverse = false,
+): Line {
+  if (duruslar.length === 0) return line;
+  const extra: Station[] = duruslar.map((d, i) => ({
+    id: `gecit_${reverse ? "d" : "g"}${i}`,
+    name: d.name,
+    position: reverse ? line.length - d.pos : d.pos,
+    dwell: d.dwell,
+    tip: "gecit" as const,
+  })).filter((s) => s.position > 1 && s.position < line.length - 1); // uçlardaki durakla çakışmasın
+  const stations = [...line.stations, ...extra].sort((a, b) => a.position - b.position);
+  return { ...line, stations };
+}

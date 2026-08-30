@@ -7,7 +7,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { RailNetwork, Route } from "@/lib/anaray/types";
-import { flattenRoute, ringlerdenSebeke } from "@/lib/anaray/network";
+import { flattenRoute, ringlerdenSebeke, hemzeminDuruslari, duruslariEkle } from "@/lib/anaray/network";
 import { simulate } from "@/lib/anaray/sim";
 import { simulateSignalled, reverseRoute, monteCarlo, planDepotDispatch, type MonteCarloResult } from "@/lib/anaray/signalling";
 import { tramvaylar } from "@/lib/anaray/vehicles";
@@ -102,12 +102,18 @@ function StudioIc() {
   const setBaslangicSaati = (v: string) => patchIsletme({ seferBaslangicSaati: v });
   const [saatlerGoster, setSaatlerGoster] = useState(false);
 
+  // Hemzemin geçit koruma duruşları (bekleme>0 karayolu geçitleri) — hem gidiş hem
+  // dönüş hattına eklenir: tren orada durur+bekler ve o nokta blok sınırı/sinyal olur.
+  const gecitDuruslari = useMemo(() => hemzeminDuruslari(rings, cfg), [rings, cfg]);
   const { line, result } = useMemo(() => {
-    const l = flattenRoute(network, route);
+    const l = duruslariEkle(flattenRoute(network, route), gecitDuruslari, false);
     return { line: l, result: simulate(l, stock, 0.5) };
-  }, [network, stock, route]);
+  }, [network, stock, route, gecitDuruslari]);
 
-  const reverseLine = useMemo(() => flattenRoute(network, reverseRoute(route)), [network, route]);
+  const reverseLine = useMemo(
+    () => duruslariEkle(flattenRoute(network, reverseRoute(route)), gecitDuruslari, true),
+    [network, route, gecitDuruslari]
+  );
 
   const gidisSim = useMemo(
     () => simulateSignalled(line, stock, { headway: headwayDk * 60, count: etkinSeferSayisi, maxBlockLen: BLOK_MAXLEN, blocked: ariza }),
@@ -178,7 +184,7 @@ function StudioIc() {
         <div className="field-label">Sefer Simülasyon Raporu</div>
         <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>{network.name}</h1>
         <div className="mt-1 text-xs" style={{ color: brand.muted }}>
-          Kaynak: <b>paylaşılan proje hattı</b> ({line.stations.length} durak · {km(line.length)} km). Hattı düzenlemek için{" "}
+          Kaynak: <b>paylaşılan proje hattı</b> ({line.stations.filter((s) => s.tip !== "gecit").length} durak · {km(line.length)} km). Hattı düzenlemek için{" "}
           <Link href="/#ringler" className="underline">Ringler (KUR)</Link> bölümüne gidin — değişiklikler burada anında yansır.
         </div>
       </div>
