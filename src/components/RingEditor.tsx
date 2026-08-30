@@ -6,7 +6,7 @@
 // headway (240 s) uygunluğu, durak-çiftleri arası denge ve tren-sayısı
 // darboğazı anında yeniden hesaplanır. Hücreler bir loop (kapalı hat) oluşturur.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { RollingStock } from "@/lib/anaray/types";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { etkinBogazIsgali, type SimConfig, type DonusTip, type TerminalConfig } from "@/lib/anaray/config";
@@ -42,6 +42,11 @@ import { KisitSeridi, EkleFormu, SeritEkleBtn, KisitRozet, MakasEkleMenu, type E
 
 const KMH = 1 / 3.6;
 const OK = CK.good;
+
+/** Bir alanın altına çok kısa, basit açıklama (kullanıcı anlasın diye). */
+function Kucuk({ children }: { children: ReactNode }) {
+  return <p className="mt-0.5 text-[0.6rem] leading-tight" style={{ color: brand.faint }}>{children}</p>;
+}
 
 const DONUS_TIP_AD: Record<DonusTip, string> = {
   korTerminal: "Kör terminal (stub)",
@@ -235,10 +240,11 @@ export function RingEditor() {
                           <option key={k} value={k}>{DONUS_TIP_AD[k]}</option>
                         ))}
                       </select>
+                      <Kucuk>terminalin fiziksel dönüş biçimi</Kucuk>
                     </label>
                     <div className="mt-2 grid grid-cols-2 gap-3">
-                      <Num label="Peron sayısı" suffix="peron" step={1} max={6} value={t.peronSayisi}
-                        onChange={(v) => patchTerminal(uc, { peronSayisi: Math.max(1, Math.round(v)) })} />
+                      <div><Num label="Peron sayısı" suffix="peron" step={1} max={6} value={t.peronSayisi}
+                        onChange={(v) => patchTerminal(uc, { peronSayisi: Math.max(1, Math.round(v)) })} /><Kucuk>aynı anda tren alan peron</Kucuk></div>
                     </div>
                     {/* Peron işgal süresi — bileşenli (ince model), toplam yetkili */}
                     <div className="mt-2 rounded border p-2" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
@@ -247,16 +253,16 @@ export function RingEditor() {
                         <span className="text-sm font-semibold" style={{ color: brand.ink }}>{Math.round(t.peronIsgali)} s</span>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                        <Num label="Varış tamponu" suffix="s" step={5} value={terminalBilesen(t).varis}
-                          onChange={(v) => patchTerminalBilesen(uc, "varis", v)} />
-                        <Num label="İniş/biniş" suffix="s" step={5} value={terminalBilesen(t).inis}
-                          onChange={(v) => patchTerminalBilesen(uc, "inis", v)} />
-                        <Num label="Ters dönüş" suffix="s" step={5} value={terminalBilesen(t).ters}
-                          onChange={(v) => patchTerminalBilesen(uc, "ters", v)} />
-                        <Num label="Kalkış temizleme" suffix="s" step={5} value={terminalBilesen(t).kalkis}
-                          onChange={(v) => patchTerminalBilesen(uc, "kalkis", v)} />
-                        <Num label="Toparlanma (recovery)" suffix="s" step={5} value={terminalBilesen(t).topar}
-                          onChange={(v) => patchTerminalBilesen(uc, "topar", v)} />
+                        <div><Num label="Varış tamponu" suffix="s" step={5} value={terminalBilesen(t).varis}
+                          onChange={(v) => patchTerminalBilesen(uc, "varis", v)} /><Kucuk>perona girip durana dek</Kucuk></div>
+                        <div><Num label="İniş/biniş" suffix="s" step={5} value={terminalBilesen(t).inis}
+                          onChange={(v) => patchTerminalBilesen(uc, "inis", v)} /><Kucuk>yolcu iniş-biniş</Kucuk></div>
+                        <div><Num label="Ters dönüş" suffix="s" step={5} value={terminalBilesen(t).ters}
+                          onChange={(v) => patchTerminalBilesen(uc, "ters", v)} /><Kucuk>yön değiştirme</Kucuk></div>
+                        <div><Num label="Kalkış temizleme" suffix="s" step={5} value={terminalBilesen(t).kalkis}
+                          onChange={(v) => patchTerminalBilesen(uc, "kalkis", v)} /><Kucuk>kalkıp boğazı boşaltana dek</Kucuk></div>
+                        <div><Num label="Toparlanma (recovery)" suffix="s" step={5} value={terminalBilesen(t).topar}
+                          onChange={(v) => patchTerminalBilesen(uc, "topar", v)} /><Kucuk>gecikme payı (program güvenliği)</Kucuk></div>
                       </div>
                       <p className="mt-1 text-xs" style={{ color: brand.muted }}>
                         Toplam = trenin peronu tuttuğu tam süre. Terminal aralığı = bu ÷ peron. <b>Toparlanma</b>: gecikmeleri yutan program payı (schedule recovery).
@@ -274,11 +280,11 @@ export function RingEditor() {
                       </label>
                       <div className="mt-1">
                         {t.bogazOto ? (
-                          <Num label="Boğaz makas (crossover) sayısı" suffix="makas" step={1} max={8} value={t.bogazMakasSayisi}
-                            onChange={(v) => patchTerminal(uc, { bogazMakasSayisi: Math.max(1, Math.round(v)) })} />
+                          <div><Num label="Boğaz makas (crossover) sayısı" suffix="makas" step={1} max={8} value={t.bogazMakasSayisi}
+                            onChange={(v) => patchTerminal(uc, { bogazMakasSayisi: Math.max(1, Math.round(v)) })} /><Kucuk>boğazdaki makas adedi (süre bundan türetilir)</Kucuk></div>
                         ) : (
-                          <Num label="Boğaz işgali (elle)" suffix="s" step={5} value={t.bogazIsgali}
-                            onChange={(v) => patchTerminal(uc, { bogazIsgali: Math.max(0, Math.round(v)) })} />
+                          <div><Num label="Boğaz işgali (elle)" suffix="s" step={5} value={t.bogazIsgali}
+                            onChange={(v) => patchTerminal(uc, { bogazIsgali: Math.max(0, Math.round(v)) })} /><Kucuk>bir trenin boğazı tuttuğu süre</Kucuk></div>
                         )}
                       </div>
                       <p className="mt-1 text-xs" style={{ color: brand.muted }}>
@@ -291,6 +297,7 @@ export function RingEditor() {
                         onChange={(e) => patchTerminal(uc, { bogazPaylasimli: e.target.checked })} />
                       Peronlar tek boğazı paylaşıyor
                     </label>
+                    <Kucuk>işaretli: çok peron olsa da trenler tek boğazdan sırayla geçer (boğaz sınırlar). işaretsiz: peronlar bağımsız/paralel</Kucuk>
                     {t.tip === "dongu" && (
                       <p className="mt-1 text-xs" style={{ color: brand.muted }}>Balon döngüde terminal kısıtı yok (dönüş ~0).</p>
                     )}
