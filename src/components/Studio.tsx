@@ -23,10 +23,9 @@ import { NetworkDiagram } from "@/components/NetworkDiagram";
 
 const KMH = 1 / 3.6;
 
-// MODEL KURALI: her durak arası TEK sinyal bloğudur. makeBlocks'a sonsuz blok
-// uzunluğu verilince istasyon sınırları dışında alt bölme yapılmaz (blok = durak
-// arası). Böylece canlı sim, grafikler ve kapasite/headway tek blok modeliyle tutarlı.
-const BLOK_MAXLEN = Infinity;
+// MODEL KURALI: sinyal blok uzunluğu TEK KAYNAK = cfg.blokMaxUzunluk (Sistem Merkezi).
+// Canlı sim, grafikler ve kapasite/blocking AYNI blok düzenini kullanır → sinyaller
+// capacity ile birebir hizalı, kayma yok. Aralık ayarlanınca sinyaller sıklaşır/seyrelir.
 
 // Proje hattı boşsa (kullanıcı Ringler'de tüm hücreleri sildiyse) motorlar çökmesin
 // diye geçerli ama boş bir iskelet; ekranda uyarı gösterilir.
@@ -49,7 +48,9 @@ export function Studio() {
 }
 
 function StudioIc() {
-  const { cfg } = useSimConfig();
+  const { cfg, patch: patchCfg } = useSimConfig();
+  // Sinyal blok uzunluğu — canlı sim + kapasite + sinyaller tek kaynak.
+  const BLOK_MAXLEN = cfg.blokMaxUzunluk;
   const { rings, meta } = useProje();
   // Araç ve işletme parametreleri KALICI (projeye kayıtlı) — tek kaynak, uçucu değil.
   const { arac: stock, patchArac, setArac } = useArac();
@@ -110,7 +111,7 @@ function StudioIc() {
 
   const gidisSim = useMemo(
     () => simulateSignalled(line, stock, { headway: headwayDk * 60, count: etkinSeferSayisi, maxBlockLen: BLOK_MAXLEN, blocked: ariza }),
-    [line, stock, headwayDk, etkinSeferSayisi, ariza]
+    [line, stock, headwayDk, etkinSeferSayisi, ariza, BLOK_MAXLEN]
   );
   const arizaToggle = (i: number) => setAriza((a) => (a.includes(i) ? a.filter((x) => x !== i) : [...a, i]));
   // Depo (parklanma) planı: depo istasyonlarındaki bekleyen trenler gidiş servisini
@@ -134,11 +135,11 @@ function StudioIc() {
       depoVar
         ? simulateSignalled(line, stock, { headway: headwayDk * 60, count: filoParktan, maxBlockLen: BLOK_MAXLEN, blocked: ariza, origins: gidisOrigins })
         : gidisSim,
-    [depoVar, filoParktan, gidisOrigins, gidisSim, line, stock, headwayDk, ariza]
+    [depoVar, filoParktan, gidisOrigins, gidisSim, line, stock, headwayDk, ariza, BLOK_MAXLEN]
   );
   const donusSim = useMemo(
     () => simulateSignalled(reverseLine, stock, { headway: headwayDk * 60, count: filo, maxBlockLen: BLOK_MAXLEN }),
-    [reverseLine, stock, headwayDk, filo]
+    [reverseLine, stock, headwayDk, filo, BLOK_MAXLEN]
   );
 
   const monteCarloCalistir = () => {
@@ -183,10 +184,22 @@ function StudioIc() {
       </div>
 
       {/* Canlı ağ simülasyonu (kahraman) */}
-      <Panel baslik="Canlı Ağ Simülasyonu" aciklama="Tüm trenler (gidiş + dönüş) aynı anda hat üzerinde hareket eder; işgal edilen bloklar canlı kırmızıya döner. Dispatcher (hat sevkçisi): gidiş şeridindeki bir sinyale tıkla → o blok arızalanır, trenler arkasında kuyruklanır. Parklanma alanı (🅿) tanımlı istasyonlarda bekleyen trenler sırayla servise çıkar. Oynat ▶">
+      <Panel baslik="Canlı Ağ Simülasyonu" aciklama="Tüm trenler (gidiş + dönüş) aynı anda hat üzerinde hareket eder. Sinyaller blok sınırlarında 3-aspekt yanar (yeşil/sarı/kırmızı) — önündeki blok doluysa otomatik kırmızı; renk elle ayarlanmaz, gerçek sabit-blok mantığı budur. Blok aralığını aşağıdan değiştir → sinyaller sıklaşır/seyrelir (kapasite ile aynı düzen). Dispatcher: bir sinyale tıkla → blok arızalanır. Parklanma (🅿) trenleri sırayla servise çıkar. Oynat ▶">
         <LiveNetwork network={network} route={route} line={line} blocks={canliGidis.blocks}
           up={canliGidis.trains} down={donusSim.trains} tMax={Math.max(canliGidis.tMax, donusSim.tMax)} trainLen={stock.length}
           faultBlocks={ariza} onBlockClick={arizaToggle} depots={depotPlan.depots} />
+        {/* Sinyal blok aralığı — sinyaller bu aralıkta dizilir (kapasite ile aynı) */}
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs" style={{ color: brand.inkSoft }}>
+          <span>🚦 Sinyal blok aralığı</span>
+          <button type="button" onClick={() => patchCfg({ blokMaxUzunluk: Math.max(100, Math.round((cfg.blokMaxUzunluk - 50) / 50) * 50) })}
+            className="flex h-5 w-5 items-center justify-center rounded border font-semibold" style={{ borderColor: brand.border, color: brand.ink }} title="Sıklaştır (kısa blok = daha çok sinyal)">−</button>
+          <input type="number" min={100} max={1500} step={50} value={Math.round(cfg.blokMaxUzunluk)}
+            onChange={(e) => patchCfg({ blokMaxUzunluk: Math.max(100, Math.min(1500, parseFloat(e.target.value) || 100)) })}
+            className="w-16 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} />
+          <button type="button" onClick={() => patchCfg({ blokMaxUzunluk: Math.min(1500, Math.round((cfg.blokMaxUzunluk + 50) / 50) * 50) })}
+            className="flex h-5 w-5 items-center justify-center rounded border font-semibold text-white" style={{ background: brand.ink, borderColor: brand.ink }} title="Seyrelt (uzun blok = az sinyal)">+</button>
+          <span style={{ color: brand.muted }}>m · sinyaller bu aralıkta dizilir; kapasite (h_min) ile aynı düzen</span>
+        </div>
         {/* Filo kaynağı + kapasite bağlantısı */}
         <div className="mt-2 text-xs" style={{ color: brand.inkSoft }}>
           {depoVar ? (
