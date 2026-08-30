@@ -134,12 +134,25 @@ function yonYuk(w: number[], B: number): { yuk: number[]; binen: number[]; inen:
   return { yuk, binen: board, inen };
 }
 
-/** Ana analiz. rings = dwell uygulanmış (talep gerçek girilmişse onu kullanır). */
+/** Kümülatif araç yükü: her durakta Σbinen − Σinen (birikim), negatif olamaz. */
+function kumulatifYuk(binen: number[], inen: number[]): number[] {
+  const out = new Array(binen.length).fill(0);
+  let acc = 0;
+  for (let i = 0; i < binen.length; i++) {
+    acc += (binen[i] || 0) - (inen[i] || 0);
+    out[i] = Math.max(0, acc);
+  }
+  return out;
+}
+
+/** Ana analiz. mod="toplam": talep rolden tahmin (pikYolcuSaat ölçekli). mod="istasyon":
+ *  durak-başı girilen (yoksa tahminle dolu) iniş/binişten KÜMÜLATİF yük. */
 export function tersIsletmeAnaliz(
   rings: DurakArasiRing[],
   stock: RollingStock,
   isletme: Isletme,
   cfg: SimConfig,
+  mod: "toplam" | "istasyon" = "toplam",
 ): TersIsletmeRapor | null {
   const duraklar = ringDuraklari(rings);
   const N = duraklar.length;
@@ -172,31 +185,43 @@ export function tersIsletmeAnaliz(
   }
   const makasliDurak = new Set(makaslarM.map((m) => m.durakIdx));
 
-  // Talep ağırlıkları: gerçek biniş girilmişse ondan, yoksa rolden tahmin.
-  const gercekVeri = rings.some((r) => (r.binenYolcu ?? 0) > 0 || (r.inenYolcu ?? 0) > 0);
-  const wGidis = duraklar.map((d, i) => {
-    if (gercekVeri) return Math.max(0.001, rings[i]?.binenYolcu ?? 0.001); // biniş origin ağırlığı
-    return isletme.talepAgirliklari?.[d.ad] ?? durakAgirlik(d.ad);
-  });
+  // Rol ağırlıkları + OD-lite tahmini (her modda hesaplanır — istasyon modunda
+  // girilmemiş durakların VARSAYILANI bu tahmindir).
+  const wGidis = duraklar.map((d) => isletme.talepAgirliklari?.[d.ad] ?? durakAgirlik(d.ad));
+  const estGidis = yonYuk(wGidis, B);
+  const estDonusR = yonYuk([...wGidis].reverse(), B);
+  const estDonusYuk = [...estDonusR.yuk].reverse();
+  const estDonusBinen = [...estDonusR.binen].reverse();
+  const estDonusInen = [...estDonusR.inen].reverse();
 
-  // Gidiş + dönüş (ters sıra) yük profilleri.
-  const gidis = yonYuk(wGidis, B);
-  const wDonus = [...wGidis].reverse();
-  const donusR = yonYuk(wDonus, B);
-  const donusYuk = [...donusR.yuk].reverse();   // durak indexine geri çevir
-  const donusBinen = [...donusR.binen].reverse();
-  const donusInen = [...donusR.inen].reverse();
+  // Kullanılan binen/inen ve iki yön yük profili — moda göre.
+  let binenArr: number[], inenArr: number[], yukGidisArr: number[], yukDonusArr: number[];
+  const gercekVeri = mod === "istasyon";
+  if (mod === "istasyon") {
+    // Durak-başı girilen (yoksa tahminle dolu) iniş/biniş → KÜMÜLATİF yük.
+    binenArr = duraklar.map((d, i) => isletme.istasyonYolcu?.[d.ad]?.binen ?? Math.round(estGidis.binen[i]));
+    inenArr = duraklar.map((d, i) => isletme.istasyonYolcu?.[d.ad]?.inen ?? Math.round(estGidis.inen[i]));
+    yukGidisArr = kumulatifYuk(binenArr, inenArr);
+    // Dönüş yönü: binen↔inen yer değiştirir (gidişte inen, dönüşte biner), ters sıra.
+    yukDonusArr = [...kumulatifYuk([...inenArr].reverse(), [...binenArr].reverse())].reverse();
+  } else {
+    // Toplam: rol-tahmini OD yükü (iki yön).
+    yukGidisArr = estGidis.yuk;
+    yukDonusArr = estDonusYuk;
+    binenArr = duraklar.map((_, i) => Math.round(estGidis.binen[i] + estDonusBinen[i]));
+    inenArr = duraklar.map((_, i) => Math.round(estGidis.inen[i] + estDonusInen[i]));
+  }
 
   const arzKisiSaat = mevcutFrekans * C; // kişi/saat (bir yön)
   const duraklarT: DurakTalep[] = duraklar.map((d, i) => {
-    const yukG = gidis.yuk[i];
-    const yukD = donusYuk[i];
+    const yukG = yukGidisArr[i];
+    const yukD = yukDonusArr[i];
     const tepe = Math.max(yukG, yukD);
     return {
       ad: d.ad, konum: d.konum,
       agirlik: wGidis[i],
-      binen: Math.round(gidis.binen[i] + donusBinen[i]),
-      inen: Math.round(gidis.inen[i] + donusInen[i]),
+      binen: Math.round(binenArr[i]),
+      inen: Math.round(inenArr[i]),
       yukGidis: Math.round(yukG), yukDonus: Math.round(yukD),
       tepeYuk: Math.round(tepe),
       doluluk: arzKisiSaat > 0 ? tepe / arzKisiSaat : 0,

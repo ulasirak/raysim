@@ -233,6 +233,9 @@ export interface Isletme {
   dolulukHedefi: number;        // hedef doluluk faktörü (0..1) — bu oranın üstü "tıkanma"
   aracYolcuKapasite: number;    // araç yolcu kapasitesi (kişi) — tıkanmadan taşınan
   talepAgirliklari?: Record<string, number>; // durak-başı talep ağırlığı override (ad→ağırlık); yoksa rolden tahmin
+  /** "Her istasyon" modunda durak-başı yolcu (yolcu/saat): ad→{binen,inen}. Girili değilse
+   *  rolden tahmin edilen değerle doldurulur. DWELL'i ETKİLEMEZ (ayrı alan) — kapasiteyi bozmaz. */
+  istasyonYolcu?: Record<string, { binen: number; inen: number }>;
 }
 
 // Not: cfg.headway (sözleşme hedef headway'i) AYRIDIR — ring uygunluk eşiği için
