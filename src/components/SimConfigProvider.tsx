@@ -29,6 +29,7 @@ import {
   projeAdiDegistir, paylasimAyarla, veriBoyutu, hazirHatlariSeed,
   PROJE_KOTASI, VERI_BAYT_SINIRI, type ProjeOzet, type ProjeVerisi,
 } from "@/lib/projeler";
+import { HAZIR_VERI_SURUM } from "@/lib/anaray/hazirHatlar";
 
 // Eski (tek kullanıcılı) yerel taslak anahtarları — yalnız İLK projeye taşımak için okunur.
 const ESKI_CFG = "raysim_simconfig_v1";
@@ -305,10 +306,11 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
     if (!authHazir || !user || !yonetici || paylasimId) return;
     if (durum !== "hazir") return; // bootstrap bitmeden çalışma
     if (hazirDenendi.current) return;
-    // v6: künye düzeltmesi (AYGM/EMAY/Uğursal–ABU) + sunum modu (risk/uyarı/denge
-    // sapması gizli). Yeni anahtar sayesinde seed bir kez daha çalışır; sunucu var olan
-    // hazır taslakları yeni veri sürümüne tazeler.
-    const bayrak = `raysim_hazir_seed_v9_${user.uid}`;
+    // Bayrak, hazır-hat veri SÜRÜMÜNDEN türetilir (HAZIR_VERI_SURUM). Sürüm her
+    // artırıldığında yeni anahtar oluşur → seed bir kez daha çalışır ve sunucu var olan
+    // hazır taslakları yeni sürüme tazeler. (Sabit "v9" yerine dinamik: sürüm artışı
+    // otomatik re-seed tetikler — elle güncelleme gerekmez.)
+    const bayrak = `raysim_hazir_seed_v${HAZIR_VERI_SURUM}_${user.uid}`;
     try { if (localStorage.getItem(bayrak)) { hazirDenendi.current = true; return; } } catch { /* yok */ }
     hazirDenendi.current = true;
     (async () => {
