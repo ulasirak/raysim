@@ -1,0 +1,31 @@
+name: CI
+
+# Motor çekirdeğini korur: her push (master) ve her PR'da tip-kontrol + golden-master
+# testleri çalışır. Golden değerlerden herhangi biri oynarsa (rapor/karşılaştırma/canlı
+# sim ile aynı çekirdek) CI kırmızıya döner. Bkz. docs/DOGRULAMA.md.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    name: Type-check & Golden-master
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install (npm ci)
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Golden-master tests
+        run: npm test
