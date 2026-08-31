@@ -10,7 +10,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { RailNetwork, Route, Line } from "@/lib/anaray/types";
 import type { SignalTrain, DepotInfo, LoopYorunge, LoopDurum } from "@/lib/anaray/signalling";
 import type { HatOzellik } from "@/lib/anaray/network";
-import type { TerminalConfig, DonusTip } from "@/lib/anaray/config";
+import type { TerminalConfig, DonusTip, TersMod } from "@/lib/anaray/config";
 import { saat } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
 import { CK, ASPEKT } from "@/lib/anaray/chartkit";
@@ -72,9 +72,23 @@ function sampleLoop(orn: LoopYorunge["ornekler"], phase: number): { s: number; d
   const dtt = (p1.t - p0.t) || 1; const f = (phase - p0.t) / dtt;
   return { s: p0.s + (p1.s - p0.s) * f, durum: p1.durum, ad: p1.ad, v: Math.abs(p1.s - p0.s) / dtt };
 }
+// Ters arama: kümülatif s hedefine EN YAKIN faz (t). gidisMi=true → yalnız gidiş kolu
+// (s≤L) aranır; false → yalnız dönüş kolu (s≥L). Işınlanma düzeltmesinde yeniden-katılma
+// fazını (giden→başa=0, gelen→bitiş terminali=L) bulmak için kullanılır.
+function fazAtS(orn: LoopYorunge["ornekler"], sHedef: number, L: number, gidisMi: boolean): number {
+  let bt = 0, bd = Infinity;
+  for (const o of orn) {
+    if (gidisMi && o.s > L + 1e-6) continue;
+    if (!gidisMi && o.s < L - 1e-6) continue;
+    const d = Math.abs(o.s - sHedef);
+    if (d < bd) { bd = d; bt = o.t; }
+  }
+  return bt;
+}
 
 export function LiveNetwork({
   network, route, line, blocks, up = [], down = [], tMax, trainLen = 40, faultBlocks = [], onBlockClick, depots = [], features = [], loop, terminalBas, terminalSon,
+  tersMod = "gidenHat", onTersMod,
 }: {
   network: RailNetwork;
   route: Route;
@@ -93,25 +107,34 @@ export function LiveNetwork({
   loop?: LoopYorunge & { count: number; offset: number; dagitim?: { parkPos: number; gidis: boolean; dispatchT: number; startPhase: number }[] };
   terminalBas?: TerminalConfig; // başlangıç terminali dönüş tipi (görsel turnback biçimi)
   terminalSon?: TerminalConfig; // bitiş terminali dönüş tipi
+  tersMod?: TersMod;            // ters işletme (istasyon makası kısa dönüş) modu
+  onTersMod?: (m: TersMod) => void; // mod değişince kalıcı kaydet (isletme.tersMod)
 }) {
   const [t, setT] = useState(0);
   const [secili, setSecili] = useState<number | null>(null); // döngüde tıklanan tren (detay kutusu)
   const [oynat, setOynat] = useState(false);
   const [hiz, setHiz] = useState(15);
   const [mounted, setMounted] = useState(false);
-  // ETKİLEŞİMLİ TERS İŞLETME: giden tren ara-hat (ters işletme) makasına gelince süre
-  // durur + onay pop-up; onaylanırsa o tren karşı (dönüş) şeride geçip başa geri döner.
-  const [karar, setKarar] = useState<{ trainIdx: number; no: number; makasPos: number; makasAd: string; crossover: "s" | "x"; key: string } | null>(null);
-  const [tersHareket, setTersHareket] = useState<{ idx: number; no: number; makasPos: number; t0: number }[]>([]);
+  // ETKİLEŞİMLİ TERS İŞLETME (SADECE istasyon makasları): bir tren istasyon makasına
+  // gelince süre durur + onay pop-up. yon="giden" → tren karşı (dönüş) şeride geçip
+  // başa geri döner; yon="gelen" (yalnız çift yönlü mod) → dönüş treni GİDEN hatta
+  // geçip ileri (bitiş terminaline) gider.
+  const [karar, setKarar] = useState<{ trainIdx: number; no: number; makasPos: number; makasAd: string; crossover: "s" | "x"; yon: "giden" | "gelen"; key: string } | null>(null);
+  const [tersHareket, setTersHareket] = useState<{ idx: number; no: number; makasPos: number; t0: number; yon: "giden" | "gelen" }[]>([]);
+  // Işınlanma düzeltmesi: ters işletme biten tren, fazı "olması gereken" konuma
+  // sıfırlanarak yeniden servise katılır (yoksa faz durmadan aktığından ileriye ışınlanırdı).
+  const [fazKaydirma, setFazKaydirma] = useState<Record<number, number>>({});
   const raf = useRef<number | null>(null);
   const last = useRef(0);
   const tRef = useRef(0);                              // saatin otoritesi (zamanlayıcı sahibi)
-  const sorulan = useRef<Set<string>>(new Set());      // sorulmuş (tren:makas:tur) → tekrar sorma
+  const sorulan = useRef<Set<string>>(new Set());      // sorulmuş (tren:yön:makas:tur) → tekrar sorma
   const loopRef = useRef(loop);
-  const tersMakasRef = useRef<HatOzellik[]>([]);
+  const tersMakasRef = useRef<{ pos: number; ad: string; crossover: "s" | "x" }[]>([]);
   const tersHareketRef = useRef(tersHareket);
   const tersAktifIdxRef = useRef<Set<number>>(new Set());
   const kararRef = useRef(karar);
+  const tersModRef = useRef<TersMod>(tersMod);
+  const fazKaydirmaRef = useRef(fazKaydirma);
   const vTersRef = useRef(10);                          // ters dönüş ort. hız (m/s sim)
   // DÖNGÜ motoru periyodik tek-yörüngedir → KALICI blok arızasını temsil edemez
   // (arızalı blok = sonsuz durma, periyot bozulur). Bir blok arızalıyken bu yüzden
@@ -142,29 +165,34 @@ export function LiveNetwork({
       setT(nx);
       if (bitti) { setOynat(false); return; }
 
-      // — Giden bir tren ara-hat ters işletme makasına ulaştı mı? —
+      // — Bir tren İSTASYON makasına ulaştı mı? (ters işletme = SADECE istasyon makası) —
+      // Mod: "kapali" → hiç sorma; "gidenHat" → yalnız GİDEN trenler; "ciftYonlu" → giden + GELEN.
       const lp = loopRef.current;
-      if (lp && !kararRef.current) {
+      const mod = tersModRef.current;
+      if (lp && mod !== "kapali" && !kararRef.current) {
         const tm = tersMakasRef.current;
         if (tm.length) {
           const w = Math.max(50, Math.min(lp.loopLen * 0.015, 140)); // tespit penceresi (m)
+          const fk = fazKaydirmaRef.current;
           for (let k = 0; k < lp.count; k++) {
             if (tersAktifIdxRef.current.has(k)) continue;             // zaten dönüyor
             const dg = lp.dagitim?.[k];
             if (dg && nx < dg.dispatchT - 1e-6) continue;             // henüz depoda
-            const raw = dg ? dg.startPhase + (nx - dg.dispatchT) : nx + k * lp.offset;
+            const raw = (dg ? dg.startPhase + (nx - dg.dispatchT) : nx + k * lp.offset) + (fk[k] ?? 0);
             const lap = Math.floor(raw / lp.periyot);
             const phase = (((raw % lp.periyot) + lp.periyot) % lp.periyot);
             const r = sampleLoop(lp.ornekler, phase);
-            if (r.s > lp.L + 1e-6) continue;                          // yalnız gidiş yönü
-            const fp = Math.min(lp.L, r.s);
+            const gidis = r.s <= lp.L + 1e-6;
+            if (gidis === false && mod !== "ciftYonlu") continue;     // gelen yön yalnız çift yönlü modda
+            const yon: "giden" | "gelen" = gidis ? "giden" : "gelen";
+            const fp = gidis ? Math.min(lp.L, r.s) : Math.max(0, lp.loopLen - r.s); // fiziksel konum (0..L)
             let sordu = false;
             for (const m of tm) {
               if (fp >= m.pos - w && fp <= m.pos + w) {
-                const key = `${k}:${Math.round(m.pos)}:${lap}`;
+                const key = `${k}:${yon}:${Math.round(m.pos)}:${lap}`;
                 if (!sorulan.current.has(key)) {
                   sorulan.current.add(key);
-                  setKarar({ trainIdx: k, no: k + 1, makasPos: m.pos, makasAd: m.ad, crossover: (m.crossover as "s" | "x") || "s", key });
+                  setKarar({ trainIdx: k, no: k + 1, makasPos: m.pos, makasAd: m.ad, crossover: m.crossover || "s", yon, key });
                   setOynat(false);
                   sordu = true;
                   break;
@@ -176,11 +204,31 @@ export function LiveNetwork({
         }
       }
 
-      // — Geri dönen (ters) trenlerden başa varanları normal servise iade et —
+      // — Ters işletme overlay'i biten trenleri normal servise İADE et (ışınlanmadan) —
+      // giden: başa (fp 0) vardı → faz s=0'a sıfırlanır (sıranın en arkası).
+      // gelen: bitiş terminaline (fp L) vardı → faz s=L'ye (dönüşe geçiş) sıfırlanır.
       const th = tersHareketRef.current;
-      if (th.length) {
-        const biten = th.filter((rr) => rr.makasPos - vTersRef.current * Math.max(0, nx - rr.t0) <= 0);
-        if (biten.length) setTersHareket((prev) => prev.filter((rr) => !biten.some((b) => b.idx === rr.idx)));
+      if (th.length && lp) {
+        const v = vTersRef.current;
+        const biten = th.filter((rr) => rr.yon === "gelen"
+          ? rr.makasPos + v * Math.max(0, nx - rr.t0) >= lp.L
+          : rr.makasPos - v * Math.max(0, nx - rr.t0) <= 0);
+        if (biten.length) {
+          // Her biten trene: mevcut fazı, hedef s'ye denk gelecek şekilde kaydır.
+          setFazKaydirma((prev) => {
+            const nf = { ...prev };
+            for (const b of biten) {
+              const dg = lp.dagitim?.[b.idx];
+              const taban = dg ? dg.startPhase + (nx - dg.dispatchT) : nx + b.idx * lp.offset;
+              const hedefFaz = b.yon === "gelen"
+                ? fazAtS(lp.ornekler, lp.L, lp.L, false)  // dönüşe geçiş (bitiş terminali)
+                : 0;                                       // gidiş başı (s=0)
+              nf[b.idx] = hedefFaz - taban;
+            }
+            return nf;
+          });
+          setTersHareket((prev) => prev.filter((rr) => !biten.some((b) => b.idx === rr.idx)));
+        }
       }
     };
     // rAF görünürken pürüzsüz akıcılık sağlar; ama sekme gizliyken (arka plan,
@@ -235,13 +283,24 @@ export function LiveNetwork({
     });
   }, [basePts]);
 
-  // TERS İŞLETME MAKASLARI = uçlarda OLMAYAN (ara-hat) makaslar → kısa dönüş/turnback
-  // noktaları (terminal makasları zaten otomatik turnback; onlar hariç). Props'tan türetilir.
+  // TERS İŞLETME MAKASLARI = SADECE İSTASYONDAKİ makaslar (kullanıcı kuralı): her makas
+  // en yakın YOLCU istasyonuna atanır; terminal (ilk/son) istasyonlar hariç tutulur
+  // (onlar zaten otomatik turnback). Kısa dönüş noktası istasyon konumuna SNAP edilir →
+  // ters işletme daima istasyonda başlar, ara-segment ortasında değil. (tersisletme.ts
+  // makasliDurak mantığıyla tutarlı.)
   const tersMakaslar = useMemo(() => {
-    const istPozlar = line.stations.filter((st) => st.tip !== "gecit").map((st) => st.position);
-    const N = istPozlar.length;
-    const enYakin = (pos: number) => { let bi = 0, bd = Infinity; istPozlar.forEach((p, i) => { const d = Math.abs(p - pos); if (d < bd) { bd = d; bi = i; } }); return bi; };
-    return features.filter((f) => { if (f.kind !== "makas") return false; const i = enYakin(f.pos); return i > 0 && i < N - 1; });
+    const istasyonlar = line.stations.filter((st) => st.tip !== "gecit");
+    const N = istasyonlar.length;
+    const makasFeat = features.filter((f) => f.kind === "makas");
+    const byDurak = new Map<number, { pos: number; ad: string; crossover: "s" | "x" }>();
+    for (const f of makasFeat) {
+      let bi = 0, bd = Infinity;
+      istasyonlar.forEach((s, i) => { const d = Math.abs(s.position - f.pos); if (d < bd) { bd = d; bi = i; } });
+      if (bi <= 0 || bi >= N - 1) continue;                 // terminal istasyonları hariç
+      if (byDurak.has(bi)) continue;                        // durak başına tek kısa dönüş noktası
+      byDurak.set(bi, { pos: istasyonlar[bi].position, ad: f.ad || istasyonlar[bi].name || "Makas", crossover: (f.crossover as "s" | "x") || "s" });
+    }
+    return [...byDurak.values()].sort((a, b) => a.pos - b.pos);
   }, [features, line]);
   const vTers = loop ? loop.loopLen / Math.max(1, loop.periyot) : 10; // ters dönüş ort. hızı (m/s)
 
@@ -251,6 +310,8 @@ export function LiveNetwork({
     loopRef.current = loopAktif ? loop : undefined; // arıza aktifken turnback tespiti kapalı
     tersMakasRef.current = tersMakaslar;
     kararRef.current = karar;
+    tersModRef.current = tersMod;
+    fazKaydirmaRef.current = fazKaydirma;
     vTersRef.current = vTers;
     tersAktifIdxRef.current = new Set(tersHareket.map((r) => r.idx));
     tersHareketRef.current = tersHareket;
@@ -308,9 +369,9 @@ export function LiveNetwork({
     if (dg && t < dg.dispatchT - 1e-6) {
       return { tr: trBase, fp: Math.min(loop.L, dg.parkPos), up: true, v: 0, durum: "dwell" as LoopDurum, ad: "parklanma alanında sıra bekliyor" };
     }
-    const phase = dg
-      ? ((((dg.startPhase + (t - dg.dispatchT)) % loop.periyot) + loop.periyot) % loop.periyot)
-      : ((((t + k * loop.offset) % loop.periyot) + loop.periyot) % loop.periyot);
+    const taban = dg ? dg.startPhase + (t - dg.dispatchT) : t + k * loop.offset;
+    // Işınlanma düzeltmesi: ters işletme sonrası yeniden-katılan trene faz kaydırma uygulanır.
+    const phase = ((((taban + (fazKaydirma[k] ?? 0)) % loop.periyot) + loop.periyot) % loop.periyot);
     const r = sampleLoop(loop.ornekler, phase);
     const gidis = r.s <= loop.L + 1e-6;
     const fp = gidis ? Math.min(loop.L, r.s) : Math.max(0, loop.loopLen - r.s);
@@ -323,11 +384,15 @@ export function LiveNetwork({
   const gelenler = loopAktif ? gorunenLoop.filter((x) => !x.up) : downNow;
   const aktifSayi = loopAktif ? loop!.count : upNow.length + downNow.length;
 
-  // Ters işletmeye geçen trenler: makastan başa (0) doğru DÖNÜŞ (üst) şeritte geri gider.
+  // Ters işletmeye geçen trenler overlay'i. yon="giden": makastan başa (0) doğru DÖNÜŞ
+  // (üst) şeritte geri gider. yon="gelen" (çift yönlü): makastan bitiş terminaline (L)
+  // doğru GİDİŞ (alt) şeritte ilerler — dönüş treni karşı hatta geçti.
   const tersNow = loopAktif ? tersHareket.map((r) => {
     const dt = Math.max(0, t - r.t0);
-    const fp = Math.max(0, r.makasPos - vTers * dt);
-    return { idx: r.idx, no: r.no, fp };
+    const fp = r.yon === "gelen"
+      ? Math.min(L, r.makasPos + vTers * dt)
+      : Math.max(0, r.makasPos - vTers * dt);
+    return { idx: r.idx, no: r.no, fp, up: r.yon === "gelen" };
   }) : [];
 
   // Blok işgali — her şerit ayrı
@@ -357,10 +422,11 @@ export function LiveNetwork({
     if (!oynat && loopAktif && secili === null) setSecili(0);
     setOynat((o) => !o);
   };
-  // Ters işletme onaylandı → tren karşı (dönüş) şeride geçer, süre yeniden akar.
+  // Ters işletme onaylandı → tren makastan karşı şeride geçer (giden→dönüş / gelen→gidiş),
+  // süre yeniden akar. Overlay bitince faz sıfırlanarak ışınlanmadan servise döner.
   const onayla = () => {
     if (!karar) return;
-    setTersHareket((prev) => prev.some((r) => r.idx === karar.trainIdx) ? prev : [...prev, { idx: karar.trainIdx, no: karar.no, makasPos: karar.makasPos, t0: t }]);
+    setTersHareket((prev) => prev.some((r) => r.idx === karar.trainIdx) ? prev : [...prev, { idx: karar.trainIdx, no: karar.no, makasPos: karar.makasPos, t0: t, yon: karar.yon }]);
     setKarar(null);
     setOynat(true);
   };
@@ -701,8 +767,9 @@ export function LiveNetwork({
         {/* Trenler */}
         {gidenler.map(wagon)}
         {gelenler.map((x, i) => wagon(x, i + gidenler.length))}
-        {/* Ters işletmeye geçen trenler — DÖNÜŞ (üst) şeritte makastan başa geri döner */}
-        {loopAktif && tersNow.map((r, i) => wagon({ tr: { index: r.idx, points: [], arr: 0, delay: 0 } as SignalTrain, fp: r.fp, up: false, v: vTers, durum: "donus" as LoopDurum, ad: "ters işletme — karşı şeride geçti, geri dönüyor" }, 900 + i))}
+        {/* Ters işletmeye geçen trenler — giden→DÖNÜŞ (üst) şeritte başa geri; gelen→GİDİŞ
+            (alt) şeritte bitiş terminaline doğru (karşı hatta geçti) */}
+        {loopAktif && tersNow.map((r, i) => wagon({ tr: { index: r.idx, points: [], arr: 0, delay: 0 } as SignalTrain, fp: r.fp, up: r.up, v: vTers, durum: "donus" as LoopDurum, ad: r.up ? "ters işletme — karşı (gidiş) hatta geçti, ileri gidiyor" : "ters işletme — karşı (dönüş) şeride geçti, geri dönüyor" }, 900 + i))}
 
         {/* İstasyon ADLARI — EN ÜST katman (depo kutuları + trenlerden SONRA çizilir →
             hiçbir tren kutusu / depo etiketi durak adını örtemez). Gerçek adlar
@@ -772,6 +839,27 @@ export function LiveNetwork({
         </div>
       )}
 
+      {/* TERS İŞLETME MODU — SADECE istasyon makasları için geçerli. Aktivasyon:
+          Kapalı / Sadece giden hat / Çift taraflı. Kalıcı (isletme.tersMod). */}
+      {loop && (
+        <div className="mb-2 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-xs" style={{ borderColor: brand.border, background: CK.track }}>
+          <span className="flex items-center gap-1 font-semibold" style={{ color: brand.ink }}><span style={{ color: CK.amber }}>↺</span> Ters işletme:</span>
+          {([
+            { m: "kapali" as TersMod, ad: "Kapalı", ip: "İstasyon makasında kısa dönüş sorulmaz — trenler kesintisiz döner." },
+            { m: "gidenHat" as TersMod, ad: "Sadece giden hat", ip: "Yalnız GİDEN trenler istasyon makasından kısa dönüş yapabilir (karşı/dönüş şeride geçip başa döner)." },
+            { m: "ciftYonlu" as TersMod, ad: "Çift taraflı", ip: "Giden + GELEN trenler istasyon makasından geçebilir; dönüş treni de gidiş hattına girip ileri gidebilir." },
+          ]).map(({ m, ad, ip }) => (
+            <button key={m} title={ip} disabled={!onTersMod}
+              onClick={() => { if (m !== tersMod) { onTersMod?.(m); if (m === "kapali") { setKarar(null); } } }}
+              className="rounded px-2.5 py-1 font-medium transition disabled:opacity-50"
+              style={tersMod === m ? { background: brand.ink, color: "#fff" } : { background: brand.surface, color: brand.inkSoft, border: `1px solid ${brand.border}` }}>
+              {ad}
+            </button>
+          ))}
+          <span style={{ color: brand.faint }}>— yalnız <b>istasyondaki</b> makaslar için geçerli ({tersMakaslar.length} istasyon)</span>
+        </div>
+      )}
+
       {/* Kontroller */}
       <div className="flex flex-wrap items-center gap-3">
         <button onClick={oynatDurdur} className="rounded-md px-4 py-1.5 text-sm font-medium text-white transition hover:opacity-90" style={{ background: brand.red }}>
@@ -793,7 +881,7 @@ export function LiveNetwork({
         <span style={{ color: DOWN }}>▬</span> Üst şerit: Dönüş (sağ→sol) · <span style={{ color: UP_COL }}>▬</span> Alt şerit: Gidiş (sol→sağ) · <span style={{ color: CK.red }}>▬</span> işgal edilen blok.
         {" "}<span style={{ color: ASPEKT.yesil }}>●</span> otomatik blok sınırı (boş kesim bölme — sinyal değil, sadece blok işareti). GERÇEK sinyaller elle metrajla konur: 3-aspect direk sinyali <b>▶</b> giden / <b>◀</b> gelen yön, <span style={{ color: CK.amber }}>amber ↺</span> = ters işletme (turnback) sinyali (kırmızı/sarı/yeşil = önündeki blok işgaline göre yanar). Hat özellikleri: <span style={{ color: CK.blue }}>◉</span> yaya geçidi · <span style={{ color: CK.amber }}>⊞</span> karayolu geçidi · <span style={{ color: brand.ink }}>◆</span> makas — <b>S</b> tek / <b>X</b> scissors (✕). İşgal edilen blok kırmızı segmentle görünür.
         {depoToplam > 0 && <> · 🅿 <b>Depo (parklanma):</b> bekleyen trenler sırayla headway aralığıyla servise çıkar; kutudaki dolu kareler çıkışa hazır, soluk kareler çıkmış trenlerdir.</>}
-        {tersMakaslar.length > 0 && <> · <span style={{ color: CK.amber }}>↺</span> <b>Ters işletme makası:</b> giden bir tren ara-hat makasına ulaşınca süre durur ve onay istenir; onaylarsanız o tren karşı (dönüş) şeride geçip başa geri döner.</>}
+        {tersMakaslar.length > 0 && tersMod !== "kapali" && <> · <span style={{ color: CK.amber }}>↺</span> <b>Ters işletme (istasyon makası):</b> {tersMod === "ciftYonlu" ? "giden ya da gelen" : "giden"} bir tren <b>istasyon</b> makasına ulaşınca süre durur ve onay istenir; onaylarsanız karşı hatta geçer ({tersMod === "ciftYonlu" ? "giden→başa döner, gelen→ileri gider" : "başa, sıranın en arkasına döner"}). Yalnız istasyon makasları için geçerlidir.</>}
         {(terminalBas || terminalSon) && <> · <b>Terminal dönüş biçimi:</b> hattın uçlarında dönüş tipine göre çizilir — <b>kör terminal</b> (tampon barı = çıkmaz, perondan ters döner) · <b>çift peron</b> (iki kol + X makas, biri dönerken diğeri girer) · <b>balon loop</b> (durmadan döner, dönüş beklemesi ≈ 0) · <b>makaslı geçiş</b> (uçta X crossover). Ringler → Dönüş tipi değişince şekil değişir.</>}
       </p>
 
@@ -805,8 +893,10 @@ export function LiveNetwork({
               <span style={{ color: CK.amber, fontSize: 18 }}>↺</span> Ters işletme onayı
             </div>
             <p className="mt-2 text-xs leading-relaxed" style={{ color: brand.inkSoft }}>
-              <b>Tren {karar.no}</b>, <b>{karar.makasAd}</b> ara-hat makasına ({karar.crossover === "x" ? "X · scissors" : "S · tek crossover"}) ulaştı — <b>süre durduruldu</b>.
-              Bu treni karşı (dönüş) şeride geçirip başa geri döndürmek istiyor musunuz?
+              <b>Tren {karar.no}</b>, <b>{karar.makasAd}</b> istasyon makasına ({karar.crossover === "x" ? "X · scissors" : "S · tek crossover"}) ulaştı — <b>süre durduruldu</b>.
+              {karar.yon === "gelen"
+                ? " Bu DÖNÜŞ trenini karşı (gidiş) hatta geçirip ileri, bitiş terminaline doğru göndermek istiyor musunuz?"
+                : " Bu GİDEN treni karşı (dönüş) şeride geçirip başa (sıranın en arkasına) geri döndürmek istiyor musunuz?"}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button onClick={onayla} className="flex-1 rounded-md px-3 py-1.5 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: brand.red }}>Ters işletmeyi onaylıyorum</button>

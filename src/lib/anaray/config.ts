@@ -199,6 +199,13 @@ export function terminalSeriDonus(t: TerminalConfig): boolean {
   return makasDonusKapasitesi(t) <= 1;
 }
 
+/** Canlı ağ sim ters işletme (kısa dönüş / turnback) modu — SADECE istasyondaki
+ *  makaslar için geçerli:
+ *   - "kapali"    → ters işletme yok (trenler kesintisiz döner)
+ *   - "gidenHat"  → yalnız GİDEN (gidiş) trenler istasyon makasında kısa dönüş yapabilir
+ *   - "ciftYonlu" → hem giden hem GELEN (dönüş) trenler istasyon makasından karşı hatta geçebilir */
+export type TersMod = "kapali" | "gidenHat" | "ciftYonlu";
+
 export interface Isletme {
   // Sefer simülasyonu (Studio)
   seferSayisi: number;          // tren adedi (manuel değer / son elle girilen)
@@ -218,6 +225,7 @@ export interface Isletme {
   kapali: boolean;              // (legacy) — kapasite modeli her zaman gidiş-dönüş varsayar
   terminalBas: TerminalConfig;  // başlangıç ucundaki dönüş noktası (terminal)
   terminalSon: TerminalConfig;  // bitiş ucundaki dönüş noktası (terminal)
+  tersMod?: TersMod;            // canlı sim ters işletme (istasyon makası kısa dönüş) modu — varsayılan "gidenHat"
   // Gün içi servis profili (parklanma / depoya giriş-çıkış)
   servisBas: string;    // "SS:DD" — servis başlangıcı (ilk tren depodan çıkar)
   servisBit: string;    // "SS:DD" — servis bitişi (son tren depoya döner)
@@ -260,6 +268,7 @@ export const varsayilanIsletme: Isletme = {
   kapali: false,
   terminalBas: { ...VARSAYILAN_TERMINAL },
   terminalSon: { ...VARSAYILAN_TERMINAL },
+  tersMod: "gidenHat",
   servisBas: "06:00",
   servisBit: "24:00",
   pikSabahBas: "07:00",
