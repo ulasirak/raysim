@@ -89,10 +89,11 @@ const enIyiIndeks = (ms: Metrik[], s: Satir): number => {
   return bi;
 };
 
-// —— What-if parametreleri (blok İLK: kapasiteyi doğrudan değiştirir → görünür etki) ——
+// —— What-if parametreleri (doluluk İLK: HER hatta sürdürülebilir/işletme kapasitesini
+// KESİN değiştirir → dinamikliği garanti eder; blok yalnız blok-bağlı hatlarda oynatır) ——
 const WHATIF = {
-  blokMaxUzunluk: { ad: "Blok uzunluğu", suffix: "m", varsayilan: [500, 300, 150], not: "Sinyal blok sıklığı — teorik/işletme kapasitesini ve min headway'i DOĞRUDAN değiştirir (kısa blok = daha çok tren sığar).", uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, blokMaxUzunluk: Math.max(100, v) }) },
-  dolulukTavani: { ad: "Doluluk tavanı", suffix: "%", varsayilan: [70, 80, 90], not: "UIC 406 doluluk tavanı — sürdürülebilir ve işletme kapasitesini belirler (teorik tavan sabit kalır).", uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, dolulukTavani: Math.max(0.4, Math.min(0.95, v / 100)) }) },
+  dolulukTavani: { ad: "Doluluk tavanı", suffix: "%", varsayilan: [70, 80, 90], not: "UIC 406 doluluk tavanı — her hatta sürdürülebilir ve işletme kapasitesini doğrudan belirler (teorik tavan sabit).", uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, dolulukTavani: Math.max(0.4, Math.min(0.95, v / 100)) }) },
+  blokMaxUzunluk: { ad: "Blok uzunluğu", suffix: "m", varsayilan: [500, 300, 150], not: "Sinyal blok sıklığı — YALNIZ belirleyici kısıt blok ise kapasiteyi/min headway'i değiştirir (terminal/kavşak-bağlı hatta etki etmez).", uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, blokMaxUzunluk: Math.max(100, v) }) },
   headway: { ad: "Hedef headway", suffix: "s", varsayilan: [240, 180, 120], not: "Sefer sıklığı hedefi — fiziksel kapasiteyi DEĞİL, yalnız UIC doluluk ve hedef sıklıkta gereken tren sayısını etkiler.", uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, headway: Math.max(30, v) }) },
 } as const;
 type WhatifKey = keyof typeof WHATIF;
@@ -137,8 +138,8 @@ export function Karsilastirma() {
   }, [secili, cache, projeler]);
 
   // — What-if modu —
-  const [wparam, setWparam] = useState<WhatifKey>("blokMaxUzunluk");
-  const [wdegerler, setWdegerler] = useState<number[]>([...WHATIF.blokMaxUzunluk.varsayilan]);
+  const [wparam, setWparam] = useState<WhatifKey>("dolulukTavani");
+  const [wdegerler, setWdegerler] = useState<number[]>([...WHATIF.dolulukTavani.varsayilan]);
   const paramDegis = (k: WhatifKey) => { setWparam(k); setWdegerler([...WHATIF[k].varsayilan]); };
 
   const whatifMetrikler = useMemo<Metrik[]>(() => {
@@ -151,6 +152,16 @@ export function Karsilastirma() {
 
   const metrikler = mod === "projeler" ? projeMetrikler : whatifMetrikler;
   const yeterli = metrikler.filter((m) => m.gecerli).length >= 2;
+
+  // What-if'te seçilen parametre metrikleri HİÇ oynatmadıysa (tüm sütunlar birebir aynı)
+  // bunu kullanıcıya açıkça söyle — "dinamik değil" sanılmasın; nedeni belirleyici kısıt.
+  const degismedi = useMemo(() => {
+    if (mod !== "whatif") return false;
+    const g = metrikler.filter((m) => m.gecerli);
+    if (g.length < 2) return false;
+    const imza = (m: Metrik) => `${m.nTeorik}|${m.nSurdurulebilir}|${m.hMin}|${m.isletmeKap}|${m.uic}|${m.siganTren}|${m.gerekenFilo}`;
+    return g.every((m) => imza(m) === imza(g[0]));
+  }, [mod, metrikler]);
 
   // — Nesnel öneri özeti —
   const oneri = useMemo(() => {
@@ -254,6 +265,11 @@ export function Karsilastirma() {
         </div>
       ) : (
         <>
+          {degismedi && (
+            <div className="mt-6 rounded-md border-l-4 px-4 py-3 text-sm" style={{ borderColor: CK.amber, background: CK.amberBg, color: CK.amberInk }}>
+              ⚠ “{WHATIF[wparam].ad}” değişimi bu hatta metrikleri <b>oynatmadı</b> — bu hattın belirleyici kısıtı bu parametre değil (tablodaki <b>Belirleyici kısıt</b> satırına bak). <b>Doluluk tavanı</b> her hatta kapasiteyi değiştirir; <b>Blok</b> yalnız blok-bağlı hatta, <b>Headway</b> ise UIC doluluk / gereken tren'i.
+            </div>
+          )}
           {/* Öneri özeti */}
           {oneri && (
             <div className="mt-6 rounded-lg border p-4" style={{ borderColor: brand.ink, background: "#F7F9FA" }}>
