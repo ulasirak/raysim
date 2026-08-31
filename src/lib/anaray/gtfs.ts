@@ -36,8 +36,9 @@ function csvNesneler(metin: string): Record<string, string>[] {
 export interface GtfsFeed {
   stops: Map<string, { ad: string; lat: number; lon: number }>;
   routes: { id: string; ad: string; tip: string }[];
-  trips: { tripId: string; routeId: string; dir: string; headsign: string }[];
+  trips: { tripId: string; routeId: string; dir: string; headsign: string; shapeId: string }[];
   stopTimes: Map<string, { stopId: string; seq: number; varis: number; kalkis: number }[]>; // tripId → sıralı
+  shapes: Map<string, { lat: number; lon: number }[]>; // shapeId → seq sıralı poligon (varsa)
 }
 
 const dosyaBul = (z: Record<string, Uint8Array>, ad: string): string | undefined =>
@@ -67,7 +68,17 @@ export function parseGtfsZip(bytes: Uint8Array): GtfsFeed {
     .map((r) => ({ id: r.route_id, ad: (r.route_short_name || r.route_long_name || r.route_id).trim(), tip: r.route_type || "" }));
   const trips = csvNesneler(oku("trips.txt"))
     .filter((r) => r.trip_id && r.route_id)
-    .map((r) => ({ tripId: r.trip_id, routeId: r.route_id, dir: r.direction_id || "0", headsign: r.trip_headsign || "" }));
+    .map((r) => ({ tripId: r.trip_id, routeId: r.route_id, dir: r.direction_id || "0", headsign: r.trip_headsign || "", shapeId: r.shape_id || "" }));
+  // shapes.txt (opsiyonel) — gerçek güzergâh geometrisi (haversine düz-çizgiden doğru).
+  const shapes = new Map<string, { lat: number; lon: number; seq: number }[]>();
+  for (const r of csvNesneler(oku("shapes.txt", false))) {
+    if (!r.shape_id) continue;
+    const arr = shapes.get(r.shape_id) ?? [];
+    arr.push({ lat: parseFloat(r.shape_pt_lat), lon: parseFloat(r.shape_pt_lon), seq: parseInt(r.shape_pt_sequence || "0", 10) || 0 });
+    shapes.set(r.shape_id, arr);
+  }
+  const shapesSirali = new Map<string, { lat: number; lon: number }[]>();
+  for (const [id, arr] of shapes) shapesSirali.set(id, arr.sort((a, b) => a.seq - b.seq).map(({ lat, lon }) => ({ lat, lon })));
   const stopTimes = new Map<string, { stopId: string; seq: number; varis: number; kalkis: number }[]>();
   for (const r of csvNesneler(oku("stop_times.txt"))) {
     if (!r.trip_id || !r.stop_id) continue;
@@ -78,7 +89,7 @@ export function parseGtfsZip(bytes: Uint8Array): GtfsFeed {
   }
   for (const arr of stopTimes.values()) arr.sort((a, b) => a.seq - b.seq);
   if (routes.length === 0) throw new Error("GTFS'te rota yok (routes.txt boş).");
-  return { stops, routes, trips, stopTimes };
+  return { stops, routes, trips, stopTimes, shapes: shapesSirali };
 }
 
 /** Rota listesi (UI'da seçilir). route_type: 0=tramvay,1=metro,2=tren,3=otobüs… */
@@ -106,6 +117,18 @@ function haversine(a: { lat: number; lon: number }, b: { lat: number; lon: numbe
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
+// Bir poligon (shape) boyunca kümülatif mesafe (m) + bir noktaya en yakın köşe indeksi.
+function sekilKumulatif(pts: { lat: number; lon: number }[]): number[] {
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + (haversine(pts[i - 1], pts[i]) || 0));
+  return cum;
+}
+function enYakinIdx(pts: { lat: number; lon: number }[], p: { lat: number; lon: number }): number {
+  let bi = 0, bd = Infinity;
+  for (let i = 0; i < pts.length; i++) { const d = haversine(pts[i], p); if (Number.isFinite(d) && d < bd) { bd = d; bi = i; } }
+  return bi;
+}
+
 export interface GtfsHatSonuc { rings: DurakArasiRing[]; ad: string; durakSayisi: number; toplamKm: number; uyarilar: string[]; }
 
 /** Rota + yön → RaySim ring zinciri. Temsili trip = o yönde EN ÇOK duraklı trip. */
@@ -123,13 +146,26 @@ export function gtfsHatKur(feed: GtfsFeed, routeId: string, dir: string): GtfsHa
   const rotaAd = feed.routes.find((r) => r.id === routeId)?.ad || routeId;
   const ad = `${rotaAd}${temsili.headsign ? ` — ${temsili.headsign}` : ""}`;
 
+  // GERÇEK GÜZERGÂH: trip'in shape'i varsa, her durağın güzergâh boyunca kümülatif
+  // mesafesinden durak-arası ölçülür (viraj dâhil, düz-çizgiden doğru). Eşleşme monoton
+  // artmıyorsa (bozuk shape) güvenle düz-çizgiye (haversine) düşülür.
+  const shape = temsili.shapeId ? feed.shapes.get(temsili.shapeId) : undefined;
+  let stopKum: number[] | null = null;
+  if (shape && shape.length >= 2) {
+    const cum = sekilKumulatif(shape);
+    const km = dizi.map((s) => { const st = feed.stops.get(s.stopId); return st && Number.isFinite(st.lat) ? cum[enYakinIdx(shape, st)] : NaN; });
+    if (km.every(Number.isFinite) && km.every((v, i) => i === 0 || v >= km[i - 1] - 1)) stopKum = km;
+  }
+  const sekilKullanildi = !!stopKum;
+
   let koordsuz = 0, toplam = 0;
   const rings: DurakArasiRing[] = [];
   for (let i = 0; i < dizi.length - 1; i++) {
     const a = feed.stops.get(dizi[i].stopId), b = feed.stops.get(dizi[i + 1].stopId);
     const adA = a?.ad || dizi[i].stopId, adB = b?.ad || dizi[i + 1].stopId;
-    let mesafe = a && b ? haversine(a, b) : NaN;
-    if (!Number.isFinite(mesafe) || mesafe < 20) { mesafe = 600; koordsuz++; } // koordinat yok/aynı → varsayılan
+    let mesafe = stopKum ? Math.abs(stopKum[i + 1] - stopKum[i]) : (a && b ? haversine(a, b) : NaN);
+    if (!Number.isFinite(mesafe) || mesafe < 20) { mesafe = a && b ? haversine(a, b) : NaN; } // shape 0/eksikse düz-çizgi
+    if (!Number.isFinite(mesafe) || mesafe < 20) { mesafe = 600; koordsuz++; } // yine yoksa varsayılan
     const uz = Math.round(mesafe);
     toplam += uz;
     // Varış durağındaki bekleme: kalkış − varış (varsa, makul aralıkta).
@@ -142,8 +178,10 @@ export function gtfsHatKur(feed: GtfsFeed, routeId: string, dir: string): GtfsHa
     r.dwell = dwell;
     rings.push(r);
   }
-  uyarilar.push("Mesafeler kuş-uçuşu (haversine) enlem-boylamdan hesaplandı; gerçek ray uzunluğundan bir miktar kısa olabilir — Ringler'de düzeltebilirsiniz.");
-  if (koordsuz > 0) uyarilar.push(`${koordsuz} durak arası koordinat içermiyordu → varsayılan 600 m kullanıldı.`);
+  uyarilar.push(sekilKullanildi
+    ? "Mesafeler gerçek güzergâh geometrisinden (shapes.txt) hesaplandı — viraj dâhil, ray uzunluğuna yakın."
+    : "Mesafeler kuş-uçuşu (haversine) enlem-boylamdan hesaplandı; gerçek ray uzunluğundan bir miktar kısa olabilir — Ringler'de düzeltebilirsiniz.");
+  if (koordsuz > 0) uyarilar.push(`${koordsuz} durak arası mesafe çıkarılamadı → varsayılan 600 m kullanıldı.`);
   uyarilar.push("Makas, sinyal ve hemzemin geçit bilgisi GTFS'te bulunmaz → boş bırakıldı; Ringler'de ekleyin.");
   return { rings, ad, durakSayisi: dizi.length, toplamKm: toplam / 1000, uyarilar };
 }

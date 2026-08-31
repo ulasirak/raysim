@@ -82,3 +82,27 @@ describe("GTFS import çekirdeği", () => {
     expect(() => parseGtfsZip(strToU8("bu bir zip değil"))).toThrow();
   });
 });
+
+// shapes.txt varsa GERÇEK güzergâh geometrisi kullanılmalı: A→B arasına kavis (detour)
+// koyduğumuzda ölçülen mesafe düz-çizgiden (haversine ≈1113 m) belirgin BÜYÜK olmalı.
+const feedShape = {
+  "stops.txt": ["stop_id,stop_name,stop_lat,stop_lon", "A,A,39.000,32.000", "B,B,39.010,32.000", "C,C,39.010,32.010"].join("\n"),
+  "routes.txt": ["route_id,route_short_name,route_type", "R1,T1,0"].join("\n"),
+  "trips.txt": ["route_id,trip_id,direction_id,shape_id", "R1,TR1,0,SH1"].join("\n"),
+  "stop_times.txt": ["trip_id,stop_id,stop_sequence,arrival_time,departure_time",
+    "TR1,A,1,08:00:00,08:00:00", "TR1,B,2,08:00:30,08:01:00", "TR1,C,3,08:02:00,08:02:20"].join("\n"),
+  "shapes.txt": ["shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence",
+    "SH1,39.000,32.000,1", "SH1,39.005,32.005,2", "SH1,39.010,32.000,3", "SH1,39.010,32.005,4", "SH1,39.010,32.010,5"].join("\n"),
+};
+const zipShape = zipSync(Object.fromEntries(Object.entries(feedShape).map(([k, v]) => [k, strToU8(v)])));
+
+describe("GTFS shapes.txt — gerçek güzergâh mesafesi", () => {
+  const sonuc = gtfsHatKur(parseGtfsZip(zipShape), "R1", "0");
+  it("A→B kavisli güzergâh düz-çizgiden büyük (~1410 m > 1113 m)", () => {
+    expect(sonuc.rings[0].uzunluk).toBeGreaterThan(1250);
+    expect(sonuc.rings[0].uzunluk).toBeLessThan(1600);
+  });
+  it("uyarı gerçek güzergâhı belirtir", () => {
+    expect(sonuc.uyarilar.some((u) => u.includes("shapes.txt"))).toBe(true);
+  });
+});
