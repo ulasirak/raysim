@@ -104,18 +104,33 @@ export function LiveNetwork({
   useEffect(() => {
     if (!oynat) return;
     last.current = performance.now();
-    const tick = (now: number) => {
+    let durdu = false;
+    // Süreyi gerçek geçen zamana göre ilerlet. Delta her seferinde son çağrıdan
+    // hesaplandığı için rAF ve setInterval birlikte çalışsa da toplam ilerleme
+    // = gerçek geçen süre × hız (çift sayım olmaz).
+    const ilerlet = () => {
+      if (durdu) return;
+      const now = performance.now();
       const d = (now - last.current) / 1000;
       last.current = now;
+      if (d <= 0) return;
       setT((prev) => {
         const nx = prev + d * hiz;
         if (nx >= T) { setOynat(false); return T; }
         return nx;
       });
-      raf.current = requestAnimationFrame(tick);
     };
+    // rAF görünürken pürüzsüz akıcılık sağlar; ama sekme gizliyken (arka plan,
+    // odak dışı, headless) tarayıcı rAF'ı DURAKLATIR → saat donardı. setInterval
+    // görünürlükten bağımsız çalışıp ilerlemeyi her koşulda garanti eder.
+    const tick = () => { ilerlet(); raf.current = requestAnimationFrame(tick); };
     raf.current = requestAnimationFrame(tick);
-    return () => { if (raf.current) cancelAnimationFrame(raf.current); };
+    const id = window.setInterval(ilerlet, 1000 / 30);
+    return () => {
+      durdu = true;
+      window.clearInterval(id);
+      if (raf.current) cancelAnimationFrame(raf.current);
+    };
   }, [oynat, hiz, T]);
 
   // Mount öncesi dinamik içeriği çizme → SSR/istemci hydration uyumsuzluğu olmaz.
