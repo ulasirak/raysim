@@ -404,10 +404,10 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const kpiRow = `<div class="kpi-row">
     ${kpi(L.kpi.hucre, `${rings.length}`, L.altMakas(rings.reduce((n, r) => n + r.makaslar.length, 0)))}
     ${kpi(teorikMaksEt, `${maks.nTeorik}`, lang === "en" ? "on the line (fit)" : "hatta sığan", INK)}
-    ${kpi(surdurEt, `${maks.nSurdurulebilir}`, lang === "en" ? "UIC 406 buffered" : "UIC 406 tamponlu", "#0E7C57")}
-    ${kpi(lang === "en" ? "Planned fleet" : "Planlanan filo", `${filoGercek}`, lang === "en" ? `trams in service` : `serviste tramvay`, "#0E7C57")}
+    ${kpi(surdurEt, `${maks.nSurdurulebilir}`, lang === "en" ? "UIC 406 buffered" : "UIC 406 tamponlu", INK)}
+    ${kpi(lang === "en" ? "Planned fleet" : "Planlanan filo", `${filoGercek}`, lang === "en" ? `trams in service` : `serviste tramvay`, INK)}
     ${kpi(minHwEt, `${s0(maks.hMin)}`, (maks.baglayanAd || "").slice(0, 22) || (headwayUygun ? L.altUygun : L.altIhlalK), (headwayUygun || sunum) ? INK : RED)}
-    ${kpi(L.kpi.pratik, `${pratikTph.toFixed(0)}`, `%${((maks.dolulukTavani || 1) * 100).toFixed(0)} · ${L.altTph}`, "#0E7C57")}
+    ${kpi(L.kpi.pratik, `${pratikTph.toFixed(0)}`, `%${((maks.dolulukTavani || 1) * 100).toFixed(0)} · ${L.altTph}`, INK)}
     ${kpi(L.kpi.uic, `%${uicDoluluk.toFixed(0)}`, (uicDoluluk <= 100 || sunum) ? L.altUygun : L.altIhlalK, (uicDoluluk <= 100 || sunum) ? "#0E7C57" : RED)}
   </div>`;
 
@@ -469,8 +469,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     : "";
   // Kurumsal, otoriter tek satır: belirleyici kısıt + yedek kapasite (öğretmeden/özetlemeden).
   const kapYorum = en
-    ? `<b>Determining constraint: ${esc(maks.baglayanAd || "—")}</b> · minimum headway <b>${Math.round(maks.hMin)} s</b>${sperrNot}. At the ${cfg.headway} s target headway, UIC 406 occupancy is <b>${uicDoluluk.toFixed(0)}%</b>${kapBol ? ` — ~${yedekYuzde}% spare capacity; the interval can be tightened toward ${Math.round(maks.hMin)} s to reach ${teorikTph.toFixed(0)} trains/h without additional infrastructure.` : `.`}`
-    : `<b>Belirleyici kısıt: ${esc(maks.baglayanAd || "—")}</b> · minimum headway <b>${Math.round(maks.hMin)} s</b>${sperrNot}. Hedef ${cfg.headway} s aralıkta UIC 406 doluluğu <b>%${uicDoluluk.toFixed(0)}</b>${kapBol ? ` — ~%${yedekYuzde} yedek kapasite; aralık ${Math.round(maks.hMin)} s'ye kadar sıkıştırılarak ek altyapı olmadan ${teorikTph.toFixed(0)} tren/saate ölçeklenebilir.` : `.`}`;
+    ? `<b>Determining constraint: ${esc(maks.baglayanAd || "—")}</b> · minimum headway <b>${Math.round(maks.hMin)} s</b>${sperrNot}. At the ${cfg.headway} s target headway, UIC 406 occupancy is <b>${uicDoluluk.toFixed(0)}%</b>${kapBol ? `; ~${yedekYuzde}% spare capacity. The interval can be tightened toward ${Math.round(maks.hMin)} s to reach ${teorikTph.toFixed(0)} trains/h without additional infrastructure.` : `.`}`
+    : `<b>Belirleyici kısıt: ${esc(maks.baglayanAd || "—")}</b> · minimum headway <b>${Math.round(maks.hMin)} s</b>${sperrNot}. Hedef ${cfg.headway} s aralıkta UIC 406 doluluğu <b>%${uicDoluluk.toFixed(0)}</b>${kapBol ? `; ~%${yedekYuzde} yedek kapasite. Aralık ${Math.round(maks.hMin)} s'ye kadar sıkıştırılarak ek altyapı olmadan ${teorikTph.toFixed(0)} tren/saate ölçeklenebilir.` : `.`}`;
 
   const bugun = meta.tarih || "";
   const siteUrl = (typeof window !== "undefined" && window.location?.origin) ? window.location.origin : "https://raysim.vercel.app";
@@ -496,7 +496,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <div class="banner"><span class="no">03</span>${lang === "en" ? "SIGNALLING — SIGNAL LAMPS (SG)" : "SİNYALİZASYON — SİNYAL LAMBALARI (SG)"}</div>
   <p>${lang === "en"
     ? `The line is protected by <b>${sinyalSayisi} three-aspect signal lamps</b> (SG: red / yellow / green), ${gidenS} outbound (▶) and ${gelenS} return (◀)${tersSinyalSayisi ? `, of which ${tersSinyalSayisi} are reverse-running (turnback) signals` : ""}. Chainages are the real design positions; each outbound signal is a <b>block boundary</b>.`
-    : `Hat, <b>${sinyalSayisi} adet 3-aspect sinyal lambası</b> (SG: kırmızı / sarı / yeşil) ile korunur — ${gidenS} giden (▶), ${gelenS} gelen (◀)${tersSinyalSayisi ? `, bunların ${tersSinyalSayisi} tanesi ters işletme (turnback) sinyalidir` : ""}. Kilometrajlar gerçek tasarım konumlarıdır; her giden sinyali bir <b>blok sınırıdır</b>.`}</p>
+    : `Hat, <b>${sinyalSayisi} adet 3-aspect sinyal lambası</b> (SG: kırmızı / sarı / yeşil) ile korunur: ${gidenS} giden (▶), ${gelenS} gelen (◀)${tersSinyalSayisi ? `, bunların ${tersSinyalSayisi} tanesi ters işletme (turnback) sinyalidir` : ""}. Kilometrajlar gerçek tasarım konumlarıdır; her giden sinyali bir <b>blok sınırıdır</b>.`}</p>
   ${sinyalListe.length ? tbl(sinyalThead, sinyalRows, { first: true }) : `<p class="muted">${lang === "en" ? "No signal lamps defined on this line yet (positions are entered in the Ringler module)." : "Bu hatta henüz sinyal lambası tanımlı değil (konumlar Ringler modülünde girilir)."}</p>`}
 `;
 
@@ -557,7 +557,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
       ${gsNot(en ? `peak demand, the ${Math.round((isletme.dolulukHedefi || 0.85) * 100)}% occupancy target, cycle time and ${kapNote}` : `pik talep, %${Math.round((isletme.dolulukHedefi || 0.85) * 100)} doluluk hedefi, çevrim süresi ve ${kapNote}`, `<b style="color:${oneriRenk}">${esc(tia.filo.aciklama)}</b>`)}
       <div class="kpi-row" style="margin-top:6px">
         ${kpi(en ? "Required trams" : "Gereken araç", `${tia.filo.gerekenArac}`, en ? "at target occupancy" : "hedef dolulukta", oneriRenk)}
-        ${kpi(en ? "Current peak fleet" : "Mevcut pik filo", `${tia.filo.mevcutPik}`, en ? "you entered" : "girdiğiniz")}
+        ${kpi(en ? "Current peak fleet" : "Mevcut pik filo", `${tia.filo.mevcutPik}`, en ? "trams" : "araç")}
         ${kpi(en ? "Difference" : "Fark", farkEt, en ? "required − current" : "gereken − mevcut", fark > 0 ? RED : (fark < 0 ? "#0E7C57" : INK))}
         ${tia.filo.kisaDonusTasarruf > 0 ? kpi(en ? "With short-turn" : "Kısa dönüşle", `${tia.filo.gerekenAracKisaDonusle}`, en ? `−${tia.filo.kisaDonusTasarruf} trams` : `−${tia.filo.kisaDonusTasarruf} araç`, "#0E7C57") : ""}
         ${kpi(en ? "Sustainable ceiling" : "Sürdürülebilir tavan", `${tia.maksSurdurulebilir}`, en ? "UIC 406 buffered" : "UIC 406 tamponlu")}
@@ -700,8 +700,9 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   td { padding: 5px 8px; border: 1px solid #DCE1E7; text-align: center; }
   th.l, td.l { text-align: left; }
   tbody tr:nth-child(even) td { background: #F5F7F9; }
-  .pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 8.5pt; font-weight: 700; color: #fff; }
-  .pill.ok { background: #EAF5F0; color: #0E7C57; } .pill.bad { background: ${RED}; }
+  /* Durum etiketi — köşeli (2px) teknik rozet; nötr zemin, dolu renk yalnız ihlalde. */
+  .pill { display: inline-block; padding: 1px 7px; border-radius: 2px; font-size: 8pt; font-weight: 700; letter-spacing: .03em; color: #fff; }
+  .pill.ok { background: #EEF2F5; color: #3B6B54; } .pill.bad { background: ${RED}; }
 
   /* Matriks */
   .matris td.mx { font-weight: 700; width: 34px; }
@@ -712,7 +713,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
 
   /* KPI */
   .kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 6px 0 14px; }
-  .kpi { border: 1px solid #DCE1E7; border-radius: 6px; padding: 10px 12px; background: #fff; }
+  .kpi { border: 1px solid #E4E8EC; border-radius: 2px; padding: 10px 12px; background: #fff; }
   .kpi-l { font-size: 8pt; letter-spacing: .06em; text-transform: uppercase; color: #6B7A8A; }
   .kpi-v { font-size: 18pt; font-weight: 700; line-height: 1.1; margin: 2px 0; }
   .kpi-a { font-size: 9pt; color: #9AA7B4; }
@@ -727,9 +728,12 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   ul.ch { margin: 4px 0 8px; padding-left: 18px; font-size: 9.5pt; }
   ul.ch li.krit { color: ${RED}; }
   /* Girdi→Sonuç notu — "siz bunları girdiniz → bu sonuç" (şık altın kart). */
-  .gs { margin: 6px 0 8px; padding: 8px 12px; border-left: 4px solid ${GOLD}; background: #FAF7EE;
-    border-radius: 4px; font-size: 9.7pt; line-height: 1.5; color: ${INK}; page-break-inside: avoid; }
-  .gs-i { font-weight: 700; color: ${GOLD}; }
+  /* TEK sade not (callout) sistemi — nötr açık zemin + ince altın sol kural, keskin köşe.
+     Krem/yeşil dolu kutular kaldırıldı (renklilik azaltıldı, kurumsal). */
+  .gs { margin: 7px 0 9px; padding: 7px 11px; border: 1px solid #E4E8EC; border-left: 3px solid ${GOLD};
+    border-radius: 2px; background: #F7F9FA; font-size: 9.5pt; line-height: 1.5; color: ${INK}; page-break-inside: avoid; }
+  .gs.ok { border-left-color: #2E7D57; }
+  .gs-i { font-weight: 700; color: #7A6320; }
   .gs-o { font-weight: 700; color: ${INK}; }
   /* Bağımsız çekirdek doğrulama satırı (onayın hemen üstünde, kurumsal). */
   .cekirdek { margin: 16px 0 4px; padding-top: 8px; border-top: 1px solid #D8DEE5; text-align: center;
@@ -845,9 +849,9 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <p>${L.s4i}</p>
   ${kapasiteTbl}
   ${kapGirdiNot}
-  ${sunum ? `<div style="margin:8px 0 4px;padding:8px 12px;border-left:4px solid #0E7C57;background:#EAF5F0;border-radius:4px;font-size:11px;color:${INK}">✓ ${lang === "en" ? `Capacity analysis compliant: all blocks within the target headway (${cfg.headway} s). Design approved.` : `Kapasite analizi uygun: tüm bloklar hedef headway (${cfg.headway} s) içinde — sınır aşımı yok. Tasarım onaylı.`}</div>` : ""}
+  ${sunum ? `<div class="gs ok"><b style="color:#2E7D57">✓</b> ${lang === "en" ? `Capacity analysis compliant: all blocks within the target headway (${cfg.headway} s). Design approved.` : `Kapasite analizi uygun: tüm bloklar hedef headway (${cfg.headway} s) içinde; sınır aşımı yok. Tasarım onaylı.`}</div>` : ""}
   <p class="muted" style="font-size:11px;margin-top:6px">${L.kapNot}</p>
-  <div style="margin:10px 0 4px;padding:9px 13px;border-left:4px solid ${GOLD};background:#FAF7EE;border-radius:4px;font-size:10pt;line-height:1.55;color:${INK}">${kapYorum}</div>
+  <div class="gs" style="font-size:10pt">${kapYorum}</div>
   ${bfFig}
   <h3 class="sub">${L.s41}</h3>
   <div class="fig">${line ? sperrzeitSvg(bt, line.length, kritikRenk, en) : ""}<div class="cap">${sunum ? (lang === "en" ? `Figure 4 — Sperrzeitentreppe: block occupation (blocking-time) windows; min headway ${Math.round(bt.minHeadway)}s.` : `Şekil 4 — Sperrzeitentreppe: blok işgal (blocking-time) pencereleri; min headway ${Math.round(bt.minHeadway)} s.`) : L.fig4(Math.round(bt.minHeadway))}</div></div>
