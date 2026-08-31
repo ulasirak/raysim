@@ -300,6 +300,91 @@ export function planDepotDispatch(line: Line, headway: number): { origins: numbe
   return { origins, depots, total: origins.length };
 }
 
+// ————————————————————————————————————————————————
+// DÖNGÜ (git-gel / lastik) YÖRÜNGESİ — tek tren bir tam turu döner:
+//   gidiş (fizik + istasyon duruşları) → BİTİŞ terminali turnback (peron işgali)
+//   → dönüş (fizik + duruşlar) → BAŞLANGIÇ terminali turnback → tekrar.
+// Her adımda trenin DURUMU (neden yavaş/hızlı, kaç saniye) izlenir. `filo` treni bu
+// yörüngede eşit fazla (headway) yerleştirilir → sürekli döngü görünümü.
+// ————————————————————————————————————————————————
+export type LoopDurum = "seyir" | "hizlanma" | "kisit" | "dwell" | "donus";
+export interface LoopOlay { durum: LoopDurum; ad: string; sure: number }
+export interface LoopYorunge {
+  ornekler: { t: number; s: number; durum: LoopDurum; ad: string }[]; // s = kümülatif (0..loopLen)
+  periyot: number;   // s — bir tam tur (çevrim) süresi
+  L: number;         // gidiş uzunluğu
+  loopLen: number;   // gidiş + dönüş
+  dokum: Record<LoopDurum, number>; // tek tur boyu her durumda geçen saniye
+}
+
+export function loopYorunge(
+  gidis: Line, donus: Line, stock: RollingStock,
+  opts: { peronIsgaliBas: number; peronIsgaliSon: number; dt?: number },
+): LoopYorunge {
+  const L = gidis.length;
+  const loopLen = Math.max(1e-6, gidis.length + donus.length);
+  const segments = [
+    ...gidis.segments.map((g) => ({ ...g })),
+    ...donus.segments.map((g) => ({ ...g, start: L + g.start, end: L + g.end })),
+  ];
+  const loopHat: Line = { id: "loop", name: gidis.name, length: loopLen, stations: [], segments };
+  // Duraklar (loop-pos artan): başlangıç(0, turnback bas) · gidiş ara · bitiş(L, turnback son) · dönüş ara.
+  type Durak = { pos: number; dwell: number; tur: "bas" | "son" | "ara" };
+  const araG = gidis.stations.filter((s) => s.position > 1e-6 && s.position < L - 1e-6).map((s) => ({ pos: s.position, dwell: s.dwell, tur: "ara" as const }));
+  const araD = donus.stations.filter((s) => s.position > 1e-6 && s.position < donus.length - 1e-6).map((s) => ({ pos: L + s.position, dwell: s.dwell, tur: "ara" as const }));
+  const duraklar: Durak[] = [
+    ...araG,
+    { pos: L, dwell: Math.max(0, opts.peronIsgaliSon), tur: "son" as const },
+    ...araD,
+    { pos: loopLen, dwell: Math.max(0, opts.peronIsgaliBas), tur: "bas" as const }, // tur sonu = başlangıç turnback
+  ].sort((a, b) => a.pos - b.pos);
+
+  const meff = Math.max(1, stock.mass * (1 + stock.rotatingMassFactor));
+  const b = Math.max(0.1, stock.maxBraking);
+  const dt = opts.dt ?? 0.5;
+  const vmaxLine = Math.max(0.1, stock.maxSpeed);
+
+  const ornekler: LoopYorunge["ornekler"] = [];
+  const dokum: Record<LoopDurum, number> = { seyir: 0, hizlanma: 0, kisit: 0, dwell: 0, donus: 0 };
+  let s = 0, v = 0, t = 0;
+  let ni = 0; // sonraki durak indeksi
+  const HARD = 2_000_000; let it = 0;
+
+  const push = (durum: LoopDurum, ad: string) => {
+    ornekler.push({ t, s, durum, ad });
+    dokum[durum] += dt;
+  };
+
+  while (ni < duraklar.length && it++ < HARD) {
+    const d = duraklar[ni];
+    // Durağa/terminale varış
+    const vAllowed = allowedSpeed(loopHat, stock, Math.min(s, loopLen - 1e-6), Math.min(d.pos, loopLen - 1e-6), b);
+    const step = stepMotion(stock, v, vAllowed, segAt(loopHat, Math.min(s, loopLen - 1e-6)).gradient, dt, meff, b);
+    let vNew = step.vNew;
+    let sNew = s + ((v + vNew) / 2) * dt;
+    if (sNew >= d.pos - 1e-6) {
+      // vardı → dur + dwell
+      s = d.pos; v = 0;
+      const durum: LoopDurum = d.tur === "ara" ? "dwell" : "donus";
+      const ad = d.tur === "ara" ? "istasyon duruşu (yolcu)" : d.tur === "son" ? "bitiş terminali dönüşü (turnback)" : "başlangıç terminali dönüşü (turnback)";
+      let kalan = d.dwell;
+      while (kalan > 1e-6 && it++ < HARD) { push(durum, ad); kalan -= dt; t += dt; }
+      ni++;
+      continue;
+    }
+    // Hareket — durum sınıflandır
+    let durum: LoopDurum; let ad: string;
+    if (vNew > v + 0.02) { durum = "hizlanma"; ad = "hızlanıyor (kalkış/ivme)"; }
+    else if (vAllowed < vmaxLine - 0.3 && vNew <= vAllowed + 0.4) { durum = "kisit"; ad = `hız kısıtı ${Math.round(vAllowed * 3.6)} km/h — makas/geçit/eğim/eğri`; }
+    else { durum = "seyir"; ad = "serbest seyir (azami hız)"; }
+    push(durum, ad);
+    s = sNew; v = vNew; t += dt;
+  }
+  // Son örnek (tur sonu)
+  ornekler.push({ t, s: loopLen, durum: "donus", ad: "tur tamam" });
+  return { ornekler, periyot: Math.max(dt, t), L, loopLen, dokum };
+}
+
 /** Rotayı ters çevirir (dönüş yönü). flatten bunu diğer uçtan gezer, eğim işareti döner. */
 export function reverseRoute(route: Route): Route {
   // startNodeId TAŞINMAZ: ileri rotanın başlangıç düğümü dönüşün başlangıcı değildir

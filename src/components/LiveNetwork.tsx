@@ -8,7 +8,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RailNetwork, Route, Line } from "@/lib/anaray/types";
-import type { SignalTrain, DepotInfo } from "@/lib/anaray/signalling";
+import type { SignalTrain, DepotInfo, LoopYorunge, LoopDurum } from "@/lib/anaray/signalling";
 import type { HatOzellik } from "@/lib/anaray/network";
 import { saat } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
@@ -51,29 +51,53 @@ function sampleS(points: { t: number; s: number }[], t: number): { s: number; ac
   return { s: last.s, active: true, v: 0 };
 }
 
+// Döngü durum stilleri (rozet + detay).
+const DURUM_STIL: Record<LoopDurum, { renk: string; ikon: string; ad: string }> = {
+  seyir: { renk: CK.good, ikon: "→", ad: "serbest seyir" },
+  hizlanma: { renk: CK.blue, ikon: "↗", ad: "hızlanıyor" },
+  kisit: { renk: CK.amber, ikon: "⤵", ad: "hız kısıtı" },
+  dwell: { renk: brand.inkSoft, ikon: "⏸", ad: "istasyon duruşu" },
+  donus: { renk: CK.orange, ikon: "🔄", ad: "terminal dönüşü" },
+};
+// Döngü yörüngesini bir faz anında örnekle (s kümülatif + o anki durum).
+function sampleLoop(orn: LoopYorunge["ornekler"], phase: number): { s: number; durum: LoopDurum; ad: string; v: number } {
+  if (orn.length === 0) return { s: 0, durum: "seyir", ad: "", v: 0 };
+  if (phase <= orn[0].t) return { s: orn[0].s, durum: orn[0].durum, ad: orn[0].ad, v: 0 };
+  const son = orn[orn.length - 1];
+  if (phase >= son.t) return { s: son.s, durum: son.durum, ad: son.ad, v: 0 };
+  let lo = 0, hi = orn.length - 1;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (orn[mid].t < phase) lo = mid + 1; else hi = mid; }
+  const p1 = orn[Math.max(1, lo)]; const p0 = orn[Math.max(0, lo - 1)];
+  const dtt = (p1.t - p0.t) || 1; const f = (phase - p0.t) / dtt;
+  return { s: p0.s + (p1.s - p0.s) * f, durum: p1.durum, ad: p1.ad, v: Math.abs(p1.s - p0.s) / dtt };
+}
+
 export function LiveNetwork({
-  network, route, line, blocks, up, down, tMax, trainLen = 40, faultBlocks = [], onBlockClick, depots = [], features = [],
+  network, route, line, blocks, up = [], down = [], tMax, trainLen = 40, faultBlocks = [], onBlockClick, depots = [], features = [], loop,
 }: {
   network: RailNetwork;
   route: Route;
   line: Line;
   blocks: number[];
-  up: SignalTrain[];
-  down: SignalTrain[];
+  up?: SignalTrain[];
+  down?: SignalTrain[];
   tMax: number;
   trainLen?: number;
   faultBlocks?: number[];
   onBlockClick?: (i: number) => void;
   depots?: DepotInfo[];
   features?: HatOzellik[]; // hat özellikleri: yaya/karayolu geçidi + makas (tip-ayrımlı görsel)
+  /** DÖNGÜ modu: tek-tren yörüngesi + faz — trenler uçta döner (git-gel), üstlerinde durum rozeti. */
+  loop?: LoopYorunge & { count: number; offset: number };
 }) {
   const [t, setT] = useState(0);
+  const [secili, setSecili] = useState<number | null>(null); // döngüde tıklanan tren (detay kutusu)
   const [oynat, setOynat] = useState(false);
   const [hiz, setHiz] = useState(15);
   const [mounted, setMounted] = useState(false);
   const raf = useRef<number | null>(null);
   const last = useRef(0);
-  const T = tMax || 1;
+  const T = loop ? loop.periyot : (tMax || 1);
   const L = line.length;
 
   useEffect(() => {
@@ -175,7 +199,17 @@ export function LiveNetwork({
   // olduğu gibi, istasyon adları üstte, hiza bozulmaz.
   const upNow = up.map((tr) => { const r = sampleS(tr.points, t); return { tr, active: r.active, fp: r.s, up: true, v: r.v }; }).filter((x) => x.active);
   const downNow = down.map((tr) => { const r = sampleS(tr.points, t); return { tr, active: r.active, fp: L - r.s, up: false, v: r.v }; }).filter((x) => x.active);
-  const aktifSayi = upNow.length + downNow.length;
+  // DÖNGÜ modu: tek-tren yörüngesinde `count` treni eşit fazla (offset=headway) yerleştir.
+  const loopNow = loop ? Array.from({ length: loop.count }, (_, k) => {
+    const phase = (((t + k * loop.offset) % loop.periyot) + loop.periyot) % loop.periyot;
+    const r = sampleLoop(loop.ornekler, phase);
+    const gidis = r.s <= loop.L + 1e-6;
+    const fp = gidis ? Math.min(loop.L, r.s) : Math.max(0, loop.loopLen - r.s);
+    return { tr: { index: k, points: [], arr: 0, delay: 0 } as SignalTrain, fp, up: gidis, v: r.v, durum: r.durum, ad: r.ad };
+  }) : [];
+  const gidenler = loop ? loopNow.filter((x) => x.up) : upNow;
+  const gelenler = loop ? loopNow.filter((x) => !x.up) : downNow;
+  const aktifSayi = loop ? loop.count : upNow.length + downNow.length;
 
   // Blok işgali — her şerit ayrı
   const blokIndeks = (fp: number) => {
@@ -186,8 +220,8 @@ export function LiveNetwork({
   };
   const occUp = new Set<number>();
   const occDown = new Set<number>();
-  for (const x of upNow) { const i = blokIndeks(x.fp); if (i >= 0) occUp.add(i); }
-  for (const x of downNow) { const i = blokIndeks(x.fp); if (i >= 0) occDown.add(i); }
+  for (const x of gidenler) { const i = blokIndeks(x.fp); if (i >= 0) occUp.add(i); }
+  for (const x of gelenler) { const i = blokIndeks(x.fp); if (i >= 0) occDown.add(i); }
 
   // Sinyal fener aspekti (sabit blok, 3 fener): korunan blok dolu → KIRMIZI;
   // bir sonraki blok dolu → SARI (dikkat); ikisi de boş → YEŞİL.
@@ -212,7 +246,7 @@ export function LiveNetwork({
 
   const CAR_PX = 7;
   const cars = Math.max(2, Math.min(6, Math.round(trainLen / 20))); // ~20 m/vagon
-  const wagon = (x: { tr: SignalTrain; fp: number; up: boolean; v: number }, i: number) => {
+  const wagon = (x: { tr: SignalTrain; fp: number; up: boolean; v: number; durum?: LoopDurum; ad?: string }, i: number) => {
     const side = x.up ? UP_SIDE : DOWN_SIDE;
     const pos = laneAt(x.fp, side);
     const col = x.up ? UP_COL : DOWN;
@@ -222,10 +256,14 @@ export function LiveNetwork({
     const wpx = cars * CAR_PX, half = wpx / 2;
     const kmh = Math.round(x.v * 3.6);
     const lbl = offsetAt(x.fp, GAP + 13, side); // hız etiketi şerit dışına
+    // DÖNGÜ rozeti: trenin üstünde o an ne olduğunu gösteren küçük kompakt pill (durum ikonu + km/h).
+    const st = x.durum ? DURUM_STIL[x.durum] : null;
+    const rz = offsetAt(x.fp, GAP + 25, UST); // rozet daima üstte
+    const rozetW = st ? Math.max(20, (st.ikon.length + 3) * 5) : 0;
     return (
-      <g key={`tr${i}`}>
+      <g key={`tr${i}`} style={{ cursor: loop ? "pointer" : "default" }} onClick={loop ? () => setSecili((p) => (p === x.tr.index ? null : x.tr.index)) : undefined}>
         <g transform={`translate(${pos.x},${pos.y}) rotate(${deg})`}>
-          <rect x={-half} y={-4.5} width={wpx} height={9} rx={2.5} fill={col} stroke="#fff" strokeWidth={1.2} />
+          <rect x={-half} y={-4.5} width={wpx} height={9} rx={2.5} fill={col} stroke={secili === x.tr.index ? brand.ink : "#fff"} strokeWidth={secili === x.tr.index ? 1.8 : 1.2} />
           {Array.from({ length: cars - 1 }).map((_, c) => {
             const sx = -half + (c + 1) * CAR_PX;
             return <line key={c} x1={sx} y1={-4.5} x2={sx} y2={4.5} stroke="#fff" strokeWidth={0.7} opacity={0.55} />;
@@ -234,6 +272,13 @@ export function LiveNetwork({
         </g>
         <text x={pos.x} y={pos.y + 3} fill="#fff" fontSize={7.5} fontWeight={700} textAnchor="middle">{no}</text>
         {kmh > 1 && <text x={lbl.x} y={lbl.y} fill={col} fontSize={7.5} fontWeight={600} textAnchor="middle">{kmh}</text>}
+        {st && (
+          <g transform={`translate(${rz.x},${rz.y})`}>
+            <line x1={0} y1={2} x2={pos.x - rz.x} y2={pos.y - rz.y} stroke={st.renk} strokeWidth={0.5} strokeDasharray="1 1" opacity={0.6} />
+            <rect x={-rozetW / 2} y={-6} width={rozetW} height={9} rx={4.5} fill="#fff" stroke={st.renk} strokeWidth={0.9} />
+            <text x={0} y={0.6} fill={st.renk} fontSize={5.5} fontWeight={700} textAnchor="middle">{st.ikon} {kmh > 1 ? `${kmh}` : "0"}</text>
+          </g>
+        )}
       </g>
     );
   };
@@ -452,8 +497,8 @@ export function LiveNetwork({
         {depots.map(depotMark)}
 
         {/* Trenler */}
-        {upNow.map(wagon)}
-        {downNow.map((x, i) => wagon(x, i + upNow.length))}
+        {gidenler.map(wagon)}
+        {gelenler.map((x, i) => wagon(x, i + gidenler.length))}
 
         {/* İstasyon ADLARI — EN ÜST katman (depo kutuları + trenlerden SONRA çizilir →
             hiçbir tren kutusu / depo etiketi durak adını örtemez). Gerçek adlar
@@ -485,6 +530,36 @@ export function LiveNetwork({
         <text x={10} y={VBH - 30} fill={DOWN} fontSize={10} fontWeight={600}>◀ Dönüş (üst şerit)</text>
         <text x={10} y={VBH - 12} fill={UP_COL} fontSize={10} fontWeight={600}>Gidiş (alt şerit) ▶</text>
       </svg>
+
+      {/* DÖNGÜ — seçili tren detay kutusu: bir turda hangi nedene ne kadar süre */}
+      {loop && secili !== null && (() => {
+        const st = loopNow.find((x) => x.tr.index === secili);
+        if (!st) return null;
+        const stil = DURUM_STIL[st.durum];
+        const topSn = Object.values(loop.dokum).reduce((a, b) => a + b, 0) || 1;
+        const sirali = (Object.entries(loop.dokum) as [LoopDurum, number][]).filter(([, v]) => v > 0.5).sort((a, b) => b[1] - a[1]);
+        return (
+          <div className="mt-2 rounded-lg border p-3" style={{ borderColor: brand.ink, background: brand.surface }}>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold" style={{ color: brand.ink }}>🚋 Tren {secili + 1} — şu an: <span style={{ color: stil.renk }}>{stil.ikon} {st.ad}</span> · {Math.round(st.v * 3.6)} km/h</span>
+              <button onClick={() => setSecili(null)} className="text-xs underline" style={{ color: brand.muted }}>kapat</button>
+            </div>
+            <div className="mt-2 text-xs" style={{ color: brand.inkSoft }}>Bir tam turda (çevrim {saat(loop.periyot)}) hangi nedene ne kadar süre geçiriyor:</div>
+            <div className="mt-1 space-y-1">
+              {sirali.map(([d, v]) => {
+                const s = DURUM_STIL[d]; const yuzde = (v / topSn) * 100;
+                return (
+                  <div key={d} className="flex items-center gap-2 text-xs">
+                    <span className="w-32 shrink-0" style={{ color: s.renk }}>{s.ikon} {s.ad}</span>
+                    <div className="h-2 flex-1 overflow-hidden rounded" style={{ background: CK.track }}><div style={{ width: `${yuzde}%`, height: "100%", background: s.renk }} /></div>
+                    <span className="w-20 shrink-0 text-right tabular-nums" style={{ color: brand.inkSoft }}>{Math.round(v)} s · %{Math.round(yuzde)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Kontroller */}
       <div className="flex flex-wrap items-center gap-3">

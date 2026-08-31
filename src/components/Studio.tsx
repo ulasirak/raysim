@@ -9,7 +9,7 @@ import Link from "next/link";
 import type { RailNetwork, Route } from "@/lib/anaray/types";
 import { flattenRoute, ringlerdenSebeke, hemzeminDuruslari, duruslariEkle, kalkisEkle, hatOzellikleri } from "@/lib/anaray/network";
 import { simulate } from "@/lib/anaray/sim";
-import { simulateSignalled, reverseRoute, monteCarlo, planDepotDispatch, type MonteCarloResult } from "@/lib/anaray/signalling";
+import { simulateSignalled, reverseRoute, monteCarlo, planDepotDispatch, loopYorunge, type MonteCarloResult } from "@/lib/anaray/signalling";
 import { tramvaylar } from "@/lib/anaray/vehicles";
 import { maksimumTren } from "@/lib/anaray/kapasite";
 import { tersIsletmeAnaliz } from "@/lib/anaray/tersisletme";
@@ -181,6 +181,17 @@ function StudioIc() {
     () => simulateSignalled(reverseLine, stock, { headway: ulasilanHeadwaySn, count: filo, maxBlockLen: BLOK_MAXLEN, sinyaller: sinyalSimKonum.map((p) => reverseLine.length - p) }),
     [reverseLine, stock, ulasilanHeadwaySn, filo, BLOK_MAXLEN, sinyalSimKonum]
   );
+  // DÖNGÜ (git-gel): tek-tren tam tur yörüngesi — uçlarda turnback (peron işgali) + durum izleme.
+  const peronBas = isletme.terminalBas.tip === "dongu" ? 0 : (isletme.terminalBas.peronIsgali || 0);
+  const peronSon = isletme.terminalSon.tip === "dongu" ? 0 : (isletme.terminalSon.peronIsgali || 0);
+  const loopY = useMemo(
+    () => loopYorunge(line, reverseLine, stock, { peronIsgaliBas: peronBas, peronIsgaliSon: peronSon }),
+    [line, reverseLine, stock, peronBas, peronSon]
+  );
+  const loopVeri = useMemo(
+    () => ({ ...loopY, count: filo, offset: loopY.periyot / Math.max(1, filo) }),
+    [loopY, filo]
+  );
 
   const monteCarloCalistir = () => {
     setMcRunning(true);
@@ -327,10 +338,10 @@ function StudioIc() {
       )}
 
       {/* Canlı ağ simülasyonu (kahraman) */}
-      <Panel baslik="Canlı Ağ Simülasyonu" aciklama="Tüm trenler (gidiş + dönüş) aynı anda hat üzerinde hareket eder. Sinyaller blok sınırlarında 3-aspekt yanar (yeşil/sarı/kırmızı) — önündeki blok doluysa otomatik kırmızı; renk elle ayarlanmaz, gerçek sabit-blok mantığı budur. Blok aralığını aşağıdan değiştir → sinyaller sıklaşır/seyrelir (kapasite ile aynı düzen). Dispatcher: bir sinyale tıkla → blok arızalanır. Parklanma (🅿) trenleri sırayla servise çıkar. Oynat ▶">
+      <Panel baslik="Canlı Ağ Simülasyonu" aciklama="Hat DÖNGÜdür (lastik): tren gidiş şeridini yürür → terminalde peron işgali süresi kadar DÖNER (turnback, dönüş tipi/peron/makas'a göre) → dönüş şeridinden geri gelir → başta döner → tekrar. Her trenin üstünde o an ne yaşadığı (⤵ hız kısıtı · ⏸ istasyon duruşu · 🔄 terminal dönüşü · ↗ hızlanma · → seyir) rozetle görünür; bir trene TIKLA → bir tam turda hangi nedene kaç saniye geçirdiğinin dökümü açılır. Sinyaller blok sınırlarında 3-aspekt yanar. Oynat ▶">
         <LiveNetwork network={network} route={route} line={line} blocks={canliGidis.blocks}
           up={canliGidis.trains} down={donusSim.trains} tMax={Math.max(canliGidis.tMax, donusSim.tMax)} trainLen={stock.length}
-          faultBlocks={ariza} onBlockClick={arizaToggle} depots={depotPlan.depots} features={hatOzellik} />
+          faultBlocks={ariza} onBlockClick={arizaToggle} depots={depotPlan.depots} features={hatOzellik} loop={loopVeri} />
         {/* Otomatik blok bölme — elle sinyal KOYMADIĞIN açık kesimleri doldurur */}
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs" style={{ color: brand.inkSoft }}>
           <span>🚦 Otomatik blok bölme (boş kesim)</span>
