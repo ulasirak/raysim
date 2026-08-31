@@ -19,8 +19,6 @@ export interface ServisProfil {
   saatler: ServisSaat[];
   toplamFilo: number;         // en yüksek filo (pik) = toplam araç
   maxDepoda: number;          // en fazla aynı anda depoda bekleyen (genelde gece)
-  depoKapasiteToplam: number; // 0 = sınırsız
-  kapasiteYeterli: boolean;
 }
 
 function saatToNum(s: string): number {
@@ -28,7 +26,7 @@ function saatToNum(s: string): number {
   return (Number.isFinite(h) ? h : 0) + (Number.isFinite(m) ? m : 0) / 60;
 }
 
-export function servisProfili(isletme: Isletme, depoKapasiteToplam = 0): ServisProfil {
+export function servisProfili(isletme: Isletme): ServisProfil {
   const sb = saatToNum(isletme.servisBas);
   const se = saatToNum(isletme.servisBit); // 24:00 → 24
   const psb = saatToNum(isletme.pikSabahBas), pse = saatToNum(isletme.pikSabahBit);
@@ -46,11 +44,5 @@ export function servisProfili(isletme: Isletme, depoKapasiteToplam = 0): ServisP
     saatler.push({ saat: h, serviste, depoda: Math.max(0, toplamFilo - serviste), pik: pikMi, aktif });
   }
   const maxDepoda = Math.max(toplamFilo, ...saatler.map((s) => s.depoda));
-  return {
-    saatler,
-    toplamFilo,
-    maxDepoda,
-    depoKapasiteToplam,
-    kapasiteYeterli: depoKapasiteToplam <= 0 || depoKapasiteToplam >= maxDepoda,
-  };
+  return { saatler, toplamFilo, maxDepoda };
 }

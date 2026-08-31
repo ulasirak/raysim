@@ -84,19 +84,14 @@ function StudioIc() {
   // MAKSİMUM TRAMVAY — tek, kesin kaynak (bottleneck: kritik blok / terminal / tek hat).
   // Ringler'deki "Maksimum Tramvay Kapasitesi" ile birebir aynı sonuç.
   const maks = useMemo(() => maksimumTren(rings, stock, cfg, isletme), [rings, stock, cfg, isletme]);
-  // Gün içi servis profili + depo kapasitesi (tüm parklanma alanları: origin + varış).
-  const depoKapasiteler = useMemo(() => {
-    const caps: number[] = [];
-    if (rings[0]?.fromDepot) caps.push(rings[0].fromDepoKapasite ?? 0);
-    for (const r of rings) if (r.depot) caps.push(r.depoKapasite ?? 0);
-    return caps;
+  // Gün içi servis profili (depo kapasitesi kaldırıldı — parklanma alanı sadece var/yok).
+  const depoSayisi = useMemo(() => {
+    let n = 0;
+    if (rings[0]?.fromDepot) n++;
+    for (const r of rings) if (r.depot) n++;
+    return n;
   }, [rings]);
-  const depoSayisi = depoKapasiteler.length;
-  const depoKapasiteToplam = useMemo(() => {
-    if (depoKapasiteler.length === 0) return 0;
-    return depoKapasiteler.every((c) => c > 0) ? depoKapasiteler.reduce((s, c) => s + c, 0) : 0; // 0 = sınırsız/tanımsız
-  }, [depoKapasiteler]);
-  const servisProfil = useMemo(() => servisProfili(isletme, depoKapasiteToplam), [isletme, depoKapasiteToplam]);
+  const servisProfil = useMemo(() => servisProfili(isletme), [isletme]);
   // İstenen işletme aralığı, fiziksel min. aralığın (h_min) altındaysa uygulanamaz.
   const [ariza, setAriza] = useState<number[]>([]); // dispatcher: arızalı bloklar (gidiş hattı) — geçici what-if
   // Monte-Carlo senaryo parametreleri KALICI (projeye kayıtlı) — tek kaynak isletme.
@@ -364,6 +359,93 @@ function StudioIc() {
       </div>
       )}
 
+      <section className="mt-6">
+        <Panel baslik="Sefer Sıklığı" aciklama="Hat çift hat, gidiş-dönüş çalışır. Sabit blok sinyal sistemi — tren dolu bloğa giremez (kırmızı sinyalde durur). Dönüş Bekleme çevrim süresini ve gereken filoyu besler.">
+
+          {/* TEK SONUÇ — bu hatta en fazla kaç tramvay (Ringler ile birebir aynı) */}
+          {maks.gecerli && (
+            <div className="mb-4 rounded-md border-l-4 px-4 py-3" style={{ background: CK.goodBgSoft, borderColor: brand.ink }}>
+              <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
+                <div>
+                  <span className="text-3xl font-semibold" style={{ color: brand.ink }}>{maks.nTeorik}</span>
+                  <span className="ml-1 text-xs" style={{ color: brand.muted }}>tramvay — teorik maksimum</span>
+                </div>
+                <div>
+                  <span className="text-2xl font-semibold" style={{ color: CK.good }}>{maks.nSurdurulebilir}</span>
+                  <span className="ml-1 text-xs" style={{ color: brand.muted }}>sürdürülebilir (UIC 406 tamponlu)</span>
+                </div>
+              </div>
+              <p className="mt-1 text-[0.7rem]" style={{ color: brand.muted }}>
+                <b>Teorik maksimum</b>: darboğazın izin verdiği fiziksel tavan — sıfır pay, her tren sürekli tam kapasite. <b>Sürdürülebilir</b>: UIC 406 doluluk tavanıyla (blok başına ~%60–75 kullanım) <b>her gün güvenle</b> çalıştırılabilen sayı — küçük gecikmeler birbirini tetiklemesin, toparlanma payı kalsın diye teorikten düşüktür (gerçek işletme bu değeri hedefler).
+              </p>
+              <p className="mt-1 text-xs" style={{ color: brand.inkSoft }}>
+                Bu hatta aynı anda en fazla <b>{maks.nTeorik}</b> tramvay sığar. Darboğaz: <b>{maks.baglayanAd}</b> · min. aralık {sure(maks.hMin)} · çevrim {sure(maks.cevrimSuresi)}. Kısıt dökümü ve terminal girdileri <Link href="/#ringler" className="underline">Ringler</Link>’de.
+              </p>
+              {/* Gereken tren = ⌈RTT ÷ hedef headway⌉ — kullanıcının hedef sıklığı için filo */}
+              <p className="mt-1 text-xs" style={{ color: brand.ink }}>
+                📐 Tur süresi (RTT) <b>{sure(maks.cevrimSuresi)}</b> (2×seyir + tüm durak dwell'leri + terminaller). {headwayDk} dk sefer sıklığı için <b>gereken tren = {Math.ceil(maks.cevrimSuresi / Math.max(1, headwayDk * 60))}</b> (⌈RTT ÷ headway⌉) — <span style={{ color: brand.muted }}>seçtiğin sıklıkta çalışmak için hatta bulunması gereken tramvay: bir tren tam turu (RTT) tamamlayana dek arkasından kaç tren dolması gerektiği (tur süresi ÷ sefer aralığı).</span>
+              </p>
+            </div>
+          )}
+
+          <div className="mb-3 rounded border-l-4 px-3 py-2 text-xs" style={{ borderColor: brand.ink, background: CK.goodBgSoft, color: brand.inkSoft }}>
+            ℹ️ Filo, ulaşılan sefer aralığı ve hedef headway artık yukarıdaki <b>Filo Paneli</b>'nde (öneri → onayla → filo → parklanma). Burada yalnız <b>Dönüş Bekleme</b> ayarlanır (çevrim süresini ve öneriyi besler).
+          </div>
+          <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <Num label="Dönüş Bekleme" suffix="dk" step={0.5} value={turnaroundDk} onChange={(v) => setTurnaroundDk(Math.max(0, v))} />
+          </div>
+
+          {/* Ulaşılan aralık fiziksel minimumun altında mı? (filo kapasiteyi aşıyorsa) */}
+          {maks.gecerli && ulasilanHeadwaySn < maks.hMin - 1e-6 && (
+            <div className="mb-2 text-sm" style={{ color: brand.red }}>
+              ⚠ Ulaşılan sefer aralığı ({sure(ulasilanHeadwaySn)}) fiziksel minimum aralığın ({sure(maks.hMin)}) altında — filo çok yüksek, trenler kaçınılmaz kuyruklanır. En sık güvenli aralık ≈ {sure(maks.hMin)} (≈ {nMax} araç).
+            </div>
+          )}
+
+          {/* Bekleme durumu */}
+          <div className="text-sm">
+            {canliGidis.anyDelay ? (
+              <span style={{ color: brand.red }}>⚠ Bu aralıkta trenler birbirini bekliyor — en fazla {sure(canliGidis.maxDelay)} gecikme.</span>
+            ) : (
+              <span style={{ color: CK.good }}>✓ Bu aralıkta bekleme yok — trenler serbest akıyor.</span>
+            )}
+          </div>
+        </Panel>
+      </section>
+
+      {/* ÇEKEN ARAÇ — Sefer'in tek düzenleme yüzeyi. Hat (istasyon/mesafe/hız/makas/
+          depo) düzenlemesi Ringler'de (KUR) → ikili düzenleme sadeleştirildi. */}
+      <div className="mt-6">
+        <Panel baslik="Çeken Araç" aciklama="Simülasyonda kullanılan aracı seç veya özelliklerini ayarla — değişiklik anında projeye kaydedilir. İstasyon, mesafe, hız limiti, makas ve parklanma düzenlemesi Ringler (KUR) bölümünde yapılır.">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="block sm:col-span-2 lg:col-span-1">
+              <span className="field-label">Araç</span>
+              <select
+                value={tramvaylar.some((a) => a.id === stock.id) ? stock.id : ""}
+                onChange={(e) => {
+                  const v = tramvaylar.find((a) => a.id === e.target.value);
+                  if (v) setArac({ ...v });
+                }}
+                className="mt-1 w-full rounded border px-2 py-1.5 text-sm"
+                style={{ borderColor: brand.border, color: brand.ink }}
+              >
+                {!tramvaylar.some((a) => a.id === stock.id) && <option value="">Özel araç</option>}
+                {tramvaylar.map((a) => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </select>
+            </label>
+            <Num label="Azami Hız" suffix="km/h" step={5} max={400} value={round(kmh(stock.maxSpeed))} onChange={(v) => patchStock({ maxSpeed: Math.max(5, Math.min(400, v)) * KMH })} />
+            <Num label="Kütle" suffix="t" step={1} value={round(stock.mass / 1000)} onChange={(v) => patchStock({ mass: v * 1000 })} />
+            <Num label="Fren" suffix="m/s²" step={0.1} value={round(stock.maxBraking, 1)} onChange={(v) => patchStock({ maxBraking: v })} />
+          </div>
+          <p className="mt-4 border-t pt-3 text-xs" style={{ borderColor: brand.border, color: brand.muted }}>
+            Hattı düzenlemek mi istiyorsun? İstasyon / mesafe / hız / makas / parklanma alanı{" "}
+            <Link href="/#ringler" className="underline" style={{ color: brand.red }}>Ringler (KUR)</Link> bölümünde — orada yapılan değişiklikler burada anında yansır.
+          </p>
+        </Panel>
+      </div>
+
       {/* Canlı ağ simülasyonu (kahraman) */}
       <Panel baslik="Canlı Ağ Simülasyonu" aciklama="Trenler PARKLANMA ALANINDAN çıkar: Depo Çıkışı yöntemine göre bir kısmı DÜZ (gidiş), bir kısmı MAKASTAN karşı şeride geçip TERS (dönüş) yönde başlar; sıra bekleyenler ⏸ parkta durur. Hat DÖNGÜdür (lastik): tren gidiş şeridini yürür → terminalde peron işgali süresi kadar DÖNER (turnback) → dönüş şeridinden geri gelir → başta döner → tekrar. Her trenin üstünde o an ne yaşadığı (⤵ hız kısıtı · ⏸ istasyon duruşu · 🔄 terminal dönüşü · ↗ hızlanma · → seyir) rozetle görünür; bir trene TIKLA → bir tam turda hangi nedene kaç saniye geçirdiğinin dökümü açılır. Sinyaller blok sınırlarında 3-aspekt yanar. Oynat ▶">
         {simHazir ? (
@@ -466,59 +548,6 @@ function StudioIc() {
       )}
 
       {/* Sefer sıklığı */}
-      <section className="mt-6">
-        <Panel baslik="Sefer Sıklığı" aciklama="Hat çift hat, gidiş-dönüş çalışır. Sabit blok sinyal sistemi — tren dolu bloğa giremez (kırmızı sinyalde durur). Dönüş Bekleme çevrim süresini ve gereken filoyu besler.">
-
-          {/* TEK SONUÇ — bu hatta en fazla kaç tramvay (Ringler ile birebir aynı) */}
-          {maks.gecerli && (
-            <div className="mb-4 rounded-md border-l-4 px-4 py-3" style={{ background: CK.goodBgSoft, borderColor: brand.ink }}>
-              <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
-                <div>
-                  <span className="text-3xl font-semibold" style={{ color: brand.ink }}>{maks.nTeorik}</span>
-                  <span className="ml-1 text-xs" style={{ color: brand.muted }}>tramvay — teorik maksimum</span>
-                </div>
-                <div>
-                  <span className="text-2xl font-semibold" style={{ color: CK.good }}>{maks.nSurdurulebilir}</span>
-                  <span className="ml-1 text-xs" style={{ color: brand.muted }}>sürdürülebilir (UIC 406 tamponlu)</span>
-                </div>
-              </div>
-              <p className="mt-1 text-[0.7rem]" style={{ color: brand.muted }}>
-                <b>Teorik maksimum</b>: darboğazın izin verdiği fiziksel tavan — sıfır pay, her tren sürekli tam kapasite. <b>Sürdürülebilir</b>: UIC 406 doluluk tavanıyla (blok başına ~%60–75 kullanım) <b>her gün güvenle</b> çalıştırılabilen sayı — küçük gecikmeler birbirini tetiklemesin, toparlanma payı kalsın diye teorikten düşüktür (gerçek işletme bu değeri hedefler).
-              </p>
-              <p className="mt-1 text-xs" style={{ color: brand.inkSoft }}>
-                Bu hatta aynı anda en fazla <b>{maks.nTeorik}</b> tramvay sığar. Darboğaz: <b>{maks.baglayanAd}</b> · min. aralık {sure(maks.hMin)} · çevrim {sure(maks.cevrimSuresi)}. Kısıt dökümü ve terminal girdileri <Link href="/#ringler" className="underline">Ringler</Link>’de.
-              </p>
-              {/* Gereken tren = ⌈RTT ÷ hedef headway⌉ — kullanıcının hedef sıklığı için filo */}
-              <p className="mt-1 text-xs" style={{ color: brand.ink }}>
-                📐 Tur süresi (RTT) <b>{sure(maks.cevrimSuresi)}</b> (2×seyir + tüm durak dwell'leri + terminaller). {headwayDk} dk sefer sıklığı için <b>gereken tren = {Math.ceil(maks.cevrimSuresi / Math.max(1, headwayDk * 60))}</b> (⌈RTT ÷ headway⌉) — <span style={{ color: brand.muted }}>seçtiğin sıklıkta çalışmak için hatta bulunması gereken tramvay: bir tren tam turu (RTT) tamamlayana dek arkasından kaç tren dolması gerektiği (tur süresi ÷ sefer aralığı).</span>
-              </p>
-            </div>
-          )}
-
-          <div className="mb-3 rounded border-l-4 px-3 py-2 text-xs" style={{ borderColor: brand.ink, background: CK.goodBgSoft, color: brand.inkSoft }}>
-            ℹ️ Filo, ulaşılan sefer aralığı ve hedef headway artık yukarıdaki <b>Filo Paneli</b>'nde (öneri → onayla → filo → parklanma). Burada yalnız <b>Dönüş Bekleme</b> ayarlanır (çevrim süresini ve öneriyi besler).
-          </div>
-          <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
-            <Num label="Dönüş Bekleme" suffix="dk" step={0.5} value={turnaroundDk} onChange={(v) => setTurnaroundDk(Math.max(0, v))} />
-          </div>
-
-          {/* Ulaşılan aralık fiziksel minimumun altında mı? (filo kapasiteyi aşıyorsa) */}
-          {maks.gecerli && ulasilanHeadwaySn < maks.hMin - 1e-6 && (
-            <div className="mb-2 text-sm" style={{ color: brand.red }}>
-              ⚠ Ulaşılan sefer aralığı ({sure(ulasilanHeadwaySn)}) fiziksel minimum aralığın ({sure(maks.hMin)}) altında — filo çok yüksek, trenler kaçınılmaz kuyruklanır. En sık güvenli aralık ≈ {sure(maks.hMin)} (≈ {nMax} araç).
-            </div>
-          )}
-
-          {/* Bekleme durumu */}
-          <div className="text-sm">
-            {canliGidis.anyDelay ? (
-              <span style={{ color: brand.red }}>⚠ Bu aralıkta trenler birbirini bekliyor — en fazla {sure(canliGidis.maxDelay)} gecikme.</span>
-            ) : (
-              <span style={{ color: CK.good }}>✓ Bu aralıkta bekleme yok — trenler serbest akıyor.</span>
-            )}
-          </div>
-        </Panel>
-      </section>
 
       {/* YOLCU DİNAMİĞİ & DURUŞ — dwell fiziksel yolcu akışından hesaplanır. */}
       <section className="mt-6">
@@ -584,49 +613,12 @@ function StudioIc() {
             </div>
           )}
           <div className="mt-2 text-xs" style={{ color: brand.inkSoft }}>
-            En fazla <b>{servisProfil.maxDepoda}</b> tren aynı anda depoda bekler (gece/servis dışı). Toplam depo kapasitesi:{" "}
-            {depoKapasiteToplam > 0 ? (
-              <b style={{ color: servisProfil.kapasiteYeterli ? CK.good : brand.red }}>{depoKapasiteToplam} tren {servisProfil.kapasiteYeterli ? "✓ yeterli" : "✗ yetersiz"}</b>
-            ) : (
-              <span style={{ color: brand.muted }}>tanımsız/sınırsız — Ringler'de parklanma alanına kapasite gir</span>
-            )}
+            En fazla <b>{servisProfil.maxDepoda}</b> tren aynı anda depoda bekler (gece/servis dışı).
             {depoSayisi === 0 && <span style={{ color: CK.amber }}> · henüz parklanma alanı yok (Ringler → 🅿)</span>}
           </div>
         </Panel>
       </section>
 
-      {/* ÇEKEN ARAÇ — Sefer'in tek düzenleme yüzeyi. Hat (istasyon/mesafe/hız/makas/
-          depo) düzenlemesi Ringler'de (KUR) → ikili düzenleme sadeleştirildi. */}
-      <div className="mt-6">
-        <Panel baslik="Çeken Araç" aciklama="Simülasyonda kullanılan aracı seç veya özelliklerini ayarla — değişiklik anında projeye kaydedilir. İstasyon, mesafe, hız limiti, makas ve parklanma düzenlemesi Ringler (KUR) bölümünde yapılır.">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <label className="block sm:col-span-2 lg:col-span-1">
-              <span className="field-label">Araç</span>
-              <select
-                value={tramvaylar.some((a) => a.id === stock.id) ? stock.id : ""}
-                onChange={(e) => {
-                  const v = tramvaylar.find((a) => a.id === e.target.value);
-                  if (v) setArac({ ...v });
-                }}
-                className="mt-1 w-full rounded border px-2 py-1.5 text-sm"
-                style={{ borderColor: brand.border, color: brand.ink }}
-              >
-                {!tramvaylar.some((a) => a.id === stock.id) && <option value="">Özel araç</option>}
-                {tramvaylar.map((a) => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
-                ))}
-              </select>
-            </label>
-            <Num label="Azami Hız" suffix="km/h" step={5} max={400} value={round(kmh(stock.maxSpeed))} onChange={(v) => patchStock({ maxSpeed: Math.max(5, Math.min(400, v)) * KMH })} />
-            <Num label="Kütle" suffix="t" step={1} value={round(stock.mass / 1000)} onChange={(v) => patchStock({ mass: v * 1000 })} />
-            <Num label="Fren" suffix="m/s²" step={0.1} value={round(stock.maxBraking, 1)} onChange={(v) => patchStock({ maxBraking: v })} />
-          </div>
-          <p className="mt-4 border-t pt-3 text-xs" style={{ borderColor: brand.border, color: brand.muted }}>
-            Hattı düzenlemek mi istiyorsun? İstasyon / mesafe / hız / makas / parklanma alanı{" "}
-            <Link href="/#ringler" className="underline" style={{ color: brand.red }}>Ringler (KUR)</Link> bölümünde — orada yapılan değişiklikler burada anında yansır.
-          </p>
-        </Panel>
-      </div>
 
       {/* Hat şeması — statik topoloji (rota dışı kollar). Canlı Ağ zaten hattı
           gösterdiği için katlanır detay olarak tutulur. */}

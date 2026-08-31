@@ -137,12 +137,6 @@ export function RingEditor() {
     if (i === 0) { const r = rings[0]; if (r) patch(r.id, { fromQueued: q }); }
     else { const r = rings[i - 1]; if (r) patch(r.id, { queued: q }); }
   };
-  const depoKap = (i: number) => (i === 0 ? rings[0]?.fromDepoKapasite ?? 0 : rings[i - 1]?.depoKapasite ?? 0);
-  const depoKapAyarla = (i: number, n: number) => {
-    const k = Math.max(0, Math.round(n));
-    if (i === 0) { const r = rings[0]; if (r) patch(r.id, { fromDepoKapasite: k }); }
-    else { const r = rings[i - 1]; if (r) patch(r.id, { depoKapasite: k }); }
-  };
 
   // — güncelleyiciler —
   const patch = (id: string, p: Partial<DurakArasiRing>) =>
@@ -243,6 +237,222 @@ export function RingEditor() {
           🗑 Hattı temizle
         </button>
       </div>
+
+
+      {/* Silme GERİ AL çubuğu — yanlış silinen durak/ring tek tıkla geri gelir. */}
+      {geriAl && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-md border-l-4 px-4 py-2 text-sm" style={{ background: CK.amberBg, borderColor: CK.amber, color: brand.ink }}>
+          <span>↩︎ Silme işlemi yapıldı. Yanlışlıkla mı? Geri alabilirsin.</span>
+          <button onClick={geriAlUygula} className="shrink-0 rounded-md px-3 py-1 text-xs font-semibold text-white transition hover:opacity-90" style={{ background: brand.ink }}>
+            ↺ Silmeyi geri al
+          </button>
+        </div>
+      )}
+
+      {/* DURAKLAR & MESAFELER — hattın GİRİŞ NOKTASI. Boş hatta da görünür: müşteri
+          önce buradan durak/mesafe/hız girer, ring hücreleri buradan doğar. Detaylı
+          hücre şartları (worst/best, makas, hemzemin, tehlike, depo) alttaki kartlarda.
+          Yükleme sırasında gizli (aşağıdaki "Hat yükleniyor…" gösterilir). */}
+      {!yukleniyor && (
+        <div className="mt-4">
+          <Panel baslik="Duraklar & Mesafeler" aciklama="Hattın başladığı yer: durakları ve aralarındaki mesafe/hızları buradan gir. Başa · ortaya · sona durak ekle, adları düzenle. Her durak-arası bir işletim hücresi (ring) oluşturur — detaylı şartlar aşağıdaki kartlarda. Değişiklikler anında kaydedilir.">
+            {duraklar.length === 0 ? (
+              <div className="rounded-md border-2 border-dashed px-6 py-6" style={{ borderColor: brand.border }}>
+                <div className="text-center">
+                  <div className="font-brand text-base font-semibold" style={{ color: brand.ink }}>Hattınız boş — buradan başlayın</div>
+                  <p className="mx-auto mt-1 max-w-lg text-xs leading-relaxed" style={{ color: brand.muted }}>
+                    <b>Toplam uzunluk + durak sayısı</b> gir → hat eşit bölünür; sonra adları ve mesafeleri tek tek düzenlersin.
+                    (Tek tek de başlayabilirsin.)
+                  </p>
+                </div>
+                {/* Hızlı kurulum: toplam + sayı → eşit böl */}
+                <div className="mx-auto mt-4 flex max-w-md flex-wrap items-end justify-center gap-3">
+                  <label className="block">
+                    <span className="field-label">Toplam uzunluk</span>
+                    <div className="mt-1 flex items-center gap-1">
+                      <input type="number" min={100} step={100} value={hizliToplam} onChange={(e) => setHizliToplam(Math.max(100, parseFloat(e.target.value) || 0))}
+                        className="w-24 rounded border px-2 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+                      <span className="text-xs" style={{ color: brand.muted }}>m</span>
+                    </div>
+                  </label>
+                  <label className="block">
+                    <span className="field-label">Durak sayısı</span>
+                    <input type="number" min={2} step={1} value={hizliSayi} onChange={(e) => setHizliSayi(Math.max(2, Math.round(parseFloat(e.target.value) || 2)))}
+                      className="mt-1 w-20 rounded border px-2 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+                  </label>
+                  <button onClick={() => setRings(duraklardanHat(hizliToplam, hizliSayi))}
+                    className="rounded-md px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: brand.red }}>
+                    Hattı kur ({hizliSayi} durak · {Math.round(hizliToplam / Math.max(1, hizliSayi - 1))} m ara)
+                  </button>
+                </div>
+                <div className="mt-3 text-center">
+                  <button onClick={() => ekleUygula((rs) => durakEkleSon(rs))} className="text-xs underline" style={{ color: brand.muted }}>veya tek durak-arasıyla başla →</button>
+                </div>
+              </div>
+            ) : (
+            <>
+            {/* Ekleme mesafesi + başa/sona ekle — yeni durak SEÇTİĞİN mesafeyle eklenir. */}
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
+              <span className="text-xs font-medium" style={{ color: brand.inkSoft }}>Yeni durak mesafesi</span>
+              <input type="number" min={50} step={50} value={ekMesafe} onChange={(e) => setEkMesafe(Math.max(50, parseFloat(e.target.value) || 0))}
+                className="w-24 rounded border px-2 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+              <span className="text-xs" style={{ color: brand.muted }}>m</span>
+              <div className="ml-auto flex gap-2">
+                <button onClick={() => ekleUygula((rs) => durakEkleBas(rs, ekMesafe))}
+                  className="rounded-md border px-3 py-1 text-xs font-medium transition hover:bg-white" style={{ borderColor: brand.borderStrong, color: brand.ink }}>⇤ Başa ekle</button>
+                <button onClick={() => ekleUygula((rs) => durakEkleSon(rs, ekMesafe))}
+                  className="rounded-md border px-3 py-1 text-xs font-medium transition hover:bg-white" style={{ borderColor: brand.borderStrong, color: brand.ink }}>Sona ekle ⇥</button>
+              </div>
+            </div>
+            <div className="flex flex-col">
+              {duraklar.map((d, i) => (
+                <div key={`durak-${i}`}>
+                  {/* Durak satırı */}
+                  <div className="flex items-center gap-2 rounded border px-2 py-1.5" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[0.6rem] font-semibold text-white" style={{ background: brand.ink }}>{i + 1}</span>
+                    <input value={d.ad} onChange={(e) => setRings((rs) => durakAdiDegistir(rs, i, e.target.value))}
+                      className="min-w-0 flex-1 rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+                    <span className="shrink-0 font-mono text-xs" style={{ color: brand.faint }} title="Hat başından uzaklık">{km(d.konum)} km</span>
+                    {i > 0 && (
+                      <div className="flex shrink-0 items-center gap-1" title="Bu durakta toplam bekleme (dwell) = kapı aç + yolcu + kapı kapa (aşağıdan düzenle)">
+                        <span className="text-[0.65rem] font-medium" style={{ color: brand.inkSoft }}>bekleme</span>
+                        <span className="text-xs font-semibold" style={{ color: rings[i - 1].dwellOto ? CK.good : brand.ink }}>{Math.round(etkinDwell(rings[i - 1]))}</span>
+                        <span className="text-[0.65rem]" style={{ color: brand.muted }}>sn{rings[i - 1].dwellOto ? " (oto)" : ""}</span>
+                      </div>
+                    )}
+                    {duraklar.length > 2 ? (
+                      <button onClick={() => silHatirla((rs) => durakSil(rs, i))} title="Durağı sil (orta durak → komşu ringleri birleştirir)"
+                        className="shrink-0 rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
+                    ) : (<span className="w-6 shrink-0" />)}
+                  </div>
+                  {/* Durak bekleme bileşenleri (dwell = kapı aç + yolcu + kapı kapa) + kalkış ölü zamanı */}
+                  <div className="ml-6 flex flex-wrap items-center gap-x-3 gap-y-1 py-0.5 pl-2 text-[0.7rem]" style={{ color: brand.muted }}>
+                    {i > 0 && (() => {
+                      const r = rings[i - 1];
+                      const oto = !!r.dwellOto;
+                      const yolcuHesap = Math.max(isletme.minDurusSuresi, yolcuAkisSuresi(r.inenYolcu ?? 0, r.binenYolcu ?? 0, stock, isletme.yolcuAkisHizi));
+                      return (
+                        <>
+                          <label className="flex items-center gap-1" title="Dwell'i yolcu akışından otomatik hesapla: (inen+binen) ÷ (kapı sayısı × genişlik × akış hızı)">
+                            <input type="checkbox" checked={oto} onChange={(e) => patch(r.id, { dwellOto: e.target.checked })} />
+                            <span style={{ color: oto ? CK.good : brand.muted }}>oto dwell</span>
+                          </label>
+                          <span className="flex items-center gap-1" title="Kapı açma süresi (s)">kapı aç
+                            <input type="number" min={0} step={1} value={Math.round(dwellBilesen(r).ac)}
+                              onChange={(e) => patchDwell(r, "ac", parseFloat(e.target.value) || 0)}
+                              className="w-11 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
+                          {oto ? (
+                            <>
+                              <span className="flex items-center gap-1" title="Bu durakta inen yolcu">inen
+                                <input type="number" min={0} step={5} value={Math.round(r.inenYolcu ?? 0)}
+                                  onChange={(e) => patch(r.id, { inenYolcu: Math.max(0, parseFloat(e.target.value) || 0) })}
+                                  className="w-12 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
+                              <span className="flex items-center gap-1" title="Bu durakta binen yolcu">binen
+                                <input type="number" min={0} step={5} value={Math.round(r.binenYolcu ?? 0)}
+                                  onChange={(e) => patch(r.id, { binenYolcu: Math.max(0, parseFloat(e.target.value) || 0) })}
+                                  className="w-12 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
+                              <span title="Yolcu akışından hesaplanan bölüm" style={{ color: CK.good }}>yolcu {Math.round(yolcuHesap)}s ✓</span>
+                              <span className="basis-full rounded border-l-2 py-0.5 pl-2 text-[0.66rem] leading-snug" style={{ borderColor: CK.good, background: CK.goodBgSoft, color: brand.inkSoft }}>
+                                <b>oto dwell</b>: bekleme yolcudan hesaplanır → kapı aç {Math.round(dwellBilesen(r).ac)}s + yolcu [(inen+binen) ÷ (kapı {stock.kapiSayisi ?? 4} × genişlik {stock.kapiGenisligi ?? 1.3}m × akış {isletme.yolcuAkisHizi})] + kapı kapa {Math.round(dwellBilesen(r).kapa)}s; en az {isletme.minDurusSuresi}s. Şu an yolcu {Math.round(yolcuHesap)}s → toplam <b>{Math.round(etkinDwell(r))}s</b>.
+                              </span>
+                            </>
+                          ) : (
+                            <span className="flex items-center gap-1" title="Yolcu değişimi / iniş-biniş süresi (s)">yolcu
+                              <input type="number" min={0} step={1} value={Math.round(dwellBilesen(r).yolcu)}
+                                onChange={(e) => patchDwell(r, "yolcu", parseFloat(e.target.value) || 0)}
+                                className="w-11 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
+                          )}
+                          <span className="flex items-center gap-1" title="Kapı kapama süresi (s)">kapı kapa
+                            <input type="number" min={0} step={1} value={Math.round(dwellBilesen(r).kapa)}
+                              onChange={(e) => patchDwell(r, "kapa", parseFloat(e.target.value) || 0)}
+                              className="w-11 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
+                        </>
+                      );
+                    })()}
+                    {i < rings.length && (
+                      <span className="flex items-center gap-1" title="Bu duraktan kalkışta ölü zaman (start-up lost time, s). Hat geneli varsayılanı override eder.">
+                        kalkış ölü
+                        <input type="number" min={0} step={1} value={Math.round(rings[i].kalkisOlu ?? isletme.kalkisOluZamaniSn)}
+                          onChange={(e) => patch(rings[i].id, { kalkisOlu: Math.max(0, parseFloat(e.target.value) || 0) })}
+                          className="w-11 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /> sn
+                      </span>
+                    )}
+                  </div>
+                  {/* Parklanma (depo) alanı — bu durakta çıkışa hazır bekleyen tren (Canlı Ağ besler) */}
+                  <div className="ml-6 flex flex-wrap items-center gap-2 py-0.5 pl-2 text-xs">
+                    <button onClick={() => depoAyarla(i, !depoDurum(i).on)}
+                      className="rounded px-2 py-0.5 font-medium transition"
+                      style={depoDurum(i).on ? { background: brand.ink, color: "#fff" } : { background: "transparent", color: brand.muted, border: `1px solid ${brand.border}` }}>
+                      🅿 Parklanma
+                    </button>
+                    {depoDurum(i).on && (
+                      <span className="flex items-center gap-1" style={{ color: brand.muted }}>
+                        park eden tren
+                        <button type="button" onClick={() => depoQueued(i, Math.max(0, depoDurum(i).q - 1))}
+                          className="flex h-5 w-5 items-center justify-center rounded border font-semibold" style={{ borderColor: brand.border, color: brand.ink }} title="Bir tren çıkar">−</button>
+                        <input type="number" min={0} max={40} step={1} value={depoDurum(i).q} onChange={(e) => depoQueued(i, parseFloat(e.target.value) || 0)}
+                          className="w-12 rounded border px-1 py-0.5 text-center" style={{ borderColor: brand.border, color: brand.ink }} />
+                        <button type="button" onClick={() => depoQueued(i, Math.min(40, depoDurum(i).q + 1))}
+                          className="flex h-5 w-5 items-center justify-center rounded border font-semibold text-white" style={{ background: brand.ink, borderColor: brand.ink }} title="Park eden tren ekle">+</button>
+                        {i === duraklar.length - 1 && <span style={{ color: CK.amber }} title="Hattın sonundaki depo gidiş yönünde tren veremez (gidecek yer yok)">⚠ uç</span>}
+                        {(() => {
+                          const dr = i === 0 ? rings[0] : rings[i - 1];
+                          const makasVar = !!dr && dr.makaslar.length > 0;
+                          return makasVar
+                            ? <span className="ml-1" style={{ color: "#16794C" }} title="Araçlar servise çıkarken makastan gidiş ya da karşı şeride geçerek dönüş yönüne dağılır.">✓ makas var</span>
+                            : <span className="ml-1 font-semibold" style={{ color: brand.red }} title="Parklanma alanında MAKAS ZORUNLUDUR: araç ancak makastan gidiş/dönüş yönüne çıkabilir. Bu durak-arası ring'e makas ekle.">⚠ MAKAS zorunlu — ekle</span>;
+                        })()}
+                      </span>
+                    )}
+                  </div>
+                  {/* Durak-arası (ring i) — mesafe + hız + ortaya ekle */}
+                  {i < rings.length && (
+                    <div className="ml-6 flex flex-wrap items-center gap-2 py-1 pl-2 text-xs" style={{ color: brand.muted }}>
+                      <span style={{ color: brand.faint }}>↓</span>
+                      <span className="flex items-center gap-1">
+                        mesafe
+                        <input type="number" min={50} step={50} value={Math.round(rings[i].uzunluk)}
+                          onChange={(e) => patch(rings[i].id, { uzunluk: Math.max(50, parseFloat(e.target.value) || 0) })}
+                          className="w-20 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /> m
+                      </span>
+                      <span className="flex items-center gap-1">
+                        hız
+                        <input type="number" min={5} step={5} value={Math.round(kmh(rings[i].vmax))}
+                          onChange={(e) => patch(rings[i].id, { vmax: Math.max(5, parseFloat(e.target.value) || 0) * KMH })}
+                          className="w-16 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /> km/h
+                      </span>
+                      <label className="flex items-center gap-1" title="Bu kesim tek hatlı mı? (çift yön aynı hattı paylaşır → tek anda tek tren; maksimum treni düşürür)">
+                        <input type="checkbox" checked={!!rings[i].tekHat}
+                          onChange={(e) => patch(rings[i].id, { tekHat: e.target.checked })} />
+                        <span style={{ color: rings[i].tekHat ? brand.red : brand.muted }}>tek hat</span>
+                      </label>
+                      {bolRing === rings[i].id ? (
+                        <span className="flex items-center gap-1">
+                          böl:
+                          <input type="number" min={1} max={Math.max(1, Math.round(rings[i].uzunluk) - 1)} step={50} value={bolKonum}
+                            onChange={(e) => setBolKonum(Math.max(1, parseFloat(e.target.value) || 1))}
+                            className="w-16 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /> m
+                          <button onClick={() => { ekleUygula((rs) => durakBol(rs, i, bolKonum)); setBolRing(null); }}
+                            className="rounded px-1.5 py-0.5 font-semibold text-white" style={{ background: brand.ink }}>böl</button>
+                          <button onClick={() => setBolRing(null)} className="rounded px-1" style={{ color: brand.muted }} title="Vazgeç">✕</button>
+                        </span>
+                      ) : (
+                        <button onClick={() => { setBolRing(rings[i].id); setBolKonum(Math.round(rings[i].uzunluk / 2)); }}
+                          title="Bu ringi seçtiğin konumda bölerek ortaya durak ekle (varsayılan: orta)"
+                          className="rounded border px-2 py-0.5 font-medium transition hover:bg-slate-50" style={{ borderColor: brand.border, color: brand.ink }}>
+                          ＋ ortaya durak
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            </>
+            )}
+          </Panel>
+        </div>
+      )}
 
       {/* MAKSİMUM TRAMVAY & TERMİNALLER — hat DAİMA çift hat gidiş-dönüş çalışır.
           Terminal dönüş şartları girilir → tek sonuç: bu hatta en fazla kaç tramvay.
@@ -405,226 +615,6 @@ export function RingEditor() {
                   ))}
                 </div>
               </div>
-            )}
-          </Panel>
-        </div>
-      )}
-
-      {/* Silme GERİ AL çubuğu — yanlış silinen durak/ring tek tıkla geri gelir. */}
-      {geriAl && (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-md border-l-4 px-4 py-2 text-sm" style={{ background: CK.amberBg, borderColor: CK.amber, color: brand.ink }}>
-          <span>↩︎ Silme işlemi yapıldı. Yanlışlıkla mı? Geri alabilirsin.</span>
-          <button onClick={geriAlUygula} className="shrink-0 rounded-md px-3 py-1 text-xs font-semibold text-white transition hover:opacity-90" style={{ background: brand.ink }}>
-            ↺ Silmeyi geri al
-          </button>
-        </div>
-      )}
-
-      {/* DURAKLAR & MESAFELER — hattın GİRİŞ NOKTASI. Boş hatta da görünür: müşteri
-          önce buradan durak/mesafe/hız girer, ring hücreleri buradan doğar. Detaylı
-          hücre şartları (worst/best, makas, hemzemin, tehlike, depo) alttaki kartlarda.
-          Yükleme sırasında gizli (aşağıdaki "Hat yükleniyor…" gösterilir). */}
-      {!yukleniyor && (
-        <div className="mt-4">
-          <Panel baslik="Duraklar & Mesafeler" aciklama="Hattın başladığı yer: durakları ve aralarındaki mesafe/hızları buradan gir. Başa · ortaya · sona durak ekle, adları düzenle. Her durak-arası bir işletim hücresi (ring) oluşturur — detaylı şartlar aşağıdaki kartlarda. Değişiklikler anında kaydedilir.">
-            {duraklar.length === 0 ? (
-              <div className="rounded-md border-2 border-dashed px-6 py-6" style={{ borderColor: brand.border }}>
-                <div className="text-center">
-                  <div className="font-brand text-base font-semibold" style={{ color: brand.ink }}>Hattınız boş — buradan başlayın</div>
-                  <p className="mx-auto mt-1 max-w-lg text-xs leading-relaxed" style={{ color: brand.muted }}>
-                    <b>Toplam uzunluk + durak sayısı</b> gir → hat eşit bölünür; sonra adları ve mesafeleri tek tek düzenlersin.
-                    (Tek tek de başlayabilirsin.)
-                  </p>
-                </div>
-                {/* Hızlı kurulum: toplam + sayı → eşit böl */}
-                <div className="mx-auto mt-4 flex max-w-md flex-wrap items-end justify-center gap-3">
-                  <label className="block">
-                    <span className="field-label">Toplam uzunluk</span>
-                    <div className="mt-1 flex items-center gap-1">
-                      <input type="number" min={100} step={100} value={hizliToplam} onChange={(e) => setHizliToplam(Math.max(100, parseFloat(e.target.value) || 0))}
-                        className="w-24 rounded border px-2 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
-                      <span className="text-xs" style={{ color: brand.muted }}>m</span>
-                    </div>
-                  </label>
-                  <label className="block">
-                    <span className="field-label">Durak sayısı</span>
-                    <input type="number" min={2} step={1} value={hizliSayi} onChange={(e) => setHizliSayi(Math.max(2, Math.round(parseFloat(e.target.value) || 2)))}
-                      className="mt-1 w-20 rounded border px-2 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
-                  </label>
-                  <button onClick={() => setRings(duraklardanHat(hizliToplam, hizliSayi))}
-                    className="rounded-md px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: brand.red }}>
-                    Hattı kur ({hizliSayi} durak · {Math.round(hizliToplam / Math.max(1, hizliSayi - 1))} m ara)
-                  </button>
-                </div>
-                <div className="mt-3 text-center">
-                  <button onClick={() => ekleUygula((rs) => durakEkleSon(rs))} className="text-xs underline" style={{ color: brand.muted }}>veya tek durak-arasıyla başla →</button>
-                </div>
-              </div>
-            ) : (
-            <>
-            {/* Ekleme mesafesi + başa/sona ekle — yeni durak SEÇTİĞİN mesafeyle eklenir. */}
-            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
-              <span className="text-xs font-medium" style={{ color: brand.inkSoft }}>Yeni durak mesafesi</span>
-              <input type="number" min={50} step={50} value={ekMesafe} onChange={(e) => setEkMesafe(Math.max(50, parseFloat(e.target.value) || 0))}
-                className="w-24 rounded border px-2 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
-              <span className="text-xs" style={{ color: brand.muted }}>m</span>
-              <div className="ml-auto flex gap-2">
-                <button onClick={() => ekleUygula((rs) => durakEkleBas(rs, ekMesafe))}
-                  className="rounded-md border px-3 py-1 text-xs font-medium transition hover:bg-white" style={{ borderColor: brand.borderStrong, color: brand.ink }}>⇤ Başa ekle</button>
-                <button onClick={() => ekleUygula((rs) => durakEkleSon(rs, ekMesafe))}
-                  className="rounded-md border px-3 py-1 text-xs font-medium transition hover:bg-white" style={{ borderColor: brand.borderStrong, color: brand.ink }}>Sona ekle ⇥</button>
-              </div>
-            </div>
-            <div className="flex flex-col">
-              {duraklar.map((d, i) => (
-                <div key={`durak-${i}`}>
-                  {/* Durak satırı */}
-                  <div className="flex items-center gap-2 rounded border px-2 py-1.5" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[0.6rem] font-semibold text-white" style={{ background: brand.ink }}>{i + 1}</span>
-                    <input value={d.ad} onChange={(e) => setRings((rs) => durakAdiDegistir(rs, i, e.target.value))}
-                      className="min-w-0 flex-1 rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
-                    <span className="shrink-0 font-mono text-xs" style={{ color: brand.faint }} title="Hat başından uzaklık">{km(d.konum)} km</span>
-                    {i > 0 && (
-                      <div className="flex shrink-0 items-center gap-1" title="Bu durakta toplam bekleme (dwell) = kapı aç + yolcu + kapı kapa (aşağıdan düzenle)">
-                        <span className="text-[0.65rem] font-medium" style={{ color: brand.inkSoft }}>bekleme</span>
-                        <span className="text-xs font-semibold" style={{ color: rings[i - 1].dwellOto ? CK.good : brand.ink }}>{Math.round(etkinDwell(rings[i - 1]))}</span>
-                        <span className="text-[0.65rem]" style={{ color: brand.muted }}>sn{rings[i - 1].dwellOto ? " (oto)" : ""}</span>
-                      </div>
-                    )}
-                    {duraklar.length > 2 ? (
-                      <button onClick={() => silHatirla((rs) => durakSil(rs, i))} title="Durağı sil (orta durak → komşu ringleri birleştirir)"
-                        className="shrink-0 rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
-                    ) : (<span className="w-6 shrink-0" />)}
-                  </div>
-                  {/* Durak bekleme bileşenleri (dwell = kapı aç + yolcu + kapı kapa) + kalkış ölü zamanı */}
-                  <div className="ml-6 flex flex-wrap items-center gap-x-3 gap-y-1 py-0.5 pl-2 text-[0.7rem]" style={{ color: brand.muted }}>
-                    {i > 0 && (() => {
-                      const r = rings[i - 1];
-                      const oto = !!r.dwellOto;
-                      const yolcuHesap = Math.max(isletme.minDurusSuresi, yolcuAkisSuresi(r.inenYolcu ?? 0, r.binenYolcu ?? 0, stock, isletme.yolcuAkisHizi));
-                      return (
-                        <>
-                          <label className="flex items-center gap-1" title="Dwell'i yolcu akışından otomatik hesapla: (inen+binen) ÷ (kapı sayısı × genişlik × akış hızı)">
-                            <input type="checkbox" checked={oto} onChange={(e) => patch(r.id, { dwellOto: e.target.checked })} />
-                            <span style={{ color: oto ? CK.good : brand.muted }}>oto dwell</span>
-                          </label>
-                          <span className="flex items-center gap-1" title="Kapı açma süresi (s)">kapı aç
-                            <input type="number" min={0} step={1} value={Math.round(dwellBilesen(r).ac)}
-                              onChange={(e) => patchDwell(r, "ac", parseFloat(e.target.value) || 0)}
-                              className="w-11 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
-                          {oto ? (
-                            <>
-                              <span className="flex items-center gap-1" title="Bu durakta inen yolcu">inen
-                                <input type="number" min={0} step={5} value={Math.round(r.inenYolcu ?? 0)}
-                                  onChange={(e) => patch(r.id, { inenYolcu: Math.max(0, parseFloat(e.target.value) || 0) })}
-                                  className="w-12 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
-                              <span className="flex items-center gap-1" title="Bu durakta binen yolcu">binen
-                                <input type="number" min={0} step={5} value={Math.round(r.binenYolcu ?? 0)}
-                                  onChange={(e) => patch(r.id, { binenYolcu: Math.max(0, parseFloat(e.target.value) || 0) })}
-                                  className="w-12 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
-                              <span title="Yolcu akışından hesaplanan bölüm" style={{ color: CK.good }}>yolcu {Math.round(yolcuHesap)}s ✓</span>
-                              <span className="basis-full rounded border-l-2 py-0.5 pl-2 text-[0.66rem] leading-snug" style={{ borderColor: CK.good, background: CK.goodBgSoft, color: brand.inkSoft }}>
-                                <b>oto dwell</b>: bekleme yolcudan hesaplanır → kapı aç {Math.round(dwellBilesen(r).ac)}s + yolcu [(inen+binen) ÷ (kapı {stock.kapiSayisi ?? 4} × genişlik {stock.kapiGenisligi ?? 1.3}m × akış {isletme.yolcuAkisHizi})] + kapı kapa {Math.round(dwellBilesen(r).kapa)}s; en az {isletme.minDurusSuresi}s. Şu an yolcu {Math.round(yolcuHesap)}s → toplam <b>{Math.round(etkinDwell(r))}s</b>.
-                              </span>
-                            </>
-                          ) : (
-                            <span className="flex items-center gap-1" title="Yolcu değişimi / iniş-biniş süresi (s)">yolcu
-                              <input type="number" min={0} step={1} value={Math.round(dwellBilesen(r).yolcu)}
-                                onChange={(e) => patchDwell(r, "yolcu", parseFloat(e.target.value) || 0)}
-                                className="w-11 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
-                          )}
-                          <span className="flex items-center gap-1" title="Kapı kapama süresi (s)">kapı kapa
-                            <input type="number" min={0} step={1} value={Math.round(dwellBilesen(r).kapa)}
-                              onChange={(e) => patchDwell(r, "kapa", parseFloat(e.target.value) || 0)}
-                              className="w-11 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
-                        </>
-                      );
-                    })()}
-                    {i < rings.length && (
-                      <span className="flex items-center gap-1" title="Bu duraktan kalkışta ölü zaman (start-up lost time, s). Hat geneli varsayılanı override eder.">
-                        kalkış ölü
-                        <input type="number" min={0} step={1} value={Math.round(rings[i].kalkisOlu ?? isletme.kalkisOluZamaniSn)}
-                          onChange={(e) => patch(rings[i].id, { kalkisOlu: Math.max(0, parseFloat(e.target.value) || 0) })}
-                          className="w-11 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /> sn
-                      </span>
-                    )}
-                  </div>
-                  {/* Parklanma (depo) alanı — bu durakta çıkışa hazır bekleyen tren (Canlı Ağ besler) */}
-                  <div className="ml-6 flex flex-wrap items-center gap-2 py-0.5 pl-2 text-xs">
-                    <button onClick={() => depoAyarla(i, !depoDurum(i).on)}
-                      className="rounded px-2 py-0.5 font-medium transition"
-                      style={depoDurum(i).on ? { background: brand.ink, color: "#fff" } : { background: "transparent", color: brand.muted, border: `1px solid ${brand.border}` }}>
-                      🅿 Parklanma
-                    </button>
-                    {depoDurum(i).on && (
-                      <span className="flex items-center gap-1" style={{ color: brand.muted }}>
-                        park eden tren
-                        <button type="button" onClick={() => depoQueued(i, Math.max(0, depoDurum(i).q - 1))}
-                          className="flex h-5 w-5 items-center justify-center rounded border font-semibold" style={{ borderColor: brand.border, color: brand.ink }} title="Bir tren çıkar">−</button>
-                        <input type="number" min={0} max={40} step={1} value={depoDurum(i).q} onChange={(e) => depoQueued(i, parseFloat(e.target.value) || 0)}
-                          className="w-12 rounded border px-1 py-0.5 text-center" style={{ borderColor: brand.border, color: brand.ink }} />
-                        <button type="button" onClick={() => depoQueued(i, Math.min(40, depoDurum(i).q + 1))}
-                          className="flex h-5 w-5 items-center justify-center rounded border font-semibold text-white" style={{ background: brand.ink, borderColor: brand.ink }} title="Park eden tren ekle">+</button>
-                        {i === duraklar.length - 1 && <span style={{ color: CK.amber }} title="Hattın sonundaki depo gidiş yönünde tren veremez (gidecek yer yok)">⚠ uç</span>}
-                        <span className="ml-2 flex items-center gap-1" title="Bu deponun tren sığdırma kapasitesi (0 = sınırsız). Gün içi servis profilinde depoda bekleyen trenler buna sığmalı.">
-                          kapasite
-                          <input type="number" min={0} step={1} value={depoKap(i)} onChange={(e) => depoKapAyarla(i, parseFloat(e.target.value) || 0)}
-                            className="w-12 rounded border px-1 py-0.5 text-center" style={{ borderColor: brand.border, color: brand.ink }} /> tren
-                        </span>
-                        {(() => {
-                          const dr = i === 0 ? rings[0] : rings[i - 1];
-                          const makasVar = !!dr && dr.makaslar.length > 0;
-                          return makasVar
-                            ? <span className="ml-1" style={{ color: "#16794C" }} title="Araçlar servise çıkarken makastan gidiş ya da karşı şeride geçerek dönüş yönüne dağılır.">✓ makas var</span>
-                            : <span className="ml-1 font-semibold" style={{ color: brand.red }} title="Parklanma alanında MAKAS ZORUNLUDUR: araç ancak makastan gidiş/dönüş yönüne çıkabilir. Bu durak-arası ring'e makas ekle.">⚠ MAKAS zorunlu — ekle</span>;
-                        })()}
-                      </span>
-                    )}
-                  </div>
-                  {/* Durak-arası (ring i) — mesafe + hız + ortaya ekle */}
-                  {i < rings.length && (
-                    <div className="ml-6 flex flex-wrap items-center gap-2 py-1 pl-2 text-xs" style={{ color: brand.muted }}>
-                      <span style={{ color: brand.faint }}>↓</span>
-                      <span className="flex items-center gap-1">
-                        mesafe
-                        <input type="number" min={50} step={50} value={Math.round(rings[i].uzunluk)}
-                          onChange={(e) => patch(rings[i].id, { uzunluk: Math.max(50, parseFloat(e.target.value) || 0) })}
-                          className="w-20 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /> m
-                      </span>
-                      <span className="flex items-center gap-1">
-                        hız
-                        <input type="number" min={5} step={5} value={Math.round(kmh(rings[i].vmax))}
-                          onChange={(e) => patch(rings[i].id, { vmax: Math.max(5, parseFloat(e.target.value) || 0) * KMH })}
-                          className="w-16 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /> km/h
-                      </span>
-                      <label className="flex items-center gap-1" title="Bu kesim tek hatlı mı? (çift yön aynı hattı paylaşır → tek anda tek tren; maksimum treni düşürür)">
-                        <input type="checkbox" checked={!!rings[i].tekHat}
-                          onChange={(e) => patch(rings[i].id, { tekHat: e.target.checked })} />
-                        <span style={{ color: rings[i].tekHat ? brand.red : brand.muted }}>tek hat</span>
-                      </label>
-                      {bolRing === rings[i].id ? (
-                        <span className="flex items-center gap-1">
-                          böl:
-                          <input type="number" min={1} max={Math.max(1, Math.round(rings[i].uzunluk) - 1)} step={50} value={bolKonum}
-                            onChange={(e) => setBolKonum(Math.max(1, parseFloat(e.target.value) || 1))}
-                            className="w-16 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /> m
-                          <button onClick={() => { ekleUygula((rs) => durakBol(rs, i, bolKonum)); setBolRing(null); }}
-                            className="rounded px-1.5 py-0.5 font-semibold text-white" style={{ background: brand.ink }}>böl</button>
-                          <button onClick={() => setBolRing(null)} className="rounded px-1" style={{ color: brand.muted }} title="Vazgeç">✕</button>
-                        </span>
-                      ) : (
-                        <button onClick={() => { setBolRing(rings[i].id); setBolKonum(Math.round(rings[i].uzunluk / 2)); }}
-                          title="Bu ringi seçtiğin konumda bölerek ortaya durak ekle (varsayılan: orta)"
-                          className="rounded border px-2 py-0.5 font-medium transition hover:bg-slate-50" style={{ borderColor: brand.border, color: brand.ink }}>
-                          ＋ ortaya durak
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            </>
             )}
           </Panel>
         </div>
