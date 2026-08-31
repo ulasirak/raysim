@@ -71,20 +71,34 @@ function tbl(headers: string[], rows: (string | number)[][], opts: { first?: boo
 function ringSemaSvg(rings: DurakArasiRing[]): string {
   const n = rings.length;
   if (n === 0) return "";
-  const W = 760, pad = 56, y = 74;
+  const adlar = [rings[0].fromAd, ...rings.map((r) => r.toAd)];
+  // Çok duraklı hatta (>12) yatay adlar üst üste biner → adları DİKEY döndür ve
+  // yüksekliği en uzun ada göre büyüt. Az durakta klasik yatay 2-kademe düzen.
+  const cok = adlar.length > 12;
+  const W = 760, pad = cok ? 40 : 56;
   const step = (W - 2 * pad) / Math.max(1, n);
   const px = (i: number) => pad + i * step;
-  const adlar = [rings[0].fromAd, ...rings.map((r) => r.toAd)];
-  const line = `<line x1="${px(0).toFixed(1)}" y1="${y}" x2="${px(n).toFixed(1)}" y2="${y}" stroke="${CK.ink}" stroke-width="3.5" stroke-linecap="round"/>`;
-  const dots = adlar.map((_, i) => `<circle cx="${px(i).toFixed(1)}" cy="${y}" r="5.5" fill="${CK.surface}" stroke="${CK.ink}" stroke-width="2.2"/>`).join("");
-  const labels = adlar.map((ad, i) => lab(px(i), i % 2 === 0 ? y - 16 : y - 30, esc(ad), { anchor: "middle", size: 8.5, color: CK.ink2, weight: 600 })).join("");
+  const font = cok ? 7 : 8.5;
+  const maxLen = Math.max(1, ...adlar.map((a) => (a || "").length));
+  const labH = cok ? Math.min(120, Math.round(maxLen * font * 0.56 + 6)) : 34;
+  const y = cok ? labH + 12 : 74;
+  const H = cok ? y + 42 : 116;
+  const line = `<line x1="${px(0).toFixed(1)}" y1="${y}" x2="${px(n).toFixed(1)}" y2="${y}" stroke="${CK.ink}" stroke-width="${cok ? 2.5 : 3.5}" stroke-linecap="round"/>`;
+  const dots = adlar.map((_, i) => `<circle cx="${px(i).toFixed(1)}" cy="${y}" r="${cok ? 4 : 5.5}" fill="${CK.surface}" stroke="${CK.ink}" stroke-width="${cok ? 1.8 : 2.2}"/>`).join("");
+  const labels = adlar.map((ad, i) => {
+    if (cok) {
+      const x = px(i).toFixed(1), yt = (y - 9).toFixed(1);
+      return `<text transform="rotate(-90 ${x} ${yt})" x="${x}" y="${yt}" text-anchor="start" font-family="${CK.sans}" font-size="${font}" font-weight="600" fill="${CK.ink2}">${esc(ad)}</text>`;
+    }
+    return lab(px(i), i % 2 === 0 ? y - 16 : y - 30, esc(ad), { anchor: "middle", size: font, color: CK.ink2, weight: 600 });
+  }).join("");
   const marks = rings.map((r, i) => {
     const xm = (px(i) + px(i + 1)) / 2; let s = "";
-    if (r.makaslar.length) s += lab(xm, y + 21, `⑂ ${r.makaslar.length}`, { anchor: "middle", size: 11, color: CK.red, weight: 700 });
-    if (r.hemzeminler.length) s += lab(xm, y + 35, `⊟ ${r.hemzeminler.length}`, { anchor: "middle", size: 9, color: CK.gold });
+    if (r.makaslar.length) s += lab(xm, y + (cok ? 16 : 21), `⑂ ${r.makaslar.length}`, { anchor: "middle", size: cok ? 8.5 : 11, color: CK.red, weight: 700 });
+    if (r.hemzeminler.length) s += lab(xm, y + (cok ? 28 : 35), `⊟ ${r.hemzeminler.length}`, { anchor: "middle", size: cok ? 7 : 9, color: CK.gold });
     return s;
   }).join("");
-  return `<svg viewBox="0 0 ${W} 116" width="100%" style="max-width:${W}px">${line}${marks}${dots}${labels}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${line}${marks}${dots}${labels}</svg>`;
 }
 
 // Blocking-time bileşen barları (gömülü SVG): her blok için yığılı süre (ordinal mavi rampa).
@@ -148,7 +162,9 @@ function bildfahrplanSvg(line: Line, stock: RollingStock, cfg: SimConfig, count:
   // Yükseklik durak sayısına göre BÜYÜR → 29 durakta bile adlar üst üste binmez;
   // uzun adlar için sol boşluk (padL) geniş, etiket fontu duraklaşınca küçülür.
   const nist = line.stations.length;
-  const W = 820, H = Math.max(250, nist * 13 + 64), padL = 108, padR = 14, padT = 14, padB = 28;
+  // padT geniş → renk göstergesi (legend) PLOT'un ÜSTÜNDE, ayrı bir bantta durur;
+  // üstteki durak çizgileriyle/adlarıyla ÇAKIŞMAZ (her çok-duraklı hatta güvenli).
+  const W = 820, H = Math.max(262, nist * 13 + 80), padL = 108, padR = 14, padT = 32, padB = 28;
   const lblFont = nist > 22 ? 7 : (nist > 14 ? 7.5 : 8.5);
   const pw = W - padL - padR, ph = H - padT - padB;
   const xOf = (t: number) => padL + (t / tMax) * pw;
@@ -163,7 +179,8 @@ function bildfahrplanSvg(line: Line, stock: RollingStock, cfg: SimConfig, count:
     `<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" opacity="0.92"${delayed ? ' stroke-dasharray="4 3"' : ""}/>`;
   const upLines = up.trains.map((tr) => trainLine(tr.points.map((p) => `${xOf(p.t).toFixed(1)},${yOf(p.s).toFixed(1)}`).join(" "), CK.blue, tr.delay > 2)).join("");
   const dnLines = dn.trains.map((tr) => trainLine(tr.points.map((p) => `${xOf(p.t).toFixed(1)},${yOf(L - p.s).toFixed(1)}`).join(" "), CK.orange, tr.delay > 2)).join("");
-  const leg = `<text x="${W - padR}" y="${padT + 9}" text-anchor="end" font-family="${CK.sans}" font-size="8.5"><tspan fill="${CK.blue}">▬ gidiş</tspan>  <tspan fill="${CK.orange}">▬ dönüş</tspan>  <tspan fill="${CK.muted}">╌ gecikmeli</tspan></text>`;
+  // Legend ÜST BANTTA (y=13 < padT=32) → plot ve durak çizgilerinin üstünde, çakışmasız.
+  const leg = `<text x="${W - padR}" y="13" text-anchor="end" font-family="${CK.sans}" font-size="8.5"><tspan fill="${CK.blue}">▬ gidiş</tspan>  <tspan fill="${CK.orange}">▬ dönüş</tspan>  <tspan fill="${CK.muted}">╌ gecikmeli</tspan></text>`;
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${tg}${st}${upLines}${dnLines}${leg}</svg>`;
 }
 
