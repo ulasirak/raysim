@@ -483,18 +483,20 @@ export function LiveNetwork({
           }
           {
             const scissors = f.crossover === "x";
+            // S/X CROSSOVER geometrisi: gidiş (alt) ↔ dönüş (üst) şeritlerini bağlar (sinyalle uyumlu renk).
+            const del = Math.max(12, Math.min(L * 0.05, L * 0.014));
+            const gA = laneAt(Math.max(0, f.pos - del), UP_SIDE), gB = laneAt(Math.min(L, f.pos + del), UP_SIDE);
+            const dA = laneAt(Math.max(0, f.pos - del), DOWN_SIDE), dB = laneAt(Math.min(L, f.pos + del), DOWN_SIDE);
+            const col = dolu ? ASPEKT.kirmizi : ASPEKT.yesil; // blok doluysa kırmızı
+            const etk = offsetAt(f.pos, GAP + 12, UST);
             return (
-              <g key={`f${i}`}>{bag}
-                <path d={`M ${top.x} ${top.y - 4} l 4 4 l -4 4 l -4 -4 z`} fill={brand.surface} stroke={brand.ink} strokeWidth={1.1} />
-                {scissors
-                  // X (scissors/çift crossover): elmas içinde çapraz iki hat
-                  ? <><line x1={top.x - 2.4} y1={top.y - 2.4} x2={top.x + 2.4} y2={top.y + 2.4} stroke={brand.ink} strokeWidth={1} />
-                      <line x1={top.x - 2.4} y1={top.y + 2.4} x2={top.x + 2.4} y2={top.y - 2.4} stroke={brand.ink} strokeWidth={1} /></>
-                  // S (tek crossover): merkez aspekt noktası
-                  : <circle cx={top.x} cy={top.y} r={2} fill={asp2} style={{ transition: "fill 0.35s ease" }} />}
-                {scissors && <circle cx={top.x + 5.5} cy={top.y - 4.5} r={1.6} fill={asp2} stroke="#fff" strokeWidth={0.5} style={{ transition: "fill 0.35s ease" }} />}
-                <text x={top.x} y={top.y - 6} textAnchor="middle" fontSize={4.4} fontWeight={700} fill={brand.inkSoft}>{scissors ? "X" : "S"}</text>
-                <title>{`Makas (kavşak): ${f.ad} — ${scissors ? "X (scissors/çift crossover)" : "S (tek crossover)"}${f.makasTip ? ` · ${f.makasTip}` : ""}${f.makasSayisi ? ` · ${f.makasSayisi} PM` : ""} — koruyucu sinyal ${dolu ? "kırmızı" : "yeşil"}`}</title>
+              <g key={`f${i}`}>
+                <line x1={gA.x} y1={gA.y} x2={dB.x} y2={dB.y} stroke={col} strokeWidth={1.5} strokeLinecap="round" style={{ transition: "stroke 0.35s ease" }} />
+                {scissors && <line x1={dA.x} y1={dA.y} x2={gB.x} y2={gB.y} stroke={col} strokeWidth={1.5} strokeLinecap="round" style={{ transition: "stroke 0.35s ease" }} />}
+                <circle cx={gA.x} cy={gA.y} r={1.1} fill={col} /><circle cx={dB.x} cy={dB.y} r={1.1} fill={col} />
+                {scissors && <><circle cx={dA.x} cy={dA.y} r={1.1} fill={col} /><circle cx={gB.x} cy={gB.y} r={1.1} fill={col} /></>}
+                <text x={etk.x} y={etk.y} textAnchor="middle" fontSize={4.6} fontWeight={700} fill={brand.inkSoft}>{scissors ? "X" : "S"}</text>
+                <title>{`Makas: ${f.ad} — ${scissors ? "X (scissors) — 2 çapraz, gidiş↔dönüş" : "S (tek crossover) — gidiş↔dönüş"}${f.makasSayisi ? ` · ${f.makasSayisi} PM` : ""} — ${dolu ? "kırmızı (dolu)" : "yeşil (serbest)"}`}</title>
               </g>
             );
           }
