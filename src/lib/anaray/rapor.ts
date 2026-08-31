@@ -452,16 +452,17 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   // ---- İŞLETME & TALEP ANALİZİ (ters işletme) — GİRDİ→SONUÇ çerçevesi ----
   // "Siz şu girdiyi verdiniz → bu sonuç çıktı" biçiminde; iç formül/algoritma (sır) açığa çıkmaz.
   const en = lang === "en";
-  const perStation = !!isletme.istasyonYolcu && Object.keys(isletme.istasyonYolcu).length > 0;
-  const tia = rings.length >= 2 ? tersIsletmeAnaliz(rings, stock, isletme, cfg, perStation ? "istasyon" : "toplam") : null;
+  // MOD = "toplam" — Ters İşletme sayfasının VARSAYILAN modu (birebir aynı çıktı için).
+  // Böylece rapordaki filo/öneri/tepe yük değerleri canlı Ters İşletme ekranıyla eşleşir.
+  const tia = rings.length >= 2 ? tersIsletmeAnaliz(rings, stock, isletme, cfg, "toplam") : null;
   // Girdi→sonuç notu kutusu (altın vurgulu, şık).
   const gsNot = (girdi: string, sonuc: string) =>
     `<div class="gs"><span class="gs-i">▸ ${en ? "Your inputs" : "Girdileriniz"}:</span> ${girdi} <span class="gs-o">→ ${en ? "Result" : "Sonuç"}:</span> ${sonuc}</div>`;
   let isletmeBolum = "";
   if (tia) {
-    const talepGirdi = perStation
-      ? (en ? `the boarding/alighting counts you entered per station` : `her istasyona girdiğiniz iniş/biniş sayıları`)
-      : (en ? `the total peak demand you entered (${Math.round(isletme.pikYolcuSaat || 0)} pax/h) distributed by station role (hospital/interchange/stadium/centre = high)` : `girdiğiniz toplam pik talep (${Math.round(isletme.pikYolcuSaat || 0)} yolcu/saat), istasyon rolüne göre dağıtıldı (hastane/aktarma/stadyum/merkez = yoğun)`);
+    const talepGirdi = en
+      ? `the total peak demand you entered (${Math.round(isletme.pikYolcuSaat || 0)} pax/h) distributed by station role (hospital/interchange/stadium/centre = high)`
+      : `girdiğiniz toplam pik talep (${Math.round(isletme.pikYolcuSaat || 0)} yolcu/saat), istasyon rolüne göre dağıtıldı (hastane/aktarma/stadyum/merkez = yoğun)`;
     const kapNote = en ? `vehicle capacity ${tia.aracKapasite} pax and ${tia.filo.mevcutPik} peak trams` : `araç kapasitesi ${tia.aracKapasite} yolcu ve ${tia.filo.mevcutPik} pik tramvay`;
 
     // 5.1 Yolcu Yük Profilleri
@@ -492,16 +493,25 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
       : `<p class="muted">${en ? "No mid-line switch zones — reverse-running variations apply only at terminals." : "Ara-hat makas bölgesi yok — ters işletme varyasyonları yalnız terminallerde geçerli."}</p>`;
     const b54 = `<h3 class="sub">5.4 ${en ? "Reverse-Running Variations per Switch Zone" : "Makas Bölgesi Başına Ters İşletme Varyasyonları"}</h3>${b54ic}`;
 
-    // 5.5 Filo & Öneri
+    // 5.5 Filo & Öneri — üretebilirlik: gereken/mevcut/fark (çek/ekle) + kısa dönüş +
+    // tepe yük/çevrim/frekans/araç özeti (tümü canlı motordan: tersIsletmeAnaliz).
     const oneriRenk = tia.filo.oneri === "yeterli" ? "#0E7C57" : (tia.filo.oneri === "kapasiteYetmez" ? RED : GOLD);
+    const fark = tia.filo.fark; // gereken − mevcut
+    const farkEt = fark === 0 ? (en ? "balanced" : "dengede") : (fark > 0 ? (en ? `+${fark} add` : `+${fark} ekle`) : (en ? `${fark} remove` : `${fark} çek`));
+    const cevrimDk = (tia.cevrimSn / 60).toFixed(0);
+    const ozetSatir = en
+      ? `Peak load: <b>${tia.tepeYuk} pax/h</b> at <b>${esc(tia.tepeDurak)}</b> · cycle <b>${cevrimDk} min</b> · frequency <b>${tia.mevcutFrekans.toFixed(1)} trains/h</b> · vehicle <b>${tia.aracKapasite} pax</b>.`
+      : `Tepe yük: <b>${tia.tepeYuk} yolcu/saat</b> · <b>${esc(tia.tepeDurak)}</b> · çevrim <b>${cevrimDk} dk</b> · frekans <b>${tia.mevcutFrekans.toFixed(1)} tren/sa</b> · araç <b>${tia.aracKapasite} kişi</b>.`;
     const b55 = `<h3 class="sub">5.5 ${en ? "Fleet & Recommendation" : "Filo & Öneri"}</h3>
       ${gsNot(en ? `peak demand, the ${Math.round((isletme.dolulukHedefi || 0.85) * 100)}% occupancy target, cycle time and ${kapNote}` : `pik talep, %${Math.round((isletme.dolulukHedefi || 0.85) * 100)} doluluk hedefi, çevrim süresi ve ${kapNote}`, `<b style="color:${oneriRenk}">${esc(tia.filo.aciklama)}</b>`)}
       <div class="kpi-row" style="margin-top:6px">
         ${kpi(en ? "Required trams" : "Gereken araç", `${tia.filo.gerekenArac}`, en ? "at target occupancy" : "hedef dolulukta", oneriRenk)}
         ${kpi(en ? "Current peak fleet" : "Mevcut pik filo", `${tia.filo.mevcutPik}`, en ? "you entered" : "girdiğiniz")}
+        ${kpi(en ? "Difference" : "Fark", farkEt, en ? "required − current" : "gereken − mevcut", fark > 0 ? RED : (fark < 0 ? "#0E7C57" : INK))}
         ${tia.filo.kisaDonusTasarruf > 0 ? kpi(en ? "With short-turn" : "Kısa dönüşle", `${tia.filo.gerekenAracKisaDonusle}`, en ? `−${tia.filo.kisaDonusTasarruf} trams` : `−${tia.filo.kisaDonusTasarruf} araç`, "#0E7C57") : ""}
         ${kpi(en ? "Sustainable ceiling" : "Sürdürülebilir tavan", `${tia.maksSurdurulebilir}`, en ? "UIC 406 buffered" : "UIC 406 tamponlu")}
-      </div>`;
+      </div>
+      <p class="muted" style="font-size:9.7pt;margin-top:6px">${ozetSatir}</p>`;
 
     isletmeBolum = `
   <div class="banner"><span class="no">5</span>${en ? "OPERATIONS & DEMAND ANALYSIS (REVERSE RUNNING)" : "İŞLETME & TALEP ANALİZİ (TERS İŞLETME)"}</div>
