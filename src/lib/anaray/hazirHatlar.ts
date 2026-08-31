@@ -19,7 +19,7 @@
 // kesimlerde hemzemin karayolu geçidi.
 
 import {
-  yeniRing, yeniMakas, yeniHemzemin,
+  yeniRing, yeniMakas, yeniHemzemin, yeniSinyal,
   type DurakArasiRing, type MakasTip, type HemzeminTip,
 } from "./ring";
 import { varsayilanConfig, varsayilanMeta, varsayilanIsletme, VARSAYILAN_TERMINAL, type ProjeMeta, type TerminalConfig } from "./config";
@@ -134,6 +134,74 @@ function tersRingZinciri(rings: DurakArasiRing[]): DurakArasiRing[] {
 }
 
 // ————————————————————————————————————————————————
+// SİNYAL LAMBASI (SG) METRAJLARI — Sinyalizasyon Projesi V0808 (Aslan Sinyalizasyon)
+// ————————————————————————————————————————————————
+// Kaynak: "Sinyalizasyon Projesi V0808.pdf" saha yerleşim çizimleri (SG = Signal Lamp).
+// Her değer hat başından MUTLAK kilometraj (m); PDF kilometrajı mevcut CAD
+// kilometrajıyla birebir örtüşür (aynı proje CAD'i). Sinyaller istasyon başına çift
+// gelir (iki yön home sinyali) + kavşaklarda makas koruma sinyalleri; yerleştirmede
+// km'ye göre sıralanıp DÖNÜŞÜMLÜ giden/gelen atanır. Bütünleşik hat, sinyalleri etap
+// ringlerinden `tersRingZinciri` ile AYNALAYARAK + yön çevirerek otomatik devralır.
+//
+// Mevcut hat (Alaattin 0 → Adliye 5200):
+const SG_MEVCUT_KM = [
+  0, 54, 265, 330, 340,          // Hükümet (SG1–5)
+  1018, 1115, 1201, 1211,        // Mevlana (SG6–9)
+  1840, 1905, 2025, 2085,        // Mevlana Kültür Merkezi (SG10–13)
+  2840, 2890,                    // Fetih (SG14–15)
+  3710, 3748,                    // Spor ve Kongre Merkezi (SG16–17)
+  4252, 4332,                    // Karşehir (SG18–19)
+  4920, 4980, 5138, 5148,        // Adliye (SG20,21,24,23)
+];
+// Etap hattı MUTLAK km (Stadyum 0 → Aslım Sanayi 8621 → Adliye ~20354):
+const SG_ETAP_KM = [
+  78, 83,                        // İst1  Stadyum (SG78–79)
+  462, 542, 552,                 // İst2  (SG75–77)
+  1199, 1280, 1542,              // İst3  (SG72–74)
+  2172, 2256,                    // İst4  (SG70–71)
+  2971, 3178,                    // İst5  (SG68–69)
+  3655, 3987, 4141,              // İst6  (SG65–67)
+  5322, 5410,                    // İst7  (SG63–64)
+  6505, 6592,                    // İst8  (SG61–62)
+  7463, 7593, 7608, 7665, 7883,  // İst9  (SG56–60)
+  8510, 8708,                    // İst10 Aslım Sanayi (SG54–55)
+  9793, 9865, 10060,             // İst11 Ravza (SG51–53)
+  11115, 11315,                  // İst12 (SG49–50)
+  11905, 12095,                  // İst13 (SG47–48)
+  13343, 13555,                  // İst14 (SG45–46)
+  14620, 14835,                  // İst16 (SG43–44)  [İst15 sinyalsiz]
+  15734, 16664, 16669,           // İst17 Depo (SG40–42)
+  16620, 16820, 16830,           // İst18 (SG37–39)
+  17692, 17889,                  // İst19 (SG35–36)
+  18505, 18515, 18575,           // İst20 (SG32–34)
+  19375, 19412, 19412, 19501, 19545, 19692, 19735, // İst21 Şehir Hastanesi (SG25–31)
+  20683,                         // Adliye kavşağı HAT1 tarafı (SG22)
+];
+const ASLIM_KM = 8621; // Etap2 (0..8621) / Etap1 (8621..) sınırı = Aslım Sanayi mutlak km
+
+/**
+ * Verilen ring zincirine, MUTLAK kilometraj listesindeki sinyalleri yerleştirir.
+ * Her km, düştüğü ringe (istasyon-arası hücre) atanır; ring içi konum = km − ringBaşı.
+ * Hat dışına düşen km atlanır (segment filtreleme çağrı tarafında). Sinyaller km'ye
+ * göre sıralanıp dönüşümlü giden/gelen atanır (istasyon çifti = 2 yön home sinyali).
+ */
+function sinyalYerlestir(rings: DurakArasiRing[], kmListesi: number[]): void {
+  if (rings.length === 0) return;
+  const baslangic: number[] = [];
+  let acc = 0;
+  for (const r of rings) { baslangic.push(acc); acc += r.uzunluk; }
+  const toplamUz = acc;
+  [...kmListesi].sort((a, b) => a - b).forEach((km, i) => {
+    if (km < -1 || km > toplamUz + 1) return; // segment dışı → atla
+    let ri = 0;
+    for (let k = 0; k < rings.length; k++) { if (km >= baslangic[k] - 1e-6) ri = k; }
+    const konum = Math.max(0, Math.min(rings[ri].uzunluk, Math.round(km - baslangic[ri])));
+    const yon = i % 2 === 0 ? "giden" as const : "gelen" as const;
+    (rings[ri].sinyaller ??= []).push(yeniSinyal(yon, konum));
+  });
+}
+
+// ————————————————————————————————————————————————
 // ① MEVCUT HAT — Alaaddin – Adliye koridoru (GERÇEK CAD kilometrajı)
 // ————————————————————————————————————————————————
 // Kaynak: karşı tarafın AutoCAD projesi (Alaaddin-Etap1-2-depo_v11 "Mevcut Hat").
@@ -224,7 +292,8 @@ const ETAP2_MESAFE = [413, 762, 880, 853, 1011, 1446, 1137, 1062, 1057];
 //     arayüzde challenge/risk bayrakları, denge sapması ve "ihlal" işaretleri gizli).
 // v7: sinyalizasyon firması = Aslan Sinyalizasyon (üç hatta da).
 // v8: 4. hat — Bütünleşik Hat (Alaaddin–Stadyum), üç etap tek sürekli hatta birleşik.
-export const HAZIR_VERI_SURUM = 9; // v9: makas S/X crossover geometrisi + terminal makas sayıları (gerçek CAD/kullanıcı verisi)
+// v9: makas S/X crossover geometrisi + terminal makas sayıları (gerçek CAD/kullanıcı verisi).
+export const HAZIR_VERI_SURUM = 10; // v10: SİNYAL LAMBASI metrajları (Sinyalizasyon Projesi V0808) 4 projeye eklendi (SG1–79, gerçek kilometraj)
 
 export interface HazirHat {
   key: "mevcut" | "etap1" | "etap2" | "birlesik";
@@ -237,6 +306,7 @@ export function hazirHatlar(): HazirHat[] {
 
   // ① Mevcut Hat
   const mevcutRings = hatKur(T1_DURAK, T1_MESAFE, T1_EK);
+  sinyalYerlestir(mevcutRings, SG_MEVCUT_KM); // SG1–24 (V0808)
   const mevcut: HazirHat = {
     key: "mevcut",
     ad: "Konya Mevcut Hat — Alaaddin–Adliye (CAD)",
@@ -252,7 +322,7 @@ export function hazirHatlar(): HazirHat[] {
         musavir: "EMAY Uluslararası Mühendislik ve Müşavirlik A.Ş.",
         sinyalizasyonFirmasi: "Aslan Sinyalizasyon",
         dokumanNo: "KNY-MEV-AKS-001",
-        revizyon: "v4.0 — GERÇEK CAD kilometrajı + makas enterlok denetimi (PM1–PM9: Alaaddin yelpaze/Mevlana/MKM/Adliye, diğer duraklarda makas yok); durak adları işletme (Spor ve Kongre M., Karşehir)",
+        revizyon: "v5.0 — GERÇEK CAD kilometrajı + makas enterlok denetimi (PM1–PM9); durak adları işletme (Spor ve Kongre M., Karşehir) + SG sinyal lambaları (Sinyalizasyon Projesi V0808, gerçek metraj)",
         hazirlayan: "Tasarım Mühendisi",
         onaylayan: "Firma Yetkilisi",
         sunumModu: true,
@@ -278,6 +348,8 @@ export function hazirHatlar(): HazirHat[] {
     ], dwell: 45 },
   };
   const etap1Rings = hatKur(ETAP1_DURAK, ETAP1_MESAFE, etap1Ek);
+  // Etap1 = Aslım(8621)→Adliye; MUTLAK km'yi Aslım offset'iyle yerele çevir (İst10–İst22 + SG22).
+  sinyalYerlestir(etap1Rings, SG_ETAP_KM.filter((km) => km >= ASLIM_KM - 200).map((km) => km - ASLIM_KM));
   const etap1: HazirHat = {
     key: "etap1",
     ad: "Konya Tramvay 1. Etap — Aslım Sanayi–Şehir Hastanesi (CAD)",
@@ -293,7 +365,7 @@ export function hazirHatlar(): HazirHat[] {
         musavir: "EMAY Uluslararası Mühendislik ve Müşavirlik A.Ş.",
         sinyalizasyonFirmasi: "Aslan Sinyalizasyon",
         dokumanNo: "KNY-E1-AKS-001",
-        revizyon: "v4.0 — CAD adları (U10–U22) + kilometrajı + makas PM denetimi (Aslım kavşağı/Ravza/Depo merdiveni/dönüş fanı; U12–U16, U18–U20 makassız); U21→U22 tahmini",
+        revizyon: "v5.0 — CAD adları (U10–U22) + kilometrajı + makas PM denetimi; U21→U22 tahmini + SG sinyal lambaları (V0808, İst11–İst21 gerçek metraj)",
         hazirlayan: "Tasarım Mühendisi",
         onaylayan: "Firma Yetkilisi",
         sunumModu: true,
@@ -321,6 +393,8 @@ export function hazirHatlar(): HazirHat[] {
     8: { fromDepot: false, makas: [{ tip: "karsilasmali", konumOran: 0.8, sayi: 2, crossover: "s" }], dwell: 40 },// U9 TÜMOSAN kavşağı (M11–14/PM26–29)
   };
   const etap2Rings = hatKur(ETAP2_DURAK, ETAP2_MESAFE, etap2Ek);
+  // Etap2 = Stadyum(0)→Aslım(8621); MUTLAK km = yerel (İst1–İst10).
+  sinyalYerlestir(etap2Rings, SG_ETAP_KM.filter((km) => km <= 8750));
   const etap2: HazirHat = {
     key: "etap2",
     ad: "Konya Tramvay 2. Etap — Stadyum–Aslım Sanayi (CAD)",
@@ -336,7 +410,7 @@ export function hazirHatlar(): HazirHat[] {
         musavir: "EMAY Uluslararası Mühendislik ve Müşavirlik A.Ş.",
         sinyalizasyonFirmasi: "Aslan Sinyalizasyon",
         dokumanNo: "KNY-E2-AKS-001",
-        revizyon: "v4.0 — CAD adları (U1–U10) + kilometrajı + makas denetimi (M-kod+PM: Stadyum/Otogar/Betoncular/TÜMOSAN kavşağı; Banliyö-TÜYAP makassız)",
+        revizyon: "v5.0 — CAD adları (U1–U10) + kilometrajı + makas denetimi (M-kod+PM; Banliyö-TÜYAP makassız) + SG sinyal lambaları (V0808, İst1–İst10 gerçek metraj)",
         hazirlayan: "Tasarım Mühendisi",
         onaylayan: "Firma Yetkilisi",
         sunumModu: true,
@@ -366,7 +440,7 @@ export function hazirHatlar(): HazirHat[] {
         musavir: "EMAY Uluslararası Mühendislik ve Müşavirlik A.Ş.",
         sinyalizasyonFirmasi: "Aslan Sinyalizasyon",
         dokumanNo: "KNY-BUT-AKS-001",
-        revizyon: "v1.0 — Mevcut + 1.Etap (ters) + 2.Etap (ters) bütünleşik; Adliye & Aslım kavşak birleşimi; iki uçta dönüş yelpazesi (Alaaddin/Stadyum); CAD kilometrajı korunur",
+        revizyon: "v2.0 — Mevcut + 1.Etap (ters) + 2.Etap (ters) bütünleşik; Adliye & Aslım kavşak birleşimi; CAD kilometrajı korunur + SG sinyal lambaları etaplardan aynalanarak devralınır (V0808, ~78 sinyal)",
         hazirlayan: "Tasarım Mühendisi",
         onaylayan: "Firma Yetkilisi",
         sunumModu: true,
