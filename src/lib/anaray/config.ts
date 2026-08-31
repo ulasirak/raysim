@@ -212,6 +212,7 @@ export interface Isletme {
   seferSayisiOto: boolean;      // true → tren sayısı hattan türetilir (çevrim ÷ işletme headway); false → seferSayisi elle
   seferHeadwayDk: number;       // sefer aralığı (dk) — simüle dispatch aralığı
   turnaroundDk: number;         // dönüş bekleme (dk) — terminal config yoksa geriye-uyumlu varsayılan
+  molaDk: number;               // tur başı zorunlu terminal molası (dk, 0–5) — tam tur süresine eklenir; tarifeye/filoya yansır
   seferBaslangicSaati: string;  // hat şeması ilk kalkış saati "SS:DD"
   mcMeanEntrySn: number;        // Monte-Carlo: ort. giriş gecikmesi (s)
   mcMeanDwellSn: number;        // Monte-Carlo: ort. durak sapması (s)
@@ -258,6 +259,7 @@ export const varsayilanIsletme: Isletme = {
   seferSayisiOto: true,
   seferHeadwayDk: 4,
   turnaroundDk: 3,
+  molaDk: 0,
   seferBaslangicSaati: "08:00",
   mcMeanEntrySn: 30,
   mcMeanDwellSn: 5,

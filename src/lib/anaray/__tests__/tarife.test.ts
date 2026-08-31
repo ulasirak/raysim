@@ -37,4 +37,23 @@ describe("Tarife üretimi", () => {
     expect(tarifeUret(0, 300, 0, 900).gecerli).toBe(false);
     expect(tarifeUret(600, 300, 900, 0).gecerli).toBe(false);
   });
+
+  it("tur başı mola çevrime eklenir → filo artar, layover mola'yı düşer", () => {
+    // çevrim 600, headway 300, mola 120 → (600+120)/300 = 2.4 → filo 3
+    const m = tarifeUret(600, 300, 0, 900, 120);
+    expect(m.filo).toBe(3);
+    expect(m.molaSn).toBe(120);
+    // layover = filo×headway − çevrim − mola = 3×300 − 600 − 120 = 180
+    expect(m.layoverSn).toBe(180);
+    // varış hâlâ trip süresi kadar (mola varıştan SONRA); kalkışlar headway aralıklı
+    expect(m.seferler[0].varisSn).toBe(600);
+    expect(m.seferler.map((s) => s.kalkisSn).slice(0, 3)).toEqual([0, 300, 600]);
+  });
+
+  it("mola = 0 → eski davranışla birebir", () => {
+    const a = tarifeUret(600, 300, 0, 900, 0);
+    const b = tarifeUret(600, 300, 0, 900);
+    expect(a.filo).toBe(b.filo);
+    expect(a.layoverSn).toBe(b.layoverSn);
+  });
 });

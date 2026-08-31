@@ -620,25 +620,34 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   // + araç ataması. Filo = ⌈çevrim ÷ headway⌉ = siganTren → rapor başlığındaki "gereken
   // filo" ile birebir. Çevrim maks.cevrimSuresi'nden (kapasite otoritesi) gelir.
   const hhmm = (sn: number) => `${String(Math.floor(sn / 3600)).padStart(2, "0")}:${String(Math.floor((sn % 3600) / 60)).padStart(2, "0")}`;
+  // Servis penceresi işletme girdisinden ("SS:DD", kalıcı); ayrıştırılamazsa 06:00–24:00.
+  const snAyir = (s?: string): number | null => { const m = /^(\d{1,2}):(\d{2})$/.exec((s || "").trim()); return m ? (+m[1]) * 3600 + (+m[2]) * 60 : null; };
+  const winBas = snAyir(isletme.servisBas) ?? 21600;
+  const winBitHam = snAyir(isletme.servisBit) ?? 86400;
+  const winBit = winBitHam > winBas ? winBitHam : 86400;
+  const pencereEt = `${hhmm(winBas)}–${hhmm(winBit)}`;
+  // Tur başı zorunlu terminal molası (kalıcı, 0–5 dk → s). Tam tur süresine EKLENİR.
+  const molaSn = Math.max(0, Math.min(300, Math.round((isletme.molaDk || 0) * 60)));
   // Çizelge PLANLANAN FİLO (filoGercek) ile ULAŞILAN sefer aralığından üretilir → rapordaki
-  // "Planlanan filo" KPI'ı ve İşletme bölümüyle birebir tutarlı (hedef headway'i değil, fiilen
-  // koşulan aralığı gösterir; aksi halde 6 planlı iken "gereken 34" çelişkisi doğardı).
-  const tarifeHeadway = maks.gecerli && filoGercek > 0 ? maks.cevrimSuresi / filoGercek : cfg.headway;
-  const tarife = maks.gecerli ? tarifeUret(maks.cevrimSuresi, tarifeHeadway, 21600, 86400) : null;
+  // "Planlanan filo" KPI'ı ve İşletme bölümüyle birebir tutarlı. Mola tam tura eklendiğinden
+  // ulaşılan aralık = (çevrim + mola) ÷ filo; sabit filoda mola sıklığı düşürür.
+  const tarifeHeadway = maks.gecerli && filoGercek > 0 ? (maks.cevrimSuresi + molaSn) / filoGercek : cfg.headway;
+  const tarife = maks.gecerli ? tarifeUret(maks.cevrimSuresi, tarifeHeadway, winBas, winBit, molaSn) : null;
   const tarifeBolum = tarife && tarife.gecerli ? `
   <div class="banner"><span class="no">06</span>${en ? "TIMETABLE (SERVICE SCHEDULE)" : "TARİFE (ZAMAN ÇİZELGESİ)"}</div>
   <p>${en
-    ? `Departures across the service window (06:00–24:00) for the planned fleet of ${filoGercek} trains; each vehicle completes one full round trip (cycle) and returns to the queue. The interval below is the headway this fleet actually achieves.`
-    : `Servis penceresi (06:00–24:00) boyunca planlanan ${filoGercek} araçlık filoyla üretilen kalkışlar; her araç bir tam turu (çevrim) tamamlayıp sıraya döner. Aşağıdaki sefer aralığı, bu filonun fiilen sağladığı sıklıktır.`}</p>
+    ? `Departures across the service window (${pencereEt}) for the planned fleet of ${filoGercek} trains; each vehicle completes one full round trip (cycle)${molaSn > 0 ? ` plus a ${(molaSn / 60).toFixed(molaSn % 60 ? 1 : 0)}-min terminal break` : ""} and returns to the queue. The interval below is the headway this fleet actually achieves.`
+    : `Servis penceresi (${pencereEt}) boyunca planlanan ${filoGercek} araçlık filoyla üretilen kalkışlar; her araç bir tam turu (çevrim)${molaSn > 0 ? ` ve ${(molaSn / 60).toFixed(molaSn % 60 ? 1 : 0)} dk terminal molasını` : ""} tamamlayıp sıraya döner. Aşağıdaki sefer aralığı, bu filonun fiilen sağladığı sıklıktır.`}</p>
   ${tbl(
     [en ? "Metric" : "Gösterge", en ? "Value" : "Değer"],
     [
       [en ? "Fleet in service" : "Serviste filo", `${tarife.filo}`],
-      [en ? "Daily trips (06:00–24:00)" : "Günlük sefer (06:00–24:00)", `${tarife.seferSayisi}`],
+      [en ? `Daily trips (${pencereEt})` : `Günlük sefer (${pencereEt})`, `${tarife.seferSayisi}`],
       [en ? "Service span" : "Servis penceresi", `${hhmm(tarife.ilkKalkis)} – ${hhmm(tarife.sonKalkis)}`],
       [en ? "Achieved headway (interval)" : "Ulaşılan sefer aralığı", `${Math.round(tarifeHeadway)} s · ${(tarifeHeadway / 60).toFixed(1)} ${en ? "min" : "dk"}`],
       [en ? "Round-trip time (cycle)" : "Çevrim (tam tur)", `${s0(maks.cevrimSuresi)} · ${(maks.cevrimSuresi / 60).toFixed(1)} ${en ? "min" : "dk"}`],
-      [en ? "Layover per vehicle" : "Tur başı park (layover)", `${Math.round(tarife.layoverSn)} s`],
+      ...(molaSn > 0 ? [[en ? "Terminal break per turn" : "Tur başı terminal molası", `${(molaSn / 60).toFixed(molaSn % 60 ? 1 : 0)} ${en ? "min" : "dk"}`]] : []),
+      [en ? "Idle beyond break (layover)" : "Boşta bekleme (layover)", `${Math.round(tarife.layoverSn)} s`],
     ],
     { first: true },
   )}

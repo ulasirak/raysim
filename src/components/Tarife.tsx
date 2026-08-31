@@ -6,16 +6,22 @@
 import { useMemo, useState } from "react";
 import { brand } from "@/lib/anaray/brand";
 import { tarifeUret, aracDiyagrami } from "@/lib/anaray/tarife";
+import { useIsletme } from "@/components/SimConfigProvider";
 
 const hhmm = (sn: number) => `${String(Math.floor(sn / 3600)).padStart(2, "0")}:${String(Math.floor((sn % 3600) / 60)).padStart(2, "0")}`;
 
 export function Tarife({ cevrimSn, headwaySn }: { cevrimSn: number; headwaySn: number }) {
+  const { isletme, patchIsletme } = useIsletme();
   const [basSaat, setBasSaat] = useState(6);
   const [bitSaat, setBitSaat] = useState(24);
+  // Tur başı zorunlu terminal molası (dk, 0–5) — KALICI (isletme.molaDk). Çevrime eklenir:
+  // araç, seferini bitirince molaSn bekleyip sıraya döner → filo/ulaşılan sıklık buna göre.
+  const molaDk = Math.max(0, Math.min(5, isletme.molaDk || 0));
+  const setMolaDk = (v: number) => patchIsletme({ molaDk: Math.max(0, Math.min(5, Number.isFinite(v) ? v : 0)) });
 
   const t = useMemo(
-    () => tarifeUret(cevrimSn, headwaySn, basSaat * 3600, bitSaat * 3600),
-    [cevrimSn, headwaySn, basSaat, bitSaat]
+    () => tarifeUret(cevrimSn, headwaySn, basSaat * 3600, bitSaat * 3600, molaDk * 60),
+    [cevrimSn, headwaySn, basSaat, bitSaat, molaDk]
   );
   const diyagram = useMemo(() => aracDiyagrami(t), [t]);
 
@@ -28,7 +34,7 @@ export function Tarife({ cevrimSn, headwaySn }: { cevrimSn: number; headwaySn: n
           <span className="text-xs" style={{ color: brand.muted }}>çevrim + sefer aralığından kalkış saatleri ve araç diyagramı</span>
         </div>
         <p className="mb-4 text-xs" style={{ color: brand.muted }}>
-          Servis penceresi boyunca ulaşılan sefer aralığında (≈{(headwaySn / 60).toFixed(1)} dk) kalkışlar üretilir; her araç bir tam turu (çevrim {Math.round(cevrimSn / 60)} dk) tamamlayıp sıraya döner.
+          Servis penceresi boyunca ulaşılan sefer aralığında (≈{(headwaySn / 60).toFixed(1)} dk) kalkışlar üretilir; her araç bir tam turu (çevrim {Math.round(cevrimSn / 60)} dk){molaDk > 0 ? ` + ${molaDk} dk mola` : ""} tamamlayıp sıraya döner.
         </p>
 
         <div className="mb-4 flex flex-wrap items-end gap-4">
@@ -48,6 +54,15 @@ export function Tarife({ cevrimSn, headwaySn }: { cevrimSn: number; headwaySn: n
               <span className="text-xs" style={{ color: brand.muted }}>:00 (24+ = gece yarısı sonrası)</span>
             </div>
           </label>
+          <label>
+            <span className="field-label">Tur başı mola</span>
+            <div className="mt-1 flex items-center gap-1">
+              <input type="number" min={0} max={5} step={0.5} value={molaDk}
+                onChange={(e) => setMolaDk(parseFloat(e.target.value))}
+                className="w-16 rounded border px-2 py-1 text-center text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+              <span className="text-xs" style={{ color: brand.muted }}>dk (terminalde bekleme, en çok 5)</span>
+            </div>
+          </label>
         </div>
 
         {!t.gecerli ? (
@@ -56,10 +71,10 @@ export function Tarife({ cevrimSn, headwaySn }: { cevrimSn: number; headwaySn: n
           <>
             {/* Özet */}
             <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Ozet et="Gereken filo" d={`${t.filo}`} alt="⌈çevrim ÷ aralık⌉" />
+              <Ozet et="Gereken filo" d={`${t.filo}`} alt={molaDk > 0 ? "⌈(çevrim + mola) ÷ aralık⌉" : "⌈çevrim ÷ aralık⌉"} />
               <Ozet et="Sefer sayısı" d={`${t.seferSayisi}`} alt={`${hhmm(t.ilkKalkis)}–${hhmm(t.sonKalkis)}`} />
-              <Ozet et="Sefer aralığı" d={`${Math.round(headwaySn)} s`} alt={`${(headwaySn / 60).toFixed(1)} dk`} />
-              <Ozet et="Tur başı park (layover)" d={`${Math.round(t.layoverSn)} s`} alt="terminal bekleme payı" />
+              <Ozet et="Tur başı mola" d={`${molaDk} dk`} alt="terminalde zorunlu bekleme" />
+              <Ozet et="Boşta bekleme (layover)" d={`${Math.round(t.layoverSn)} s`} alt="molanın üstünde kalan pay" />
             </div>
 
             {/* Araç diyagramı — her araç, ilk kalkışları */}
