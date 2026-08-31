@@ -294,7 +294,7 @@ const ETAP2_MESAFE = [413, 762, 880, 853, 1011, 1446, 1137, 1062, 1057];
 // v7: sinyalizasyon firması = Aslan Sinyalizasyon (üç hatta da).
 // v8: 4. hat — Bütünleşik Hat (Alaaddin–Stadyum), üç etap tek sürekli hatta birleşik.
 // v9: makas S/X crossover geometrisi + terminal makas sayıları (gerçek CAD/kullanıcı verisi).
-export const HAZIR_VERI_SURUM = 10; // v10: SİNYAL LAMBASI metrajları (Sinyalizasyon Projesi V0808) 4 projeye eklendi (SG1–79, gerçek kilometraj)
+export const HAZIR_VERI_SURUM = 11; // v11: makas dizilimi kullanıcı teyidiyle güncellendi (Alaattin 2S+1X, Adliye 1S, Ravza/Otogar/Betoncular 1S, Depo 2S) → kayıtlı projeler yeniden seed'lenir
 // NOT (model): makasSayisi = MAKAS ADEDİ (S/X), makas MOTORU değil. Her makas ya S-makas (2 motor)
 // ya X-makas (4 motor); motor sayısı içseldir, raporda gösterilmez. CAD'den okurken yakın 2 motor
 // = 1 S-makas, yakın 4 motor = 1 X-makas.
