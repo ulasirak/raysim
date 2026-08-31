@@ -283,8 +283,8 @@ export function tersIsletmeAnaliz(
           { ad: "Yoğunluk atağı", aciklama: `Ani biniş dalgasında (etkinlik/pik) bu makastan ek tren verilerek yoğun tarafın aralığı düşürülür; hat süreleri değişmeden sıklık artar.` },
         ],
         sureNotu: sureNotu + (tersSinyalVar
-          ? " ✓ Ters işletme sinyali mevcut; dönüş güvenli (karşı yönden gelenle çakışma korumalı)."
-          : (onerilir ? " ⚠ Ters işletme sinyali YOK — kısa dönüş için gitme yönünün tersine ters işletme sinyali eklenmeli." : "")),
+          ? " Bu noktada ters işletme sinyali mevcut olduğundan, karşı yönden gelen trenle çakışma önlenir ve dönüş güvenli biçimde gerçekleştirilebilir."
+          : (onerilir ? " Kısa dönüşün bu noktada güvenle uygulanabilmesi için, gidiş yönünün tersine bir ters işletme sinyali tesis edilmesi gerekmektedir; mevcut tasarımda bu sinyal bulunmamaktadır." : "")),
         yorum: onerilir
           ? `Bu istasyon, kısa dönüş (turnback) için bir aday noktadır: makasın ayırdığı iki yakadan biri diğerinden belirgin biçimde daha yoğun olduğundan, trenlerin bir bölümünü burada geri döndürmek düşük talepli yakaya boş tren gönderilmesini önler.`
           : `Bu kesimde makasın iki yakası benzer yoğunlukta olduğundan kısa dönüşe gerek yoktur; tam tur işletim daha verimlidir.`,
