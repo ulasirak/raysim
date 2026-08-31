@@ -165,7 +165,7 @@ export function karsilastirmaHTML(senaryolar: KarsSenaryo[], meta: ProjeMeta, al
   .antet-ust .firma-logo svg { height:8mm; width:auto; display:block; }
   .antet-ust .dok { color:#6B7A8A; }
   .antet-alt { display:flex; justify-content:space-between; border-top:.75pt solid #DCE1E7; padding-top:1.4mm; margin-top:8mm; font-size:7.5pt; color:#6B7A8A; }
-  .cover { text-align:center; padding:14px 0 8px; page-break-after:avoid; }
+  .cover { text-align:center; padding:14px 0 8px; page-break-after:always; }
   .cover-brand svg { height:17mm; width:auto; } .cover-brand-name { font-size:20pt; font-weight:700; color:${INK}; }
   .cover .rule { width:56px; height:3px; background:${RED}; margin:12px auto 14px; }
   .cover .sys { font-size:14pt; letter-spacing:.28em; color:${INK}; font-weight:600; }
@@ -179,8 +179,11 @@ export function karsilastirmaHTML(senaryolar: KarsSenaryo[], meta: ProjeMeta, al
   .poweredby svg { height:7mm; width:auto; } .poweredby .t { font-size:8.5pt; color:#8A97A4; }
   .poweredby .t b { font-family:"Spectral",Georgia,serif; letter-spacing:.06em; color:#6B7A8A; } .poweredby .t .r { color:${RED}; }
   .cover .foot { margin-top:14px; font-size:8pt; letter-spacing:.14em; text-transform:uppercase; color:#9AA7B4; }
-  .banner { color:${INK}; padding:0 0 5px; margin:2px 0 14px; border-bottom:1.5pt solid ${GOLD}; font-size:11.5pt; font-weight:600; letter-spacing:.14em; text-transform:uppercase; page-break-before:always; page-break-after:avoid; }
-  .banner:first-of-type { page-break-before:avoid; }
+  /* Karşılaştırma raporu kısadır: bölümler ayrı sayfaya ZORLANMAZ (aksi halde tablo/öneri/
+     onay tek tük satırla ayrı sayfalara düşüp büyük boşluk bırakıyordu). Bölümler akar; başlık
+     içeriğinden koparılmaz (after:avoid) ve üst boşlukla ayrılır. */
+  .banner { color:${INK}; padding:0 0 5px; margin:20px 0 14px; border-bottom:1.5pt solid ${GOLD}; font-size:11.5pt; font-weight:600; letter-spacing:.14em; text-transform:uppercase; page-break-after:avoid; }
+  .banner:first-of-type { margin-top:0; }
   .banner .no { color:${GOLD}; font-weight:700; margin-right:3px; } .banner .no::after { content:" ·"; color:${INK}; opacity:.35; }
   p { margin:0 0 8px; } .muted { color:#6B7A8A; }
   table.kars, table.oneri { width:100%; border-collapse:collapse; margin:8px 0 6px; font-size:9pt; }
@@ -191,7 +194,8 @@ export function karsilastirmaHTML(senaryolar: KarsSenaryo[], meta: ProjeMeta, al
   table.kars tbody tr:nth-child(even) td { background:#F7F9FA; }
   .oneri td { text-align:left; } .oneri td.l { color:#6B7A8A; width:52%; }
   .not { font-size:8.5pt; color:#6B7A8A; margin-top:4px; }
-  .cb-grid { display:flex; gap:10px; margin:8px 0; }
+  .cb-grid { display:flex; gap:10px; margin:8px 0; page-break-inside:avoid; }
+  table.oneri, .imza { page-break-inside:avoid; }
   .cb-kart { flex:1; border:1px solid #E4E8EC; border-radius:2px; padding:8px 10px; page-break-inside:avoid; }
   .cb-baslik { font-size:7.5pt; letter-spacing:.08em; text-transform:uppercase; color:#6B7A8A; margin-bottom:6px; }
   .cb-row { display:flex; align-items:center; gap:6px; margin:3px 0; font-size:8pt; }
