@@ -113,7 +113,12 @@ export function LiveNetwork({
   const tersAktifIdxRef = useRef<Set<number>>(new Set());
   const kararRef = useRef(karar);
   const vTersRef = useRef(10);                          // ters dönüş ort. hız (m/s sim)
-  const T = loop ? loop.periyot : (tMax || 1);
+  // DÖNGÜ motoru periyodik tek-yörüngedir → KALICI blok arızasını temsil edemez
+  // (arızalı blok = sonsuz durma, periyot bozulur). Bir blok arızalıyken bu yüzden
+  // SİNYAL/KUYRUK motoruna (up/down = simulateSignalled, blocked:ariza) düşeriz:
+  // trenler arızalı bloğun 1 m gerisinde durup kuyruklanır. Arıza kalkınca loop döner.
+  const loopAktif = !!loop && faultBlocks.length === 0;
+  const T = loopAktif ? loop!.periyot : (tMax || 1);
   const L = line.length;
 
   useEffect(() => {
@@ -243,7 +248,7 @@ export function LiveNetwork({
   // Zamanlayıcının okuduğu ref'leri render SONRASI (effect'te) senkronla — render
   // sırasında ref yazmak/okumak React kuralına aykırı; effect doğru yer.
   useEffect(() => {
-    loopRef.current = loop;
+    loopRef.current = loopAktif ? loop : undefined; // arıza aktifken turnback tespiti kapalı
     tersMakasRef.current = tersMakaslar;
     kararRef.current = karar;
     vTersRef.current = vTers;
@@ -313,13 +318,13 @@ export function LiveNetwork({
   }) : [];
   // Ters işletmeye geçmiş trenler normal döngüden çıkarılır (kendi overlay'iyle çizilir).
   const tersAktifIdx = new Set(tersHareket.map((r) => r.idx));
-  const gorunenLoop = loop ? loopNow.filter((x) => !tersAktifIdx.has(x.tr.index)) : [];
-  const gidenler = loop ? gorunenLoop.filter((x) => x.up) : upNow;
-  const gelenler = loop ? gorunenLoop.filter((x) => !x.up) : downNow;
-  const aktifSayi = loop ? loop.count : upNow.length + downNow.length;
+  const gorunenLoop = loopAktif ? loopNow.filter((x) => !tersAktifIdx.has(x.tr.index)) : [];
+  const gidenler = loopAktif ? gorunenLoop.filter((x) => x.up) : upNow;
+  const gelenler = loopAktif ? gorunenLoop.filter((x) => !x.up) : downNow;
+  const aktifSayi = loopAktif ? loop!.count : upNow.length + downNow.length;
 
   // Ters işletmeye geçen trenler: makastan başa (0) doğru DÖNÜŞ (üst) şeritte geri gider.
-  const tersNow = loop ? tersHareket.map((r) => {
+  const tersNow = loopAktif ? tersHareket.map((r) => {
     const dt = Math.max(0, t - r.t0);
     const fp = Math.max(0, r.makasPos - vTers * dt);
     return { idx: r.idx, no: r.no, fp };
@@ -349,7 +354,7 @@ export function LiveNetwork({
     if (t >= T) { setT(0); tRef.current = 0; }
     // Oynat'a basınca, kullanıcı başka bir trene tıklamadıysa Tren 1'i otomatik seç →
     // detay kutusu açık başlar ve o an ne yaptığı (→ seyir vb.) canlı görünür.
-    if (!oynat && loop && secili === null) setSecili(0);
+    if (!oynat && loopAktif && secili === null) setSecili(0);
     setOynat((o) => !o);
   };
   // Ters işletme onaylandı → tren karşı (dönüş) şeride geçer, süre yeniden akar.
@@ -385,7 +390,7 @@ export function LiveNetwork({
     const rz = offsetAt(x.fp, GAP + 25, UST); // rozet daima üstte
     const rozetW = st ? Math.max(20, (st.ikon.length + 3) * 5) : 0;
     return (
-      <g key={`tr${i}`} style={{ cursor: loop ? "pointer" : "default" }} onClick={loop ? () => setSecili((p) => (p === x.tr.index ? null : x.tr.index)) : undefined}>
+      <g key={`tr${i}`} style={{ cursor: loopAktif ? "pointer" : "default" }} onClick={loopAktif ? () => setSecili((p) => (p === x.tr.index ? null : x.tr.index)) : undefined}>
         <g transform={`translate(${pos.x},${pos.y}) rotate(${deg})`}>
           <rect x={-half} y={-4.5} width={wpx} height={9} rx={2.5} fill={col} stroke={secili === x.tr.index ? brand.ink : "#fff"} strokeWidth={secili === x.tr.index ? 1.8 : 1.2} />
           {Array.from({ length: cars - 1 }).map((_, c) => {
@@ -697,7 +702,7 @@ export function LiveNetwork({
         {gidenler.map(wagon)}
         {gelenler.map((x, i) => wagon(x, i + gidenler.length))}
         {/* Ters işletmeye geçen trenler — DÖNÜŞ (üst) şeritte makastan başa geri döner */}
-        {loop && tersNow.map((r, i) => wagon({ tr: { index: r.idx, points: [], arr: 0, delay: 0 } as SignalTrain, fp: r.fp, up: false, v: vTers, durum: "donus" as LoopDurum, ad: "ters işletme — karşı şeride geçti, geri dönüyor" }, 900 + i))}
+        {loopAktif && tersNow.map((r, i) => wagon({ tr: { index: r.idx, points: [], arr: 0, delay: 0 } as SignalTrain, fp: r.fp, up: false, v: vTers, durum: "donus" as LoopDurum, ad: "ters işletme — karşı şeride geçti, geri dönüyor" }, 900 + i))}
 
         {/* İstasyon ADLARI — EN ÜST katman (depo kutuları + trenlerden SONRA çizilir →
             hiçbir tren kutusu / depo etiketi durak adını örtemez). Gerçek adlar
@@ -731,19 +736,19 @@ export function LiveNetwork({
       </svg>
 
       {/* DÖNGÜ — seçili tren detay kutusu: bir turda hangi nedene ne kadar süre */}
-      {loop && secili !== null && (() => {
+      {loopAktif && secili !== null && (() => {
         const st = loopNow.find((x) => x.tr.index === secili);
         if (!st) return null;
         const stil = DURUM_STIL[st.durum];
-        const topSn = Object.values(loop.dokum).reduce((a, b) => a + b, 0) || 1;
-        const sirali = (Object.entries(loop.dokum) as [LoopDurum, number][]).filter(([, v]) => v > 0.5).sort((a, b) => b[1] - a[1]);
+        const topSn = Object.values(loop!.dokum).reduce((a, b) => a + b, 0) || 1;
+        const sirali = (Object.entries(loop!.dokum) as [LoopDurum, number][]).filter(([, v]) => v > 0.5).sort((a, b) => b[1] - a[1]);
         return (
           <div className="mt-2 rounded-lg border p-3" style={{ borderColor: brand.ink, background: brand.surface }}>
             <div className="flex items-center justify-between">
               <span className="text-sm font-bold" style={{ color: brand.ink }}>🚋 Tren {secili + 1} — şu an: <span style={{ color: stil.renk }}>{stil.ikon} {st.ad}</span> · {Math.round(st.v * 3.6)} km/h</span>
               <button onClick={() => setSecili(null)} className="text-xs underline" style={{ color: brand.muted }}>kapat</button>
             </div>
-            <div className="mt-2 text-xs" style={{ color: brand.inkSoft }}>Bir tam turda (çevrim {saat(loop.periyot)}) hangi nedene ne kadar süre geçiriyor:</div>
+            <div className="mt-2 text-xs" style={{ color: brand.inkSoft }}>Bir tam turda (çevrim {saat(loop!.periyot)}) hangi nedene ne kadar süre geçiriyor:</div>
             <div className="mt-1 space-y-1">
               {sirali.map(([d, v]) => {
                 const s = DURUM_STIL[d]; const yuzde = (v / topSn) * 100;
@@ -759,6 +764,13 @@ export function LiveNetwork({
           </div>
         );
       })()}
+
+      {/* Arıza aktif → mod bildirimi: döngü yerine sinyal/kuyruk motoru çiziliyor */}
+      {loop && faultBlocks.length > 0 && (
+        <div className="mb-2 rounded-md border-l-4 px-3 py-2 text-xs" style={{ background: CK.badBgSoft, borderColor: brand.red, color: brand.inkSoft }}>
+          <b style={{ color: brand.red }}>⚠ Arıza modu:</b> {faultBlocks.length} blok arızalı → trenler <b>sinyal/kuyruk</b> motoruyla çiziliyor: arızalı bloğun 1 m gerisinde durup arkadan kuyruklanırlar. (Döngü rozetleri & terminal dönüşü etkileşimi bu modda kapalı.) Arızayı kaldırınca ✕ işaretli bloğa tekrar tıkla → döngü görünümüne dönülür.
+        </div>
+      )}
 
       {/* Kontroller */}
       <div className="flex flex-wrap items-center gap-3">
