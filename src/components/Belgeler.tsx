@@ -25,12 +25,13 @@ export function Belgeler() {
   const { yenile } = useCuzdan();
   const { arac: stock } = useArac();
   const { isletme } = useIsletme();
-  // QR DEEP-LINK: rapordaki QR, paylaşım açıksa BU projenin salt-okunur canlı
-  // simülasyon linkine (<site>/?proje=<id>) gider; müşavir kamerayla tarayınca hattı
-  // canlı görür. Kapalıysa boş bırakılır → rapor QR'ı ana sayfaya düşer.
+  // QR DEEP-LINK: rapordaki QR, paylaşım açıksa BU projenin salt-okunur CANLI AĞ
+  // SİMÜLASYONUNA gider — oturum gerektirmeden (?proje=<id> paylaşım görünümü),
+  // &oynat=1#canli ile o bölüme kaydırıp simülasyonu otomatik başlatır. Kapalıysa
+  // boş bırakılır → rapor QR'ı ana sayfaya düşer.
   const { aktifId, paylasimAcik, paylasimDegistir } = useHesap();
   const qrUrl = aktifId && paylasimAcik && typeof window !== "undefined"
-    ? `${window.location.origin}/?proje=${aktifId}` : "";
+    ? `${window.location.origin}/?proje=${aktifId}&oynat=1#canli` : "";
   const turnaroundSn = Math.max(0, isletme.turnaroundDk) * 60; // dönüş bekleme → çevrim/filo hesabı
   // Yolcu dinamiği: dwell OTO ringlerin dwell'i hesaplanır → RAPOR da hesaplı dwell'i
   // kullanır (kapasite/canlı sim ile tutarlı). Ham ring yerine hesaplı ring geçilir.

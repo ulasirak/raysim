@@ -157,6 +157,14 @@ function StudioIc() {
   // Canlı sim'i başlatmak için GEREKLİ iki şey: (1) parklanma alanı (depo) seçili, (2) filo onaylı.
   const filoHazir = !!isletme.filoOnaylandi;
   const simHazir = depoVar && filoHazir;
+  // Rapor QR akışı: ?oynat=1 → canlı sim otomatik başlar; #canli → o bölüme yumuşak kaydır.
+  const otoOynat = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("oynat") === "1";
+  useEffect(() => {
+    if (!simHazir || typeof window === "undefined") return;
+    if (window.location.hash !== "#canli" && !otoOynat) return;
+    const el = document.getElementById("canli");
+    if (el) { const t = setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "start" }), 350); return () => clearTimeout(t); }
+  }, [simHazir, otoOynat]);
   // Parklanma dizilimi (elle) — parkAnahtar/parkToplam/parkDiziliVar yukarıda (filodan
   // ÖNCE) tanımlı. parkDizili = geçerli bir elle dizilim var mı?
   const parkDizili = parkDiziliVar;
@@ -481,11 +489,11 @@ function StudioIc() {
       {/* Canlı ağ simülasyonu (kahraman) — TAM GENİŞLİK: takip ekranı sayfanın dar
           kolonundan (max-w-6xl) taşıp ekrana yayılır → çok daha büyük görünür.
           Negatif marj tekniği (w-screen yok) → yatay kaydırma çubuğu oluşmaz. */}
-      <div className="mt-6 ml-[calc(-50vw+50%)] mr-[calc(-50vw+50%)] px-4 sm:px-8">
+      <div id="canli" className="mt-6 ml-[calc(-50vw+50%)] mr-[calc(-50vw+50%)] px-4 sm:px-8">
       <div className="mx-auto max-w-[1600px]">
       <Panel baslik="Canlı Ağ Simülasyonu" aciklama="Trenler PARKLANMA ALANINDAN çıkar: Depo Çıkışı yöntemine göre bir kısmı DÜZ (gidiş), bir kısmı MAKASTAN karşı şeride geçip TERS (dönüş) yönde başlar; sıra bekleyenler ⏸ parkta durur. Hat DÖNGÜdür (lastik): tren gidiş şeridini yürür → terminalde peron işgali süresi kadar DÖNER (turnback) → dönüş şeridinden geri gelir → başta döner → tekrar. Her trenin üstünde o an ne yaşadığı (⤵ hız kısıtı · ⏸ istasyon duruşu · 🔄 terminal dönüşü · ↗ hızlanma · → seyir) rozetle görünür; bir trene TIKLA → bir tam turda hangi nedene kaç saniye geçirdiğinin dökümü açılır. Sinyaller blok sınırlarında 3-aspekt yanar. Oynat ▶">
         {simHazir ? (
-        <LiveNetwork network={network} route={route} line={line} blocks={canliGidis.blocks}
+        <LiveNetwork autoOynat={otoOynat} network={network} route={route} line={line} blocks={canliGidis.blocks}
           up={canliGidis.trains} down={donusSim.trains} tMax={Math.max(canliGidis.tMax, donusSim.tMax)} trainLen={stock.length}
           faultBlocks={ariza} onBlockClick={arizaToggle} depots={depotPlan.depots} features={hatOzellik} loop={loopVeri}
           terminalBas={isletme.terminalBas} terminalSon={isletme.terminalSon}

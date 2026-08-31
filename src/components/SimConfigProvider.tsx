@@ -29,7 +29,9 @@ import {
   projeAdiDegistir, paylasimAyarla, veriBoyutu, hazirHatlariSeed,
   PROJE_KOTASI, VERI_BAYT_SINIRI, type ProjeOzet, type ProjeVerisi,
 } from "@/lib/projeler";
-import { HAZIR_VERI_SURUM } from "@/lib/anaray/hazirHatlar";
+import { HAZIR_VERI_SURUM, hazirHatlar } from "@/lib/anaray/hazirHatlar";
+import { maksimumTren } from "@/lib/anaray/kapasite";
+import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 
 // Eski (tek kullanıcılı) yerel taslak anahtarları — yalnız İLK projeye taşımak için okunur.
 const ESKI_CFG = "raysim_simconfig_v1";
@@ -130,6 +132,9 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
   const [aktifAd, setAktifAd] = useState<string>("—");
   const [paylasimAcik, setPaylasimAcik] = useState(false);
   const [paylasimId, setPaylasimId] = useState<string | null>(null);
+  // Herkese açık (oturumsuz) hazır hat önizlemesi: ?hat=<key> → hattı istemcide yükler,
+  // filoyu önerilene ONAYLAYIP canlı ağ simülasyonunu oynanır hale getirir (rapor QR'ı buraya gider).
+  const [hatKey, setHatKey] = useState<string | null>(null);
   const [durum, setDurum] = useState<KayitDurumu>("yukleniyor");
   const [hataMetni, setHataMetni] = useState<string | null>(null);
 
@@ -146,7 +151,7 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
   const yeniJeton = () => ++yuklemeRef.current;
   const guncelMi = (jeton: number) => yuklemeRef.current === jeton;
 
-  const paylasimGorunumu = paylasimId !== null;
+  const paylasimGorunumu = paylasimId !== null || hatKey !== null;
   const demoMu = !paylasimGorunumu && !user;
   const yazilabilir = Boolean(user) && !paylasimGorunumu && aktifId !== null;
 
@@ -200,9 +205,13 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
   // 1) Paylaşım linki (?proje=<id>) — yalnız istemcide okunur (hydration güvenli).
   useEffect(() => {
     try {
-      const id = new URLSearchParams(window.location.search).get("proje");
+      const sp = new URLSearchParams(window.location.search);
+      const id = sp.get("proje");
       // eslint-disable-next-line react-hooks/set-state-in-effect
       if (id) setPaylasimId(id);
+      const hk = sp.get("hat");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (hk) setHatKey(hk);
     } catch { /* sessiz */ }
   }, []);
 
@@ -218,6 +227,27 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
       setDurum("yukleniyor");
       setHataMetni(null);
       try {
+        // Herkese açık hazır hat önizlemesi (?hat=<key>) — oturumsuz. Hat istemcide yüklenir,
+        // filo önerilene onaylanır → canlı ağ simülasyonu doğrudan oynanır (rapor QR hedefi).
+        if (hatKey) {
+          const hat = hazirHatlar().find((h) => h.key === hatKey);
+          if (hat) {
+            const v = hat.veri;
+            const arac = v.arac ?? varsayilanArac;
+            const cfgH = { ...varsayilanConfig, ...v.cfg };
+            const islH = { ...varsayilanIsletme, ...v.isletme };
+            const mk = maksimumTren(dwellUygulanmisRings(v.rings, arac, islH), arac, cfgH, islH);
+            const oneri = mk.gecerli ? Math.max(1, Math.ceil(mk.cevrimSuresi / Math.max(1, cfgH.headway))) : (islH.pikFilo || 4);
+            const islOnayli: Isletme = { ...islH, pikFilo: oneri, toplamFilo: oneri, pikDisiFilo: oneri, filoOnaylandi: true };
+            if (bayat()) return;
+            veriUygula({ ...v, isletme: islOnayli });
+            setAktifAd(hat.ad);
+            setPaylasimAcik(false);
+            setDurum("hazir");
+            return;
+          }
+        }
+
         if (paylasimId) {
           const p = await projeGetir(paylasimId);
           if (bayat()) return;
@@ -296,7 +326,7 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
 
     calistir();
     return () => { iptal = true; };
-  }, [authHazir, user, yonetici, paylasimId, veriUygula, paylasimdanCik]);
+  }, [authHazir, user, yonetici, paylasimId, hatKey, veriUygula, paylasimdanCik]);
 
   // 2b) Hazır Konya hatlarını (Mevcut T1 · 1. Etap · 2. Etap) YÖNETİCİ hesabına bir
   // kez seed et. Sunucu idempotenttir; burada tarayıcı-başına bir bayrakla gereksiz

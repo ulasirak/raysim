@@ -88,7 +88,7 @@ function fazAtS(orn: LoopYorunge["ornekler"], sHedef: number, L: number, gidisMi
 
 export function LiveNetwork({
   network, route, line, blocks, up = [], down = [], tMax, trainLen = 40, faultBlocks = [], onBlockClick, depots = [], features = [], loop, terminalBas, terminalSon,
-  tersMod = "gidenHat", onTersMod,
+  tersMod = "gidenHat", onTersMod, autoOynat = false,
 }: {
   network: RailNetwork;
   route: Route;
@@ -109,6 +109,7 @@ export function LiveNetwork({
   terminalSon?: TerminalConfig; // bitiş terminali dönüş tipi
   tersMod?: TersMod;            // ters işletme (istasyon makası kısa dönüş) modu
   onTersMod?: (m: TersMod) => void; // mod değişince kalıcı kaydet (isletme.tersMod)
+  autoOynat?: boolean;          // rapor QR akışı: yüklenince otomatik oynat (?oynat=1)
 }) {
   const [t, setT] = useState(0);
   const [secili, setSecili] = useState<number | null>(null); // döngüde tıklanan tren (detay kutusu)
@@ -141,6 +142,15 @@ export function LiveNetwork({
   // SİNYAL/KUYRUK motoruna (up/down = simulateSignalled, blocked:ariza) düşeriz:
   // trenler arızalı bloğun 1 m gerisinde durup kuyruklanır. Arıza kalkınca loop döner.
   const loopAktif = !!loop && faultBlocks.length === 0;
+  // Rapor QR akışı: yüklenince bir kez otomatik başlat (kısa gecikme → sahne hazır olsun).
+  const otoBaslatildi = useRef(false);
+  useEffect(() => {
+    if (!autoOynat || otoBaslatildi.current) return;
+    otoBaslatildi.current = true;
+    const id = setTimeout(() => { setOynat(true); if (loopAktif && secili === null) setSecili(0); }, 700);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOynat, loopAktif]);
   const T = loopAktif ? loop!.periyot : (tMax || 1);
   const L = line.length;
 
