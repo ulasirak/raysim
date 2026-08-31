@@ -483,21 +483,31 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   // ---- SİNYALİZASYON bölümü (sinyal lambaları metrajı — canlı sistemle birebir) ----
   const gidenS = sinyalListe.filter((f) => f.yon === "giden").length;
   const gelenS = sinyalListe.filter((f) => f.yon === "gelen").length;
-  const sinyalRows = sinyalListe.map((f, i) => [
-    `${i + 1}`, kmFmt(f.pos),
-    f.yon === "giden" ? (lang === "en" ? "outbound ▶" : "giden ▶") : (lang === "en" ? "return ◀" : "gelen ◀"),
-    f.tersIsletme ? (lang === "en" ? "reverse (turnback)" : "ters işletme") : (lang === "en" ? "home" : "hat sinyali"),
-    `${Math.round(f.aspektCevrim || 0)}`,
-  ]);
-  const sinyalThead = lang === "en"
-    ? ["No", "Chainage", "Direction", "Type", "Aspect cycle (s)"]
-    : ["No", "Kilometraj", "Yön", "Tür", "Aspect çevrimi (s)"];
+  // SİNYAL DÜZENİ ÖZETİ — kullanıcının girdiği her sinyali TEK TEK dökmek yerine (o veri
+  // zaten Ringler'de) tasarımın ÖZET metrikleri: sayılar, aspect aralığı, metraj aralığı,
+  // ortalama sinyal aralığı. Rapor girdiyi geri kusmaz; düzeni değerlendirir.
+  const aspektler = sinyalListe.map((f) => Math.round(f.aspektCevrim || 0)).filter((a) => a > 0);
+  const aMin = aspektler.length ? Math.min(...aspektler) : 0;
+  const aMax = aspektler.length ? Math.max(...aspektler) : 0;
+  const aspStr = aspektler.length ? (aMin === aMax ? `${aMin} s` : `${aMin}–${aMax} s`) : "—";
+  const sPozlar = sinyalListe.map((f) => f.pos);
+  const metrajAralik = sPozlar.length ? `${kmFmt(Math.min(...sPozlar))} – ${kmFmt(Math.max(...sPozlar))}` : "—";
+  const hatKm = line ? line.length : 0;
+  const ortAralik = gidenS > 0 && hatKm > 0 ? Math.round(hatKm / gidenS) : 0;
+  const sinyalOzetRows: (string | number)[][] = [
+    [lang === "en" ? "Total signal lamps (SG)" : "Toplam sinyal lambası (SG)", `${sinyalSayisi}`],
+    [lang === "en" ? "Outbound (▶) / Return (◀)" : "Giden (▶) / Gelen (◀)", `${gidenS} / ${gelenS}`],
+    ...(tersSinyalSayisi ? [[lang === "en" ? "Reverse-running (turnback)" : "Ters işletme (turnback)", `${tersSinyalSayisi}`]] : []),
+    [lang === "en" ? "Aspect cycle" : "Aspect çevrimi", aspStr],
+    [lang === "en" ? "Chainage span (first – last SG)" : "Metraj aralığı (ilk – son SG)", metrajAralik],
+    ...(ortAralik ? [[lang === "en" ? "Mean signal spacing (outbound)" : "Ortalama sinyal aralığı (giden)", `~${ortAralik} m`]] : []),
+  ];
   const sinyalBolum = `
   <div class="banner"><span class="no">03</span>${lang === "en" ? "SIGNALLING — SIGNAL LAMPS (SG)" : "SİNYALİZASYON — SİNYAL LAMBALARI (SG)"}</div>
   <p>${lang === "en"
-    ? `The line is protected by <b>${sinyalSayisi} three-aspect signal lamps</b> (SG: red / yellow / green), ${gidenS} outbound (▶) and ${gelenS} return (◀)${tersSinyalSayisi ? `, of which ${tersSinyalSayisi} are reverse-running (turnback) signals` : ""}. Chainages are the real design positions; each outbound signal is a <b>block boundary</b>.`
-    : `Hat, <b>${sinyalSayisi} adet 3-aspect sinyal lambası</b> (SG: kırmızı / sarı / yeşil) ile korunur: ${gidenS} giden (▶), ${gelenS} gelen (◀)${tersSinyalSayisi ? `, bunların ${tersSinyalSayisi} tanesi ters işletme (turnback) sinyalidir` : ""}. Kilometrajlar gerçek tasarım konumlarıdır; her giden sinyali bir <b>blok sınırıdır</b>.`}</p>
-  ${sinyalListe.length ? tbl(sinyalThead, sinyalRows, { first: true }) : `<p class="muted">${lang === "en" ? "No signal lamps defined on this line yet (positions are entered in the Ringler module)." : "Bu hatta henüz sinyal lambası tanımlı değil (konumlar Ringler modülünde girilir)."}</p>`}
+    ? `The line is protected by <b>${sinyalSayisi} three-aspect signal lamps</b> (SG: red / yellow / green); each outbound signal is a <b>block boundary</b>. The design layout is summarised below; the full signal schedule (per-lamp chainages) is held in the design model.`
+    : `Hat, <b>${sinyalSayisi} adet 3-aspect sinyal lambası</b> (SG: kırmızı / sarı / yeşil) ile korunur; her giden yön sinyali bir <b>blok sınırıdır</b>. Aşağıda sinyal düzeninin özeti verilmiştir; tam metraj listesi (sinyal-başı kilometraj) tasarım modelinde tutulur.`}</p>
+  ${sinyalListe.length ? tbl(lang === "en" ? ["Indicator", "Value"] : ["Gösterge", "Değer"], sinyalOzetRows, { first: true }) : `<p class="muted">${lang === "en" ? "No signal lamps defined on this line yet (positions are entered in the Ringler module)." : "Bu hatta henüz sinyal lambası tanımlı değil (konumlar Ringler modülünde girilir)."}</p>`}
 `;
 
 
