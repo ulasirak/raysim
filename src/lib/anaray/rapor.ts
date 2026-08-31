@@ -279,7 +279,7 @@ function rDil(lang: RaporDil) {
     barBtn: "⭳ PDF olarak kaydet / Yazdır",
     sys: "SİNYALİZASYON SİSTEMİ", kit: "TASARIM EL KİTABI",
     foot: "Kontrollü doküman", dockontrol: "Doküman Kontrol", toc: "İçindekiler",
-    qrCap: "Canlı simülasyon",
+    qrCap: "Bu hattın canlı simülasyonu", qrHint: "kamerayla tarayın",
     kunye: { proje: "Proje", hat: "Hat", dok: "Doküman No", rev: "Revizyon", tarih: "Tarih", idare: "İdare", yuk: "Yüklenici", mus: "Müşavir", firma: "Sinyalizasyon Firması" },
     kpi: { hucre: "Durak arası hücre", hedef: "Hedef headway", sigan: "Headway'de sığan tren", kapasite: "Teorik kapasite", pratik: "İşletme kapasitesi", uic: "UIC 406 doluluk", ch: "Challenge / kritik" },
     altMakas: (n: number) => `${n} makas`, altTumu: "tümü uygun", altIhlal: "ihlal var", altTur: (s: string) => `tur ${s}`, altTph: "tren/saat", altUygun: "uygun", altIhlalK: "ihlal", altRisk: "risk kaydı",
@@ -310,7 +310,7 @@ function rDil(lang: RaporDil) {
     barBtn: "⭳ Save as PDF / Print",
     sys: "SIGNALLING SYSTEM", kit: "DESIGN HANDBOOK",
     foot: "Controlled document", dockontrol: "Document Control", toc: "Contents",
-    qrCap: "Live simulation",
+    qrCap: "This line, simulated live", qrHint: "scan with your camera",
     kunye: { proje: "Project", hat: "Line", dok: "Document No", rev: "Revision", tarih: "Date", idare: "Authority", yuk: "Contractor", mus: "Consultant", firma: "Signalling Firm" },
     kpi: { hucre: "Inter-station cells", hedef: "Target headway", sigan: "Trains within headway", kapasite: "Theoretical capacity", pratik: "Operating capacity", uic: "UIC 406 occupancy", ch: "Challenges / critical" },
     altMakas: (n) => `${n} switches`, altTumu: "all compliant", altIhlal: "violations", altTur: (s) => `cycle ${s}`, altTph: "trains/hour", altUygun: "compliant", altIhlalK: "violation", altRisk: "risk records",
@@ -598,8 +598,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
 
   // Onayın hemen üstündeki bağımsız çekirdek doğrulama satırı (kurumsal, tek satır).
   const cekirdekNot = `<div class="cekirdek">${en
-    ? "Verified in collaboration with OpenTrack; independent core based on the UIC 406 methodology."
-    : "OpenTrack ile işbirliğiyle doğrulanmış; UIC 406 metodolojisine dayanan bağımsız çekirdek."}</div>`;
+    ? "Verified in collaboration with OpenTrack; independent core based on the UIC 406 methodology. Every figure in this report is reproducible in the live simulation."
+    : "OpenTrack ile işbirliğiyle doğrulanmış; UIC 406 metodolojisine dayanan bağımsız çekirdek. Rapordaki her değer canlı simülasyonda birebir yeniden üretilebilir."}</div>`;
 
   return `<!doctype html><html lang="${L.htmlLang}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -677,7 +677,9 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   .cover .foot { margin-top: 16px; font-size: 8pt; letter-spacing: .14em; text-transform: uppercase; color: #9AA7B4; }
   .cover .qr { margin-top: 14px; }
   .cover .qr svg { border: 1px solid #E6E9ED; padding: 4px; background: #fff; }
-  .cover .qr-cap { font-size: 8pt; color: #6B7A8A; margin-top: 5px; line-height: 1.3; }
+  .cover .qr-cap { font-size: 8pt; color: #6B7A8A; margin-top: 5px; line-height: 1.35; }
+  .cover .qr-cap b { color: ${INK}; font-weight: 600; }
+  .cover .qr-hint { color: ${GOLD}; font-weight: 600; }
   .brandmark { font-family: "Spectral", Georgia, serif; font-weight: 700; letter-spacing: .12em; color: ${INK}; font-size: 12pt; }
   .brandmark .r { color: ${RED}; }
 
@@ -808,7 +810,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     <div class="proje">${esc(meta.projeAdi)}</div>
     <div class="hat">${esc(meta.hatAdi)}</div>
     <table class="kunye"><tbody>${kunye.map(([a, b]) => `<tr><td class="l k">${esc(a)}</td><td class="l">${esc(b)}</td></tr>`).join("")}</tbody></table>
-    <div class="qr">${qrSvg(siteUrl, 92)}<div class="qr-cap">${L.qrCap}<br>${esc(siteUrl.replace(/^https?:\/\//, ""))}</div></div>
+    <div class="qr">${qrSvg(siteUrl, 92)}<div class="qr-cap"><b>${L.qrCap}</b><br><span class="qr-hint">${L.qrHint}</span> · ${esc(siteUrl.replace(/^https?:\/\//, ""))}</div></div>
     <div class="poweredby"><span class="pb-emblem">${emblemSvg}</span><span class="pb-txt">Powered by <b>Ray<span class="r">Sim</span></b></span></div>
     <div class="foot">${esc(L.foot)}${bugun ? " · " + esc(bugun) : ""}</div>
   </section>
