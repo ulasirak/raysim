@@ -13,16 +13,13 @@ import { simulateSignalled, reverseRoute, monteCarlo, planDepotDispatch, loopYor
 import { tramvaylar } from "@/lib/anaray/vehicles";
 import { maksimumTren } from "@/lib/anaray/kapasite";
 import { tersIsletmeAnaliz } from "@/lib/anaray/tersisletme";
-import { servisProfili, type ServisProfil } from "@/lib/anaray/servis";
 import { dwellUygulanmisRings, maxYolcuKapasitesi, netTabanAlani } from "@/lib/anaray/yolcu";
 import { kmh, km, sure } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
-import { isFirebaseConfigured } from "@/lib/firebase";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { BosHat } from "@/components/BosHat";
 import { LiveNetwork } from "@/components/LiveNetwork";
-import { NetworkDiagram } from "@/components/NetworkDiagram";
 
 const KMH = 1 / 3.6;
 
@@ -84,14 +81,6 @@ function StudioIc() {
   // MAKSİMUM TRAMVAY — tek, kesin kaynak (bottleneck: kritik blok / terminal / tek hat).
   // Ringler'deki "Maksimum Tramvay Kapasitesi" ile birebir aynı sonuç.
   const maks = useMemo(() => maksimumTren(rings, stock, cfg, isletme), [rings, stock, cfg, isletme]);
-  // Gün içi servis profili (depo kapasitesi kaldırıldı — parklanma alanı sadece var/yok).
-  const depoSayisi = useMemo(() => {
-    let n = 0;
-    if (rings[0]?.fromDepot) n++;
-    for (const r of rings) if (r.depot) n++;
-    return n;
-  }, [rings]);
-  const servisProfil = useMemo(() => servisProfili(isletme), [isletme]);
   // İstenen işletme aralığı, fiziksel min. aralığın (h_min) altındaysa uygulanamaz.
   const [ariza, setAriza] = useState<number[]>([]); // dispatcher: arızalı bloklar (gidiş hattı) — geçici what-if
   // Monte-Carlo senaryo parametreleri KALICI (projeye kayıtlı) — tek kaynak isletme.
@@ -101,10 +90,6 @@ function StudioIc() {
   const setMeanDwell = (v: number) => patchIsletme({ mcMeanDwellSn: v });
   const [mc, setMc] = useState<MonteCarloResult | null>(null);
   const [mcRunning, setMcRunning] = useState(false);
-  // Hat Şeması sefer başlangıç saati KALICI (projeye kayıtlı); buton istasyon istasyon gösterir.
-  const baslangicSaati = isletme.seferBaslangicSaati;
-  const setBaslangicSaati = (v: string) => patchIsletme({ seferBaslangicSaati: v });
-  const [saatlerGoster, setSaatlerGoster] = useState(false);
   const [talepPopup, setTalepPopup] = useState(false); // yolcu verisi yokken talep-öneri uyarısı
 
   // Hemzemin geçit koruma duruşları (bekleme>0 karayolu geçitleri) — hem gidiş hem
@@ -235,12 +220,6 @@ function StudioIc() {
   const ortHiz = line.length / result.totalTime;
   const durusSuresi = line.stations.reduce((a, s) => a + s.dwell, 0);
   const teknikHiz = line.length / (result.totalTime - durusSuresi || 1);
-  const stationById = Object.fromEntries(line.stations.map((s) => [s.id, s]));
-  // Girilen "SS:DD" başlangıç saatini saniyeye çevir (sefer saatleri bunun üstüne eklenir).
-  const baslangicSn = (() => {
-    const [h, m] = baslangicSaati.split(":").map((x) => parseInt(x, 10));
-    return (Number.isFinite(h) ? h : 0) * 3600 + (Number.isFinite(m) ? m : 0) * 60;
-  })();
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
@@ -446,6 +425,33 @@ function StudioIc() {
         </Panel>
       </div>
 
+      <section className="mt-6">
+        <Panel baslik="Yolcu Dinamiği & Duruş Süresi" aciklama="İstasyon duruş süresi (dwell) keyfi değil, yolcu akışından hesaplanır: araç kapı sayısı/genişliği + konfor + istasyon başına inen/binen → yolcu akış süresi → dwell. Duraklarda inen/binen sayısını Ringler'de girersin; her durak ayrı hesaplanıp tur süresine (RTT) kümülatif eklenir.">
+          <div className="mb-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div><Num label="Kapı sayısı" suffix="kapı" step={1} max={12} value={stock.kapiSayisi ?? 4}
+              onChange={(v) => patchArac({ kapiSayisi: Math.max(1, Math.round(v)) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>araç başı iniş-biniş kapısı</span></div>
+            <div><Num label="Kapı genişliği" suffix="m" step={0.1} value={stock.kapiGenisligi ?? 1.3}
+              onChange={(v) => patchArac({ kapiGenisligi: Math.max(0.5, v) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>tek kapı açıklığı</span></div>
+            <div><Num label="Araç genişliği" suffix="m" step={0.05} value={stock.aracGenisligi ?? 2.65}
+              onChange={(v) => patchArac({ aracGenisligi: Math.max(2, v) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>net taban alanı için</span></div>
+            <div><Num label="Kullanılabilir alan" suffix="oran" step={0.05} value={stock.kullanilabilirAlanOrani ?? 0.35}
+              onChange={(v) => patchArac({ kullanilabilirAlanOrani: Math.max(0.1, Math.min(1, v)) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>ayakta alan / toplam (0..1)</span></div>
+            <div><Num label="Konfor indeksi" suffix="yolcu/m²" step={0.5} value={isletme.konforIndeksi}
+              onChange={(v) => patchIsletme({ konforIndeksi: Math.max(0, v) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>ayakta yoğunluk tasarımı</span></div>
+            <div><Num label="Yolcu akış hızı" suffix="yolcu/m·s" step={0.1} value={isletme.yolcuAkisHizi}
+              onChange={(v) => patchIsletme({ yolcuAkisHizi: Math.max(0.1, v) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>kapı metresi başına akış (~1.2)</span></div>
+            <div title="Bir durakta yolcu az olsa bile en kısa duruş (alt sınır). TÜM duraklara uygulanır — burada değiştirince her durağın oto dwell'i bu tabana göre güncellenir.">
+              <Num label="Min duruş süresi" suffix="s" step={1} value={isletme.minDurusSuresi}
+              onChange={(v) => patchIsletme({ minDurusSuresi: Math.max(0, Math.round(v)) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>tüm duraklara uygulanır — oto dwell alt sınırı</span></div>
+          </div>
+          <div className="rounded border-l-4 px-3 py-2 text-xs" style={{ background: CK.goodBgSoft, borderColor: brand.ink, color: brand.inkSoft }}>
+            Net taban alanı <b>{netTabanAlani(stock).toFixed(1)} m²</b> · maksimum yolcu kapasitesi <b>{maxYolcuKapasitesi(stock, isletme.konforIndeksi)} yolcu</b>.
+            <br />Dwell = max(<b>min duruş</b>, <i>(inen+binen) ÷ (kapı×genişlik×akış)</i>) + kapı aç + kapı kapa. Her durakta ayrı → RTT'ye kümülatif.
+            <br />ℹ️ Dwell <b>otomatik</b> (yolcu akışından) gelir ama zorunlu değil — istersen her durakta <b>elle</b> de girebilirsin: <Link href="/#ringler" className="underline">Ringler → Duraklar &amp; Mesafeler</Link>’de o durağın <b>“oto dwell”</b> kutusunu kapatıp değeri yaz. Oto açıkken alt sınır yukarıdaki <b>min duruş süresi</b>dir.
+          </div>
+        </Panel>
+      </section>
+
       {/* Canlı ağ simülasyonu (kahraman) */}
       <Panel baslik="Canlı Ağ Simülasyonu" aciklama="Trenler PARKLANMA ALANINDAN çıkar: Depo Çıkışı yöntemine göre bir kısmı DÜZ (gidiş), bir kısmı MAKASTAN karşı şeride geçip TERS (dönüş) yönde başlar; sıra bekleyenler ⏸ parkta durur. Hat DÖNGÜdür (lastik): tren gidiş şeridini yürür → terminalde peron işgali süresi kadar DÖNER (turnback) → dönüş şeridinden geri gelir → başta döner → tekrar. Her trenin üstünde o an ne yaşadığı (⤵ hız kısıtı · ⏸ istasyon duruşu · 🔄 terminal dönüşü · ↗ hızlanma · → seyir) rozetle görünür; bir trene TIKLA → bir tam turda hangi nedene kaç saniye geçirdiğinin dökümü açılır. Sinyaller blok sınırlarında 3-aspekt yanar. Oynat ▶">
         {simHazir ? (
@@ -550,126 +556,11 @@ function StudioIc() {
       {/* Sefer sıklığı */}
 
       {/* YOLCU DİNAMİĞİ & DURUŞ — dwell fiziksel yolcu akışından hesaplanır. */}
-      <section className="mt-6">
-        <Panel baslik="Yolcu Dinamiği & Duruş Süresi" aciklama="İstasyon duruş süresi (dwell) keyfi değil, yolcu akışından hesaplanır: araç kapı sayısı/genişliği + konfor + istasyon başına inen/binen → yolcu akış süresi → dwell. Duraklarda inen/binen sayısını Ringler'de girersin; her durak ayrı hesaplanıp tur süresine (RTT) kümülatif eklenir.">
-          <div className="mb-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div><Num label="Kapı sayısı" suffix="kapı" step={1} max={12} value={stock.kapiSayisi ?? 4}
-              onChange={(v) => patchArac({ kapiSayisi: Math.max(1, Math.round(v)) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>araç başı iniş-biniş kapısı</span></div>
-            <div><Num label="Kapı genişliği" suffix="m" step={0.1} value={stock.kapiGenisligi ?? 1.3}
-              onChange={(v) => patchArac({ kapiGenisligi: Math.max(0.5, v) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>tek kapı açıklığı</span></div>
-            <div><Num label="Araç genişliği" suffix="m" step={0.05} value={stock.aracGenisligi ?? 2.65}
-              onChange={(v) => patchArac({ aracGenisligi: Math.max(2, v) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>net taban alanı için</span></div>
-            <div><Num label="Kullanılabilir alan" suffix="oran" step={0.05} value={stock.kullanilabilirAlanOrani ?? 0.35}
-              onChange={(v) => patchArac({ kullanilabilirAlanOrani: Math.max(0.1, Math.min(1, v)) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>ayakta alan / toplam (0..1)</span></div>
-            <div><Num label="Konfor indeksi" suffix="yolcu/m²" step={0.5} value={isletme.konforIndeksi}
-              onChange={(v) => patchIsletme({ konforIndeksi: Math.max(0, v) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>ayakta yoğunluk tasarımı</span></div>
-            <div><Num label="Yolcu akış hızı" suffix="yolcu/m·s" step={0.1} value={isletme.yolcuAkisHizi}
-              onChange={(v) => patchIsletme({ yolcuAkisHizi: Math.max(0.1, v) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>kapı metresi başına akış (~1.2)</span></div>
-            <div title="Bir durakta yolcu az olsa bile en kısa duruş (alt sınır). TÜM duraklara uygulanır — burada değiştirince her durağın oto dwell'i bu tabana göre güncellenir.">
-              <Num label="Min duruş süresi" suffix="s" step={1} value={isletme.minDurusSuresi}
-              onChange={(v) => patchIsletme({ minDurusSuresi: Math.max(0, Math.round(v)) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>tüm duraklara uygulanır — oto dwell alt sınırı</span></div>
-          </div>
-          <div className="rounded border-l-4 px-3 py-2 text-xs" style={{ background: CK.goodBgSoft, borderColor: brand.ink, color: brand.inkSoft }}>
-            Net taban alanı <b>{netTabanAlani(stock).toFixed(1)} m²</b> · maksimum yolcu kapasitesi <b>{maxYolcuKapasitesi(stock, isletme.konforIndeksi)} yolcu</b>.
-            <br />Dwell = max(<b>min duruş</b>, <i>(inen+binen) ÷ (kapı×genişlik×akış)</i>) + kapı aç + kapı kapa. Her durakta ayrı → RTT'ye kümülatif.
-            <br />ℹ️ Dwell <b>otomatik</b> (yolcu akışından) gelir ama zorunlu değil — istersen her durakta <b>elle</b> de girebilirsin: <Link href="/#ringler" className="underline">Ringler → Duraklar &amp; Mesafeler</Link>’de o durağın <b>“oto dwell”</b> kutusunu kapatıp değeri yaz. Oto açıkken alt sınır yukarıdaki <b>min duruş süresi</b>dir.
-          </div>
-        </Panel>
-      </section>
 
       {/* GÜN İÇİ SERVİS & PARKLANMA — filo gün boyu sabit değil: pik saatte hepsi
           hatta, pik-dışında fazlası depoya döner (parklanma), gece hepsi depoda. */}
-      <section className="mt-6">
-        <Panel baslik="Gün İçi Servis & Parklanma" aciklama="Filo gün boyu sabit değildir: pik saatte tüm filo hatta, pik-dışında bir kısmı depoya döner (mola/parklanma), gece hepsi depoda bekler. Depo kapasitesi bunu barındırabiliyor mu görürsün.">
-          <div className="mb-3 rounded border-l-4 px-3 py-2 text-xs" style={{ borderColor: brand.ink, background: CK.goodBgSoft, color: brand.inkSoft }}>
-            ℹ️ Filo = <b>{filoTek} araç</b> (yukarıdaki Filo Paneli'nden — tek sayı, parklanma dizilimine göre depolara konur). Aşağıdaki grafik gün içi parklanma doluluğunu, saatler ise servis penceresini gösterir.
-          </div>
-          <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <label className="block"><span className="field-label">Servis başlangıç</span>
-              <input type="time" value={isletme.servisBas} onChange={(e) => patchIsletme({ servisBas: e.target.value })}
-                className="mt-1 w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} /></label>
-            <label className="block"><span className="field-label">Servis bitiş</span>
-              <input type="time" value={isletme.servisBit === "24:00" ? "23:59" : isletme.servisBit} onChange={(e) => patchIsletme({ servisBit: e.target.value })}
-                className="mt-1 w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} /></label>
-            <label className="block"><span className="field-label">Sabah pik baş.</span>
-              <input type="time" value={isletme.pikSabahBas} onChange={(e) => patchIsletme({ pikSabahBas: e.target.value })}
-                className="mt-1 w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} /></label>
-            <label className="block"><span className="field-label">Sabah pik bit.</span>
-              <input type="time" value={isletme.pikSabahBit} onChange={(e) => patchIsletme({ pikSabahBit: e.target.value })}
-                className="mt-1 w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} /></label>
-            <label className="block"><span className="field-label">Akşam pik baş.</span>
-              <input type="time" value={isletme.pikAksamBas} onChange={(e) => patchIsletme({ pikAksamBas: e.target.value })}
-                className="mt-1 w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} /></label>
-            <label className="block"><span className="field-label">Akşam pik bit.</span>
-              <input type="time" value={isletme.pikAksamBit} onChange={(e) => patchIsletme({ pikAksamBit: e.target.value })}
-                className="mt-1 w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} /></label>
-          </div>
-
-          <ServisGrafik profil={servisProfil} />
-
-          {isletme.toplamFilo < isletme.pikFilo && (
-            <div className="mt-2 text-xs" style={{ color: brand.red }}>
-              ⚠ Toplam filo ({isletme.toplamFilo}) pik filodan ({isletme.pikFilo}) küçük olamaz — servis için en az pik filo kadar araç gerekir. Toplam filoyu en az {isletme.pikFilo} yap.
-            </div>
-          )}
-          <div className="mt-2 text-xs" style={{ color: brand.inkSoft }}>
-            En fazla <b>{servisProfil.maxDepoda}</b> tren aynı anda depoda bekler (gece/servis dışı).
-            {depoSayisi === 0 && <span style={{ color: CK.amber }}> · henüz parklanma alanı yok (Ringler → 🅿)</span>}
-          </div>
-        </Panel>
-      </section>
 
 
-      {/* Hat şeması — statik topoloji (rota dışı kollar). Canlı Ağ zaten hattı
-          gösterdiği için katlanır detay olarak tutulur. */}
-      <div className="mt-6">
-        <Panel katlanir baslik="Hat Şeması (statik topoloji)" aciklama="Seçili rota (kalın); istasyon adları üstte, kilometre altta. Rota dışı kollar (varsa) soluk çizilir.">
-          <NetworkDiagram network={network} route={route} line={line} />
-
-          {/* Sefer saatleri — başlangıç saati girilir, buton istasyon istasyon saatleri gösterir */}
-          <div className="mt-5 flex flex-wrap items-center gap-3 border-t pt-4" style={{ borderColor: brand.border }}>
-            <label className="flex items-center gap-2 text-sm" style={{ color: brand.inkSoft }}>
-              <span className="field-label">Başlangıç saati</span>
-              <input type="time" value={baslangicSaati} onChange={(e) => setBaslangicSaati(e.target.value)}
-                className="rounded border px-2 py-1 text-sm tabular-nums" style={{ borderColor: brand.border, color: brand.ink }} />
-            </label>
-            <button onClick={() => setSaatlerGoster((v) => !v)}
-              className="rounded-md px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90" style={{ background: brand.ink }}>
-              {saatlerGoster ? "Saatleri gizle" : "🕐 Saatleri göster"}
-            </button>
-            <span className="text-xs" style={{ color: brand.muted }}>
-              Simülasyondan hesaplanan varış / kalkış saatleri — girilen başlangıç saatinden itibaren.
-            </span>
-          </div>
-          {saatlerGoster && (
-            <div className="mt-3 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left" style={{ borderColor: brand.borderStrong, color: brand.muted }}>
-                    <th className="py-2 font-medium">İstasyon</th>
-                    <th className="py-2 font-medium">Kilometre</th>
-                    <th className="py-2 font-medium">Varış</th>
-                    <th className="py-2 font-medium">Kalkış</th>
-                    <th className="py-2 font-medium">Bekleme</th>
-                  </tr>
-                </thead>
-                <tbody className="font-mono tabular-nums">
-                  <Satir ad={line.stations[0].name} konum={km(0)} varis="—" kalkis={saatBicim(baslangicSn)} dwell={0} />
-                  {result.stationEvents.map((ev) => {
-                    const st = stationById[ev.stationId];
-                    return (
-                      <Satir key={ev.stationId} ad={st.name} konum={km(st.position)}
-                        varis={saatBicim(baslangicSn + ev.arrival)}
-                        kalkis={saatBicim(baslangicSn + ev.departure)}
-                        dwell={st.dwell} />
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Panel>
-      </div>
 
       {/* Özet künye */}
       <section className="mt-6 overflow-hidden rounded-lg border bg-white" style={{ borderColor: brand.border }}>
@@ -710,13 +601,6 @@ function StudioIc() {
         </Panel>
       </section>
 
-      <footer className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
-        <span className="flex items-center gap-3">
-          <span>RaySim · Demiryolu Ağı Simülasyon Sistemi</span>
-          <VeritabaniDurumu />
-        </span>
-        <span className="font-mono">Sürüm 0.2 · tam simülatör</span>
-      </footer>
     </div>
   );
 }
@@ -835,50 +719,6 @@ function MonteCarloGrafik({ mc }: { mc: MonteCarloResult }) {
   );
 }
 
-/** Toplam saniyeyi (başlangıç saati + geçen süre) "SS:DD" 24-saat gösterimine çevirir. */
-function saatBicim(totalSec: number): string {
-  const s = Math.max(0, Math.round(totalSec));
-  const h = Math.floor(s / 3600) % 24;
-  const m = Math.floor((s % 3600) / 60);
-  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
-}
-
-function ServisGrafik({ profil }: { profil: ServisProfil }) {
-  const W = 480, H = 132, padL = 22, padB = 18, padT = 8;
-  const cw = (W - padL) / 24;
-  const maxV = Math.max(1, profil.toplamFilo);
-  const h0 = H - padB;
-  const y = (v: number) => padT + (h0 - padT) * (1 - v / maxV);
-  return (
-    <div className="overflow-x-auto">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 150 }} role="img" aria-label="Gün içi servis/depo profili">
-        {[0, Math.round(maxV / 2), maxV].map((v, i) => (
-          <g key={i}>
-            <line x1={padL} y1={y(v)} x2={W} y2={y(v)} stroke={brand.border} strokeWidth={0.5} />
-            <text x={padL - 3} y={y(v) + 3} textAnchor="end" fontSize={7} fill={CK.muted}>{v}</text>
-          </g>
-        ))}
-        {profil.saatler.map((s) => {
-          const x = padL + s.saat * cw;
-          return (
-            <g key={s.saat}>
-              {s.depoda > 0 && <rect x={x + 0.8} y={y(s.serviste + s.depoda)} width={cw - 1.4} height={y(s.serviste) - y(s.serviste + s.depoda)} fill={CK.muted} opacity={0.32} />}
-              {s.serviste > 0 && <rect x={x + 0.8} y={y(s.serviste)} width={cw - 1.4} height={h0 - y(s.serviste)} fill={CK.blue} opacity={s.pik ? 1 : 0.55} />}
-              <title>{`${s.saat}:00 — hatta ${s.serviste}, depoda ${s.depoda}${s.pik ? " (pik)" : s.aktif ? "" : " (servis dışı)"}`}</title>
-              {s.saat % 3 === 0 && <text x={x + cw / 2} y={H - 6} textAnchor="middle" fontSize={7} fill={CK.muted}>{s.saat}</text>}
-            </g>
-          );
-        })}
-      </svg>
-      <div className="mt-1 flex gap-4 text-[0.65rem]" style={{ color: CK.muted }}>
-        <span><span style={{ color: CK.blue }}>■</span> hatta (koyu = pik)</span>
-        <span><span style={{ color: CK.muted }}>■</span> depoda bekleyen</span>
-        <span>· saat →</span>
-      </div>
-    </div>
-  );
-}
-
 function Num({ label, value, onChange, step, suffix, max }: { label: string; value: number; onChange: (v: number) => void; step: number; suffix: string; max?: number }) {
   return (
     <label className="block">
@@ -889,17 +729,6 @@ function Num({ label, value, onChange, step, suffix, max }: { label: string; val
         <span className="text-xs" style={{ color: brand.muted }}>{suffix}</span>
       </div>
     </label>
-  );
-}
-
-function VeritabaniDurumu() {
-  const ok = isFirebaseConfigured();
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5"
-      style={ok ? { background: CK.goodBg, color: CK.good } : { background: CK.badBg, color: CK.red }}>
-      <span className="h-1.5 w-1.5 rounded-full" style={{ background: "currentColor" }} />
-      Veritabanı: {ok ? "yapılandırıldı" : "yapılandırma bekleniyor"}
-    </span>
   );
 }
 
@@ -926,23 +755,6 @@ function Field({ etiket, deger, birim, alt }: { etiket: string; deger: string; b
   );
 }
 
-function Satir({ ad, konum, varis, kalkis, dwell }: { ad: string; konum: string; varis: string; kalkis: string; dwell: number }) {
-  return (
-    <tr className="border-b" style={{ borderColor: brand.border }}>
-      <td className="py-2 font-sans" style={{ color: brand.ink }}>{ad}</td>
-      <td className="py-2" style={{ color: brand.muted }}>{konum}</td>
-      <td className="py-2" style={{ color: brand.inkSoft }}>{varis}</td>
-      <td className="py-2" style={{ color: brand.red }}>{kalkis}</td>
-      <td className="py-2">
-        {dwell > 0 ? (
-          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: CK.badBg, color: CK.red }}>⏱ {dwell} sn</span>
-        ) : (
-          <span style={{ color: brand.faint }}>—</span>
-        )}
-      </td>
-    </tr>
-  );
-}
 
 function Panel({ baslik, aciklama, children, katlanir = false }: { baslik: string; aciklama?: string; children: React.ReactNode; katlanir?: boolean }) {
   // Katlanır panel: örtüşen/ikincil görünümler (kapsamlı olanın alt kümesi)

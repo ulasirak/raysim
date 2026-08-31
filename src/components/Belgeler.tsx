@@ -8,7 +8,7 @@
 import { useMemo, useState } from "react";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
-import { sure, indir } from "@/lib/anaray/format";
+import { sure } from "@/lib/anaray/format";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { PROJE_META_ALANLAR } from "@/lib/anaray/config";
 import { loopDenge, olceklenme, ringChallenge, ringDogrula, loopTamMi } from "@/lib/anaray/ring";
@@ -33,7 +33,7 @@ export function Belgeler() {
   // gösterilmez; belge özeti uygun/dengeli olarak yansıtılır.
   const sunum = !!meta.sunumModu;
   const [durum, setDurum] = useState<{ tip: "ok" | "err" | "info"; metin: string } | null>(null);
-  const [mesgul, setMesgul] = useState<"" | "word" | "excel" | "rapor" | "html">("");
+  const [mesgul, setMesgul] = useState<"" | "rapor">("");
   const [dil, setDil] = useState<RaporDil>("tr");
 
   const ozet = useMemo(() => {
@@ -58,8 +58,6 @@ export function Belgeler() {
     () => rings.flatMap((r) => ringDogrula(r).map((e) => e.mesaj)),
     [rings]
   );
-
-  const dosyaAdi = (ext: string) => `${meta.dokumanNo || "raysim"}_${(meta.hatAdi || "hat").replace(/\s+/g, "_")}.${ext}`;
 
   // Rapor SUNUCUDA üretilir + kredi SUNUCUDA düşülür (bkz. /api/rapor). Hem
   // "yazdır→PDF" hem "HTML indir" bu ücretli uçtan geçer — HTML de raporun
@@ -104,49 +102,14 @@ export function Belgeler() {
     } finally { setMesgul(""); }
   };
 
-  const raporHTMLIndir = async () => {
-    setMesgul("html"); setDurum(null);
-    try {
-      const html = await raporAl();
-      if (!html) return;
-      indir(new Blob([html], { type: "text/html;charset=utf-8" }), dosyaAdi(`${dil}.html`));
-      setDurum({ tip: "ok", metin: `Rapor (HTML) indirildi: ${dosyaAdi("html")}` });
-    } catch (e) {
-      setDurum({ tip: "err", metin: `HTML üretilemedi: ${e instanceof Error ? e.message : String(e)}` });
-    } finally { setMesgul(""); }
-  };
-
-  const wordIndir = async () => {
-    setMesgul("word"); setDurum(null);
-    try {
-      const { wordUret } = await import("@/lib/anaray/dokuman");
-      const blob = await wordUret(meta, cfg, rings, stock, turnaroundSn);
-      indir(blob, dosyaAdi("docx"));
-      setDurum({ tip: "ok", metin: `Word belgesi üretildi: ${dosyaAdi("docx")}` });
-    } catch (e) {
-      setDurum({ tip: "err", metin: `Word üretilemedi: ${e instanceof Error ? e.message : String(e)}` });
-    } finally { setMesgul(""); }
-  };
-
-  const excelIndir = async () => {
-    setMesgul("excel"); setDurum(null);
-    try {
-      const { excelUret } = await import("@/lib/anaray/dokuman");
-      const blob = await excelUret(meta, cfg, rings, stock, turnaroundSn);
-      indir(blob, dosyaAdi("xlsx"));
-      setDurum({ tip: "ok", metin: `Excel çalışma kitabı üretildi: ${dosyaAdi("xlsx")}` });
-    } catch (e) {
-      setDurum({ tip: "err", metin: `Excel üretilemedi: ${e instanceof Error ? e.message : String(e)}` });
-    } finally { setMesgul(""); }
-  };
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
       <div className="mb-6 border-b pb-4" style={{ borderColor: brand.border }}>
-        <div className="field-label">Teknik Belgeler — Word & Excel Üretimi</div>
+        <div className="field-label">Teknik Belgeler — PDF Rapor Üretimi</div>
         <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>Sinyalizasyon Tasarım Dokümantasyonu</h1>
         <p className="mt-2 max-w-3xl text-sm" style={{ color: brand.inkSoft }}>
-          Proje künyeni gir; mevcut hat (ringler) ve parametrelerden profesyonel <b>Tasarım El Kitabı (.docx)</b> ve <b>çalışma kitabı (.xlsx)</b> üretilir. Hat şeması, ringler, kapasite ve blocking-time bölümlerinin tamamı <b>senin projenden türer</b>.
+          Proje künyeni gir; mevcut hat (ringler), filo ve parametrelerden amblemli, baskıya hazır <b>PDF rapor</b> üretilir. Hat şeması, ringler, sinyalizasyon, kapasite ve blocking-time bölümlerinin tamamı <b>senin projenden türer</b>.
         </p>
       </div>
 
@@ -170,7 +133,7 @@ export function Belgeler() {
       </Panel>
 
       {/* İndirme */}
-      <Panel baslik="Belge Üret" aciklama="Şık PDF = amblemli kapak + KPI (temel performans göstergesi) kartları + hat şeması + blocking-time (blok işgal süresi) grafiği (baskıya hazır). Word = düzenlenebilir Tasarım El Kitabı. Excel = çok sayfalı çalışma kitabı.">
+      <Panel baslik="PDF Rapor" aciklama="Amblemli kapak + KPI (temel performans göstergesi) kartları + hat şeması + sinyalizasyon + blocking-time (blok işgal süresi) grafiği — baskıya hazır. Yazdırma diyalogunda “PDF olarak kaydet” seçilir.">
         <div className="mb-3 flex items-center gap-2">
           <span className="field-label">Rapor dili</span>
           <div className="inline-flex overflow-hidden rounded-md border" style={{ borderColor: brand.borderStrong }}>
@@ -181,7 +144,7 @@ export function Belgeler() {
               </button>
             ))}
           </div>
-          <span className="text-xs" style={{ color: brand.muted }}>PDF/HTML rapor bu dilde üretilir (yapısal metinler; proje verisi/adlar kaynak dilde kalır).</span>
+          <span className="text-xs" style={{ color: brand.muted }}>PDF rapor bu dilde üretilir (yapısal metinler; proje verisi/adlar kaynak dilde kalır).</span>
         </div>
         {!hatTam && (
           <div className="mb-3 rounded-md border-l-4 px-4 py-3 text-sm" style={{ background: CK.badBgSoft, borderColor: brand.red, color: brand.ink }}>
@@ -211,19 +174,7 @@ export function Belgeler() {
         <div className="flex flex-wrap items-center gap-3">
           <button onClick={raporUret} disabled={!!mesgul || !hatTam}
             className="rounded-md px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: brand.red }}>
-            {mesgul === "rapor" ? "Açılıyor…" : "🖨 Şık PDF Rapor"}
-          </button>
-          <button onClick={raporHTMLIndir} disabled={!!mesgul || !hatTam}
-            className="rounded-md border px-4 py-2 text-sm font-medium transition hover:bg-slate-50 disabled:opacity-50" style={{ borderColor: brand.borderStrong, color: brand.ink }}>
-            {mesgul === "html" ? "İndiriliyor…" : "⭳ HTML indir (tek tık)"}
-          </button>
-          <button onClick={wordIndir} disabled={!!mesgul || !hatTam}
-            className="rounded-md px-5 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: brand.ink }}>
-            {mesgul === "word" ? "Üretiliyor…" : "📄 Word (.docx) indir"}
-          </button>
-          <button onClick={excelIndir} disabled={!!mesgul || !hatTam}
-            className="rounded-md px-5 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: CK.good }}>
-            {mesgul === "excel" ? "Üretiliyor…" : "📊 Excel (.xlsx) indir"}
+            {mesgul === "rapor" ? "Açılıyor…" : "🖨 PDF Rapor"}
           </button>
           {durum && (
             <span className="text-sm" style={{ color: durum.tip === "err" ? brand.red : durum.tip === "ok" ? CK.good : brand.muted }}>
