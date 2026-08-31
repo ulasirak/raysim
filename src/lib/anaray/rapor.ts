@@ -12,8 +12,9 @@ import qrcode from "qrcode-generator";
 import { emblemSvg } from "@/lib/emblem";
 import { aslsLogoSvg, firmaAslsMi } from "./aslsLogo";
 import { CK, RAMP_BLUE, num, lab, areaGrad } from "./chartkit";
-import type { SimConfig, ProjeMeta } from "./config";
-import { PARAM_META, paramGoster, birim } from "./config";
+import type { SimConfig, ProjeMeta, Isletme } from "./config";
+import { PARAM_META, paramGoster, birim, varsayilanIsletme } from "./config";
+import { tersIsletmeAnaliz } from "./tersisletme";
 import type { RollingStock } from "./types";
 import {
   ringSenaryo, ringChallenge, ringKisitDizisi, loopDenge, olceklenme,
@@ -288,7 +289,7 @@ function rDil(lang: RaporDil) {
   return lang === "en" ? en : tr;
 }
 
-export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, lang: RaporDil = "tr", turnaroundSn = 0, filo = 0): string {
+export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, lang: RaporDil = "tr", turnaroundSn = 0, filo = 0, isletme: Isletme = varsayilanIsletme): string {
   const L = rDil(lang);
   // Sunum modu: hat kesinleşmiş/onaylı bir tasarım olarak sunulur — challenge (risk/
   // uyarı) bayrakları, denge sapması ve "ihlal" işaretleri gösterilmez; göstergeler
@@ -451,12 +452,82 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     ["Görünürlükten bağımsız oynatma", "Simülasyon saati gerçek geçen zamandan, arka-planda da çalışan bir sürücüyle ilerler; sekme odakta olmasa bile akmaya devam eder."],
   ];
   const ozellikBolum = `
-  <div class="banner"><span class="no">5</span>${lang === "en" ? "SYSTEM FEATURES & SIMULATION ENGINE" : "SİSTEM ÖZELLİKLERİ & SİMÜLASYON MOTORU"}</div>
+  <div class="banner"><span class="no">6</span>${lang === "en" ? "SYSTEM FEATURES & SIMULATION ENGINE" : "SİSTEM ÖZELLİKLERİ & SİMÜLASYON MOTORU"}</div>
   <p>${lang === "en"
     ? `Operational capabilities of the live signalling simulation this report is generated from. All figures above (capacity, headway, time–distance graph) are produced by this same engine at the planned fleet of <b>${filoGercek} trams</b>.`
     : `Bu raporun üretildiği canlı sinyalizasyon simülasyonunun işletim yetenekleri. Yukarıdaki tüm değerler (kapasite, headway, zaman–mesafe grafiği) aynı motor tarafından, <b>${filoGercek} tramvaylık</b> planlanan filoyla üretilir.`}</p>
   <ul class="ch">${ozellikler2.map(([b, m]) => `<li><b>${esc(b)}:</b> ${esc(m)}</li>`).join("")}</ul>
 `;
+
+  // ---- İŞLETME & TALEP ANALİZİ (ters işletme) — GİRDİ→SONUÇ çerçevesi ----
+  // "Siz şu girdiyi verdiniz → bu sonuç çıktı" biçiminde; iç formül/algoritma (sır) açığa çıkmaz.
+  const en = lang === "en";
+  const perStation = !!isletme.istasyonYolcu && Object.keys(isletme.istasyonYolcu).length > 0;
+  const tia = rings.length >= 2 ? tersIsletmeAnaliz(rings, stock, isletme, cfg, perStation ? "istasyon" : "toplam") : null;
+  // Girdi→sonuç notu kutusu (altın vurgulu, şık).
+  const gsNot = (girdi: string, sonuc: string) =>
+    `<div class="gs"><span class="gs-i">▸ ${en ? "Your inputs" : "Girdileriniz"}:</span> ${girdi} <span class="gs-o">→ ${en ? "Result" : "Sonuç"}:</span> ${sonuc}</div>`;
+  let isletmeBolum = "";
+  if (tia) {
+    const talepGirdi = perStation
+      ? (en ? `the boarding/alighting counts you entered per station` : `her istasyona girdiğiniz iniş/biniş sayıları`)
+      : (en ? `the total peak demand you entered (${Math.round(isletme.pikYolcuSaat || 0)} pax/h) distributed by station role (hospital/interchange/stadium/centre = high)` : `girdiğiniz toplam pik talep (${Math.round(isletme.pikYolcuSaat || 0)} yolcu/saat), istasyon rolüne göre dağıtıldı (hastane/aktarma/stadyum/merkez = yoğun)`);
+    const kapNote = en ? `vehicle capacity ${tia.aracKapasite} pax and ${tia.filo.mevcutPik} peak trams` : `araç kapasitesi ${tia.aracKapasite} yolcu ve ${tia.filo.mevcutPik} pik tramvay`;
+
+    // 5.1 Yolcu Yük Profilleri
+    const yukThead = en ? ["Stop", "Board", "Alight", "Load ▶", "Load ◀", "Peak", "Occ."] : ["Durak", "Binen", "İnen", "Yük ▶", "Yük ◀", "Tepe", "Doluluk"];
+    const yukRows = tia.duraklar.map((d) => [esc(d.ad), `${d.binen}`, `${d.inen}`, `${d.yukGidis}`, `${d.yukDonus}`, `${d.tepeYuk}`, `%${Math.round(d.doluluk * 100)}`]);
+    const b51 = `<h3 class="sub">5.1 ${en ? "Passenger Load Profiles" : "Yolcu Yük Profilleri"}</h3>
+      ${gsNot(talepGirdi, en ? `directional load per stop; peak load <b>${tia.tepeYuk} pax/h</b> at <b>${esc(tia.tepeDurak)}</b>${tia.gercekVeri ? " (from your real counts)" : " (role-based estimate — enter real counts for exact figures)"}` : `durak-başı yönlü yük; en yüksek yük <b>${tia.tepeYuk} yolcu/saat</b>, <b>${esc(tia.tepeDurak)}</b> durağında${tia.gercekVeri ? " (gerçek girdinizden)" : " (rol-tabanlı tahmin — kesin değer için gerçek iniş/biniş girin)"}`)}
+      ${tbl(yukThead, yukRows, { first: true })}`;
+
+    // 5.2 Depo Çıkışı
+    const b52 = `<h3 class="sub">5.2 ${en ? "Depot Dispatch — One Depot, Two Directions" : "Depo Çıkışı — Tek Depodan İki Yön"}</h3>
+      ${gsNot(en ? `the fleet you confirmed (${tia.filo.mevcutPik} trams) and the switch (crossover) at the depot` : `onayladığınız filo (${tia.filo.mevcutPik} tramvay) ve depodaki makas (crossover)`, esc(tia.depoDagilim.aciklama))}`;
+
+    // 5.3 Dönüşe İhtiyaç Duyan Duraklar
+    const dThead = en ? ["Stop", "Occ.", "Segment", "Suggested switch", "Severity"] : ["Durak", "Doluluk", "Segman", "Önerilen makas", "Şiddet"];
+    const dRows = tia.donusIhtiyaclari.map((d) => [esc(d.durak), `%${Math.round(d.doluluk * 100)}`, esc(d.segman), esc(d.oneriMakas), d.siddet]);
+    const b53 = `<h3 class="sub">5.3 ${en ? "Stops Needing Turnback" : "Dönüşe İhtiyaç Duyan Duraklar"}</h3>
+      ${tia.donusIhtiyaclari.length
+        ? gsNot(en ? `the ${Math.round((isletme.dolulukHedefi || 0.85) * 100)}% occupancy target and ${kapNote}` : `girdiğiniz %${Math.round((isletme.dolulukHedefi || 0.85) * 100)} doluluk hedefi ve ${kapNote}`, en ? `${tia.donusIhtiyaclari.length} stop(s) exceed the target → short-turn (turnback) suggested` : `${tia.donusIhtiyaclari.length} durak hedefi aşıyor → kısa dönüş (turnback) öneriliyor`) + tbl(dThead, dRows, { first: true })
+        : `<p class="muted">${en ? "All stops within the occupancy target — no turnback needed." : "Tüm duraklar doluluk hedefinde — dönüşe ihtiyaç yok."}</p>`}`;
+
+    // 5.4 Makas Bölgesi Başına Ters İşletme Varyasyonları
+    const b54ic = tia.makaslar.length
+      ? tia.makaslar.map((m) => `<div class="ring-detay"><h4>${esc(m.ad)} (${m.crossover.toUpperCase()} · ${m.makasSayisi} PM)</h4>
+          ${gsNot(en ? `the ${m.crossover.toUpperCase()} switch you placed here (${m.makasSayisi} PM) and the load balance of its two arms (${m.yuksekYuk} vs ${m.dusukYuk} pax/h)` : `buraya girdiğiniz ${m.crossover.toUpperCase()} makas (${m.makasSayisi} PM) ve iki kolun yük dengesi (${m.yuksekYuk} / ${m.dusukYuk} yolcu/saat)`, esc(m.yorum))}
+          <ul class="ch">${m.varyasyonlar.map((v) => `<li><b>${esc(v.ad)}:</b> ${esc(v.aciklama)}</li>`).join("")}</ul>
+          <p class="muted" style="font-size:9.5pt">${esc(m.sureNotu)}</p></div>`).join("")
+      : `<p class="muted">${en ? "No mid-line switch zones — reverse-running variations apply only at terminals." : "Ara-hat makas bölgesi yok — ters işletme varyasyonları yalnız terminallerde geçerli."}</p>`;
+    const b54 = `<h3 class="sub">5.4 ${en ? "Reverse-Running Variations per Switch Zone" : "Makas Bölgesi Başına Ters İşletme Varyasyonları"}</h3>${b54ic}`;
+
+    // 5.5 Filo & Öneri
+    const oneriRenk = tia.filo.oneri === "yeterli" ? "#0E7C57" : (tia.filo.oneri === "kapasiteYetmez" ? RED : GOLD);
+    const b55 = `<h3 class="sub">5.5 ${en ? "Fleet & Recommendation" : "Filo & Öneri"}</h3>
+      ${gsNot(en ? `peak demand, the ${Math.round((isletme.dolulukHedefi || 0.85) * 100)}% occupancy target, cycle time and ${kapNote}` : `pik talep, %${Math.round((isletme.dolulukHedefi || 0.85) * 100)} doluluk hedefi, çevrim süresi ve ${kapNote}`, `<b style="color:${oneriRenk}">${esc(tia.filo.aciklama)}</b>`)}
+      <div class="kpi-row" style="margin-top:6px">
+        ${kpi(en ? "Required trams" : "Gereken araç", `${tia.filo.gerekenArac}`, en ? "at target occupancy" : "hedef dolulukta", oneriRenk)}
+        ${kpi(en ? "Current peak fleet" : "Mevcut pik filo", `${tia.filo.mevcutPik}`, en ? "you entered" : "girdiğiniz")}
+        ${tia.filo.kisaDonusTasarruf > 0 ? kpi(en ? "With short-turn" : "Kısa dönüşle", `${tia.filo.gerekenAracKisaDonusle}`, en ? `−${tia.filo.kisaDonusTasarruf} trams` : `−${tia.filo.kisaDonusTasarruf} araç`, "#0E7C57") : ""}
+        ${kpi(en ? "Sustainable ceiling" : "Sürdürülebilir tavan", `${tia.maksSurdurulebilir}`, en ? "UIC 406 buffered" : "UIC 406 tamponlu")}
+      </div>`;
+
+    isletmeBolum = `
+  <div class="banner"><span class="no">5</span>${en ? "OPERATIONS & DEMAND ANALYSIS (REVERSE RUNNING)" : "İŞLETME & TALEP ANALİZİ (TERS İŞLETME)"}</div>
+  <p>${en
+    ? `How your demand, fleet and switch inputs shape operation: passenger load profiles, single-depot two-direction dispatch, stops needing a turnback, per-switch reverse-running variations, and the fleet recommendation. Each block states the inputs it is built from.`
+    : `Talep, filo ve makas girdilerinizin işletmeyi nasıl şekillendirdiği: yolcu yük profilleri, tek-depodan iki-yön çıkışı, dönüşe ihtiyaç duyan duraklar, makas-başı ters işletme varyasyonları ve filo önerisi. Her blok, hangi girdilerden çıktığını belirtir.`}</p>
+  ${b51}${b52}${b53}${b54}${b55}
+`;
+  }
+
+  // Kapasite bölümü girdi→sonuç notu (boğaz/makas/sinyal/blok girdileri → maks tramvay & headway).
+  const kapGirdiNot = gsNot(
+    en ? `the throat occupancy, switch types (S / X), signal-lamp positions and block states you entered`
+       : `girdiğiniz boğaz işgal süreleri, makas tipleri (S / X), sinyal lambası konumları ve blok durumları`,
+    en ? `maximum <b>${olcek.maxTrenHedefHeadway} trams</b> on the line and minimum headway <b>${Math.round(bt.minHeadway)} s</b> at the determining block #${bt.kritikBlok}`
+       : `hatta en fazla <b>${olcek.maxTrenHedefHeadway} tramvay</b> ve belirleyici blok #${bt.kritikBlok}'te minimum headway <b>${Math.round(bt.minHeadway)} s</b>`);
 
   return `<!doctype html><html lang="${L.htmlLang}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -563,6 +634,11 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   .ring-detay h4, .bolge h4 { color: ${INK}; font-size: 11pt; margin: 12px 0 4px; page-break-after: avoid; }
   ul.ch { margin: 4px 0 8px; padding-left: 18px; font-size: 9.5pt; }
   ul.ch li.krit { color: ${RED}; }
+  /* Girdi→Sonuç notu — "siz bunları girdiniz → bu sonuç" (şık altın kart). */
+  .gs { margin: 6px 0 8px; padding: 8px 12px; border-left: 4px solid ${GOLD}; background: #FAF7EE;
+    border-radius: 4px; font-size: 9.7pt; line-height: 1.5; color: ${INK}; page-break-inside: avoid; }
+  .gs-i { font-weight: 700; color: ${GOLD}; }
+  .gs-o { font-weight: 700; color: ${INK}; }
   .bolge { page-break-inside: avoid; margin-bottom: 16px; }
 
   .imza { margin-top: 20px; }
@@ -647,6 +723,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <div class="banner"><span class="no">4</span>${L.s4}</div>
   <p>${L.s4i}</p>
   ${kapasiteTbl}
+  ${kapGirdiNot}
   ${sunum ? `<div style="margin:8px 0 4px;padding:8px 12px;border-left:4px solid #0E7C57;background:#EAF5F0;border-radius:4px;font-size:11px;color:${INK}">✓ ${lang === "en" ? `Capacity analysis compliant: all blocks within the target headway (${cfg.headway} s). Design approved.` : `Kapasite analizi uygun: tüm bloklar hedef headway (${cfg.headway} s) içinde — sınır aşımı yok. Tasarım onaylı.`}</div>` : ""}
   <p class="muted" style="font-size:11px;margin-top:6px">${L.kapNot}</p>
   <div style="margin:10px 0 4px;padding:9px 13px;border-left:4px solid ${GOLD};background:#FAF7EE;border-radius:4px;font-size:10pt;line-height:1.55;color:${INK}">${kapYorum}</div>
@@ -656,11 +733,14 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <div class="fig">${blockingBarSvg(bt.bloklar, bt.kritikBlok, kritikRenk)}<div class="cap">${sunum ? (lang === "en" ? "Figure 5 — Per-block blocking-time component distribution (determining block highlighted)." : "Şekil 5 — Blok başına blocking-time bileşen dağılımı (belirleyici blok vurgulu).") : L.fig5}</div></div>
   ${btTbl}
 
-  <!-- 5: Sistem Özellikleri & Motor -->
+  <!-- 5: İşletme & Talep Analizi (ters işletme) -->
+  ${isletmeBolum}
+
+  <!-- 6: Sistem Özellikleri & Motor -->
   ${ozellikBolum}
 
-  <!-- 6 -->
-  <div class="banner"><span class="no">6</span>${L.s5}</div>
+  <!-- 7 -->
+  <div class="banner"><span class="no">7</span>${L.s5}</div>
   <table class="imza"><thead><tr><th>${esc(L.thImza[0])}</th><th>${esc(L.thImza[1])}</th></tr></thead>
   <tbody><tr><td class="l">${esc(meta.hazirlayan)}</td><td class="l">${esc(meta.onaylayan)}</td></tr>
   <tr><td class="l">${esc(L.imzaTarih)}</td><td class="l">${esc(L.imzaTarih)}</td></tr></tbody></table>

@@ -16,7 +16,7 @@ import { KREDI_BEDELI } from "@/lib/cuzdan";
 import { yoneticiMi, yoneticiUidMi } from "@/lib/anaray/yetki";
 import { raporHTML, type RaporDil } from "@/lib/anaray/rapor";
 import { varsayilanArac } from "@/lib/anaray/vehicles";
-import { varsayilanConfig, varsayilanMeta, type SimConfig, type ProjeMeta } from "@/lib/anaray/config";
+import { varsayilanConfig, varsayilanMeta, varsayilanIsletme, type SimConfig, type ProjeMeta, type Isletme } from "@/lib/anaray/config";
 import type { DurakArasiRing } from "@/lib/anaray/ring";
 import type { RollingStock } from "@/lib/anaray/types";
 
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     );
   }
 
-  let govde: { veri?: { rings?: DurakArasiRing[]; cfg?: Partial<SimConfig>; meta?: Partial<ProjeMeta>; arac?: RollingStock; turnaroundSn?: number; filo?: number }; dil?: string };
+  let govde: { veri?: { rings?: DurakArasiRing[]; cfg?: Partial<SimConfig>; meta?: Partial<ProjeMeta>; arac?: RollingStock; turnaroundSn?: number; filo?: number; isletme?: Partial<Isletme> }; dil?: string };
   try { govde = await req.json(); } catch { return NextResponse.json({ hata: "Geçersiz istek." }, { status: 400 }); }
 
   const rings = govde.veri?.rings;
@@ -71,6 +71,10 @@ export async function POST(req: Request) {
   // Planlanan filo (kullanıcının onayladığı gerçek araç sayısı) — geçersizse 0 (rapor öneriye düşer).
   const fl = Number(govde.veri?.filo);
   const filo = Number.isFinite(fl) ? Math.min(999, Math.max(0, Math.round(fl))) : 0;
+  // İşletme (talep/filo/doluluk girdileri) → ters işletme & talep analizi. Varsayılandan
+  // başla, istemci alanlarını üstüne yaz (tersIsletmeAnaliz içi kıskaçlar/guard'lar bozuk
+  // sayıyı zaten nötrler).
+  const isletme: Isletme = { ...varsayilanIsletme, ...(govde.veri?.isletme ?? {}) };
 
   // Bakiye ÖN-KONTROLÜ: muaf değilse ve bakiye yetersizse pahalı rapor üretimini
   // hiç çalıştırma (boşuna CPU / DoS önlemi). Asıl düşüm aşağıda atomik krediDus'ta.
@@ -86,7 +90,7 @@ export async function POST(req: Request) {
   // 1) Raporu ÜRET (başarısızsa kredi düşülmez).
   let html: string;
   try {
-    html = raporHTML(meta, cfg, rings, arac, dil, turnaroundSn, filo);
+    html = raporHTML(meta, cfg, rings, arac, dil, turnaroundSn, filo, isletme);
   } catch (e) {
     return NextResponse.json({ hata: `Rapor üretilemedi: ${e instanceof Error ? e.message : String(e)}` }, { status: 500 });
   }
