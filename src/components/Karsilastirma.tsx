@@ -79,16 +79,21 @@ const SATIRLAR: Satir[] = [
 
 const enIyiIndeks = (ms: Metrik[], s: Satir): number => {
   if (s.yon === "none" || ms.length < 2) return -1;
+  const gecerli = ms.map((m, i) => ({ m, i })).filter((x) => x.m.gecerli);
+  if (gecerli.length < 2) return -1;
+  // Tüm geçerli değerler eşitse KAZANAN YOK (beraberlik → altın vurgu yapma).
+  const degerler = gecerli.map((x) => s.al(x.m));
+  if (degerler.every((v) => v === degerler[0])) return -1;
   let bi = -1, bv = s.yon === "yuksek" ? -Infinity : Infinity;
-  ms.forEach((m, i) => { if (!m.gecerli) return; const v = s.al(m); if (s.yon === "yuksek" ? v > bv : v < bv) { bv = v; bi = i; } });
+  gecerli.forEach(({ m, i }) => { const v = s.al(m); if (s.yon === "yuksek" ? v > bv : v < bv) { bv = v; bi = i; } });
   return bi;
 };
 
-// —— What-if parametreleri ——
+// —— What-if parametreleri (blok İLK: kapasiteyi doğrudan değiştirir → görünür etki) ——
 const WHATIF = {
-  headway: { ad: "Hedef headway", suffix: "s", varsayilan: [240, 180, 120], uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, headway: Math.max(30, v) }) },
-  blokMaxUzunluk: { ad: "Blok uzunluğu", suffix: "m", varsayilan: [500, 300, 150], uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, blokMaxUzunluk: Math.max(100, v) }) },
-  dolulukTavani: { ad: "Doluluk tavanı", suffix: "%", varsayilan: [70, 80, 90], uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, dolulukTavani: Math.max(0.4, Math.min(0.95, v / 100)) }) },
+  blokMaxUzunluk: { ad: "Blok uzunluğu", suffix: "m", varsayilan: [500, 300, 150], not: "Sinyal blok sıklığı — teorik/işletme kapasitesini ve min headway'i DOĞRUDAN değiştirir (kısa blok = daha çok tren sığar).", uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, blokMaxUzunluk: Math.max(100, v) }) },
+  dolulukTavani: { ad: "Doluluk tavanı", suffix: "%", varsayilan: [70, 80, 90], not: "UIC 406 doluluk tavanı — sürdürülebilir ve işletme kapasitesini belirler (teorik tavan sabit kalır).", uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, dolulukTavani: Math.max(0.4, Math.min(0.95, v / 100)) }) },
+  headway: { ad: "Hedef headway", suffix: "s", varsayilan: [240, 180, 120], not: "Sefer sıklığı hedefi — fiziksel kapasiteyi DEĞİL, yalnız UIC doluluk ve hedef sıklıkta gereken tren sayısını etkiler.", uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, headway: Math.max(30, v) }) },
 } as const;
 type WhatifKey = keyof typeof WHATIF;
 
@@ -132,8 +137,8 @@ export function Karsilastirma() {
   }, [secili, cache, projeler]);
 
   // — What-if modu —
-  const [wparam, setWparam] = useState<WhatifKey>("headway");
-  const [wdegerler, setWdegerler] = useState<number[]>([...WHATIF.headway.varsayilan]);
+  const [wparam, setWparam] = useState<WhatifKey>("blokMaxUzunluk");
+  const [wdegerler, setWdegerler] = useState<number[]>([...WHATIF.blokMaxUzunluk.varsayilan]);
   const paramDegis = (k: WhatifKey) => { setWparam(k); setWdegerler([...WHATIF[k].varsayilan]); };
 
   const whatifMetrikler = useMemo<Metrik[]>(() => {
@@ -236,6 +241,9 @@ export function Karsilastirma() {
               </div>
             </div>
           </div>
+          <p className="mt-3 rounded border-l-2 pl-2 text-xs" style={{ borderColor: CK.gold, color: brand.inkSoft }}>
+            ℹ️ {WHATIF[wparam].not}
+          </p>
         </Panel>
       )}
 
