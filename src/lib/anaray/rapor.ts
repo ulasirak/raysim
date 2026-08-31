@@ -661,7 +661,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   /* Doküman kontrol bloğu — künye çerçeveli kutu + üstünde etiket (mühendislik standardı). */
   .cover .kunye { border: 1pt solid #D3DAE1; }
   .cover .kunye td { border-bottom: 1px solid #EDF0F3; }
-  .dockontrol-lbl { font-size: 8pt; letter-spacing: .18em; text-transform: uppercase; color: ${GOLD}; font-weight: 700; margin: 20px auto 5px; width: 76%; text-align: left; }
+  .cover table.kunye { margin-top: 22px; }
   .cover .foot { margin-top: 16px; font-size: 8pt; letter-spacing: .14em; text-transform: uppercase; color: #9AA7B4; }
   .cover .qr { margin-top: 14px; }
   .cover .qr svg { border: 1px solid #E6E9ED; padding: 4px; background: #fff; }
@@ -795,7 +795,6 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     <div class="kit">${L.kit}</div>
     <div class="proje">${esc(meta.projeAdi)}</div>
     <div class="hat">${esc(meta.hatAdi)}</div>
-    <div class="dockontrol-lbl">${L.dockontrol}</div>
     <table class="kunye"><tbody>${kunye.map(([a, b]) => `<tr><td class="l k">${esc(a)}</td><td class="l">${esc(b)}</td></tr>`).join("")}</tbody></table>
     <div class="qr">${qrSvg(siteUrl, 92)}<div class="qr-cap">${L.qrCap}<br>${esc(siteUrl.replace(/^https?:\/\//, ""))}</div></div>
     <div class="poweredby"><span class="pb-emblem">${emblemSvg}</span><span class="pb-txt">Powered by <b>Ray<span class="r">Sim</span></b></span></div>
