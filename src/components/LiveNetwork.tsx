@@ -87,8 +87,9 @@ export function LiveNetwork({
   onBlockClick?: (i: number) => void;
   depots?: DepotInfo[];
   features?: HatOzellik[]; // hat özellikleri: yaya/karayolu geçidi + makas (tip-ayrımlı görsel)
-  /** DÖNGÜ modu: tek-tren yörüngesi + faz — trenler uçta döner (git-gel), üstlerinde durum rozeti. */
-  loop?: LoopYorunge & { count: number; offset: number };
+  /** DÖNGÜ modu: tek-tren yörüngesi + faz — trenler uçta döner (git-gel), üstlerinde durum rozeti.
+   *  dagitim: her tren parklanma alanından çıkar (düz gidiş / makastan geçip ters), dispatchT'de. */
+  loop?: LoopYorunge & { count: number; offset: number; dagitim?: { parkPos: number; gidis: boolean; dispatchT: number; startPhase: number }[] };
 }) {
   const [t, setT] = useState(0);
   const [secili, setSecili] = useState<number | null>(null); // döngüde tıklanan tren (detay kutusu)
@@ -201,11 +202,19 @@ export function LiveNetwork({
   const downNow = down.map((tr) => { const r = sampleS(tr.points, t); return { tr, active: r.active, fp: L - r.s, up: false, v: r.v }; }).filter((x) => x.active);
   // DÖNGÜ modu: tek-tren yörüngesinde `count` treni eşit fazla (offset=headway) yerleştir.
   const loopNow = loop ? Array.from({ length: loop.count }, (_, k) => {
-    const phase = (((t + k * loop.offset) % loop.periyot) + loop.periyot) % loop.periyot;
+    const dg = loop.dagitim?.[k];
+    const trBase = { index: k, points: [], arr: 0, delay: 0 } as SignalTrain;
+    // Dispatch'ten önce: parklanma alanında bekliyor (gidiş şeridinde park konumu).
+    if (dg && t < dg.dispatchT - 1e-6) {
+      return { tr: trBase, fp: Math.min(loop.L, dg.parkPos), up: true, v: 0, durum: "dwell" as LoopDurum, ad: "parklanma alanında sıra bekliyor" };
+    }
+    const phase = dg
+      ? ((((dg.startPhase + (t - dg.dispatchT)) % loop.periyot) + loop.periyot) % loop.periyot)
+      : ((((t + k * loop.offset) % loop.periyot) + loop.periyot) % loop.periyot);
     const r = sampleLoop(loop.ornekler, phase);
     const gidis = r.s <= loop.L + 1e-6;
     const fp = gidis ? Math.min(loop.L, r.s) : Math.max(0, loop.loopLen - r.s);
-    return { tr: { index: k, points: [], arr: 0, delay: 0 } as SignalTrain, fp, up: gidis, v: r.v, durum: r.durum, ad: r.ad };
+    return { tr: trBase, fp, up: gidis, v: r.v, durum: r.durum, ad: r.ad };
   }) : [];
   const gidenler = loop ? loopNow.filter((x) => x.up) : upNow;
   const gelenler = loop ? loopNow.filter((x) => !x.up) : downNow;

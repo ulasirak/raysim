@@ -152,6 +152,9 @@ function StudioIc() {
   const filoOneriUyum = filoTek === oneriTramvay;
   const depotPlan = useMemo(() => planDepotDispatch(line, ulasilanHeadwaySn), [line, ulasilanHeadwaySn]);
   const depoVar = depotPlan.depots.length > 0;
+  // Canlı sim'i başlatmak için GEREKLİ iki şey: (1) parklanma alanı (depo) seçili, (2) filo onaylı.
+  const filoHazir = !!isletme.filoOnaylandi;
+  const simHazir = depoVar && filoHazir;
   // Parklanma dizilimi (elle): her depoya konan araç. Boşsa depolara sırayla (geriye-uyum).
   const parkAnahtar = (pos: number) => `d${Math.round(pos)}`;
   const parkDizili = useMemo(() => {
@@ -188,9 +191,31 @@ function StudioIc() {
     () => loopYorunge(line, reverseLine, stock, { peronIsgaliBas: peronBas, peronIsgaliSon: peronSon }),
     [line, reverseLine, stock, peronBas, peronSon]
   );
+  // Depo dağıtımı: her tren parklanma alanından çıkar; depoDagilim'e göre bir kısmı DÜZ
+  // (gidiş) bir kısmı MAKASTAN karşı şeride geçip TERS (dönüş) yönde başlar. Trenler
+  // dispatchT'ye (headway aralıklı) kadar parkta bekler, sonra döngüye girer.
+  const dagitim = useMemo(() => {
+    const origins = gidisOrigins ?? [];
+    let gKalan = tersRapor ? tersRapor.depoDagilim.gidis : Math.ceil(filo / 2);
+    let tKalan = filo - gKalan;
+    const orn = loopY.ornekler;
+    const sToT = (hedefS: number) => { let en = 0, bd = Infinity; for (const o of orn) { const dd = Math.abs(o.s - hedefS); if (dd < bd) { bd = dd; en = o.t; } } return en; };
+    return Array.from({ length: filo }, (_, k) => {
+      const parkPos = origins.length > 0 ? origins[k % origins.length] : 0;
+      // Gidiş/ters HARMANLA (iki şerit birlikte dolsun): çift k→gidiş, tek k→ters (sayı bitince öbürü).
+      const wantG = k % 2 === 0;
+      let gidis: boolean;
+      if (wantG && gKalan > 0) { gKalan--; gidis = true; }
+      else if (!wantG && tKalan > 0) { tKalan--; gidis = false; }
+      else if (gKalan > 0) { gKalan--; gidis = true; }
+      else { tKalan--; gidis = false; }
+      const startS = gidis ? Math.min(loopY.L, parkPos) : Math.max(0, loopY.loopLen - parkPos); // ters → karşı şerit (makastan geçmiş)
+      return { parkPos, gidis, dispatchT: k * ulasilanHeadwaySn, startPhase: sToT(startS) };
+    });
+  }, [gidisOrigins, tersRapor, filo, loopY, ulasilanHeadwaySn]);
   const loopVeri = useMemo(
-    () => ({ ...loopY, count: filo, offset: loopY.periyot / Math.max(1, filo) }),
-    [loopY, filo]
+    () => ({ ...loopY, count: filo, offset: loopY.periyot / Math.max(1, filo), dagitim }),
+    [loopY, filo, dagitim]
   );
 
   const monteCarloCalistir = () => {
@@ -250,6 +275,7 @@ function StudioIc() {
 
       {/* ①②③ FİLO & ÖNERİ — akışın ilk adımı: öneri → onayla → filo → parklanma */}
       {maks.gecerli && (
+      <div id="filo-paneli">
       <Panel baslik="Filo & Öneri" aciklama="Sistem, girdiğin tüm verilere göre gereken tramvay sayısını önerir. Onaylayınca filo öneriye eşitlenir; sonra filoyu elle oynarsın. Filo = parklanma alanına dizdiğin araç sayısıdır; ulaşılan sefer aralığı = çevrim ÷ filo.">
         {/* ① Önerilen tramvay + Onayla */}
         <div className="rounded-lg border-2 p-4" style={{ borderColor: brand.ink, background: CK.goodBgSoft }}>
@@ -335,13 +361,40 @@ function StudioIc() {
           </div>
         )}
       </Panel>
+      </div>
       )}
 
       {/* Canlı ağ simülasyonu (kahraman) */}
-      <Panel baslik="Canlı Ağ Simülasyonu" aciklama="Hat DÖNGÜdür (lastik): tren gidiş şeridini yürür → terminalde peron işgali süresi kadar DÖNER (turnback, dönüş tipi/peron/makas'a göre) → dönüş şeridinden geri gelir → başta döner → tekrar. Her trenin üstünde o an ne yaşadığı (⤵ hız kısıtı · ⏸ istasyon duruşu · 🔄 terminal dönüşü · ↗ hızlanma · → seyir) rozetle görünür; bir trene TIKLA → bir tam turda hangi nedene kaç saniye geçirdiğinin dökümü açılır. Sinyaller blok sınırlarında 3-aspekt yanar. Oynat ▶">
+      <Panel baslik="Canlı Ağ Simülasyonu" aciklama="Trenler PARKLANMA ALANINDAN çıkar: Depo Çıkışı yöntemine göre bir kısmı DÜZ (gidiş), bir kısmı MAKASTAN karşı şeride geçip TERS (dönüş) yönde başlar; sıra bekleyenler ⏸ parkta durur. Hat DÖNGÜdür (lastik): tren gidiş şeridini yürür → terminalde peron işgali süresi kadar DÖNER (turnback) → dönüş şeridinden geri gelir → başta döner → tekrar. Her trenin üstünde o an ne yaşadığı (⤵ hız kısıtı · ⏸ istasyon duruşu · 🔄 terminal dönüşü · ↗ hızlanma · → seyir) rozetle görünür; bir trene TIKLA → bir tam turda hangi nedene kaç saniye geçirdiğinin dökümü açılır. Sinyaller blok sınırlarında 3-aspekt yanar. Oynat ▶">
+        {simHazir ? (
         <LiveNetwork network={network} route={route} line={line} blocks={canliGidis.blocks}
           up={canliGidis.trains} down={donusSim.trains} tMax={Math.max(canliGidis.tMax, donusSim.tMax)} trainLen={stock.length}
           faultBlocks={ariza} onBlockClick={arizaToggle} depots={depotPlan.depots} features={hatOzellik} loop={loopVeri} />
+        ) : (
+          <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-10 text-center" style={{ borderColor: CK.amber, background: CK.amberBg }}>
+            <div className="text-2xl">🚋</div>
+            <div className="mt-1 text-sm font-bold" style={{ color: CK.amberInk }}>Canlı Ağ Simülasyonunu başlatmak için iki şey gerekli</div>
+            <div className="mt-3 flex flex-col gap-2 text-sm">
+              {!depoVar && (
+                <div className="flex items-center gap-2">
+                  <span style={{ color: brand.red }}>✗</span>
+                  <span style={{ color: brand.inkSoft }}>Parklanma alanı seçilmemiş — trenler nereden çıkacak?</span>
+                  <Link href="/#ringler" className="rounded px-2 py-0.5 text-xs font-semibold text-white" style={{ background: brand.ink }}>→ Duraklar & Mesafeler'de parklanma alanı seç</Link>
+                </div>
+              )}
+              {depoVar && <div className="flex items-center gap-2"><span style={{ color: "#16794C" }}>✓</span><span style={{ color: brand.muted }}>Parklanma alanı seçili.</span></div>}
+              {!filoHazir && (
+                <div className="flex items-center gap-2">
+                  <span style={{ color: brand.red }}>✗</span>
+                  <span style={{ color: brand.inkSoft }}>Tramvay sayısı belirlenmemiş — kaç tren koşacak?</span>
+                  <a href="#" onClick={(e) => { e.preventDefault(); document.querySelector('[data-filo-paneli]')?.scrollIntoView({ behavior: "smooth" }); }} className="rounded px-2 py-0.5 text-xs font-semibold text-white" style={{ background: brand.ink }}>↑ Filo & Öneri'de filo sayınızı onaylayın</a>
+                </div>
+              )}
+              {filoHazir && <div className="flex items-center gap-2"><span style={{ color: "#16794C" }}>✓</span><span style={{ color: brand.muted }}>Filo onaylı ({filoTek} araç).</span></div>}
+            </div>
+            <div className="mt-3 text-xs" style={{ color: brand.muted }}>Bu ikisi girilince simülasyon otomatik açılır — trenler parklanma alanından çıkıp döngüye girer.</div>
+          </div>
+        )}
         {/* Otomatik blok bölme — elle sinyal KOYMADIĞIN açık kesimleri doldurur */}
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs" style={{ color: brand.inkSoft }}>
           <span>▦ Otomatik blok bölme (boş kesim · sinyal değil)</span>

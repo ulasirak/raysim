@@ -554,6 +554,13 @@ export function RingEditor() {
                           <input type="number" min={0} step={1} value={depoKap(i)} onChange={(e) => depoKapAyarla(i, parseFloat(e.target.value) || 0)}
                             className="w-12 rounded border px-1 py-0.5 text-center" style={{ borderColor: brand.border, color: brand.ink }} /> tren
                         </span>
+                        {(() => {
+                          const dr = i === 0 ? rings[0] : rings[i - 1];
+                          const makasVar = !!dr && dr.makaslar.length > 0;
+                          return makasVar
+                            ? <span className="ml-1" style={{ color: "#16794C" }} title="Araçlar servise çıkarken makastan gidiş ya da karşı şeride geçerek dönüş yönüne dağılır.">✓ makas var</span>
+                            : <span className="ml-1 font-semibold" style={{ color: brand.red }} title="Parklanma alanında MAKAS ZORUNLUDUR: araç ancak makastan gidiş/dönüş yönüne çıkabilir. Bu durak-arası ring'e makas ekle.">⚠ MAKAS zorunlu — ekle</span>;
+                        })()}
                       </span>
                     )}
                   </div>
