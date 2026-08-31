@@ -91,10 +91,12 @@ const enIyiIndeks = (ms: Metrik[], s: Satir): number => {
 
 // —— What-if parametreleri (doluluk İLK: HER hatta sürdürülebilir/işletme kapasitesini
 // KESİN değiştirir → dinamikliği garanti eder; blok yalnız blok-bağlı hatlarda oynatır) ——
+// etkin(v): motorun GERÇEKTEN kullandığı (kıskaçlanmış) değer — etiket bununla yazılır,
+// böylece alt/üst sınır dışı bir değer girilse de etiket ile hesap ASLA çelişmez.
 const WHATIF = {
-  dolulukTavani: { ad: "Doluluk tavanı", suffix: "%", varsayilan: [70, 80, 90], not: "UIC 406 doluluk tavanı — her hatta sürdürülebilir ve işletme kapasitesini doğrudan belirler (teorik tavan sabit).", uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, dolulukTavani: Math.max(0.4, Math.min(0.95, v / 100)) }) },
-  blokMaxUzunluk: { ad: "Blok uzunluğu", suffix: "m", varsayilan: [500, 300, 150], not: "Sinyal blok sıklığı — YALNIZ belirleyici kısıt blok ise kapasiteyi/min headway'i değiştirir (terminal/kavşak-bağlı hatta etki etmez).", uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, blokMaxUzunluk: Math.max(100, v) }) },
-  headway: { ad: "Hedef headway", suffix: "s", varsayilan: [240, 180, 120], not: "Sefer sıklığı hedefi — fiziksel kapasiteyi DEĞİL, yalnız UIC doluluk ve hedef sıklıkta gereken tren sayısını etkiler.", uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, headway: Math.max(30, v) }) },
+  dolulukTavani: { ad: "Doluluk tavanı", suffix: "%", varsayilan: [70, 80, 90], min: 40, max: 95, not: "UIC 406 doluluk tavanı — her hatta sürdürülebilir ve işletme kapasitesini doğrudan belirler (teorik tavan sabit). Geçerli 40–95%.", etkin: (v: number) => Math.round(Math.max(40, Math.min(95, v))), uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, dolulukTavani: Math.max(0.4, Math.min(0.95, v / 100)) }) },
+  blokMaxUzunluk: { ad: "Blok uzunluğu", suffix: "m", varsayilan: [500, 300, 150], min: 100, max: 1500, not: "Sinyal blok sıklığı — YALNIZ belirleyici kısıt blok ise kapasiteyi/min headway'i değiştirir. Geçerli 100–1500 m.", etkin: (v: number) => Math.max(100, Math.min(1500, Math.round(v))), uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, blokMaxUzunluk: Math.max(100, Math.min(1500, v)) }) },
+  headway: { ad: "Hedef headway", suffix: "s", varsayilan: [240, 180, 120], min: 30, max: 600, not: "Sefer sıklığı hedefi — fiziksel kapasiteyi DEĞİL, yalnız UIC doluluk ve gereken tren sayısını etkiler. Geçerli 30–600 s.", etkin: (v: number) => Math.max(30, Math.min(600, Math.round(v))), uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, headway: Math.max(30, Math.min(600, v)) }) },
 } as const;
 type WhatifKey = keyof typeof WHATIF;
 
@@ -145,8 +147,8 @@ export function Karsilastirma() {
   const whatifMetrikler = useMemo<Metrik[]>(() => {
     const w = WHATIF[wparam];
     return wdegerler.filter((v) => Number.isFinite(v) && v > 0).map((v) => {
-      const c = w.uygula(cfg, v);
-      return metrikHesapla(`${v} ${w.suffix}`, ringsHam, stock, c, isletme);
+      const ev = w.etkin(v); // etiket VE hesap aynı etkin değerle → çelişki yok
+      return metrikHesapla(`${ev} ${w.suffix}`, ringsHam, stock, w.uygula(cfg, ev), isletme);
     });
   }, [wparam, wdegerler, cfg, ringsHam, stock, isletme]);
 
@@ -237,13 +239,13 @@ export function Karsilastirma() {
               <span className="field-label">Değerler (2-4)</span>
               <div className="mt-1 flex items-center gap-1.5">
                 {wdegerler.map((v, i) => (
-                  <input key={i} type="number" value={v}
+                  <input key={i} type="number" value={v} min={WHATIF[wparam].min} max={WHATIF[wparam].max}
                     onChange={(e) => setWdegerler((d) => d.map((x, j) => (j === i ? (parseFloat(e.target.value) || 0) : x)))}
                     className="w-16 rounded border px-2 py-1 text-center text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
                 ))}
                 {wdegerler.length < 4 && (
-                  <button type="button" onClick={() => setWdegerler((d) => [...d, d[d.length - 1] || 100])}
-                    className="h-7 w-7 rounded border font-semibold" style={{ borderColor: brand.border, color: brand.ink }}>+</button>
+                  <button type="button" onClick={() => setWdegerler((d) => { const son = d[d.length - 1] || WHATIF[wparam].varsayilan[0]; return [...d, WHATIF[wparam].etkin(Math.round(son * 0.75))]; })}
+                    className="h-7 w-7 rounded border font-semibold" style={{ borderColor: brand.border, color: brand.ink }} title="Farklı bir değer ekle">+</button>
                 )}
                 {wdegerler.length > 2 && (
                   <button type="button" onClick={() => setWdegerler((d) => d.slice(0, -1))}
