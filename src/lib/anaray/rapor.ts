@@ -292,7 +292,7 @@ function rDil(lang: RaporDil) {
     fig3: (c: number, h: number) => `Şekil 3 — Zaman-mesafe diyagramı (Bildfahrplan): gidiş (mavi) + dönüş (turuncu), ${c}+${c} tren, ${h} s aralık.`,
     thRing: ["No", "Durak Arası", "Mesafe (m)", "Worst (m)", "Makas", "Hemzemin", "Tehlike", "Worst Toplam", "Headway"],
     s21: "2.1 Ring Bazında Kısıt ve Risk (Challenge) Analizi",
-    thKisit: ["Kısıt", "Kilometraj", "Detay"], noKisit: "Kısıt yok — kesintisiz seyir.",
+    thKisit: ["Kısıt", "Kilometraj", "Detay"], noKisit: "Kısıt yok; kesintisiz seyir.",
     pillOk: "UYGUN", pillBad: "İHLAL",
     s4: "Kapasite ve Blocking-Time Analizi", s4i: "Minimum tren aralığını (headway), en yüksek blocking-time'lı blok belirler.",
     thGost: ["Gösterge", "Değer"],
@@ -323,7 +323,7 @@ function rDil(lang: RaporDil) {
     fig3: (c, h) => `Figure 3 — Time-distance diagram (Bildfahrplan): outbound (blue) + return (orange), ${c}+${c} trains, ${h}s headway.`,
     thRing: ["No", "Section", "Distance (m)", "Worst (m)", "Switches", "Level xing", "Hazards", "Worst Total", "Headway"],
     s21: "2.1 Per-cell Constraint & Risk (Challenge) Analysis",
-    thKisit: ["Constraint", "Chainage", "Detail"], noKisit: "No constraints — uninterrupted run.",
+    thKisit: ["Constraint", "Chainage", "Detail"], noKisit: "No constraints; uninterrupted run.",
     pillOk: "OK", pillBad: "VIOLATION",
     s4: "Capacity and Blocking-Time Analysis", s4i: "The minimum train interval (headway) is set by the block with the highest blocking-time.",
     thGost: ["Indicator", "Value"],
@@ -469,8 +469,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     : "";
   // Kurumsal, otoriter tek satır: belirleyici kısıt + yedek kapasite (öğretmeden/özetlemeden).
   const kapYorum = en
-    ? `<b>Determining constraint: ${esc(maks.baglayanAd || "—")}</b> · minimum headway <b>${Math.round(maks.hMin)} s</b>${sperrNot}. At the ${cfg.headway} s target headway, UIC 406 occupancy is <b>${uicDoluluk.toFixed(0)}%</b>${kapBol ? `; ~${yedekYuzde}% spare capacity. The interval can be tightened toward ${Math.round(maks.hMin)} s to reach ${teorikTph.toFixed(0)} trains/h without additional infrastructure.` : `.`}`
-    : `<b>Belirleyici kısıt: ${esc(maks.baglayanAd || "—")}</b> · minimum headway <b>${Math.round(maks.hMin)} s</b>${sperrNot}. Hedef ${cfg.headway} s aralıkta UIC 406 doluluğu <b>%${uicDoluluk.toFixed(0)}</b>${kapBol ? `; ~%${yedekYuzde} yedek kapasite. Aralık ${Math.round(maks.hMin)} s'ye kadar sıkıştırılarak ek altyapı olmadan ${teorikTph.toFixed(0)} tren/saate ölçeklenebilir.` : `.`}`;
+    ? `<b>Determining constraint: ${esc(maks.baglayanAd || "—")}</b> (minimum headway <b>${Math.round(maks.hMin)} s</b>)${sperrNot}. At the ${cfg.headway} s target headway the UIC 406 occupancy is <b>${uicDoluluk.toFixed(0)}%</b>${kapBol ? `; approximately ${yedekYuzde}% spare capacity remains. Within the existing infrastructure the interval can be reduced to ${Math.round(maks.hMin)} s, corresponding to a capacity of ${teorikTph.toFixed(0)} trains/h.` : `.`}`
+    : `<b>Belirleyici kısıt: ${esc(maks.baglayanAd || "—")}</b> (minimum headway <b>${Math.round(maks.hMin)} s</b>)${sperrNot}. Hedef ${cfg.headway} s aralıkta UIC 406 doluluk oranı <b>%${uicDoluluk.toFixed(0)}</b> olup${kapBol ? ` yaklaşık %${yedekYuzde} yedek kapasite bulunmaktadır. Mevcut altyapıda aralık ${Math.round(maks.hMin)} s'ye kadar düşürülerek ${teorikTph.toFixed(0)} tren/saat kapasiteye ulaşılabilir.` : ` sınır içindedir.`}`;
 
   const bugun = meta.tarih || "";
   const siteUrl = (typeof window !== "undefined" && window.location?.origin) ? window.location.origin : "https://raysim.vercel.app";
@@ -546,23 +546,25 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
 
     // 5.5 Filo & Öneri — üretebilirlik: gereken/mevcut/fark (çek/ekle) + kısa dönüş +
     // tepe yük/çevrim/frekans/araç özeti (tümü canlı motordan: tersIsletmeAnaliz).
-    const oneriRenk = tia.filo.oneri === "yeterli" ? "#0E7C57" : (tia.filo.oneri === "kapasiteYetmez" ? RED : GOLD);
     const fark = tia.filo.fark; // gereken − mevcut
-    const farkEt = fark === 0 ? (en ? "balanced" : "dengede") : (fark > 0 ? (en ? `+${fark} add` : `+${fark} ekle`) : (en ? `${fark} remove` : `${fark} çek`));
+    const hedefY = Math.round((isletme.dolulukHedefi || 0.85) * 100);
     const cevrimDk = (tia.cevrimSn / 60).toFixed(0);
+    const farkStr = `${fark > 0 ? "+" : ""}${fark}${fark === 0 ? (en ? " (balanced)" : " (dengede)") : (fark > 0 ? (en ? " (add)" : " (ilave)") : (en ? " (surplus)" : " (fazla)"))}`;
     const ozetSatir = en
-      ? `Peak load: <b>${tia.tepeYuk} pax/h</b> at <b>${esc(tia.tepeDurak)}</b> · cycle <b>${cevrimDk} min</b> · frequency <b>${tia.mevcutFrekans.toFixed(1)} trains/h</b> · vehicle <b>${tia.aracKapasite} pax</b>.`
-      : `Tepe yük: <b>${tia.tepeYuk} yolcu/saat</b> · <b>${esc(tia.tepeDurak)}</b> · çevrim <b>${cevrimDk} dk</b> · frekans <b>${tia.mevcutFrekans.toFixed(1)} tren/sa</b> · araç <b>${tia.aracKapasite} kişi</b>.`;
+      ? `Peak load <b>${tia.tepeYuk} pax/h</b> at <b>${esc(tia.tepeDurak)}</b> · cycle <b>${cevrimDk} min</b> · frequency <b>${tia.mevcutFrekans.toFixed(1)} trains/h</b> · vehicle <b>${tia.aracKapasite} pax</b>.`
+      : `Tepe yük <b>${tia.tepeYuk} yolcu/saat</b> · <b>${esc(tia.tepeDurak)}</b> · çevrim <b>${cevrimDk} dk</b> · frekans <b>${tia.mevcutFrekans.toFixed(1)} tren/sa</b> · araç <b>${tia.aracKapasite} kişi</b>.`;
+    // 5.5 SADE TASARIM: renkli kart panosu yerine kurumsal metrik tablo (navy değerler) +
+    // öneri notu (navy, renksiz vurgu). Belirleyici sayı Fark satırında.
     const b55 = `<h3 class="sub">5.5 ${en ? "Fleet & Recommendation" : "Filo & Öneri"}</h3>
-      ${gsNot(en ? `peak demand, the ${Math.round((isletme.dolulukHedefi || 0.85) * 100)}% occupancy target, cycle time and ${kapNote}` : `pik talep, %${Math.round((isletme.dolulukHedefi || 0.85) * 100)} doluluk hedefi, çevrim süresi ve ${kapNote}`, `<b style="color:${oneriRenk}">${esc(tia.filo.aciklama)}</b>`)}
-      <div class="kpi-row" style="margin-top:6px">
-        ${kpi(en ? "Required trams" : "Gereken araç", `${tia.filo.gerekenArac}`, en ? "at target occupancy" : "hedef dolulukta", oneriRenk)}
-        ${kpi(en ? "Current peak fleet" : "Mevcut pik filo", `${tia.filo.mevcutPik}`, en ? "trams" : "araç")}
-        ${kpi(en ? "Difference" : "Fark", farkEt, en ? "required − current" : "gereken − mevcut", fark > 0 ? RED : (fark < 0 ? "#0E7C57" : INK))}
-        ${tia.filo.kisaDonusTasarruf > 0 ? kpi(en ? "With short-turn" : "Kısa dönüşle", `${tia.filo.gerekenAracKisaDonusle}`, en ? `−${tia.filo.kisaDonusTasarruf} trams` : `−${tia.filo.kisaDonusTasarruf} araç`, "#0E7C57") : ""}
-        ${kpi(en ? "Sustainable ceiling" : "Sürdürülebilir tavan", `${tia.maksSurdurulebilir}`, en ? "UIC 406 buffered" : "UIC 406 tamponlu")}
-      </div>
-      <p class="muted" style="font-size:9.7pt;margin-top:6px">${ozetSatir}</p>`;
+      ${gsNot(en ? `peak demand, ${hedefY}% occupancy target, cycle time and ${kapNote}` : `pik talep, %${hedefY} doluluk hedefi, çevrim süresi ve ${kapNote}`, `<b>${esc(tia.filo.aciklama)}</b>`)}
+      ${tbl(en ? ["Metric", "Value"] : ["Gösterge", "Değer"], [
+        [en ? `Required fleet (${hedefY}% occupancy)` : `Gereken filo (%${hedefY} doluluk)`, `${tia.filo.gerekenArac}`],
+        [en ? "Current peak fleet" : "Mevcut pik filo", `${tia.filo.mevcutPik}`],
+        [en ? "Difference (required − current)" : "Fark (gereken − mevcut)", farkStr],
+        ...(tia.filo.kisaDonusTasarruf > 0 ? [[en ? "Required with short-turn" : "Kısa dönüşle gereken", `${tia.filo.gerekenAracKisaDonusle} (−${tia.filo.kisaDonusTasarruf})`]] : []),
+        [en ? "Sustainable ceiling (UIC 406)" : "Sürdürülebilir tavan (UIC 406)", `${tia.maksSurdurulebilir}`],
+      ], { first: true })}
+      <p class="muted" style="font-size:9.5pt;margin-top:4px">${ozetSatir}</p>`;
 
     isletmeBolum = `
   <div class="banner"><span class="no">05</span>${en ? "OPERATIONS & DEMAND ANALYSIS (REVERSE RUNNING)" : "İŞLETME & TALEP ANALİZİ (TERS İŞLETME)"}</div>
@@ -837,7 +839,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <div class="fig">${ringSemaSvg(rings)}<div class="cap">${L.fig1}</div></div>
   ${energyFig}
   ${tbl(L.thRing, ringRows, { first: true })}
-  <h3 class="sub">${sunum ? (lang === "en" ? "2.1 Per-cell Constraint Analysis" : "2.1 Ring Bazında Kısıt Analizi") : L.s21}</h3>
+  <h3 class="sub" style="page-break-before:always">${sunum ? (lang === "en" ? "2.1 Per-cell Constraint Analysis" : "2.1 Ring Bazında Kısıt Analizi") : L.s21}</h3>
   ${ringDetay}
 
   <!-- 3: Sinyalizasyon -->
@@ -848,7 +850,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <p>${L.s4i}</p>
   ${kapasiteTbl}
   ${kapGirdiNot}
-  ${sunum ? `<div class="gs ok"><b style="color:#2E7D57">✓</b> ${lang === "en" ? `Capacity analysis compliant: all blocks within the target headway (${cfg.headway} s). Design approved.` : `Kapasite analizi uygun: tüm bloklar hedef headway (${cfg.headway} s) içinde; sınır aşımı yok. Tasarım onaylı.`}</div>` : ""}
+  ${sunum ? `<div class="gs ok"><b style="color:#2E7D57">✓</b> ${lang === "en" ? `Capacity analysis confirms that all blocks remain within the target headway (${cfg.headway} s); no limit is exceeded. The design is compliant in terms of capacity.` : `Kapasite analizi, tüm blokların hedef headway (${cfg.headway} s) sınırı içinde kaldığını göstermektedir; sınır aşımı bulunmamaktadır. Tasarım, kapasite açısından uygundur.`}</div>` : ""}
   <p class="muted" style="font-size:11px;margin-top:6px">${L.kapNot}</p>
   <div class="gs" style="font-size:10pt">${kapYorum}</div>
   ${bfFig}

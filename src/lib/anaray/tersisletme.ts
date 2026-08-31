@@ -271,7 +271,7 @@ export function tersIsletmeAnaliz(
       const kisaDonusYuzde = Math.round(Math.max(0, 1 - oran) * 100);
       const sureNotu = xVar
         ? "X (scissors): kısa dönen trenler ardışık hızlıca çevrilir (boğaz 1× işgal)."
-        : "S (tek crossover): kısa dönüşler seri (boğaz 2× işgal) — sık kısa dönüşte kuyruk riski.";
+        : "S (tek crossover): kısa dönüşler seri gerçekleşir (boğaz 2× işgal); sık kısa dönüşte kuyruk riski oluşur.";
       return {
         ad: duraklarT[idx].ad, konum: m.konum, crossover: xVar ? "x" as const : "s" as const,
         makasSayisi: grup.reduce((s, x) => s + x.makasSayisi, 0),
