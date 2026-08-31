@@ -102,7 +102,7 @@ function ringSemaSvg(rings: DurakArasiRing[]): string {
 }
 
 // Blocking-time bileşen barları (gömülü SVG): her blok için yığılı süre (ordinal mavi rampa).
-function blockingBarSvg(bloklarTum: { i: number; makasBlok?: boolean; tSetup: number; tSighting: number; tApproach: number; tRunning: number; tClearing: number; tRelease: number; toplam: number }[], kritik: number, kritikRenk: string = CK.red): string {
+function blockingBarSvg(bloklarTum: { i: number; makasBlok?: boolean; tSetup: number; tSighting: number; tApproach: number; tRunning: number; tClearing: number; tRelease: number; toplam: number }[], kritik: number, kritikRenk: string = CK.red, en = false): string {
   if (!bloklarTum.length) return "";
   // Çok blokta (uzun hat) TÜMÜNÜ çizmek SVG'yi sayfa boyunu aşacak kadar uzatır → taşma.
   // En yüksek blocking-time'lı N bloğu seç (kritik blok DAİMA dahil), blok no'ya göre sırala.
@@ -117,9 +117,9 @@ function blockingBarSvg(bloklarTum: { i: number; makasBlok?: boolean; tSetup: nu
     bloklar = secili.sort((a, b) => a.i - b.i);
   }
   const parts = [
-    { k: "tSetup", c: RAMP_BLUE[0], ad: "Setup" }, { k: "tSighting", c: RAMP_BLUE[1], ad: "Görme" },
-    { k: "tApproach", c: RAMP_BLUE[2], ad: "Yaklaşma" }, { k: "tRunning", c: RAMP_BLUE[3], ad: "Seyir" },
-    { k: "tClearing", c: RAMP_BLUE[4], ad: "Temizleme" }, { k: "tRelease", c: RAMP_BLUE[5], ad: "Release" },
+    { k: "tSetup", c: RAMP_BLUE[0], ad: "Setup" }, { k: "tSighting", c: RAMP_BLUE[1], ad: en ? "Sighting" : "Görme" },
+    { k: "tApproach", c: RAMP_BLUE[2], ad: en ? "Approach" : "Yaklaşma" }, { k: "tRunning", c: RAMP_BLUE[3], ad: en ? "Running" : "Seyir" },
+    { k: "tClearing", c: RAMP_BLUE[4], ad: en ? "Clearing" : "Temizleme" }, { k: "tRelease", c: RAMP_BLUE[5], ad: "Release" },
   ] as const;
   const max = Math.max(...bloklar.map((b) => b.toplam)) || 1;
   const rowH = 20, W = 760, labelW = 64, barW = W - labelW - 64, barH = 12;
@@ -152,7 +152,7 @@ function reverseLineOf(line: Line): Line {
 
 // Zaman-mesafe diyagramı / Bildfahrplan (gömülü SVG): ÇİFT YÖN — gidiş + dönüş.
 // Ters eğimli çizgiler kesişince = kruvasman / karşılaşma noktası.
-function bildfahrplanSvg(line: Line, stock: RollingStock, cfg: SimConfig, count: number, sinyaller: number[] = []): string {
+function bildfahrplanSvg(line: Line, stock: RollingStock, cfg: SimConfig, count: number, sinyaller: number[] = [], en = false): string {
   if (line.length <= 0) return "";
   const rev = reverseLineOf(line);
   // GERÇEK sinyaller blok sınırıdır (canlı sim ile birebir); ters yönde konum aynalanır.
@@ -195,13 +195,13 @@ function bildfahrplanSvg(line: Line, stock: RollingStock, cfg: SimConfig, count:
   const upLines = up.trains.map((tr) => trainLine(tr.points.map((p) => `${xOf(p.t).toFixed(1)},${yOf(p.s).toFixed(1)}`).join(" "), CK.blue, tr.delay > 2)).join("");
   const dnLines = dn.trains.map((tr) => trainLine(tr.points.map((p) => `${xOf(p.t).toFixed(1)},${yOf(L - p.s).toFixed(1)}`).join(" "), CK.orange, tr.delay > 2)).join("");
   // Legend ÜST BANTTA (y=13 < padT=32) → plot ve durak çizgilerinin üstünde, çakışmasız.
-  const leg = `<text x="${W - padR}" y="13" text-anchor="end" font-family="${CK.sans}" font-size="8.5"><tspan fill="${CK.blue}">▬ gidiş</tspan>  <tspan fill="${CK.orange}">▬ dönüş</tspan>  <tspan fill="${CK.muted}">╌ gecikmeli</tspan></text>`;
+  const leg = `<text x="${W - padR}" y="13" text-anchor="end" font-family="${CK.sans}" font-size="8.5"><tspan fill="${CK.blue}">▬ ${en ? "outbound" : "gidiş"}</tspan>  <tspan fill="${CK.orange}">▬ ${en ? "return" : "dönüş"}</tspan>  <tspan fill="${CK.muted}">╌ ${en ? "delayed" : "gecikmeli"}</tspan></text>`;
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${tg}${st}${upLines}${dnLines}${leg}</svg>`;
 }
 
 // Gerçek Sperrzeitentreppe (gömülü SVG): iki ardışık tren + her bloğun blocking-time
 // dikdörtgeni. Kritik blokta ikinci trenin başlangıcı birincinin bitişine DEĞER = min headway.
-function sperrzeitSvg(bt: ReturnType<typeof blockingTimeRing>, L: number, kritikRenk: string = CK.red): string {
+function sperrzeitSvg(bt: ReturnType<typeof blockingTimeRing>, L: number, kritikRenk: string = CK.red, en = false): string {
   if (!bt.bloklar.length || L <= 0) return "";
   const h = bt.minHeadway;
   const pencere = (b: (typeof bt.bloklar)[number]) => ({
@@ -228,11 +228,11 @@ function sperrzeitSvg(bt: ReturnType<typeof blockingTimeRing>, L: number, kritik
     `<polyline points="${bt.yorunge.map((p) => `${xOf(p.t + off).toFixed(1)},${yOf(p.s).toFixed(1)}`).join(" ")}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
   const yTicks = [0, L / 2, L].map((s) => num(padL - 7, yOf(s) + 3, `${Math.round(s)}`, { anchor: "end", size: 8 })).join("");
   const hMark = `<line x1="${xOf(0).toFixed(1)}" y1="${padT - 6}" x2="${xOf(h).toFixed(1)}" y2="${padT - 6}" stroke="${kritikRenk}" stroke-width="1.4"/>${lab(xOf(h) + 6, padT - 3, `min headway ${Math.round(h)} s`, { size: 8.5, color: kritikRenk, weight: 600 })}`;
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${yTicks}${rects.join("")}${traj(0, CK.blue)}${traj(h, CK.orange)}${hMark}${lab(padL, H - 8, "zaman (s) →", { size: 8.5 })}${lab(8, padT + 4, "m", { size: 8.5 })}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${yTicks}${rects.join("")}${traj(0, CK.blue)}${traj(h, CK.orange)}${hMark}${lab(padL, H - 8, en ? "time (s) →" : "zaman (s) →", { size: 8.5 })}${lab(8, padT + 4, "m", { size: 8.5 })}</svg>`;
 }
 
 // Enerji-mesafe (gömülü SVG): kümülatif çekiş enerjisi (kWh) vs mesafe.
-function energyGradeSvg(line: Line, stock: RollingStock): { svg: string; net: number; perKm: number } {
+function energyGradeSvg(line: Line, stock: RollingStock, ing = false): { svg: string; net: number; perKm: number } {
   if (line.length <= 0) return { svg: "", net: 0, perKm: 0 };
   const res = simulate(line, stock, 0.5);
   if (!res.points.length) return { svg: "", net: 0, perKm: 0 };
@@ -265,7 +265,7 @@ function energyGradeSvg(line: Line, stock: RollingStock): { svg: string; net: nu
   const ePoly = `<polyline points="${ePts}" fill="none" stroke="${CK.orange}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
   const yTicks = [0, Emax / 2, Emax].map((v) => `<line x1="${padL}" y1="${yE(v).toFixed(1)}" x2="${W - padR}" y2="${yE(v).toFixed(1)}" stroke="${CK.grid}"/>${num(padL - 7, yE(v) + 3, v.toFixed(1), { anchor: "end", size: 8 })}`).join("");
   const base = `<line x1="${padL}" y1="${(topTop + topH).toFixed(1)}" x2="${W - padR}" y2="${(topTop + topH).toFixed(1)}" stroke="${CK.baseline}"/>`;
-  const lblSvg = `${lab(8, topTop + 8, "kWh", { size: 8 })}${lab(W - padR, topTop + topH + 16, "mesafe (m) →", { anchor: "end", size: 8 })}`;
+  const lblSvg = `${lab(8, topTop + 8, "kWh", { size: 8 })}${lab(W - padR, topTop + topH + 16, ing ? "distance (m) →" : "mesafe (m) →", { anchor: "end", size: 8 })}`;
   const svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px"><defs>${areaGrad("g-en", CK.orange, 0.2)}</defs>${st}${yTicks}${base}${eArea}${ePoly}${lblSvg}</svg>`;
   return { svg, net: en.netKWh, perKm: en.perKm };
 }
@@ -278,7 +278,7 @@ function rDil(lang: RaporDil) {
     barHint: 'Yazdır diyalogunda "Hedef: PDF olarak kaydet"i seçin.',
     barBtn: "⭳ PDF olarak kaydet / Yazdır",
     sys: "SİNYALİZASYON SİSTEMİ", kit: "TASARIM EL KİTABI",
-    foot: "Kontrollü doküman", dockontrol: "Doküman Kontrol",
+    foot: "Kontrollü doküman", dockontrol: "Doküman Kontrol", toc: "İçindekiler",
     qrCap: "Canlı simülasyon",
     kunye: { proje: "Proje", hat: "Hat", dok: "Doküman No", rev: "Revizyon", tarih: "Tarih", idare: "İdare", yuk: "Yüklenici", mus: "Müşavir", firma: "Sinyalizasyon Firması" },
     kpi: { hucre: "Durak arası hücre", hedef: "Hedef headway", sigan: "Headway'de sığan tren", kapasite: "Teorik kapasite", pratik: "İşletme kapasitesi", uic: "UIC 406 doluluk", ch: "Challenge / kritik" },
@@ -298,7 +298,7 @@ function rDil(lang: RaporDil) {
     thGost: ["Gösterge", "Değer"],
     kapTur: "Tur süresi (worst-case seyir)", kapDonus: "Dönüş bekleme (tur başına)", kapCevrim: "Çevrim süresi (dönüş bekleme dâhil)", kapHedef: "Hedef headway", kapSigan: "Headway'de gereken tren", kapDarbogaz: "Darboğaz hücre", kapDenge: "Denge (eşit şartlar)", kapDengeli: "Dengeli", kapSapma: (p: string) => `%${p} sapma`, kapMin: "Minimum headway (kritik blok)", kapTeorik: "Teorik kapasite (tamponsuz üst sınır)", kapPratik: "İşletme kapasitesi (UIC 406 doluluk tavanı)", kapUIC: "UIC 406 doluluk (hedef headway'de)", tphSuffix: "tren/saat",
     kapNot: "Teorik kapasite tamponsuz üst sınırdır; işletme kapasitesi UIC 406 doluluk tavanıyla sürdürülebilir değeri verir.",
-    s41: "3.1 Blocking-Time (Sperrzeitentreppe)",
+    s41: "4.1 Blocking-Time (Sperrzeitentreppe)",
     fig4: (h: number) => `Şekil 4 — Sperrzeitentreppe: blok işgal (blocking-time) pencereleri; min headway ${h} s.`,
     fig5: "Şekil 5 — Blok başına blocking-time bileşen dağılımı (kritik blok kırmızı etiketli).",
     thBt: ["Blok", "Setup", "Görme", "Yaklaşma", "Seyir", "Temizleme", "Release", "Toplam (s)"],
@@ -309,7 +309,7 @@ function rDil(lang: RaporDil) {
     barHint: 'In the print dialog, choose "Destination: Save as PDF".',
     barBtn: "⭳ Save as PDF / Print",
     sys: "SIGNALLING SYSTEM", kit: "DESIGN HANDBOOK",
-    foot: "Controlled document", dockontrol: "Document Control",
+    foot: "Controlled document", dockontrol: "Document Control", toc: "Contents",
     qrCap: "Live simulation",
     kunye: { proje: "Project", hat: "Line", dok: "Document No", rev: "Revision", tarih: "Date", idare: "Authority", yuk: "Contractor", mus: "Consultant", firma: "Signalling Firm" },
     kpi: { hucre: "Inter-station cells", hedef: "Target headway", sigan: "Trains within headway", kapasite: "Theoretical capacity", pratik: "Operating capacity", uic: "UIC 406 occupancy", ch: "Challenges / critical" },
@@ -329,7 +329,7 @@ function rDil(lang: RaporDil) {
     thGost: ["Indicator", "Value"],
     kapTur: "Running time (worst-case)", kapDonus: "Turnaround (per cycle)", kapCevrim: "Cycle time (incl. turnaround)", kapHedef: "Target headway", kapSigan: "Trains required", kapDarbogaz: "Bottleneck cell", kapDenge: "Balance (equal conditions)", kapDengeli: "Balanced", kapSapma: (p) => `${p}% deviation`, kapMin: "Minimum headway (critical block)", kapTeorik: "Theoretical capacity (buffer-free upper bound)", kapPratik: "Operating capacity (UIC 406 occupancy ceiling)", kapUIC: "UIC 406 occupancy (at target headway)", tphSuffix: "trains/hour",
     kapNot: "Theoretical capacity is the buffer-free upper bound; operating capacity applies the UIC 406 occupancy ceiling to give the sustainable figure.",
-    s41: "3.1 Blocking-Time (Sperrzeitentreppe)",
+    s41: "4.1 Blocking-Time (Sperrzeitentreppe)",
     fig4: (h) => `Figure 4 — Sperrzeitentreppe: block occupation (blocking-time) windows; min headway ${h}s.`,
     fig5: "Figure 5 — Per-block blocking-time component breakdown (critical block labelled red).",
     thBt: ["Block", "Setup", "Sighting", "Approach", "Running", "Clearing", "Release", "Total (s)"],
@@ -381,10 +381,10 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   // Bildfahrplan gerçek filoyla çizilir (okunabilirlik için görselde en çok 8 iz; gerçek
   // sayı altyazıda). Bloklar GERÇEK sinyallerden gelir → grafik canlı sistemle tutarlı.
   const bfCount = Math.max(3, Math.min(8, filoGercek));
-  const eg = line ? energyGradeSvg(line, stock) : null;
+  const eg = line ? energyGradeSvg(line, stock, en) : null;
   const energyFig = eg && eg.svg ? `<div class="fig">${eg.svg}<div class="cap">${L.figEnergy(eg.net, eg.perKm)}</div></div>` : "";
   const bfFazla = filoGercek > bfCount ? (lang === "en" ? ` (showing ${bfCount} of ${filoGercek} trains)` : ` (${filoGercek} trenin ${bfCount} tanesi çiziliyor)`) : "";
-  const bfFig = line ? `<div class="fig">${bildfahrplanSvg(line, stock, cfg, bfCount, sinyaller)}<div class="cap">${L.fig3(bfCount, cfg.headway)}${bfFazla}</div></div>` : "";
+  const bfFig = line ? `<div class="fig">${bildfahrplanSvg(line, stock, cfg, bfCount, sinyaller, en)}<div class="cap">${L.fig3(bfCount, cfg.headway)}${bfFazla}</div></div>` : "";
 
   // ---- Kapak künye ----
   const kunye = [
@@ -597,7 +597,10 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
      sayısal/mono Geist Mono. Rapor ayrı sekmede açıldığından fontlar burada YÜKLENİR
      (yazdırma manuel butonla; tıklanana dek fontlar hazır olur). */
   @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Spectral:wght@500;600;700&display=swap');
-  @page { size: A4; margin: 13mm 15mm 13mm; }
+  @page { size: A4; margin: 14mm 15mm 15mm; }
+  /* Sayfa numarası — teknik doküman standardı; kapakta gizli (@page:first). */
+  @page { @bottom-right { content: counter(page); font-family: "Geist", "Segoe UI", sans-serif; font-size: 8pt; color: #9AA7B4; } }
+  @page:first { @bottom-right { content: ""; } }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   body { font-family: "Geist", "Segoe UI", system-ui, -apple-system, sans-serif; color: ${INK}; font-size: 10pt; line-height: 1.42; background: #f0f2f4;
@@ -676,6 +679,16 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   .banner .no { color: ${GOLD}; font-weight: 700; margin-right: 3px; font-variant-numeric: tabular-nums; }
   .banner .no::after { content: " ·"; color: ${INK}; opacity: .35; }
   h3.sub { color: ${INK}; font-size: 10.5pt; font-weight: 600; letter-spacing: .03em; margin: 16px 0 7px; padding-left: 9px; border-left: 2.5pt solid ${GOLD}; page-break-after: avoid; }
+  /* İçindekiler (teknik doküman standardı) — spec-header'la aynı dil. */
+  .toc-h { color: ${INK}; padding: 0 0 5px; margin: 2px 0 16px; border-bottom: 1.5pt solid ${GOLD}; font-size: 11.5pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+  .toc-list { list-style: none; margin: 0; padding: 0; font-size: 10.5pt; }
+  .toc-list > li { padding: 7px 0; border-bottom: 1px solid #EDF0F3; }
+  .toc-list > li > b { color: ${GOLD}; margin-right: 12px; font-variant-numeric: tabular-nums; }
+  .toc-list ul { list-style: none; margin: 4px 0 0 40px; padding: 0; font-size: 9.5pt; color: #55636F; }
+  .toc-list ul li { padding: 2px 0; }
+  .toc-fig { margin: 22px 0 0; font-size: 8pt; letter-spacing: .16em; text-transform: uppercase; color: ${GOLD}; font-weight: 700; }
+  .toc-fig ul { list-style: none; margin: 8px 0 0; padding: 0; font-size: 9.5pt; letter-spacing: 0; text-transform: none; color: #55636F; font-weight: 400; }
+  .toc-fig ul li { padding: 2px 0; }
 
   /* Tablolar — uzun tablolar sayfalar arası BÖLÜNEBİLİR (aksi halde toptan bir
      sonraki sayfaya itilip önceki sayfada büyük boşluk/kayma bırakırlar). Satırlar
@@ -785,6 +798,30 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     <div class="foot">${esc(L.foot)}${bugun ? " · " + esc(bugun) : ""}</div>
   </section>
 
+  <!-- İÇİNDEKİLER -->
+  <section class="toc breakbefore">
+    <div class="toc-h">${L.toc}</div>
+    <ol class="toc-list">
+      <li><b>01</b>${L.s1}</li>
+      <li><b>02</b>${L.s2}<ul><li>2.1 ${en ? "Per-cell Constraint Analysis" : "Ring Bazında Kısıt Analizi"}</li></ul></li>
+      <li><b>03</b>${en ? "Signalling — Signal Lamps (SG)" : "Sinyalizasyon — Sinyal Lambaları (SG)"}</li>
+      <li><b>04</b>${L.s4}<ul><li>4.1 Blocking-Time (Sperrzeitentreppe)</li></ul></li>
+      <li><b>05</b>${en ? "Operations & Demand Analysis" : "İşletme & Talep Analizi"}<ul>
+        <li>5.1 ${en ? "Passenger Load Profiles" : "Yolcu Yük Profilleri"}</li>
+        <li>5.2 ${en ? "Depot Dispatch" : "Depo Çıkışı"}</li>
+        <li>5.3 ${en ? "Stops Needing Turnback" : "Dönüşe İhtiyaç Duyan Duraklar"}</li>
+        <li>5.4 ${en ? "Reverse-Running Variations" : "Ters İşletme Varyasyonları"}</li>
+        <li>5.5 ${en ? "Fleet & Recommendation" : "Filo & Öneri"}</li></ul></li>
+      <li><b>06</b>${L.s5}</li>
+    </ol>
+    <div class="toc-fig">${en ? "Figures" : "Şekiller"}<ul>
+      <li>${en ? "Fig. 1 — Line schematic" : "Şekil 1 — Hat şeması"}</li>
+      <li>${en ? "Fig. 2 — Energy-distance" : "Şekil 2 — Enerji-mesafe"}</li>
+      <li>${en ? "Fig. 3 — Time-distance (Bildfahrplan)" : "Şekil 3 — Zaman-mesafe (Bildfahrplan)"}</li>
+      <li>${en ? "Fig. 4 — Sperrzeitentreppe" : "Şekil 4 — Sperrzeitentreppe"}</li>
+      <li>${en ? "Fig. 5 — Blocking-time components" : "Şekil 5 — Blocking-time bileşenleri"}</li></ul></div>
+  </section>
+
   <!-- 1 -->
   <div class="banner breakbefore"><span class="no">01</span>${L.s1}</div>
   <p>${L.s1i}</p>
@@ -813,8 +850,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <div style="margin:10px 0 4px;padding:9px 13px;border-left:4px solid ${GOLD};background:#FAF7EE;border-radius:4px;font-size:10pt;line-height:1.55;color:${INK}">${kapYorum}</div>
   ${bfFig}
   <h3 class="sub">${L.s41}</h3>
-  <div class="fig">${line ? sperrzeitSvg(bt, line.length, kritikRenk) : ""}<div class="cap">${sunum ? (lang === "en" ? `Figure 4 — Sperrzeitentreppe: block occupation (blocking-time) windows; min headway ${Math.round(bt.minHeadway)}s.` : `Şekil 4 — Sperrzeitentreppe: blok işgal (blocking-time) pencereleri; min headway ${Math.round(bt.minHeadway)} s.`) : L.fig4(Math.round(bt.minHeadway))}</div></div>
-  <div class="fig">${blockingBarSvg(bt.bloklar, bt.kritikBlok, kritikRenk)}<div class="cap">${sunum ? (lang === "en" ? "Figure 5 — Per-block blocking-time component distribution (determining block highlighted)." : "Şekil 5 — Blok başına blocking-time bileşen dağılımı (belirleyici blok vurgulu).") : L.fig5}${bt.bloklar.length > 16 ? (lang === "en" ? ` (highest 16 of ${bt.bloklar.length} blocks; full list in the table below)` : ` (${bt.bloklar.length} bloktan en yüksek 16'sı; tümü aşağıdaki tabloda)`) : ""}</div></div>
+  <div class="fig">${line ? sperrzeitSvg(bt, line.length, kritikRenk, en) : ""}<div class="cap">${sunum ? (lang === "en" ? `Figure 4 — Sperrzeitentreppe: block occupation (blocking-time) windows; min headway ${Math.round(bt.minHeadway)}s.` : `Şekil 4 — Sperrzeitentreppe: blok işgal (blocking-time) pencereleri; min headway ${Math.round(bt.minHeadway)} s.`) : L.fig4(Math.round(bt.minHeadway))}</div></div>
+  <div class="fig">${blockingBarSvg(bt.bloklar, bt.kritikBlok, kritikRenk, en)}<div class="cap">${sunum ? (lang === "en" ? "Figure 5 — Per-block blocking-time component distribution (determining block highlighted)." : "Şekil 5 — Blok başına blocking-time bileşen dağılımı (belirleyici blok vurgulu).") : L.fig5}${bt.bloklar.length > 16 ? (lang === "en" ? ` (highest 16 of ${bt.bloklar.length} blocks; full list in the table below)` : ` (${bt.bloklar.length} bloktan en yüksek 16'sı; tümü aşağıdaki tabloda)`) : ""}</div></div>
   ${btTbl}
 
   <!-- 5: İşletme & Talep Analizi (ters işletme) -->
