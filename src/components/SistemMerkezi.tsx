@@ -11,6 +11,7 @@ import Link from "next/link";
 import { brand } from "@/lib/anaray/brand";
 import { sure, kmh } from "@/lib/anaray/format";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
+import { Duyarlilik } from "@/components/Duyarlilik";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import { blockingTimeRing, type BlokSperr } from "@/lib/anaray/blockingtime";
 import { loopToHat } from "@/lib/anaray/hatsim";
@@ -222,6 +223,9 @@ export function SistemMerkezi() {
         </BlokCekmece>
       </Panel>
       )}
+
+      {/* Duyarlılık (tornado) — hangi parametre kapasiteyi en çok oynatıyor. */}
+      <Duyarlilik ringsHam={ringsHam} stock={stock} cfg={cfg} isletme={isletme} />
 
       {/* Parametre düzenleme TEK yerde: header'daki ⚙ Parametreler. Burada tekrar
           gösterilmez (çift giriş kafa karıştırıyordu) — yalnız yönlendirme. */}
