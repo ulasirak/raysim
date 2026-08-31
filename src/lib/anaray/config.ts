@@ -236,6 +236,11 @@ export interface Isletme {
   /** "Her istasyon" modunda durak-başı yolcu (yolcu/saat): ad→{binen,inen}. Girili değilse
    *  rolden tahmin edilen değerle doldurulur. DWELL'i ETKİLEMEZ (ayrı alan) — kapasiteyi bozmaz. */
   istasyonYolcu?: Record<string, { binen: number; inen: number }>;
+  /** Parklanma dizilimi: her depo (ring id / "origin") → oraya ELLE yerleştirilen araç sayısı.
+   *  Rastgele dağıtılmaz; kullanıcı doldurur (toplam = filo). Boşsa henüz dizilmemiş. */
+  parklanmaDagilim?: Record<string, number>;
+  /** Öneriyi (⌈RTT/hedef headway⌉) kullanıcı ONAYLADI mı? Onaylayınca filo öneriye eşitlenir. */
+  filoOnaylandi?: boolean;
 }
 
 // Not: cfg.headway (sözleşme hedef headway'i) AYRIDIR — ring uygunluk eşiği için

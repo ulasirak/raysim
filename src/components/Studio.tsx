@@ -12,6 +12,7 @@ import { simulate } from "@/lib/anaray/sim";
 import { simulateSignalled, reverseRoute, monteCarlo, planDepotDispatch, type MonteCarloResult } from "@/lib/anaray/signalling";
 import { tramvaylar } from "@/lib/anaray/vehicles";
 import { maksimumTren } from "@/lib/anaray/kapasite";
+import { tersIsletmeAnaliz } from "@/lib/anaray/tersisletme";
 import { servisProfili, type ServisProfil } from "@/lib/anaray/servis";
 import { dwellUygulanmisRings, maxYolcuKapasitesi, netTabanAlani } from "@/lib/anaray/yolcu";
 import { kmh, km, sure } from "@/lib/anaray/format";
@@ -97,7 +98,6 @@ function StudioIc() {
   }, [depoKapasiteler]);
   const servisProfil = useMemo(() => servisProfili(isletme, depoKapasiteToplam), [isletme, depoKapasiteToplam]);
   // İstenen işletme aralığı, fiziksel min. aralığın (h_min) altındaysa uygulanamaz.
-  const headwayUygulanamaz = maks.gecerli && headwayDk * 60 < maks.hMin - 1e-6;
   const [ariza, setAriza] = useState<number[]>([]); // dispatcher: arızalı bloklar (gidiş hattı) — geçici what-if
   // Monte-Carlo senaryo parametreleri KALICI (projeye kayıtlı) — tek kaynak isletme.
   const meanEntry = isletme.mcMeanEntrySn;
@@ -110,6 +110,7 @@ function StudioIc() {
   const baslangicSaati = isletme.seferBaslangicSaati;
   const setBaslangicSaati = (v: string) => patchIsletme({ seferBaslangicSaati: v });
   const [saatlerGoster, setSaatlerGoster] = useState(false);
+  const [talepPopup, setTalepPopup] = useState(false); // yolcu verisi yokken talep-öneri uyarısı
 
   // Hemzemin geçit koruma duruşları (bekleme>0 karayolu geçitleri) — hem gidiş hem
   // dönüş hattına eklenir: tren orada durur+bekler ve o nokta blok sınırı/sinyal olur.
@@ -128,27 +129,55 @@ function StudioIc() {
   );
 
   const arizaToggle = (i: number) => setAriza((a) => (a.includes(i) ? a.filter((x) => x !== i) : [...a, i]));
-  const depotPlan = useMemo(() => planDepotDispatch(line, headwayDk * 60), [line, headwayDk]);
-  // CANLI SİM FİLOSU = PİK operasyonel filo (MANUEL, servis profilinden). Tek kaynak:
-  // gidiş + dönüş + Monte-Carlo aynı filoyla. Kapasite (N_max) ile tavanlanır; depo
-  // (parklanma) tanımlıysa trenler depolardan dağıtılarak çıkar. "6 gömülü" yok.
+  // ——— TEK FİLO modeli ———
+  // Filo = parklanma alanındaki araç sayısı (toplam=pik=pik-dışı senkron tek sayı).
+  // Tramvay bir anda alınmaz → filo, sistemin verdiği ÖNERİYE eşlenmesi gereken tek
+  // değerdir. Onaylayınca öneriye eşitlenir; sonra elle oynanır.
   const nMax = maks.gecerli ? maks.nTeorik : 999;
-  const filo = Math.min(nMax, Math.max(1, isletme.pikFilo || 1));
-  const filoAsim = maks.gecerli && (isletme.pikFilo || 0) > nMax; // pik filo > kapasite
+  const filoTek = Math.max(1, isletme.toplamFilo || 1);
+  const setFilo = (v: number) => { const n = Math.max(1, Math.min(99, Math.round(v))); patchIsletme({ toplamFilo: n, pikFilo: n, pikDisiFilo: n }); };
+  const filo = Math.min(nMax, filoTek);               // simde koşan (kapasiteyle tavanlı)
+  const filoAsim = maks.gecerli && filoTek > nMax;    // filo > hat kapasitesi
+  // HEDEF headway = tasarım kuralı (240 s vars.) → ÖNERİ bundan. ULAŞILAN = RTT/filo.
+  const hedefHeadwaySn = Math.max(1, headwayDk * 60);
+  const ulasilanHeadwaySn = maks.gecerli ? maks.cevrimSuresi / Math.max(1, filo) : hedefHeadwaySn;
+  // Yolcu (talep) verisi girili mi? Girilmişse öneri/tıkanma ona göre; değilse pop-up.
+  const yolcuVeriVar = !!isletme.istasyonYolcu && Object.keys(isletme.istasyonYolcu).length > 0;
+  const tersRapor = useMemo(() => tersIsletmeAnaliz(rings, stock, isletme, cfg, yolcuVeriVar ? "istasyon" : "toplam"), [rings, stock, isletme, cfg, yolcuVeriVar]);
+  const talepFilosu = yolcuVeriVar && tersRapor ? tersRapor.filo.gerekenArac : 0;
+  // Önerilen tramvay = ⌈RTT ÷ hedef headway⌉ (kural); yolcu girildiyse talep de artırabilir.
+  const oneriTramvay = maks.gecerli ? Math.max(1, Math.ceil(maks.cevrimSuresi / hedefHeadwaySn), talepFilosu) : 0;
+  const filoOneriUyum = filoTek === oneriTramvay;
+  const depotPlan = useMemo(() => planDepotDispatch(line, ulasilanHeadwaySn), [line, ulasilanHeadwaySn]);
   const depoVar = depotPlan.depots.length > 0;
-  // Gereken tren = ⌈RTT ÷ hedef headway⌉ (kullanıcının hedef sıklığı için filo).
-  const gerekenTren = maks.gecerli ? Math.ceil(maks.cevrimSuresi / Math.max(1, headwayDk * 60)) : 0;
+  // Parklanma dizilimi (elle): her depoya konan araç. Boşsa depolara sırayla (geriye-uyum).
+  const parkAnahtar = (pos: number) => `d${Math.round(pos)}`;
+  const parkDizili = useMemo(() => {
+    const dz = isletme.parklanmaDagilim;
+    return !!dz && depotPlan.depots.some((d) => (dz[parkAnahtar(d.position)] ?? 0) > 0);
+  }, [isletme.parklanmaDagilim, depotPlan]);
+  const parkToplam = useMemo(() => {
+    const dz = isletme.parklanmaDagilim || {};
+    return depotPlan.depots.reduce((s, d) => s + Math.max(0, Math.round(dz[parkAnahtar(d.position)] ?? 0)), 0);
+  }, [isletme.parklanmaDagilim, depotPlan]);
   const gidisOrigins = useMemo(() => {
-    const pos = depotPlan.depots.map((d) => d.position);
-    return pos.length > 0 ? Array.from({ length: filo }, (_, k) => pos[k % pos.length]) : undefined;
-  }, [depotPlan, filo]);
+    const depolar = depotPlan.depots;
+    if (depolar.length === 0) return undefined;
+    const dz = isletme.parklanmaDagilim;
+    if (dz && depolar.some((d) => (dz[parkAnahtar(d.position)] ?? 0) > 0)) {
+      const out: number[] = [];
+      depolar.forEach((d) => { const n = Math.max(0, Math.round(dz[parkAnahtar(d.position)] ?? 0)); for (let k = 0; k < n; k++) out.push(d.position); });
+      return out.length > 0 ? out.slice(0, filo) : Array.from({ length: filo }, (_, k) => depolar[k % depolar.length].position);
+    }
+    return Array.from({ length: filo }, (_, k) => depolar[k % depolar.length].position);
+  }, [depotPlan, filo, isletme.parklanmaDagilim]);
   const canliGidis = useMemo(
-    () => simulateSignalled(line, stock, { headway: headwayDk * 60, count: filo, maxBlockLen: BLOK_MAXLEN, blocked: ariza, origins: gidisOrigins }),
-    [line, stock, headwayDk, filo, gidisOrigins, ariza, BLOK_MAXLEN]
+    () => simulateSignalled(line, stock, { headway: ulasilanHeadwaySn, count: filo, maxBlockLen: BLOK_MAXLEN, blocked: ariza, origins: gidisOrigins }),
+    [line, stock, ulasilanHeadwaySn, filo, gidisOrigins, ariza, BLOK_MAXLEN]
   );
   const donusSim = useMemo(
-    () => simulateSignalled(reverseLine, stock, { headway: headwayDk * 60, count: filo, maxBlockLen: BLOK_MAXLEN }),
-    [reverseLine, stock, headwayDk, filo, BLOK_MAXLEN]
+    () => simulateSignalled(reverseLine, stock, { headway: ulasilanHeadwaySn, count: filo, maxBlockLen: BLOK_MAXLEN }),
+    [reverseLine, stock, ulasilanHeadwaySn, filo, BLOK_MAXLEN]
   );
 
   const monteCarloCalistir = () => {
@@ -157,7 +186,7 @@ function StudioIc() {
     setTimeout(() => {
       const r = monteCarlo(
         line, stock,
-        { headway: headwayDk * 60, count: filo, maxBlockLen: BLOK_MAXLEN },
+        { headway: ulasilanHeadwaySn, count: filo, maxBlockLen: BLOK_MAXLEN },
         { trials: 150, meanEntry, meanDwell, threshold: 120 }
       );
       setMc(r);
@@ -182,6 +211,20 @@ function StudioIc() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
+      {/* Talebe göre öneri için yolcu verisi gerekli — pop-up (tahmin YOK) */}
+      {talepPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.45)" }} onClick={() => setTalepPopup(false)}>
+          <div className="max-w-md rounded-lg p-5 shadow-xl" style={{ background: "#fff", border: `1px solid ${brand.border}` }} onClick={(e) => e.stopPropagation()}>
+            <div className="text-sm font-bold" style={{ color: brand.ink }}>Talebe göre öneri için yolcu verisi gerekli</div>
+            <p className="mt-2 text-xs" style={{ color: brand.inkSoft }}>Tıkanma, dönüş ihtiyacı ve talep-filosu <b>tahmin edilmez</b> — gerçek yolcu sayılarını girmelisin. Şu bölümlerde giriş yap:</p>
+            <ul className="mt-2 ml-4 list-disc text-xs" style={{ color: brand.inkSoft }}>
+              <li><Link href="/#tersisletme" className="font-semibold underline" style={{ color: brand.ink }}>Ters İşletme → &quot;Her İstasyon&quot;</Link> sekmesinde her durağa iniş/biniş gir.</li>
+              <li>Sonra bu panele dön — öneri ve tıkanma talebe göre güncellenir.</li>
+            </ul>
+            <div className="mt-3 text-right"><button type="button" onClick={() => setTalepPopup(false)} className="rounded px-3 py-1.5 text-xs font-semibold text-white" style={{ background: brand.ink }}>Anladım</button></div>
+          </div>
+        </div>
+      )}
       {/* Rapor başlığı */}
       <div className="mb-6 border-b pb-4" style={{ borderColor: brand.border }}>
         <div className="field-label">Sefer Simülasyon Raporu</div>
@@ -191,6 +234,95 @@ function StudioIc() {
           <Link href="/#ringler" className="underline">Ringler (KUR)</Link> bölümüne gidin — değişiklikler burada anında yansır.
         </div>
       </div>
+
+      {/* ①②③ FİLO & ÖNERİ — akışın ilk adımı: öneri → onayla → filo → parklanma */}
+      {maks.gecerli && (
+      <Panel baslik="Filo & Öneri" aciklama="Sistem, girdiğin tüm verilere göre gereken tramvay sayısını önerir. Onaylayınca filo öneriye eşitlenir; sonra filoyu elle oynarsın. Filo = parklanma alanına dizdiğin araç sayısıdır; ulaşılan sefer aralığı = çevrim ÷ filo.">
+        {/* ① Önerilen tramvay + Onayla */}
+        <div className="rounded-lg border-2 p-4" style={{ borderColor: brand.ink, background: CK.goodBgSoft }}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-bold uppercase tracking-wide" style={{ color: brand.inkSoft }}>Önerilen tramvay</div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-4xl font-bold tabular-nums" style={{ color: brand.ink }}>{oneriTramvay}</span>
+                <span className="text-sm" style={{ color: brand.inkSoft }}>araç · ⌈çevrim {sure(maks.cevrimSuresi)} ÷ hedef {Math.round(hedefHeadwaySn)} s⌉{talepFilosu > 0 && talepFilosu >= oneriTramvay ? " · talep de bunu gerektiriyor" : ""}</span>
+              </div>
+            </div>
+            <button type="button" onClick={() => { setFilo(oneriTramvay); patchIsletme({ filoOnaylandi: true }); }}
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: brand.ink }}>✓ Onayla — filoyu öneriye eşitle</button>
+          </div>
+          <div className="mt-2 text-xs" style={{ color: brand.muted }}>
+            {yolcuVeriVar
+              ? "✓ Yolcu verisi girili — öneri talebe göre de kontrol edildi (tıkanma/dönüş ihtiyacı aşağıda)."
+              : <>Öneri hedef headway kuralından ({Math.round(hedefHeadwaySn)} s = tasarım). Talebe göre (tıkanma/dönüş ihtiyacı) kontrol için <button type="button" className="font-semibold underline" style={{ color: brand.ink }} onClick={() => setTalepPopup(true)}>yolcu verisi gir</button>.</>}
+          </div>
+        </div>
+
+        {/* ② Filo (oynanır) + ulaşılan/hedef headway + kapasite */}
+        <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div>
+            <span className="field-label">Filo (parktaki araç)</span>
+            <div className="mt-1 flex items-center gap-1.5">
+              <button type="button" onClick={() => setFilo(filoTek - 1)} className="h-7 w-7 rounded border font-semibold" style={{ borderColor: brand.border, color: brand.ink }}>−</button>
+              <input type="number" min={1} max={99} value={filoTek} onChange={(e) => setFilo(parseFloat(e.target.value) || 1)}
+                className="w-14 rounded border px-2 py-1 text-center text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+              <button type="button" onClick={() => setFilo(filoTek + 1)} className="h-7 w-7 rounded border font-semibold text-white" style={{ background: brand.ink, borderColor: brand.ink }}>+</button>
+            </div>
+            <span className="mt-0.5 block text-[0.6rem]" style={{ color: filoOneriUyum ? "#16794C" : CK.amberInk }}>{filoOneriUyum ? "✓ öneriyle eşleşiyor" : `öneri ${oneriTramvay} · fark ${filoTek - oneriTramvay > 0 ? "+" : ""}${filoTek - oneriTramvay}`}</span>
+          </div>
+          <div>
+            <span className="field-label">Ulaşılan sefer aralığı</span>
+            <div className="mt-1 text-lg font-bold tabular-nums" style={{ color: brand.ink }}>{sure(ulasilanHeadwaySn)}</div>
+            <span className="text-[0.6rem]" style={{ color: brand.muted }}>çevrim ÷ filo · filo↑→aralık↓</span>
+          </div>
+          <div>
+            <span className="field-label">Hedef headway (kural)</span>
+            <div className="mt-1 flex items-center gap-1">
+              <input type="number" min={0.5} step={0.5} value={headwayDk} onChange={(e) => setHeadwayDk(Math.max(0.5, parseFloat(e.target.value) || 4))}
+                className="w-14 rounded border px-2 py-1 text-sm" style={{ borderColor: CK.amber, color: brand.ink }} />
+              <span className="text-xs" style={{ color: brand.muted }}>dk</span>
+            </div>
+            <span className="mt-0.5 block text-[0.6rem]" style={{ color: CK.amberInk }}>⚠ değiştirilmesi önerilmez (240 s tasarım kuralı)</span>
+          </div>
+          <div>
+            <span className="field-label">Hat kapasitesi</span>
+            <div className="mt-1 text-lg font-bold tabular-nums" style={{ color: filoAsim ? brand.red : brand.ink }}>{nMax}</div>
+            <span className="text-[0.6rem]" style={{ color: filoAsim ? brand.red : brand.muted }}>{filoAsim ? `⚠ filo ${filoTek} > kapasite ${nMax}` : "araç · üst sınır"}</span>
+          </div>
+        </div>
+
+        {/* ③ Parklanma dizilimi (elle) */}
+        {depoVar ? (
+          <div className="mt-4 rounded border p-3" style={{ borderColor: parkDizili && parkToplam === filoTek ? "#16794C" : CK.amber, background: "#FBFCFD" }}>
+            <div className="field-label">Parklanma Dizilimi — araçları depolara ELLE yerleştir</div>
+            <p className="mb-2 text-xs" style={{ color: brand.muted }}>Rastgele dağıtılmaz: her depoya kaç araç park edeceğini sen gir (toplam = filo {filoTek}). Canlı simde trenler bu depolardan çıkar.</p>
+            <div className="flex flex-wrap items-end gap-3">
+              {depotPlan.depots.map((d, i) => {
+                const k = parkAnahtar(d.position);
+                const val = Math.max(0, Math.round((isletme.parklanmaDagilim || {})[k] ?? 0));
+                return (
+                  <div key={i} className="w-28">
+                    <span className="text-[0.6rem]" style={{ color: brand.inkSoft }}>🅿 Depo @ {km(d.position)}</span>
+                    <input type="number" min={0} max={99} value={val}
+                      onChange={(e) => patchIsletme({ parklanmaDagilim: { ...(isletme.parklanmaDagilim || {}), [k]: Math.max(0, Math.round(parseFloat(e.target.value) || 0)) } })}
+                      className="mt-0.5 w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+                  </div>
+                );
+              })}
+              <button type="button" onClick={() => { const dep = depotPlan.depots; const per = Math.floor(filoTek / dep.length); let kalan = filoTek - per * dep.length; const yeni: Record<string, number> = {}; dep.forEach((d) => { yeni[parkAnahtar(d.position)] = per + (kalan-- > 0 ? 1 : 0); }); patchIsletme({ parklanmaDagilim: yeni }); }}
+                className="rounded border px-2 py-1 text-xs" style={{ borderColor: brand.border, color: brand.inkSoft }}>eşit dağıt ({filoTek})</button>
+            </div>
+            <div className="mt-2 text-xs" style={{ color: parkToplam === filoTek ? "#16794C" : CK.amberInk }}>
+              {parkToplam === filoTek ? `✓ ${parkToplam}/${filoTek} araç dizildi` : parkToplam < filoTek ? `⚠ ${filoTek - parkToplam} araç daha yerleştir (${parkToplam}/${filoTek}) — parklanma alanını doldur` : `⚠ ${parkToplam - filoTek} fazla (${parkToplam}/${filoTek})`}
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4 rounded border-l-4 px-3 py-2 text-xs" style={{ borderColor: CK.amber, background: CK.amberBg, color: CK.amberInk }}>
+            🅿 Bu hatta parklanma alanı (depo) tanımlı değil — Ringler'de bir durağı <b>depo</b> işaretlersen araçlarını oraya dizersin. Şimdilik trenler hat başından çıkar.
+          </div>
+        )}
+      </Panel>
+      )}
 
       {/* Canlı ağ simülasyonu (kahraman) */}
       <Panel baslik="Canlı Ağ Simülasyonu" aciklama="Tüm trenler (gidiş + dönüş) aynı anda hat üzerinde hareket eder. Sinyaller blok sınırlarında 3-aspekt yanar (yeşil/sarı/kırmızı) — önündeki blok doluysa otomatik kırmızı; renk elle ayarlanmaz, gerçek sabit-blok mantığı budur. Blok aralığını aşağıdan değiştir → sinyaller sıklaşır/seyrelir (kapasite ile aynı düzen). Dispatcher: bir sinyale tıkla → blok arızalanır. Parklanma (🅿) trenleri sırayla servise çıkar. Oynat ▶">
@@ -211,12 +343,12 @@ function StudioIc() {
         </div>
         {/* Filo kaynağı + kapasite bağlantısı */}
         <div className="mt-2 text-xs" style={{ color: brand.inkSoft }}>
-          🚋 Canlı Ağ filosu <b>{filo}</b> tren = <b>pik filo</b> (Gün İçi Servis'ten, manuel){depoVar ? " · depolardan dağıtılır" : " · hat başından"} · her yön aynı filoyla
-          {maks.gecerli && <> · hat kapasitesi <b>{maks.nTeorik}</b> · gereken tren (⌈RTT/headway⌉) <b>{gerekenTren}</b></>}
+          🚋 Canlı Ağ filosu <b>{filo}</b> tren = <b>Filo Paneli</b>'nden (yukarıda){depoVar ? " · parklanma dizilimine göre depolardan çıkar" : " · hat başından"} · her yön aynı filoyla · ulaşılan aralık <b>{sure(ulasilanHeadwaySn)}</b>
+          {maks.gecerli && <> · hat kapasitesi <b>{maks.nTeorik}</b></>}
         </div>
         {filoAsim && (
           <div className="mt-1 text-xs" style={{ color: brand.red }}>
-            ⚠ Pik filo ({isletme.pikFilo}) bu hattın kapasitesini ({nMax}) aşıyor — simülasyon {filo} trenle koşuyor (fazlası sığmaz, kuyruklanır).
+            ⚠ Filo ({filoTek}) bu hattın kapasitesini ({nMax}) aşıyor — simülasyon {filo} trenle koşuyor (fazlası sığmaz, kuyruklanır).
           </div>
         )}
         {ariza.length > 0 && (
@@ -226,6 +358,45 @@ function StudioIc() {
           </div>
         )}
       </Panel>
+
+      {/* ⑤ CANLI ETKİLER — filo oynadıkça bağlı olduğu her durum canlı güncellenir */}
+      {maks.gecerli && (
+      <Panel baslik="Canlı Etkiler & Öneriler" aciklama="Filoyu oynattıkça bağlı olduğu her durum burada canlı güncellenir — ulaşılan sıklık, kapasite/park aşımı, tıkanan duraklar/dönüş ihtiyacı ve makaslarda ters işletme ihtiyacı.">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded border p-2.5" style={{ borderColor: brand.border }}>
+            <div className="text-[0.6rem] uppercase" style={{ color: brand.muted }}>Ulaşılan sıklık</div>
+            <div className="text-lg font-bold tabular-nums" style={{ color: brand.ink }}>{sure(ulasilanHeadwaySn)}</div>
+            <div className="text-[0.6rem]" style={{ color: brand.muted }}>{(3600 / Math.max(1, ulasilanHeadwaySn)).toFixed(1)} tren/saat · filo {filoTek}</div>
+          </div>
+          <div className="rounded border p-2.5" style={{ borderColor: filoAsim ? brand.red : brand.border }}>
+            <div className="text-[0.6rem] uppercase" style={{ color: brand.muted }}>Kapasite</div>
+            <div className="text-lg font-bold tabular-nums" style={{ color: filoAsim ? brand.red : brand.ink }}>{filoTek} / {nMax}</div>
+            <div className="text-[0.6rem]" style={{ color: filoAsim ? brand.red : brand.muted }}>{filoAsim ? "⚠ aşıldı, sığmaz" : "araç / üst sınır ✓"}</div>
+          </div>
+          <div className="rounded border p-2.5" style={{ borderColor: depoVar && parkToplam !== filoTek ? CK.amber : brand.border }}>
+            <div className="text-[0.6rem] uppercase" style={{ color: brand.muted }}>Parklanma</div>
+            <div className="text-lg font-bold tabular-nums" style={{ color: brand.ink }}>{depoVar ? `${parkToplam}/${filoTek}` : "—"}</div>
+            <div className="text-[0.6rem]" style={{ color: depoVar && parkToplam !== filoTek ? CK.amberInk : brand.muted }}>{!depoVar ? "depo yok" : parkToplam === filoTek ? "✓ dizildi" : "⚠ eksik/fazla"}</div>
+          </div>
+          <div className="rounded border p-2.5" style={{ borderColor: yolcuVeriVar && tersRapor && tersRapor.donusIhtiyaclari.length > 0 ? brand.red : brand.border }}>
+            <div className="text-[0.6rem] uppercase" style={{ color: brand.muted }}>Tıkanma / dönüş</div>
+            <div className="text-lg font-bold tabular-nums" style={{ color: yolcuVeriVar && tersRapor && tersRapor.donusIhtiyaclari.length > 0 ? brand.red : brand.ink }}>{yolcuVeriVar && tersRapor ? tersRapor.donusIhtiyaclari.length : "—"}</div>
+            <div className="text-[0.6rem]" style={{ color: brand.muted }}>{yolcuVeriVar ? "tıkanan durak" : <button type="button" className="underline" style={{ color: brand.ink }} onClick={() => setTalepPopup(true)}>yolcu gir</button>}</div>
+          </div>
+        </div>
+        {yolcuVeriVar && tersRapor && (tersRapor.donusIhtiyaclari.length > 0 || tersRapor.makaslar.some((m) => m.kisaDonusOnerilir)) && (
+          <div className="mt-3 space-y-1 text-xs">
+            {tersRapor.donusIhtiyaclari.slice(0, 4).map((d, i) => (
+              <div key={i} style={{ color: brand.inkSoft }}>🔴 <b>{d.durak}</b> doluluk %{Math.round(d.doluluk * 100)} → <b>{d.oneriMakas}</b> makasından kısa dönüş gerekir.</div>
+            ))}
+            {tersRapor.makaslar.filter((m) => m.kisaDonusOnerilir).slice(0, 3).map((m, i) => (
+              <div key={`m${i}`} style={{ color: brand.muted }}>⟲ <b>{m.ad}</b> kısa dönüş adayı (%{m.kisaDonusYuzde}).{m.crossover === "x" ? "" : " S makas — ters işletme sinyali gerekebilir."}</div>
+            ))}
+            <div className="mt-1"><Link href="/#tersisletme" className="underline" style={{ color: brand.ink }}>→ Ters İşletme'de detaylı analiz</Link></div>
+          </div>
+        )}
+      </Panel>
+      )}
 
       {/* Sefer sıklığı */}
       <section className="mt-6">
@@ -254,31 +425,17 @@ function StudioIc() {
             </div>
           )}
 
+          <div className="mb-3 rounded border-l-4 px-3 py-2 text-xs" style={{ borderColor: brand.ink, background: CK.goodBgSoft, color: brand.inkSoft }}>
+            ℹ️ Filo, ulaşılan sefer aralığı ve hedef headway artık yukarıdaki <b>Filo Paneli</b>'nde (öneri → onayla → filo → parklanma). Burada yalnız <b>Dönüş Bekleme</b> ayarlanır (çevrim süresini ve öneriyi besler).
+          </div>
           <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
-            <Num label="Sefer Aralığı" suffix="dk" step={0.5} value={headwayDk} onChange={(v) => setHeadwayDk(Math.max(0.5, v))} />
-            <div className="block">
-              <span className="field-label">Sefer sayısı <span style={{ color: brand.muted }}>(pik filo)</span></span>
-              <div className="mt-1 flex items-center gap-1">
-                <input type="number" value={isletme.pikFilo} step={1} min={1} max={80}
-                  onChange={(e) => patchIsletme({ pikFilo: Math.max(1, Math.min(80, Math.round(parseFloat(e.target.value) || 0))) })}
-                  className="w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
-                <span className="text-xs" style={{ color: brand.muted }}>tren</span>
-              </div>
-              <div className="mt-1 text-xs">
-                {maks.gecerli && (
-                  <button type="button" onClick={() => patchIsletme({ pikFilo: gerekenTren })}
-                    className="underline" style={{ color: brand.red }}>↧ gereken al ({gerekenTren}) · ⌈RTT÷headway⌉</button>
-                )}
-                {filoAsim && <span style={{ color: brand.red }}> · ⚠ kapasite {nMax} aşıldı</span>}
-              </div>
-            </div>
             <Num label="Dönüş Bekleme" suffix="dk" step={0.5} value={turnaroundDk} onChange={(v) => setTurnaroundDk(Math.max(0, v))} />
           </div>
 
-          {/* İşletme aralığı fiziksel minimumun altında mı? */}
-          {headwayUygulanamaz && (
+          {/* Ulaşılan aralık fiziksel minimumun altında mı? (filo kapasiteyi aşıyorsa) */}
+          {maks.gecerli && ulasilanHeadwaySn < maks.hMin - 1e-6 && (
             <div className="mb-2 text-sm" style={{ color: brand.red }}>
-              ⚠ İstenen sefer aralığı ({headwayDk} dk) fiziksel minimum aralığın ({sure(maks.hMin)}) altında — bu sıklık uygulanamaz, trenler kaçınılmaz kuyruklanır. En sık güvenli aralık ≈ {sure(maks.hMin)}.
+              ⚠ Ulaşılan sefer aralığı ({sure(ulasilanHeadwaySn)}) fiziksel minimum aralığın ({sure(maks.hMin)}) altında — filo çok yüksek, trenler kaçınılmaz kuyruklanır. En sık güvenli aralık ≈ {sure(maks.hMin)} (≈ {nMax} araç).
             </div>
           )}
 
@@ -323,32 +480,10 @@ function StudioIc() {
           hatta, pik-dışında fazlası depoya döner (parklanma), gece hepsi depoda. */}
       <section className="mt-6">
         <Panel baslik="Gün İçi Servis & Parklanma" aciklama="Filo gün boyu sabit değildir: pik saatte tüm filo hatta, pik-dışında bir kısmı depoya döner (mola/parklanma), gece hepsi depoda bekler. Depo kapasitesi bunu barındırabiliyor mu görürsün.">
+          <div className="mb-3 rounded border-l-4 px-3 py-2 text-xs" style={{ borderColor: brand.ink, background: CK.goodBgSoft, color: brand.inkSoft }}>
+            ℹ️ Filo = <b>{filoTek} araç</b> (yukarıdaki Filo Paneli'nden — tek sayı, parklanma dizilimine göre depolara konur). Aşağıdaki grafik gün içi parklanma doluluğunu, saatler ise servis penceresini gösterir.
+          </div>
           <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div>
-              <span className="field-label">Toplam filo</span>
-              <div className="mt-1 flex items-center gap-1">
-                <input type="number" min={0} max={80} step={1} value={isletme.toplamFilo}
-                  onChange={(e) => patchIsletme({ toplamFilo: Math.max(0, Math.min(80, Math.round(parseFloat(e.target.value) || 0))) })}
-                  className="w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
-                <span className="text-xs" style={{ color: brand.muted }}>araç</span>
-              </div>
-              <div className="mt-0.5 text-[0.6rem]" style={{ color: brand.faint }}>= gece depoda bekleyen en fazla araç (manuel)</div>
-            </div>
-            <div>
-              <span className="field-label">Pik filo</span>
-              <div className="mt-1 flex items-center gap-1">
-                <input type="number" min={0} max={60} step={1} value={isletme.pikFilo}
-                  onChange={(e) => patchIsletme({ pikFilo: Math.max(0, Math.min(60, Math.round(parseFloat(e.target.value) || 0))) })}
-                  className="w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
-                <span className="text-xs" style={{ color: brand.muted }}>tren</span>
-              </div>
-              {maks.gecerli && (
-                <button type="button" onClick={() => patchIsletme({ pikFilo: maks.nSurdurulebilir })}
-                  className="mt-0.5 text-[0.6rem] underline" style={{ color: brand.red }}>↧ kapasiteden al ({maks.nSurdurulebilir})</button>
-              )}
-            </div>
-            <Num label="Pik-dışı filo" suffix="tren" step={1} max={60} value={isletme.pikDisiFilo}
-              onChange={(v) => patchIsletme({ pikDisiFilo: Math.max(0, Math.min(60, Math.round(v))) })} />
             <label className="block"><span className="field-label">Servis başlangıç</span>
               <input type="time" value={isletme.servisBas} onChange={(e) => patchIsletme({ servisBas: e.target.value })}
                 className="mt-1 w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} /></label>
