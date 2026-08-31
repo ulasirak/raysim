@@ -237,7 +237,7 @@ const T1_MESAFE = [261, 881, 699, 1006, 871, 564, 918];
 // Geçiş hızı 15 km/h = Şartname 3.4.8.2 (varsayılan vMakas) — R50 en dar yarıçapı
 // yönetir; CAD hız sayısı vermez, geometri (R50/R100·1/6) verir.
 const T1_EK: Record<number, RingEk> = {
-  0: { fromDepot: true, makas: [{ tip: "karsilasmali", konumOran: 0.3, sayi: 4, crossover: "s" }], dwell: 40 }, // Alaaddin dönüş yelpazesi
+  0: { fromDepot: true, makas: [{ tip: "karsilasmali", konumOran: 0.3, sayi: 2, crossover: "s" }, { tip: "karsilasmali", konumOran: 0.33, sayi: 1, crossover: "x" }], dwell: 40 }, // Alaaddin dönüş yelpazesi — 2 S + 1 X (kullanıcı)
   1: { makas: [{ tip: "karsilasmali", konumOran: 0.06, sayi: 1, crossover: "s" }] },             // Hükümet — 1 S-makas (kullanıcı teyidi: makas VAR)
   2: { makas: [{ tip: "karsilasmali", konumOran: 0.08, sayi: 1, crossover: "s" }] },             // Mevlana — 1 S-makas (CAD: PM4/PM5 = S-makasın 2 motoru)
   3: { makas: [{ tip: "karsilasmali", konumOran: 0.08, sayi: 1, crossover: "s" }],
@@ -317,7 +317,7 @@ export function hazirHatlar(): HazirHat[] {
     veri: {
       rings: mevcutRings, cfg, arac: SKODA_28T,
       // Alaaddin dönüş yelpazesi (2 S crossover) · Adliye U-dönüş 2 S (kullanıcı: Adliye 2 tane S)
-      isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 8, turnaroundDk: 4, terminalBas: term(2, 0), terminalSon: term(2, 0) },
+      isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 8, turnaroundDk: 4, terminalBas: term(2, 1), terminalSon: term(2, 0) },
       meta: meta({
         projeAdi: "Konya Tramvay — Mevcut Hat (Alaaddin–Adliye) Sinyalizasyon",
         hatAdi: "Alaaddin – Adliye (5,2 km · 8 istasyon)",
@@ -348,7 +348,7 @@ export function hazirHatlar(): HazirHat[] {
       { tip: "udonus", konumOran: 0.08, sayi: 1, crossover: "x" },   // Şehir Hastanesi scissors (1 X)
       { tip: "udonus", konumOran: 0.14, sayi: 1, crossover: "s" },   // Şehir Hastanesi S #1
       { tip: "udonus", konumOran: 0.20, sayi: 1, crossover: "s" },   // Şehir Hastanesi S #2
-      { tip: "udonus", konumOran: 0.88, sayi: 1, crossover: "s" },   // Adliye U-dönüş 1 S (kullanıcı)
+      // Adliye makası mevcut hat tarafında (T1_EK[6], 1 S) — Bütünleşik'te tek sayılır (kullanıcı: Adliye 1)
     ], dwell: 45 },
   };
   const etap1Rings = hatKur(ETAP1_DURAK, ETAP1_MESAFE, etap1Ek);
@@ -435,7 +435,7 @@ export function hazirHatlar(): HazirHat[] {
     veri: {
       rings: birlesikRings, cfg, arac: SKODA_28T,
       // Alaaddin yelpaze (2 S) · Stadyum terminus yelpazesi = 2 S + 1 X (Adliye & Aslım artık ara kavşak)
-      isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 10, turnaroundDk: 5, terminalBas: term(2, 0), terminalSon: term(2, 1) },
+      isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 10, turnaroundDk: 5, terminalBas: term(2, 1), terminalSon: term(2, 1) },
       meta: meta({
         projeAdi: "Konya Tramvay — Bütünleşik Hat (Alaaddin–Stadyum) Sinyalizasyon",
         hatAdi: "Alaaddin – Stadyum (~25,5 km · 29 istasyon · Adliye & Aslım kavşaklı)",
