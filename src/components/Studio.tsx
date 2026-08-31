@@ -323,10 +323,10 @@ function StudioIc() {
             </div>
             <span className="mt-0.5 block text-[0.6rem]" style={{ color: CK.amberInk }}>⚠ değiştirilmesi önerilmez (240 s tasarım kuralı)</span>
           </div>
-          <div>
+          <div title="Aynı anda bu hatta sığabilen EN FAZLA tramvay (darboğazın izin verdiği fiziksel üst sınır). Filon bu sayıyı aşamaz — aşarsa trenler kaçınılmaz kuyruklanır.">
             <span className="field-label">Hat kapasitesi</span>
             <div className="mt-1 text-lg font-bold tabular-nums" style={{ color: filoAsim ? brand.red : brand.ink }}>{nMax}</div>
-            <span className="text-[0.6rem]" style={{ color: filoAsim ? brand.red : brand.muted }}>{filoAsim ? `⚠ filo ${filoTek} > kapasite ${nMax}` : "araç · üst sınır"}</span>
+            <span className="text-[0.6rem]" style={{ color: filoAsim ? brand.red : brand.muted }}>{filoAsim ? `⚠ filo ${filoTek} > kapasite ${nMax}` : "araç · üst sınır (darboğaz)"}</span>
           </div>
         </div>
 
@@ -482,12 +482,15 @@ function StudioIc() {
                   <span className="ml-1 text-xs" style={{ color: brand.muted }}>sürdürülebilir (UIC 406 tamponlu)</span>
                 </div>
               </div>
+              <p className="mt-1 text-[0.7rem]" style={{ color: brand.muted }}>
+                <b>Teorik maksimum</b>: darboğazın izin verdiği fiziksel tavan — sıfır pay, her tren sürekli tam kapasite. <b>Sürdürülebilir</b>: UIC 406 doluluk tavanıyla (blok başına ~%60–75 kullanım) <b>her gün güvenle</b> çalıştırılabilen sayı — küçük gecikmeler birbirini tetiklemesin, toparlanma payı kalsın diye teorikten düşüktür (gerçek işletme bu değeri hedefler).
+              </p>
               <p className="mt-1 text-xs" style={{ color: brand.inkSoft }}>
                 Bu hatta aynı anda en fazla <b>{maks.nTeorik}</b> tramvay sığar. Darboğaz: <b>{maks.baglayanAd}</b> · min. aralık {sure(maks.hMin)} · çevrim {sure(maks.cevrimSuresi)}. Kısıt dökümü ve terminal girdileri <Link href="/#ringler" className="underline">Ringler</Link>’de.
               </p>
               {/* Gereken tren = ⌈RTT ÷ hedef headway⌉ — kullanıcının hedef sıklığı için filo */}
               <p className="mt-1 text-xs" style={{ color: brand.ink }}>
-                📐 Tur süresi (RTT) <b>{sure(maks.cevrimSuresi)}</b> (2×seyir + tüm durak dwell'leri + terminaller). {headwayDk} dk sefer sıklığı için <b>gereken tren = {Math.ceil(maks.cevrimSuresi / Math.max(1, headwayDk * 60))}</b> (⌈RTT ÷ headway⌉).
+                📐 Tur süresi (RTT) <b>{sure(maks.cevrimSuresi)}</b> (2×seyir + tüm durak dwell'leri + terminaller). {headwayDk} dk sefer sıklığı için <b>gereken tren = {Math.ceil(maks.cevrimSuresi / Math.max(1, headwayDk * 60))}</b> (⌈RTT ÷ headway⌉) — <span style={{ color: brand.muted }}>seçtiğin sıklıkta çalışmak için hatta bulunması gereken tramvay: bir tren tam turu (RTT) tamamlayana dek arkasından kaç tren dolması gerektiği (tur süresi ÷ sefer aralığı).</span>
               </p>
             </div>
           )}
@@ -533,12 +536,14 @@ function StudioIc() {
               onChange={(v) => patchIsletme({ konforIndeksi: Math.max(0, v) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>ayakta yoğunluk tasarımı</span></div>
             <div><Num label="Yolcu akış hızı" suffix="yolcu/m·s" step={0.1} value={isletme.yolcuAkisHizi}
               onChange={(v) => patchIsletme({ yolcuAkisHizi: Math.max(0.1, v) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>kapı metresi başına akış (~1.2)</span></div>
-            <div><Num label="Min duruş süresi" suffix="s" step={1} value={isletme.minDurusSuresi}
-              onChange={(v) => patchIsletme({ minDurusSuresi: Math.max(0, Math.round(v)) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>dwell alt sınırı</span></div>
+            <div title="Bir durakta yolcu az olsa bile en kısa duruş (alt sınır). TÜM duraklara uygulanır — burada değiştirince her durağın oto dwell'i bu tabana göre güncellenir.">
+              <Num label="Min duruş süresi" suffix="s" step={1} value={isletme.minDurusSuresi}
+              onChange={(v) => patchIsletme({ minDurusSuresi: Math.max(0, Math.round(v)) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>tüm duraklara uygulanır — oto dwell alt sınırı</span></div>
           </div>
           <div className="rounded border-l-4 px-3 py-2 text-xs" style={{ background: CK.goodBgSoft, borderColor: brand.ink, color: brand.inkSoft }}>
             Net taban alanı <b>{netTabanAlani(stock).toFixed(1)} m²</b> · maksimum yolcu kapasitesi <b>{maxYolcuKapasitesi(stock, isletme.konforIndeksi)} yolcu</b>.
-            <br />Dwell = max(min duruş, <i>(inen+binen) ÷ (kapı×genişlik×akış)</i>) + kapı aç + kapı kapa. Her durakta ayrı → RTT'ye kümülatif.
+            <br />Dwell = max(<b>min duruş</b>, <i>(inen+binen) ÷ (kapı×genişlik×akış)</i>) + kapı aç + kapı kapa. Her durakta ayrı → RTT'ye kümülatif.
+            <br />ℹ️ Dwell <b>otomatik</b> (yolcu akışından) gelir ama zorunlu değil — istersen her durakta <b>elle</b> de girebilirsin: <Link href="/#ringler" className="underline">Ringler → Duraklar &amp; Mesafeler</Link>’de o durağın <b>“oto dwell”</b> kutusunu kapatıp değeri yaz. Oto açıkken alt sınır yukarıdaki <b>min duruş süresi</b>dir.
           </div>
         </Panel>
       </section>

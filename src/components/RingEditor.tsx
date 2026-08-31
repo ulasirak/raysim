@@ -387,6 +387,9 @@ export function RingEditor() {
                     <span className="ml-1 text-xs" style={{ color: brand.muted }}>sürdürülebilir (UIC 406 tamponlu)</span>
                   </div>
                 </div>
+                <p className="mt-1 text-[0.7rem]" style={{ color: brand.muted }}>
+                  <b>Teorik maksimum</b>: darboğazın izin verdiği fiziksel tavan (sıfır pay). <b>Sürdürülebilir</b>: UIC 406 doluluk tavanıyla (blok başına ~%60–75 kullanım) her gün güvenle çalıştırılabilen sayı — küçük gecikmeler zincirlemesin, toparlanma payı kalsın diye teorikten düşüktür (gerçek işletme bunu hedefler).
+                </p>
                 <p className="mt-1 text-xs" style={{ color: brand.inkSoft }}>
                   Darboğaz: <b>{maks.baglayanAd}</b> · min. aralık {sure(maks.hMin)} · çevrim {sure(maks.cevrimSuresi)}
                 </p>
