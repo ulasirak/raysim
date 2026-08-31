@@ -21,6 +21,7 @@ import { CK } from "@/lib/anaray/chartkit";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { BosHat } from "@/components/BosHat";
 import { LiveNetwork } from "@/components/LiveNetwork";
+import { Tarife } from "@/components/Tarife";
 
 const KMH = 1 / 3.6;
 
@@ -593,6 +594,9 @@ function StudioIc() {
           hatta, pik-dışında fazlası depoya döner (parklanma), gece hepsi depoda. */}
 
 
+
+      {/* Tarife (zaman çizelgesi) — çevrim + ulaşılan aralıktan kalkışlar + araç diyagramı. */}
+      {maks.gecerli && <Tarife cevrimSn={maks.cevrimSuresi} headwaySn={ulasilanHeadwaySn} />}
 
       {/* Özet künye */}
       <section className="mt-6 overflow-hidden rounded-lg border bg-white" style={{ borderColor: brand.border }}>
