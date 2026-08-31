@@ -231,6 +231,23 @@ export function kalkisEkle(line: Line, globalSu: number): Line {
   return { ...line, stations: line.stations.map((st) => (st.tip === "gecit" ? st : { ...st, dwell: st.dwell + su })) };
 }
 
+/** Elle konan sinyal lambalarının (ters işletme HARİÇ) hat-boyu konumları — blok sınırı olarak.
+ *  Böylece koyduğun sinyaller blok sınırı olur; otomatik aralık yalnız boş kesimleri doldurur. */
+export function sinyalKonumlari(rings: DurakArasiRing[], cfg: SimConfig = BELGE): number[] {
+  const out: number[] = [];
+  let offset = 0;
+  for (const r of rings) {
+    const L = ringToLine(r, "nominal", cfg).length;
+    const scale = L / Math.max(1, r.uzunluk);
+    for (const s of r.sinyaller ?? []) {
+      if (s.tersIsletme) continue; // ters işletme sinyali blok sınırı değil (özel turnback)
+      out.push(offset + Math.max(0, Math.min(r.uzunluk, s.konum)) * scale);
+    }
+    offset += L;
+  }
+  return out;
+}
+
 /** Makas (kavşak) merkezlerinin hat-boyu konumları (ileri yön) — kavşak sinyalleri için. */
 export function makasKonumlari(
   rings: DurakArasiRing[], cfg: SimConfig = BELGE,

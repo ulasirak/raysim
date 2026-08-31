@@ -19,6 +19,7 @@ import { type SimConfig, VARSAYILAN_DOLULUK_TAVANI } from "./config";
 import { simulate } from "./sim";
 import { makeBlocks } from "./signalling";
 import { loopToHat, type HatModel } from "./hatsim";
+import { sinyalKonumlari } from "./network";
 import { sinyalCevrimi, type DurakArasiRing } from "./ring";
 
 const T_SIGHTING = 4; // s — sürücü görme/reaksiyon (görerek sürüş kabulü)
@@ -81,9 +82,10 @@ export function blockingTimeHesap(
   model: HatModel, stock: RollingStock, cfg: SimConfig,
   kalkisOlu: number | ((istasyonPos: number) => number) = 0,
   sinyalTaban = 0,
+  sinyalSinirlari: number[] = [],
 ): BlockingSonuc {
   const line = model.line;
-  const bounds = makeBlocks(line, cfg.blokMaxUzunluk);
+  const bounds = makeBlocks(line, cfg.blokMaxUzunluk, sinyalSinirlari);
   const res = simulate(line, stock, 0.5);
   const pts = res.points;
   const b = Math.max(0.1, stock.maxBraking); // 0 girilirse brakeDist=Infinity olmasın
@@ -159,5 +161,5 @@ export function blockingTimeRing(rings: DurakArasiRing[], stock: RollingStock, c
     for (const s of r.sinyaller ?? []) if (s.yon === "giden" && !s.tersIsletme) mx = Math.max(mx, sinyalCevrimi(s));
     return mx;
   }, 0);
-  return blockingTimeHesap(loopToHat(rings, true, cfg), stock, cfg, 0, sinyalTaban);
+  return blockingTimeHesap(loopToHat(rings, true, cfg), stock, cfg, 0, sinyalTaban, sinyalKonumlari(rings, cfg));
 }

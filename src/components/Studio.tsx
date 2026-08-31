@@ -117,6 +117,8 @@ function StudioIc() {
   const gecitDuruslari = useMemo(() => hemzeminDuruslari(rings, cfg), [rings, cfg]);
   // Canlı sim görsel işaretleri: tüm hat özellikleri (yaya/karayolu geçidi + makas).
   const hatOzellik = useMemo(() => hatOzellikleri(rings, cfg), [rings, cfg]);
+  // Elle konan sinyaller (ters işletme hariç) blok sınırı olur → sim + kapasite aynı düzen.
+  const sinyalSimKonum = useMemo(() => hatOzellik.filter((f) => f.kind === "sinyal" && !f.tersIsletme).map((f) => f.pos), [hatOzellik]);
   const kalkisSu = isletme.kalkisOluZamaniSn; // canlı simde kalkış ölü zamanı (tutarlılık)
   const { line, result } = useMemo(() => {
     const l = kalkisEkle(duruslariEkle(flattenRoute(network, route), gecitDuruslari, false), kalkisSu);
@@ -172,12 +174,12 @@ function StudioIc() {
     return Array.from({ length: filo }, (_, k) => depolar[k % depolar.length].position);
   }, [depotPlan, filo, isletme.parklanmaDagilim]);
   const canliGidis = useMemo(
-    () => simulateSignalled(line, stock, { headway: ulasilanHeadwaySn, count: filo, maxBlockLen: BLOK_MAXLEN, blocked: ariza, origins: gidisOrigins }),
-    [line, stock, ulasilanHeadwaySn, filo, gidisOrigins, ariza, BLOK_MAXLEN]
+    () => simulateSignalled(line, stock, { headway: ulasilanHeadwaySn, count: filo, maxBlockLen: BLOK_MAXLEN, blocked: ariza, origins: gidisOrigins, sinyaller: sinyalSimKonum }),
+    [line, stock, ulasilanHeadwaySn, filo, gidisOrigins, ariza, BLOK_MAXLEN, sinyalSimKonum]
   );
   const donusSim = useMemo(
-    () => simulateSignalled(reverseLine, stock, { headway: ulasilanHeadwaySn, count: filo, maxBlockLen: BLOK_MAXLEN }),
-    [reverseLine, stock, ulasilanHeadwaySn, filo, BLOK_MAXLEN]
+    () => simulateSignalled(reverseLine, stock, { headway: ulasilanHeadwaySn, count: filo, maxBlockLen: BLOK_MAXLEN, sinyaller: sinyalSimKonum.map((p) => reverseLine.length - p) }),
+    [reverseLine, stock, ulasilanHeadwaySn, filo, BLOK_MAXLEN, sinyalSimKonum]
   );
 
   const monteCarloCalistir = () => {
@@ -329,9 +331,9 @@ function StudioIc() {
         <LiveNetwork network={network} route={route} line={line} blocks={canliGidis.blocks}
           up={canliGidis.trains} down={donusSim.trains} tMax={Math.max(canliGidis.tMax, donusSim.tMax)} trainLen={stock.length}
           faultBlocks={ariza} onBlockClick={arizaToggle} depots={depotPlan.depots} features={hatOzellik} />
-        {/* Sinyal blok aralığı — sinyaller bu aralıkta dizilir (kapasite ile aynı) */}
+        {/* Otomatik blok bölme — elle sinyal KOYMADIĞIN açık kesimleri doldurur */}
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs" style={{ color: brand.inkSoft }}>
-          <span>🚦 Sinyal blok aralığı</span>
+          <span>🚦 Otomatik blok bölme (boş kesim)</span>
           <button type="button" onClick={() => patchCfg({ blokMaxUzunluk: Math.max(100, Math.round((cfg.blokMaxUzunluk - 50) / 50) * 50) })}
             className="flex h-5 w-5 items-center justify-center rounded border font-semibold" style={{ borderColor: brand.border, color: brand.ink }} title="Sıklaştır (kısa blok = daha çok sinyal)">−</button>
           <input type="number" min={100} max={1500} step={50} value={Math.round(cfg.blokMaxUzunluk)}
@@ -339,7 +341,7 @@ function StudioIc() {
             className="w-16 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} />
           <button type="button" onClick={() => patchCfg({ blokMaxUzunluk: Math.min(1500, Math.round((cfg.blokMaxUzunluk + 50) / 50) * 50) })}
             className="flex h-5 w-5 items-center justify-center rounded border font-semibold text-white" style={{ background: brand.ink, borderColor: brand.ink }} title="Seyrelt (uzun blok = az sinyal)">+</button>
-          <span style={{ color: brand.muted }}>m · sinyaller bu aralıkta dizilir; kapasite (h_min) ile aynı düzen</span>
+          <span style={{ color: brand.muted }}>m · <b>elle koyduğun sinyaller zaten blok sınırıdır</b> ({sinyalSimKonum.length} sinyal); bu aralık yalnız sinyalsiz açık kesimleri böler. Kapasite (h_min) bu bloklardan hesaplanır — sim ile birebir aynı.</span>
         </div>
         {/* Filo kaynağı + kapasite bağlantısı */}
         <div className="mt-2 text-xs" style={{ color: brand.inkSoft }}>
