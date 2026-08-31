@@ -24,6 +24,7 @@ import { loopToHat } from "./hatsim";
 import { simulate } from "./sim";
 import { computeEnergy } from "./energy";
 import { simulateSignalled } from "./signalling";
+import { sinyalKonumlari, hatOzellikleri } from "./network";
 import type { Line } from "./types";
 
 const INK = "#0C2233";
@@ -123,11 +124,12 @@ function reverseLineOf(line: Line): Line {
 
 // Zaman-mesafe diyagramı / Bildfahrplan (gömülü SVG): ÇİFT YÖN — gidiş + dönüş.
 // Ters eğimli çizgiler kesişince = kruvasman / karşılaşma noktası.
-function bildfahrplanSvg(line: Line, stock: RollingStock, cfg: SimConfig, count: number): string {
+function bildfahrplanSvg(line: Line, stock: RollingStock, cfg: SimConfig, count: number, sinyaller: number[] = []): string {
   if (line.length <= 0) return "";
   const rev = reverseLineOf(line);
-  const up = simulateSignalled(line, stock, { headway: cfg.headway, count, maxBlockLen: cfg.blokMaxUzunluk });
-  const dn = simulateSignalled(rev, stock, { headway: cfg.headway, count, maxBlockLen: cfg.blokMaxUzunluk });
+  // GERÇEK sinyaller blok sınırıdır (canlı sim ile birebir); ters yönde konum aynalanır.
+  const up = simulateSignalled(line, stock, { headway: cfg.headway, count, maxBlockLen: cfg.blokMaxUzunluk, sinyaller });
+  const dn = simulateSignalled(rev, stock, { headway: cfg.headway, count, maxBlockLen: cfg.blokMaxUzunluk, sinyaller: sinyaller.map((p) => line.length - p) });
   const L = line.length, tMax = Math.max(1, up.tMax, dn.tMax);
   const W = 760, H = 250, padL = 78, padR = 12, padT = 12, padB = 26;
   const pw = W - padL - padR, ph = H - padT - padB;
@@ -286,7 +288,7 @@ function rDil(lang: RaporDil) {
   return lang === "en" ? en : tr;
 }
 
-export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, lang: RaporDil = "tr", turnaroundSn = 0): string {
+export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, lang: RaporDil = "tr", turnaroundSn = 0, filo = 0): string {
   const L = rDil(lang);
   // Sunum modu: hat kesinleşmiş/onaylı bir tasarım olarak sunulur — challenge (risk/
   // uyarı) bayrakları, denge sapması ve "ihlal" işaretleri gösterilmez; göstergeler
@@ -306,12 +308,25 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const chSayi = rings.reduce((n, r) => n + ringChallenge(r, stock, cfg).length, 0);
   const kritik = rings.reduce((n, r) => n + ringChallenge(r, stock, cfg).filter((c) => c.seviye === "kritik").length, 0);
 
+  // GERÇEK sinyalizasyon + filo — rapor simülasyonu canlı sistemle birebir olsun diye:
+  //   sinyaller (giden, ters-değil) blok sınırıdır; filo = kullanıcının onayladığı gerçek
+  //   araç sayısı (verilmemişse öneriye düşer, sabit "4" DEĞİL).
+  const ozellikler = hatOzellikleri(rings, cfg);
+  const sinyalListe = ozellikler.filter((f) => f.kind === "sinyal");
+  const sinyalSayisi = sinyalListe.length;
+  const tersSinyalSayisi = sinyalListe.filter((f) => f.tersIsletme).length;
+  const sinyaller = sinyalKonumlari(rings, cfg); // giden non-ters = blok sınırları (canlı sim ile aynı)
+  const filoGercek = filo > 0 ? Math.round(filo) : (olcek.maxTrenHedefHeadway || 4);
+
   // Birleşik hat (loop → tek Line) → hız profili + Bildfahrplan grafikleri
   const line: Line | null = rings.length ? loopToHat(rings, true, cfg).line : null;
-  const bfCount = Math.max(3, Math.min(6, olcek.maxTrenHedefHeadway || 4));
+  // Bildfahrplan gerçek filoyla çizilir (okunabilirlik için görselde en çok 8 iz; gerçek
+  // sayı altyazıda). Bloklar GERÇEK sinyallerden gelir → grafik canlı sistemle tutarlı.
+  const bfCount = Math.max(3, Math.min(8, filoGercek));
   const eg = line ? energyGradeSvg(line, stock) : null;
   const energyFig = eg && eg.svg ? `<div class="fig">${eg.svg}<div class="cap">${L.figEnergy(eg.net, eg.perKm)}</div></div>` : "";
-  const bfFig = line ? `<div class="fig">${bildfahrplanSvg(line, stock, cfg, bfCount)}<div class="cap">${L.fig3(bfCount, cfg.headway)}</div></div>` : "";
+  const bfFazla = filoGercek > bfCount ? (lang === "en" ? ` (showing ${bfCount} of ${filoGercek} trains)` : ` (${filoGercek} trenin ${bfCount} tanesi çiziliyor)`) : "";
+  const bfFig = line ? `<div class="fig">${bildfahrplanSvg(line, stock, cfg, bfCount, sinyaller)}<div class="cap">${L.fig3(bfCount, cfg.headway)}${bfFazla}</div></div>` : "";
 
   // ---- Kapak künye ----
   const kunye = [
@@ -327,6 +342,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     ${kpi(L.kpi.hucre, `${rings.length}`, L.altMakas(rings.reduce((n, r) => n + r.makaslar.length, 0)))}
     ${kpi(L.kpi.hedef, `${cfg.headway} s`, (olcek.headwayUygun || sunum) ? L.altTumu : L.altIhlal, (olcek.headwayUygun || sunum) ? "#0E7C57" : RED)}
     ${kpi(L.kpi.sigan, `${olcek.maxTrenHedefHeadway}`, L.altTur(s0(olcek.cevrimSuresi)))}
+    ${kpi(lang === "en" ? "Planned fleet" : "Planlanan filo", `${filoGercek}`, lang === "en" ? `trams in service` : `serviste tramvay`, "#0E7C57")}
     ${kpi(L.kpi.kapasite, `${bt.teorikKapasite.toFixed(0)}`, L.altTph)}
     ${kpi(L.kpi.pratik, `${bt.pratikKapasite.toFixed(0)}`, `%${(bt.dolulukTavani * 100).toFixed(0)} · ${L.altTph}`, "#0E7C57")}
     ${kpi(L.kpi.uic, `%${bt.dolulukHedef.toFixed(0)}`, (bt.hedefUygun || sunum) ? L.altUygun : L.altIhlalK, (bt.hedefUygun || sunum) ? "#0E7C57" : RED)}
@@ -397,6 +413,50 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const antetSol = firmaAsls
     ? `<span class="firma-logo" role="img" aria-label="${esc(meta.sinyalizasyonFirmasi || "Aslan Sinyalizasyon")}">${aslsLogoSvg}</span>`
     : `<span class="firma">${esc(meta.sinyalizasyonFirmasi || "RaySim")}</span>`;
+
+  // ---- SİNYALİZASYON bölümü (sinyal lambaları metrajı — canlı sistemle birebir) ----
+  const gidenS = sinyalListe.filter((f) => f.yon === "giden").length;
+  const gelenS = sinyalListe.filter((f) => f.yon === "gelen").length;
+  const sinyalRows = sinyalListe.map((f, i) => [
+    `${i + 1}`, kmFmt(f.pos),
+    f.yon === "giden" ? (lang === "en" ? "outbound ▶" : "giden ▶") : (lang === "en" ? "return ◀" : "gelen ◀"),
+    f.tersIsletme ? (lang === "en" ? "reverse (turnback)" : "ters işletme") : (lang === "en" ? "home" : "hat sinyali"),
+    `${Math.round(f.aspektCevrim || 0)}`,
+  ]);
+  const sinyalThead = lang === "en"
+    ? ["No", "Chainage", "Direction", "Type", "Aspect cycle (s)"]
+    : ["No", "Kilometraj", "Yön", "Tür", "Aspect çevrimi (s)"];
+  const sinyalBolum = `
+  <div class="banner"><span class="no">3</span>${lang === "en" ? "SIGNALLING — SIGNAL LAMPS (SG)" : "SİNYALİZASYON — SİNYAL LAMBALARI (SG)"}</div>
+  <p>${lang === "en"
+    ? `The line is protected by <b>${sinyalSayisi} three-aspect signal lamps</b> (SG: red / yellow / green), ${gidenS} outbound (▶) and ${gelenS} return (◀)${tersSinyalSayisi ? `, of which ${tersSinyalSayisi} are reverse-running (turnback) signals` : ""}. Chainages are the real design positions; each outbound signal is a <b>block boundary</b>, so the capacity (minimum headway) and the time–distance graph below are driven by these exact signal positions — identical to the live network simulation. The aspect cycle is the green→yellow→red timing that the head runs against the block ahead.`
+    : `Hat, <b>${sinyalSayisi} adet 3-aspect sinyal lambası</b> (SG: kırmızı / sarı / yeşil) ile korunur — ${gidenS} giden (▶), ${gelenS} gelen (◀)${tersSinyalSayisi ? `, bunların ${tersSinyalSayisi} tanesi ters işletme (turnback) sinyalidir` : ""}. Kilometrajlar gerçek tasarım konumlarıdır; her giden sinyali bir <b>blok sınırıdır</b>, bu yüzden aşağıdaki kapasite (minimum headway) ve zaman–mesafe grafiği bu sinyal konumlarından türetilir — canlı ağ simülasyonuyla birebir aynıdır. Aspect çevrimi, sinyal kafasının önündeki bloğa göre yürüttüğü yeşil→sarı→kırmızı süresidir.`}</p>
+  ${sinyalListe.length ? tbl(sinyalThead, sinyalRows, { first: true }) : `<p class="muted">${lang === "en" ? "No signal lamps defined on this line yet (positions are entered in the Ringler module)." : "Bu hatta henüz sinyal lambası tanımlı değil (konumlar Ringler modülünde girilir)."}</p>`}
+`;
+
+  // ---- SİSTEM ÖZELLİKLERİ & MOTOR bölümü (canlı sistemin işletim yetenekleri) ----
+  const ozellikler2 = lang === "en" ? [
+    ["Signal lamps at real chainages", `${sinyalSayisi} SG placed from the signalling design — every outbound signal is a block boundary; the report simulation, capacity and time–distance graph all run on these exact positions.`],
+    ["Interactive reverse running (turnback)", "When an outbound tram reaches a mid-line switch, the live simulation pauses and asks for confirmation; on approval the tram crosses to the opposite (return) track and heads back."],
+    ["Terminal turnback types", "Each terminal declares its physical turnback form (stub / twin-platform / balloon loop / crossover); the live network draws a distinct geometry per type and the type feeds the terminal headway (balloon loop ≈ 0 turnback)."],
+    ["S / X crossover geometry", "Switches are drawn as real crossovers connecting the outbound and return tracks (S = single, X = scissors), coloured in harmony with the block occupancy."],
+    ["Live depot (stabling) counter", "The depot box shows the real fleet ready to dispatch and decrements as each tram enters service (full at start, e.g. 9/9 → …)."],
+    ["Visibility-independent playback", "The simulation clock advances from real elapsed time via a background-safe driver, so it keeps running even when the tab is not focused."],
+  ] : [
+    ["Gerçek metrajlı sinyal lambaları", `Sinyalizasyon tasarımından ${sinyalSayisi} SG yerleştirildi — her giden sinyali bir blok sınırıdır; rapor simülasyonu, kapasite ve zaman–mesafe grafiği bu tam konumlar üzerinden çalışır.`],
+    ["Etkileşimli ters işletme (turnback)", "Giden bir tramvay ara-hat makasına ulaştığında canlı simülasyon durur ve onay ister; onaylanınca tramvay karşı (dönüş) şeride geçip geri döner."],
+    ["Terminal dönüş biçimleri", "Her terminal fiziksel dönüş biçimini belirtir (kör / çift peron / balon loop / makaslı geçiş); canlı ağ tipe göre farklı geometri çizer ve tip terminal headway’ini besler (balon loop ≈ 0 dönüş)."],
+    ["S / X makas crossover geometrisi", "Makaslar gidiş ve dönüş şeritlerini bağlayan gerçek crossover olarak çizilir (S = tek, X = scissors), blok işgaliyle uyumlu renkte."],
+    ["Canlı depo (parklanma) sayacı", "Depo kutusu servise çıkışa hazır gerçek filoyu gösterir ve her tramvay yola çıktıkça azalır (başta tam dolu, ör. 9/9 → …)."],
+    ["Görünürlükten bağımsız oynatma", "Simülasyon saati gerçek geçen zamandan, arka-planda da çalışan bir sürücüyle ilerler; sekme odakta olmasa bile akmaya devam eder."],
+  ];
+  const ozellikBolum = `
+  <div class="banner"><span class="no">5</span>${lang === "en" ? "SYSTEM FEATURES & SIMULATION ENGINE" : "SİSTEM ÖZELLİKLERİ & SİMÜLASYON MOTORU"}</div>
+  <p>${lang === "en"
+    ? `Operational capabilities of the live signalling simulation this report is generated from. All figures above (capacity, headway, time–distance graph) are produced by this same engine at the planned fleet of <b>${filoGercek} trams</b>.`
+    : `Bu raporun üretildiği canlı sinyalizasyon simülasyonunun işletim yetenekleri. Yukarıdaki tüm değerler (kapasite, headway, zaman–mesafe grafiği) aynı motor tarafından, <b>${filoGercek} tramvaylık</b> planlanan filoyla üretilir.`}</p>
+  <ul class="ch">${ozellikler2.map(([b, m]) => `<li><b>${esc(b)}:</b> ${esc(m)}</li>`).join("")}</ul>
+`;
 
   return `<!doctype html><html lang="${L.htmlLang}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -580,8 +640,11 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <h3 class="sub">${sunum ? (lang === "en" ? "2.1 Per-cell Constraint Analysis" : "2.1 Ring Bazında Kısıt Analizi") : L.s21}</h3>
   ${ringDetay}
 
-  <!-- 3 -->
-  <div class="banner"><span class="no">3</span>${L.s4}</div>
+  <!-- 3: Sinyalizasyon -->
+  ${sinyalBolum}
+
+  <!-- 4 -->
+  <div class="banner"><span class="no">4</span>${L.s4}</div>
   <p>${L.s4i}</p>
   ${kapasiteTbl}
   ${sunum ? `<div style="margin:8px 0 4px;padding:8px 12px;border-left:4px solid #0E7C57;background:#EAF5F0;border-radius:4px;font-size:11px;color:${INK}">✓ ${lang === "en" ? `Capacity analysis compliant: all blocks within the target headway (${cfg.headway} s). Design approved.` : `Kapasite analizi uygun: tüm bloklar hedef headway (${cfg.headway} s) içinde — sınır aşımı yok. Tasarım onaylı.`}</div>` : ""}
@@ -593,8 +656,11 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <div class="fig">${blockingBarSvg(bt.bloklar, bt.kritikBlok, kritikRenk)}<div class="cap">${sunum ? (lang === "en" ? "Figure 5 — Per-block blocking-time component distribution (determining block highlighted)." : "Şekil 5 — Blok başına blocking-time bileşen dağılımı (belirleyici blok vurgulu).") : L.fig5}</div></div>
   ${btTbl}
 
-  <!-- 4 -->
-  <div class="banner"><span class="no">4</span>${L.s5}</div>
+  <!-- 5: Sistem Özellikleri & Motor -->
+  ${ozellikBolum}
+
+  <!-- 6 -->
+  <div class="banner"><span class="no">6</span>${L.s5}</div>
   <table class="imza"><thead><tr><th>${esc(L.thImza[0])}</th><th>${esc(L.thImza[1])}</th></tr></thead>
   <tbody><tr><td class="l">${esc(meta.hazirlayan)}</td><td class="l">${esc(meta.onaylayan)}</td></tr>
   <tr><td class="l">${esc(L.imzaTarih)}</td><td class="l">${esc(L.imzaTarih)}</td></tr></tbody></table>

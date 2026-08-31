@@ -70,7 +70,7 @@ export function Belgeler() {
     const yanit = await fetch("/api/rapor", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ veri: { rings, cfg, meta, arac: stock, turnaroundSn }, dil }),
+      body: JSON.stringify({ veri: { rings, cfg, meta, arac: stock, turnaroundSn, filo: isletme.pikFilo }, dil }),
     });
     if (!yanit.ok) {
       const v = await yanit.json().catch(() => ({}));
