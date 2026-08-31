@@ -123,7 +123,23 @@ function StudioIc() {
   const nMax = maks.gecerli ? maks.nTeorik : 999;
   const filoTek = Math.max(1, isletme.toplamFilo || 1);
   const setFilo = (v: number) => { const n = Math.max(1, Math.min(99, Math.round(v))); patchIsletme({ toplamFilo: n, pikFilo: n, pikDisiFilo: n }); };
-  const filo = Math.min(nMax, filoTek);               // simde koşan (kapasiteyle tavanlı)
+  // Depo pozisyonları doğrudan HATTAN gelir (filo/headway'e bağlı değil) → parkToplam'ı
+  // filodan ÖNCE hesaplayabiliriz.
+  const parkAnahtar = (pos: number) => `d${Math.round(pos)}`;
+  const depoPozlar = useMemo(
+    () => line.stations.filter((s) => s.depot && s.position < line.length - 1e-6).map((s) => s.position),
+    [line]
+  );
+  const parkToplam = useMemo(() => {
+    const dz = isletme.parklanmaDagilim || {};
+    return depoPozlar.reduce((s, p) => s + Math.max(0, Math.round(dz[parkAnahtar(p)] ?? 0)), 0);
+  }, [isletme.parklanmaDagilim, depoPozlar]);
+  const parkDiziliVar = parkToplam > 0;
+  // KOŞAN FİLO: elle parklanma dizilimi girildiyse filo = dizilim TOPLAMI (ürün kuralı:
+  // "filo = parklanma alanına dizdiğin araç sayısı"). Böylece her depoda canlı görünen
+  // tren sayısı, o depoya girdiğin sayıyla BİREBİR olur (sarma/yığılma yok). Dizilim
+  // yoksa Filo panelindeki sayı kullanılır (geriye-uyum).
+  const filo = Math.min(nMax, parkDiziliVar ? parkToplam : filoTek); // simde koşan (kapasiteyle tavanlı)
   const filoAsim = maks.gecerli && filoTek > nMax;    // filo > hat kapasitesi
   // HEDEF headway = tasarım kuralı (240 s vars.) → ÖNERİ bundan. ULAŞILAN = RTT/filo.
   const hedefHeadwaySn = Math.max(1, headwayDk * 60);
@@ -140,16 +156,9 @@ function StudioIc() {
   // Canlı sim'i başlatmak için GEREKLİ iki şey: (1) parklanma alanı (depo) seçili, (2) filo onaylı.
   const filoHazir = !!isletme.filoOnaylandi;
   const simHazir = depoVar && filoHazir;
-  // Parklanma dizilimi (elle): her depoya konan araç. Boşsa depolara sırayla (geriye-uyum).
-  const parkAnahtar = (pos: number) => `d${Math.round(pos)}`;
-  const parkDizili = useMemo(() => {
-    const dz = isletme.parklanmaDagilim;
-    return !!dz && depotPlan.depots.some((d) => (dz[parkAnahtar(d.position)] ?? 0) > 0);
-  }, [isletme.parklanmaDagilim, depotPlan]);
-  const parkToplam = useMemo(() => {
-    const dz = isletme.parklanmaDagilim || {};
-    return depotPlan.depots.reduce((s, d) => s + Math.max(0, Math.round(dz[parkAnahtar(d.position)] ?? 0)), 0);
-  }, [isletme.parklanmaDagilim, depotPlan]);
+  // Parklanma dizilimi (elle) — parkAnahtar/parkToplam/parkDiziliVar yukarıda (filodan
+  // ÖNCE) tanımlı. parkDizili = geçerli bir elle dizilim var mı?
+  const parkDizili = parkDiziliVar;
   const gidisOrigins = useMemo(() => {
     const depolar = depotPlan.depots;
     if (depolar.length === 0) return undefined;
