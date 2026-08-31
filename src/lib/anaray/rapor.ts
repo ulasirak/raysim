@@ -512,15 +512,15 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   let isletmeBolum = "";
   if (tia) {
     const talepGirdi = en
-      ? `total peak demand ${Math.round(isletme.pikYolcuSaat || 0)} pax/h, distributed by station role (high: hospital · interchange · stadium · centre)`
-      : `toplam pik talep ${Math.round(isletme.pikYolcuSaat || 0)} yolcu/saat, istasyon rolüne göre dağıtılmış (yoğun: hastane · aktarma · stadyum · merkez)`;
+      ? `entered total peak demand ${Math.round(isletme.pikYolcuSaat || 0)} pax/h; distributed across stops by station role and the boarding/alighting pattern (high: hospital · interchange · stadium · centre)`
+      : `girilen toplam pik talep ${Math.round(isletme.pikYolcuSaat || 0)} yolcu/saat; istasyon rollerine ve durak iniş-biniş dağılımına göre duraklara paylaştırıldı (yoğun: hastane · aktarma · stadyum · merkez)`;
     const kapNote = en ? `vehicle capacity ${tia.aracKapasite} pax and ${tia.filo.mevcutPik} peak trams` : `araç kapasitesi ${tia.aracKapasite} yolcu ve ${tia.filo.mevcutPik} pik tramvay`;
 
     // 5.1 Yolcu Yük Profilleri
     const yukThead = en ? ["Stop", "Board", "Alight", "Load ▶", "Load ◀", "Peak", "Occ."] : ["Durak", "Binen", "İnen", "Yük ▶", "Yük ◀", "Tepe", "Doluluk"];
     const yukRows = tia.duraklar.map((d) => [esc(d.ad), `${d.binen}`, `${d.inen}`, `${d.yukGidis}`, `${d.yukDonus}`, `${d.tepeYuk}`, `%${Math.round(d.doluluk * 100)}`]);
     const b51 = `<h3 class="sub">5.1 ${en ? "Passenger Load Profiles" : "Yolcu Yük Profilleri"}</h3>
-      ${gsNot(talepGirdi, en ? `directional load per stop; peak load <b>${tia.tepeYuk} pax/h</b> at <b>${esc(tia.tepeDurak)}</b>${tia.gercekVeri ? " (measured counts)" : " (role-based estimate)"}` : `durak-başı yönlü yük profili; azami yük <b>${tia.tepeYuk} yolcu/saat</b> (<b>${esc(tia.tepeDurak)}</b>)${tia.gercekVeri ? ", ölçülen sayımlardan" : ", rol-tabanlı tahmin"}`)}
+      ${gsNot(talepGirdi, en ? `directional load per stop; peak load <b>${tia.tepeYuk} pax/h</b> at <b>${esc(tia.tepeDurak)}</b>${tia.gercekVeri ? " (from per-station boarding/alighting counts)" : " (computed from the distribution of the entered total demand)"}` : `durak-başı yönlü yük profili; azami yük <b>${tia.tepeYuk} yolcu/saat</b> (<b>${esc(tia.tepeDurak)}</b>)${tia.gercekVeri ? ", istasyon bazında girilen iniş-biniş sayımlarından" : ", girilen toplam talebin durak dağılımından hesaplandı"}`)}
       ${tbl(yukThead, yukRows, { first: true })}`;
 
     // 5.2 Depo Çıkışı
@@ -572,8 +572,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     ? `Effect of the demand, fleet and switch inputs on operation: passenger load profiles, single-depot two-direction dispatch, stops needing a turnback, per-switch reverse-running variations, and the fleet recommendation.`
     : `Talep, filo ve makas girdilerinin işletmeye etkisi: yolcu yük profilleri, tek-depodan iki-yön çıkışı, dönüşe ihtiyaç duyan duraklar, makas-başı ters işletme varyasyonları ve filo önerisi.`}</p>
   <div class="gs"><span class="gs-i">${en ? "Passenger & occupancy basis" : "Yolcu ve doluluk esası"}:</span> ${en
-    ? `passenger measurement is central: from the boarding/alighting counts measured per station (or, where not entered, the role-based demand distribution) together with the vehicle passenger capacity and service frequency, the directional load profile along the line and the per-stop <b>occupancy ratio</b> are derived; the stops exceeding the occupancy target and the need for a short-turn are determined from these measurements. The tram’s capacity and physical states (door count/width, floor area, mass, tractive effort, braking) are taken as parameters.`
-    : `yolcu ölçümü esastır: her istasyona ölçülen iniş-biniş sayıları (girilmediyse istasyon rolüne göre talep dağılımı) ile araç yolcu kapasitesi ve servis frekansı birlikte değerlendirilerek hat-boyu yönlü yük profili ve durak-başı <b>doluluk oranı</b> çıkarılır; doluluk hedefini aşan duraklar ve kısa dönüş ihtiyacı bu ölçümlerden belirlenir. Değerlendirmede tramvayın kapasite ve fiziksel durumları (kapı sayısı/genişliği, taban alanı, kütle, çekiş, frenleme) parametre olarak alınır.`}</div>
+    ? `the per-stop boarding/alighting data — or the distribution of the entered total demand across stops by station role — together with the vehicle passenger capacity and service frequency yield the directional load profile along the line and the per-stop <b>occupancy ratio</b>; the stops exceeding the occupancy target and the need for a short-turn are determined from these values. The tram’s capacity and physical characteristics (door count/width, floor area, mass, tractive effort, braking) are taken as parameters.`
+    : `durakların iniş-biniş verisi ya da girilen toplam talebin istasyon rollerine göre duraklara dağıtımı, araç yolcu kapasitesi ve servis frekansı birlikte değerlendirilerek hat-boyu yönlü yük profili ve durak-başı <b>doluluk oranı</b> elde edilir; doluluk hedefini aşan duraklar ve kısa dönüş ihtiyacı bu değerlerden belirlenir. Değerlendirmede tramvayın kapasite ve fiziksel özellikleri (kapı sayısı/genişliği, taban alanı, kütle, çekiş, frenleme) parametre olarak alınır.`}</div>
   ${b51}${b52}${b53}${b54}${b55}
 `;
   }
