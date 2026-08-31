@@ -351,20 +351,33 @@ function OneriSatir({ etiket, ad, deger }: { etiket: string; ad: string; deger: 
 }
 
 function CubukKart({ baslik, ms, al, renk }: { baslik: string; ms: Metrik[]; al: (m: Metrik) => number; renk: string }) {
-  const maks = Math.max(1, ...ms.filter((m) => m.gecerli).map(al));
+  const gecerli = ms.filter((m) => m.gecerli);
+  const maks = Math.max(1, ...gecerli.map(al));
+  const min = gecerli.length ? Math.min(...gecerli.map(al)) : 0;
+  const baz = gecerli.length ? al(gecerli[0]) : 0; // ilk senaryo = referans
+  // Yakın değerlerde de kontrast görünsün: en kısa bar %30, en uzun %100 (aralığa göre).
+  const span = maks - min;
+  const w = (v: number) => (span <= 0 ? 100 : 30 + ((v - min) / span) * 70);
   return (
     <div className="rounded-lg border p-3" style={{ borderColor: brand.border }}>
       <div className="field-label mb-2" style={{ fontSize: "0.62rem" }}>{baslik}</div>
       <div className="space-y-1.5">
-        {ms.map((m, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <span className="w-20 shrink-0 truncate text-xs" style={{ color: brand.inkSoft }} title={m.ad}>{m.ad}</span>
-            <div className="h-3 flex-1 overflow-hidden rounded" style={{ background: CK.track }}>
-              <div style={{ width: `${m.gecerli ? (al(m) / maks) * 100 : 0}%`, height: "100%", background: renk }} />
+        {ms.map((m, i) => {
+          const v = al(m);
+          const d = m.gecerli && i > 0 ? v - baz : 0;
+          return (
+            <div key={i} className="flex items-center gap-2">
+              <span className="w-16 shrink-0 truncate text-xs" style={{ color: brand.inkSoft }} title={m.ad}>{m.ad}</span>
+              <div className="h-3 flex-1 overflow-hidden rounded" style={{ background: CK.track }}>
+                <div style={{ width: `${m.gecerli ? w(v) : 0}%`, height: "100%", background: renk, transition: "width .25s ease" }} />
+              </div>
+              <span className="w-16 shrink-0 text-right text-xs tabular-nums" style={{ color: brand.ink }}>
+                <b>{m.gecerli ? v : "—"}</b>
+                {d !== 0 && <span style={{ color: brand.muted, marginLeft: 3 }}>{d > 0 ? "▲" : "▼"}{Math.abs(d)}</span>}
+              </span>
             </div>
-            <span className="w-8 shrink-0 text-right text-xs tabular-nums" style={{ color: brand.ink }}>{m.gecerli ? al(m) : "—"}</span>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
