@@ -38,6 +38,8 @@ export interface MakasTers {
   konum: number;         // m
   crossover: "s" | "x";
   makasSayisi: number;
+  sSayi: number;         // istasyondaki S-makas adedi (karışık tip gösterimi için)
+  xSayi: number;         // istasyondaki X-makas adedi
   yuksekYuk: number;     // makasın YOĞUN tarafındaki tepe yük
   dusukYuk: number;      // makasın SESSİZ (uç) tarafındaki tepe yük
   kisaDonusOnerilir: boolean;
@@ -275,6 +277,8 @@ export function tersIsletmeAnaliz(
       return {
         ad: duraklarT[idx].ad, konum: m.konum, crossover: xVar ? "x" as const : "s" as const,
         makasSayisi: grup.reduce((s, x) => s + x.makasSayisi, 0),
+        sSayi: grup.filter((x) => x.crossover !== "x").reduce((s, x) => s + x.makasSayisi, 0),
+        xSayi: grup.filter((x) => x.crossover === "x").reduce((s, x) => s + x.makasSayisi, 0),
         yuksekYuk: Math.round(yuksek), dusukYuk: Math.round(dusuk),
         kisaDonusOnerilir: onerilir, kisaDonusYuzde,
         varyasyonlar: [

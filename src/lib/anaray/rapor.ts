@@ -561,10 +561,14 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
         : `<p class="muted">${en ? "All stops within the occupancy target — no turnback needed." : "Tüm duraklar doluluk hedefinde — dönüşe ihtiyaç yok."}</p>`}`;
 
     // 5.4 Makas Bölgesi Başına Ters İşletme Varyasyonları
-    // Makas gösterimi: MAKAS SAYISI + tipi (S-makas / X-makas). Makas motoru (point machine)
-    // adedi içseldir (S-makas 2, X-makas 4) — raporda gösterilmez, hep makas sayısına bakılır.
-    const makasEt = (m: { crossover: "s" | "x"; makasSayisi: number }) =>
-      en ? `${m.makasSayisi} ${m.crossover === "x" ? "X" : "S"}-type switch` : `${m.makasSayisi} ${m.crossover === "x" ? "X" : "S"}-makas`;
+    // Makas gösterimi: S ve X ayrı sayılır → karışık istasyon "2 S-makas + 1 X-makas"
+    // olarak yazılır (tek tipse yalnız o). Makas motoru adedi içseldir, gösterilmez.
+    const makasEt = (m: { sSayi: number; xSayi: number; crossover: "s" | "x"; makasSayisi: number }) => {
+      const p: string[] = [];
+      if (m.sSayi > 0) p.push(en ? `${m.sSayi} S-type switch` : `${m.sSayi} S-makas`);
+      if (m.xSayi > 0) p.push(en ? `${m.xSayi} X-type switch` : `${m.xSayi} X-makas`);
+      return p.length ? p.join(" + ") : (en ? `${m.makasSayisi} ${m.crossover === "x" ? "X" : "S"}-type switch` : `${m.makasSayisi} ${m.crossover === "x" ? "X" : "S"}-makas`);
+    };
     const b54ic = tia.makaslar.length
       ? tia.makaslar.map((m) => `<div class="ring-detay"><h4>${esc(m.ad)} (${makasEt(m)})</h4>
           ${gsNot(en
