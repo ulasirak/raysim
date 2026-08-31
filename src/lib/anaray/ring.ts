@@ -426,7 +426,7 @@ export interface Kisitlik {
 /** Ringdeki tüm kısıtları (makas + hemzemin + tehlike) konuma göre sıralı verir. */
 export function ringKisitDizisi(ring: DurakArasiRing): Kisitlik[] {
   const list: Kisitlik[] = [
-    ...ring.makaslar.map((m) => ({ tur: "makas" as const, id: m.id, ad: m.ad || MAKAS_TIP_AD[m.tip], konum: m.konum, detay: `${Math.round(m.gecisHizi * 3.6)} km/h · ${MAKAS_TIP_AD[m.tip]} · ${(m.crossover ?? "s") === "x" ? "X-makas" : "S-makas"}` })),
+    ...ring.makaslar.map((m) => ({ tur: "makas" as const, id: m.id, ad: m.ad || MAKAS_TIP_AD[m.tip], konum: m.konum, detay: `${Math.round(m.gecisHizi * 3.6)} km/h · ${MAKAS_TIP_AD[m.tip]}` })),
     ...ring.hemzeminler.map((h) => ({ tur: "hemzemin" as const, id: h.id, ad: h.ad || h.tip, konum: h.konum, detay: `${Math.round(h.hiz * 3.6)} km/h · ${h.tip}` })),
     ...ring.tehlikeNoktalari.map((t) => ({ tur: "tehlike" as const, id: t.id, ad: t.ad || "acil frenleme", konum: t.konum, detay: `${Math.round(t.hiz * 3.6)} km/h · acil frenleme` })),
   ];

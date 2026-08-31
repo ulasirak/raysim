@@ -119,9 +119,9 @@ function blockingBarSvg(bloklarTum: { i: number; makasBlok?: boolean; tSetup: nu
     bloklar = secili.sort((a, b) => a.i - b.i);
   }
   const parts = [
-    { k: "tSetup", c: RAMP_BLUE[0], ad: "Setup" }, { k: "tSighting", c: RAMP_BLUE[1], ad: en ? "Sighting" : "Görme" },
+    { k: "tSetup", c: RAMP_BLUE[0], ad: en ? "Setup" : "Tanzim" }, { k: "tSighting", c: RAMP_BLUE[1], ad: en ? "Sighting" : "Görme" },
     { k: "tApproach", c: RAMP_BLUE[2], ad: en ? "Approach" : "Yaklaşma" }, { k: "tRunning", c: RAMP_BLUE[3], ad: en ? "Running" : "Seyir" },
-    { k: "tClearing", c: RAMP_BLUE[4], ad: en ? "Clearing" : "Temizleme" }, { k: "tRelease", c: RAMP_BLUE[5], ad: "Release" },
+    { k: "tClearing", c: RAMP_BLUE[4], ad: en ? "Clearing" : "Temizleme" }, { k: "tRelease", c: RAMP_BLUE[5], ad: en ? "Release" : "Serbest" },
   ] as const;
   const max = Math.max(...bloklar.map((b) => b.toplam)) || 1;
   const rowH = 20, W = 760, labelW = 64, barW = W - labelW - 64, barH = 12;
@@ -303,8 +303,8 @@ function rDil(lang: RaporDil) {
     s41: "4.1 Blocking-Time (Sperrzeitentreppe)",
     fig4: (h: number) => `Şekil 4 — Sperrzeitentreppe: blok işgal (blocking-time) pencereleri; min headway ${h} s.`,
     fig5: "Şekil 5 — Blok başına blocking-time bileşen dağılımı (kritik blok kırmızı etiketli).",
-    thBt: ["Blok", "Setup", "Görme", "Yaklaşma", "Seyir", "Temizleme", "Release", "Toplam"],
-    btTanim: "<b>Setup</b> = rota tanzim ve kilitleme süresi (makas–sinyal hazırlığı) · <b>Görme</b> = makinistin sinyali algılaması için tanınan süre · <b>Yaklaşma</b> = önceki sinyalden blok girişine kadar seyir · <b>Seyir</b> = bloğun kat edilme süresi · <b>Temizleme</b> = tren boyunun bloğu tümüyle terk etme süresi · <b>Release</b> = rota serbest bırakma (kilit açılışı) · <b>Toplam</b> = bloğun tek bir trence toplam işgali (Sperrzeit).",
+    thBt: ["Blok", "Tanzim", "Görme", "Yaklaşma", "Seyir", "Temizleme", "Serbest", "Toplam"],
+    btTanim: "<b>Tanzim</b> = rota tanzimi ve kilitleme süresi (makas–sinyal hazırlığı) · <b>Görme</b> = makinistin sinyali algılaması için tanınan süre · <b>Yaklaşma</b> = önceki sinyalden blok girişine kadar seyir · <b>Seyir</b> = bloğun kat edilme süresi · <b>Temizleme</b> = tren boyunun bloğu tümüyle terk etme süresi · <b>Serbest</b> = rotanın serbest bırakılması (kilit açılışı) · <b>Toplam</b> = bloğun tek bir trence toplam işgali (Sperrzeit).",
     s5: "Onay", thImza: ["Hazırlayan", "Onaylayan"], imzaTarih: "İmza / Tarih",
   };
   const en: typeof tr = {
@@ -757,14 +757,14 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
 
   /* Kapak — TEK SAYFAYA sığacak şekilde sıkıştırıldı (aksi halde son satır taşıp
      2. sayfaya düşüyor = boş 2. sayfa). Kapak kendi başına bir sayfadır. */
-  .cover { text-align: center; padding: 12px 0 10px; page-break-after: avoid; }
+  .cover { text-align: center; padding: 6px 0 2px; page-break-after: avoid; }
   .cover .emblem { display: inline-block; }
   .cover .emblem svg { width: 66px; height: 66px; }
   /* Kapak marka hiyerarşisi (opt.3): ANA MARKA = firma (büyük); RaySim = küçük alt rozet. */
   .cover-brand { margin: 6px 0 2px; line-height: 0; }
   .cover-brand svg { height: 17mm; width: auto; display: inline-block; }
   .cover-brand-name { font-size: 20pt; font-weight: 700; letter-spacing: .04em; color: ${INK}; }
-  .poweredby { margin-top: 16px; display: flex; align-items: center; justify-content: center; gap: 7px; }
+  .poweredby { margin-top: 9px; display: flex; align-items: center; justify-content: center; gap: 7px; }
   .poweredby .pb-emblem { line-height: 0; }
   .poweredby .pb-emblem svg { height: 7mm; width: auto; }
   .poweredby .pb-txt { font-size: 8.5pt; color: #8A97A4; letter-spacing: .02em; }
@@ -781,9 +781,9 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   /* Doküman kontrol bloğu — künye çerçeveli kutu + üstünde etiket (mühendislik standardı). */
   .cover .kunye { border: 1pt solid #D3DAE1; }
   .cover .kunye td { border-bottom: 1px solid #EDF0F3; }
-  .cover table.kunye { margin-top: 22px; }
-  .cover .foot { margin-top: 16px; font-size: 8pt; letter-spacing: .14em; text-transform: uppercase; color: #9AA7B4; }
-  .cover .qr { margin-top: 14px; }
+  .cover table.kunye { margin-top: 12px; }
+  .cover .foot { margin-top: 9px; font-size: 8pt; letter-spacing: .14em; text-transform: uppercase; color: #9AA7B4; }
+  .cover .qr { margin-top: 9px; }
   .cover .qr svg { border: 1px solid #E6E9ED; padding: 4px; background: #fff; }
   .cover .qr-cap { font-size: 8pt; color: #6B7A8A; margin-top: 5px; line-height: 1.35; }
   .cover .qr-cap b { color: ${INK}; font-weight: 600; }
