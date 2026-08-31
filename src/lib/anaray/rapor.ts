@@ -268,9 +268,9 @@ function rDil(lang: RaporDil) {
     kunye: { proje: "Proje", hat: "Hat", dok: "Doküman No", rev: "Revizyon", tarih: "Tarih", idare: "İdare", yuk: "Yüklenici", mus: "Müşavir", firma: "Sinyalizasyon Firması" },
     kpi: { hucre: "Durak arası hücre", hedef: "Hedef headway", sigan: "Headway'de sığan tren", kapasite: "Teorik kapasite", pratik: "İşletme kapasitesi", uic: "UIC 406 doluluk", ch: "Challenge / kritik" },
     altMakas: (n: number) => `${n} makas`, altTumu: "tümü uygun", altIhlal: "ihlal var", altTur: (s: string) => `tur ${s}`, altTph: "tren/saat", altUygun: "uygun", altIhlalK: "ihlal", altRisk: "risk kaydı",
-    s1: "Kapasite Sonucu ve Parametreler", s1i: "Bu hatta aynı anda çalışabilecek azami tramvay sayısı, aşağıdaki tüm parametrelerden (sinyalizasyon, makas tip ve sayıları, istasyon duruş süreleri, terminal dönüşü, hemzemin geçitler ve araç) doğrudan HESAPLANIR — raporun birincil sonucu budur. Alttaki göstergeler bu hesabın çıktısı, parametre tablosu ise girdisidir.",
+    s1: "Kapasite Sonucu ve Parametreler", s1i: "Hattın azami tramvay kapasitesi ve belirleyici kısıtlar; sinyalizasyon, makas tip/sayıları, istasyon duruş süreleri, terminal dönüşü, hemzemin geçitler ve araç dinamiği parametrelerinden hesaplanmıştır.",
     thParam: ["Parametre", "Değer", "Etkisi"],
-    s2: "Durak Arası İşletim Hücreleri", s2i: (n: number, h: number) => `Hat, ${n} durak-arası hücreye (ring) bölünmüştür. Her hücre kendi mesafe, makas, hemzemin ve tehlike (acil frenleme) şartlarını taşır; worst-case senaryo en uzun mesafe + tüm kısıtlarla, hedef headway ${h} s ile değerlendirilir.`,
+    s2: "Durak Arası İşletim Hücreleri", s2i: (n: number, h: number) => `Hat, ${n} durak-arası hücreye (ring) ayrılmıştır; her hücre kendi mesafe, makas, hemzemin geçit ve tehlike noktası şartlarını taşır (hedef aralık ${h} s).`,
     fig1: "Şekil 1 — Hat şeması: istasyon zinciri, makas (⑂) ve hemzemin geçit dağılımı.",
     figEnergy: (net: number, perKm: number) => `Şekil 2 — Enerji-mesafe: kümülatif çekiş enerjisi (mürekkep alan). Net ${net.toFixed(1)} kWh · ${perKm.toFixed(2)} kWh/km.`,
     gClimb: "tırmanış", gDescent: "iniş", gGrade: "eğim", gNoElev: "Yükseklik verisi girilmedi — düz profil varsayıldı", mUnit: "m",
@@ -279,10 +279,10 @@ function rDil(lang: RaporDil) {
     s21: "2.1 Ring Bazında Kısıt ve Risk (Challenge) Analizi",
     thKisit: ["Kısıt", "Kilometraj", "Detay"], noKisit: "Kısıt yok — kesintisiz seyir.",
     pillOk: "UYGUN", pillBad: "İHLAL",
-    s4: "Kapasite ve Blocking-Time Analizi", s4i: "En yüksek blocking-time'lı blok minimum tren aralığını (headway) belirler; UIC 406 doluluk oranı bu değerin hedef headway'e bölümüdür. Her bloğun rezerve süresi altı bileşenden oluşur.",
+    s4: "Kapasite ve Blocking-Time Analizi", s4i: "Minimum tren aralığını (headway), en yüksek blocking-time'lı blok belirler.",
     thGost: ["Gösterge", "Değer"],
     kapTur: "Tur süresi (worst-case seyir)", kapDonus: "Dönüş bekleme (tur başına)", kapCevrim: "Çevrim süresi (dönüş bekleme dâhil)", kapHedef: "Hedef headway", kapSigan: "Headway'de gereken tren", kapDarbogaz: "Darboğaz hücre", kapDenge: "Denge (eşit şartlar)", kapDengeli: "Dengeli", kapSapma: (p: string) => `%${p} sapma`, kapMin: "Minimum headway (kritik blok)", kapTeorik: "Teorik kapasite (tamponsuz üst sınır)", kapPratik: "İşletme kapasitesi (UIC 406 doluluk tavanı)", kapUIC: "UIC 406 doluluk (hedef headway'de)", tphSuffix: "tren/saat",
-    kapNot: "Teorik kapasite, tamponsuz bir ÜST SINIRDIR (ideal, gecikmesiz işletme varsayımı). İşletme kapasitesi ise UIC 406 önerilen doluluk tavanı uygulanarak — gecikme toparlama için tampon bırakılarak — sürdürülebilir değeri verir. Gerçek hat performansı normal koşullarda bu iki değer arasındadır.",
+    kapNot: "Teorik kapasite tamponsuz üst sınırdır; işletme kapasitesi UIC 406 doluluk tavanıyla sürdürülebilir değeri verir.",
     s41: "3.1 Blocking-Time (Sperrzeitentreppe)",
     fig4: (h: number) => `Şekil 4 — Sperrzeitentreppe: iki ardışık trenin blok işgal (blocking-time) pencereleri; kritik blokta ikinci trenin başlangıcı birincinin bitişine değer = min headway ${h}s.`,
     fig5: "Şekil 5 — Blok başına blocking-time bileşen dağılımı (kritik blok kırmızı etiketli).",
@@ -299,9 +299,9 @@ function rDil(lang: RaporDil) {
     kunye: { proje: "Project", hat: "Line", dok: "Document No", rev: "Revision", tarih: "Date", idare: "Authority", yuk: "Contractor", mus: "Consultant", firma: "Signalling Firm" },
     kpi: { hucre: "Inter-station cells", hedef: "Target headway", sigan: "Trains within headway", kapasite: "Theoretical capacity", pratik: "Operating capacity", uic: "UIC 406 occupancy", ch: "Challenges / critical" },
     altMakas: (n) => `${n} switches`, altTumu: "all compliant", altIhlal: "violations", altTur: (s) => `cycle ${s}`, altTph: "trains/hour", altUygun: "compliant", altIhlalK: "violation", altRisk: "risk records",
-    s1: "Capacity Result and Parameters", s1i: "The maximum number of trams the line can run at once is computed directly from all the parameters below (signalling, switch types and counts, station dwell, terminal turnback, level crossings and the vehicle) — this is the report's primary result. The indicators below are the output of that computation; the parameter table is its input.",
+    s1: "Capacity Result and Parameters", s1i: "The line's maximum tram capacity and determining constraints are computed from the signalling, switch types/counts, station dwell times, terminal turnback, level crossings and vehicle dynamics parameters.",
     thParam: ["Parameter", "Value", "Effect"],
-    s2: "Inter-station Operating Cells", s2i: (n, h) => `The line is divided into ${n} inter-station cells (rings). Each cell carries its own distance, switch, level-crossing and hazard (emergency braking) conditions; the worst case is evaluated at the longest distance with all constraints against the ${h}s target headway.`,
+    s2: "Inter-station Operating Cells", s2i: (n, h) => `The line is divided into ${n} inter-station cells (rings); each carries its own distance, switch, level-crossing and hazard conditions (target headway ${h}s).`,
     fig1: "Figure 1 — Line schematic: station chain, switch (⑂) and level-crossing distribution.",
     figEnergy: (net, perKm) => `Figure 2 — Energy-distance: cumulative traction energy (ink area). Net ${net.toFixed(1)} kWh · ${perKm.toFixed(2)} kWh/km.`,
     gClimb: "climb", gDescent: "descent", gGrade: "grade", gNoElev: "No elevation data — level profile assumed", mUnit: "m",
@@ -310,10 +310,10 @@ function rDil(lang: RaporDil) {
     s21: "2.1 Per-cell Constraint & Risk (Challenge) Analysis",
     thKisit: ["Constraint", "Chainage", "Detail"], noKisit: "No constraints — uninterrupted run.",
     pillOk: "OK", pillBad: "VIOLATION",
-    s4: "Capacity and Blocking-Time Analysis", s4i: "The block with the highest blocking-time sets the minimum train interval (headway); the UIC 406 occupancy ratio is this value divided by the target headway. Each block's reserved time comprises six components.",
+    s4: "Capacity and Blocking-Time Analysis", s4i: "The minimum train interval (headway) is set by the block with the highest blocking-time.",
     thGost: ["Indicator", "Value"],
     kapTur: "Running time (worst-case)", kapDonus: "Turnaround (per cycle)", kapCevrim: "Cycle time (incl. turnaround)", kapHedef: "Target headway", kapSigan: "Trains required", kapDarbogaz: "Bottleneck cell", kapDenge: "Balance (equal conditions)", kapDengeli: "Balanced", kapSapma: (p) => `${p}% deviation`, kapMin: "Minimum headway (critical block)", kapTeorik: "Theoretical capacity (buffer-free upper bound)", kapPratik: "Operating capacity (UIC 406 occupancy ceiling)", kapUIC: "UIC 406 occupancy (at target headway)", tphSuffix: "trains/hour",
-    kapNot: "Theoretical capacity is a buffer-free UPPER BOUND (ideal, delay-free operation). Operating capacity applies the UIC 406 recommended occupancy ceiling — leaving margin for delay recovery — to give the sustainable figure. Real line performance normally falls between these two values.",
+    kapNot: "Theoretical capacity is the buffer-free upper bound; operating capacity applies the UIC 406 occupancy ceiling to give the sustainable figure.",
     s41: "3.1 Blocking-Time (Sperrzeitentreppe)",
     fig4: (h) => `Figure 4 — Sperrzeitentreppe: block occupation (blocking-time) windows of two consecutive trains; at the critical block the second train's start touches the first's end = min headway ${h}s.`,
     fig5: "Figure 5 — Per-block blocking-time component breakdown (critical block labelled red).",
@@ -449,14 +449,13 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   // farkını gerçek değerlerden açıklar; hattın yedek kapasitesini okur.
   const yedekYuzde = Math.max(0, Math.round(100 - uicDoluluk));
   const kapBol = uicDoluluk <= 100 || sunum;
-  const cevrimDk = Math.round(maks.cevrimSuresi / 60);
-  const tramSaat = maks.cevrimSuresi > 0 ? (maks.nTeorik / (maks.cevrimSuresi / 3600)) : 0; // 54 tramvay ÷ tur = ~24/sa
   const sperrNot = Math.round(bt.minHeadway) < Math.round(maks.hMin)
-    ? (en ? ` (this is the operational min headway including the critical-station dwell; the pure signalling-block Sperrzeit in the figure below is ${Math.round(bt.minHeadway)} s)` : ` (bu, kritik istasyon duruşunu da içeren operasyonel min headway'dir; alttaki grafikteki saf sinyal-bloğu Sperrzeit'i ${Math.round(bt.minHeadway)} s'dir)`)
+    ? (en ? ` (operational min headway including critical-station dwell; signalling-block Sperrzeit below: ${Math.round(bt.minHeadway)} s)` : ` (kritik istasyon duruşunu içeren operasyonel min headway; sinyal-bloğu Sperrzeit'i: ${Math.round(bt.minHeadway)} s)`)
     : "";
+  // Kurumsal, otoriter tek satır: belirleyici kısıt + yedek kapasite (öğretmeden/özetlemeden).
   const kapYorum = en
-    ? `<b>Interpretation — two different measures (do not confuse them).</b> <b>(1) Theoretical max trams = ${maks.nTeorik}</b>: the number of trams that can be on the loop line <b>at the same time</b> (round-trip time ${cevrimDk} min ÷ min headway ${Math.round(maks.hMin)} s). <b>(2) Operating capacity = ${pratikTph.toFixed(0)} trains/h</b>: the number of trains that <b>pass a point per hour</b> (3600 ÷ min headway ${Math.round(maks.hMin)} s = ${teorikTph.toFixed(0)} trains/h theoretical, × ${((maks.dolulukTavani || 1) * 100).toFixed(0)}% UIC 406 buffer). The two are <b>consistent</b>: ${maks.nTeorik} trams ÷ ${cevrimDk} min round trip ≈ ${tramSaat.toFixed(0)} trains/h. The determining constraint is <b>${esc(maks.baglayanAd || "—")}</b>, min headway <b>${Math.round(maks.hMin)} s</b>${sperrNot}. At ${cfg.headway} s target headway UIC 406 occupancy is <b>${uicDoluluk.toFixed(0)}%</b>${kapBol ? ` (~${yedekYuzde}% spare); the headway can be tightened toward ${Math.round(maks.hMin)} s for up to ${teorikTph.toFixed(0)} trains/h without new infrastructure.` : `.`}`
-    : `<b>Yorum — iki FARKLI ölçü (karıştırmayın).</b> <b>(1) Teorik maks tramvay = ${maks.nTeorik}</b>: loop hatta <b>aynı anda</b> bulunabilen tramvay sayısı (tur süresi ${cevrimDk} dk ÷ min headway ${Math.round(maks.hMin)} s). <b>(2) İşletme kapasitesi = ${pratikTph.toFixed(0)} tren/saat</b>: bir noktadan <b>saatte geçen</b> tren sayısı (3600 ÷ min headway ${Math.round(maks.hMin)} s = ${teorikTph.toFixed(0)} tren/saat teorik, × %${((maks.dolulukTavani || 1) * 100).toFixed(0)} UIC 406 tamponu). İkisi <b>tutarlıdır</b>: ${maks.nTeorik} tramvay ÷ ${cevrimDk} dk tur ≈ ${tramSaat.toFixed(0)} tren/saat. Belirleyici kısıt <b>${esc(maks.baglayanAd || "—")}</b>, min headway <b>${Math.round(maks.hMin)} s</b>${sperrNot}. Hedef ${cfg.headway} s headway'de UIC 406 doluluğu <b>%${uicDoluluk.toFixed(0)}</b>${kapBol ? ` (~%${yedekYuzde} yedek); headway ${Math.round(maks.hMin)} s'ye kadar sıkıştırılıp yeni altyapı olmadan ${teorikTph.toFixed(0)} tren/saate çıkılabilir.` : `.`}`;
+    ? `<b>Determining constraint: ${esc(maks.baglayanAd || "—")}</b> · minimum headway <b>${Math.round(maks.hMin)} s</b>${sperrNot}. At the ${cfg.headway} s target headway, UIC 406 occupancy is <b>${uicDoluluk.toFixed(0)}%</b>${kapBol ? ` — ~${yedekYuzde}% spare capacity; the interval can be tightened toward ${Math.round(maks.hMin)} s to reach ${teorikTph.toFixed(0)} trains/h without additional infrastructure.` : `.`}`
+    : `<b>Belirleyici kısıt: ${esc(maks.baglayanAd || "—")}</b> · minimum headway <b>${Math.round(maks.hMin)} s</b>${sperrNot}. Hedef ${cfg.headway} s aralıkta UIC 406 doluluğu <b>%${uicDoluluk.toFixed(0)}</b>${kapBol ? ` — ~%${yedekYuzde} yedek kapasite; aralık ${Math.round(maks.hMin)} s'ye kadar sıkıştırılarak ek altyapı olmadan ${teorikTph.toFixed(0)} tren/saate ölçeklenebilir.` : `.`}`;
 
   const bugun = meta.tarih || "";
   const siteUrl = (typeof window !== "undefined" && window.location?.origin) ? window.location.origin : "https://raysim.vercel.app";
@@ -481,8 +480,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const sinyalBolum = `
   <div class="banner"><span class="no">3</span>${lang === "en" ? "SIGNALLING — SIGNAL LAMPS (SG)" : "SİNYALİZASYON — SİNYAL LAMBALARI (SG)"}</div>
   <p>${lang === "en"
-    ? `The line is protected by <b>${sinyalSayisi} three-aspect signal lamps</b> (SG: red / yellow / green), ${gidenS} outbound (▶) and ${gelenS} return (◀)${tersSinyalSayisi ? `, of which ${tersSinyalSayisi} are reverse-running (turnback) signals` : ""}. Chainages are the real design positions; each outbound signal is a <b>block boundary</b>, so the capacity (minimum headway) and the time–distance graph below are driven by these exact signal positions — identical to the live network simulation. The aspect cycle is the green→yellow→red timing that the head runs against the block ahead.`
-    : `Hat, <b>${sinyalSayisi} adet 3-aspect sinyal lambası</b> (SG: kırmızı / sarı / yeşil) ile korunur — ${gidenS} giden (▶), ${gelenS} gelen (◀)${tersSinyalSayisi ? `, bunların ${tersSinyalSayisi} tanesi ters işletme (turnback) sinyalidir` : ""}. Kilometrajlar gerçek tasarım konumlarıdır; her giden sinyali bir <b>blok sınırıdır</b>, bu yüzden aşağıdaki kapasite (minimum headway) ve zaman–mesafe grafiği bu sinyal konumlarından türetilir — canlı ağ simülasyonuyla birebir aynıdır. Aspect çevrimi, sinyal kafasının önündeki bloğa göre yürüttüğü yeşil→sarı→kırmızı süresidir.`}</p>
+    ? `The line is protected by <b>${sinyalSayisi} three-aspect signal lamps</b> (SG: red / yellow / green), ${gidenS} outbound (▶) and ${gelenS} return (◀)${tersSinyalSayisi ? `, of which ${tersSinyalSayisi} are reverse-running (turnback) signals` : ""}. Chainages are the real design positions; each outbound signal is a <b>block boundary</b>.`
+    : `Hat, <b>${sinyalSayisi} adet 3-aspect sinyal lambası</b> (SG: kırmızı / sarı / yeşil) ile korunur — ${gidenS} giden (▶), ${gelenS} gelen (◀)${tersSinyalSayisi ? `, bunların ${tersSinyalSayisi} tanesi ters işletme (turnback) sinyalidir` : ""}. Kilometrajlar gerçek tasarım konumlarıdır; her giden sinyali bir <b>blok sınırıdır</b>.`}</p>
   ${sinyalListe.length ? tbl(sinyalThead, sinyalRows, { first: true }) : `<p class="muted">${lang === "en" ? "No signal lamps defined on this line yet (positions are entered in the Ringler module)." : "Bu hatta henüz sinyal lambası tanımlı değil (konumlar Ringler modülünde girilir)."}</p>`}
 `;
 
@@ -553,8 +552,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     isletmeBolum = `
   <div class="banner"><span class="no">5</span>${en ? "OPERATIONS & DEMAND ANALYSIS (REVERSE RUNNING)" : "İŞLETME & TALEP ANALİZİ (TERS İŞLETME)"}</div>
   <p>${en
-    ? `How your demand, fleet and switch inputs shape operation: passenger load profiles, single-depot two-direction dispatch, stops needing a turnback, per-switch reverse-running variations, and the fleet recommendation. Each block states the inputs it is built from.`
-    : `Talep, filo ve makas girdilerinizin işletmeyi nasıl şekillendirdiği: yolcu yük profilleri, tek-depodan iki-yön çıkışı, dönüşe ihtiyaç duyan duraklar, makas-başı ters işletme varyasyonları ve filo önerisi. Her blok, hangi girdilerden çıktığını belirtir.`}</p>
+    ? `Effect of the demand, fleet and switch inputs on operation: passenger load profiles, single-depot two-direction dispatch, stops needing a turnback, per-switch reverse-running variations, and the fleet recommendation.`
+    : `Talep, filo ve makas girdilerinin işletmeye etkisi: yolcu yük profilleri, tek-depodan iki-yön çıkışı, dönüşe ihtiyaç duyan duraklar, makas-başı ters işletme varyasyonları ve filo önerisi.`}</p>
   <div class="gs"><span class="gs-i">▸ ${en ? "Passenger & occupancy basis" : "Yolcu ve doluluk esası"}:</span> ${en
     ? `passenger measurement is central: from the boarding/alighting counts measured per station (or, where not entered, the role-based demand distribution) together with the vehicle passenger capacity and service frequency, the directional load profile along the line and the per-stop <b>occupancy ratio</b> are derived; the stops exceeding the occupancy target and the need for a short-turn are determined from these measurements. The tram’s capacity and physical states (door count/width, floor area, mass, tractive effort, braking) are taken as parameters.`
     : `yolcu ölçümü esastır: her istasyona ölçülen iniş-biniş sayıları (girilmediyse istasyon rolüne göre talep dağılımı) ile araç yolcu kapasitesi ve servis frekansı birlikte değerlendirilerek hat-boyu yönlü yük profili ve durak-başı <b>doluluk oranı</b> çıkarılır; doluluk hedefini aşan duraklar ve kısa dönüş ihtiyacı bu ölçümlerden belirlenir. Değerlendirmede tramvayın kapasite ve fiziksel durumları (kapı sayısı/genişliği, taban alanı, kütle, çekiş, frenleme) parametre olarak alınır.`}</div>
@@ -567,8 +566,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const kapGirdiNot = `<div class="gs"><span class="gs-i">▸ ${en ? "Measurement basis" : "Ölçüm esasları"}:</span> ${en
     ? `the maximum trams on the line (“trains within headway”) is measured not from a single assumption but from the joint evaluation of terminal throat occupation times, switch types and counts (S single / X scissors crossover), signal-lamp positions, directions and aspect states, block-occupation states, station dwell times, level-crossing types, and the tram’s physical states (mass, tractive effort and power, braking, running resistance, length, maximum speed) — on a UIC 406 blocking-time (Sperrzeitentreppe) basis`
     : `hattın azami tramvay sayısı (“headway’de sığan tren”) tek bir kabulle değil; terminal boğaz işgal süreleri, makas tip ve sayıları (S tek / X scissors crossover), sinyal lambası konum, yön ve aspect durumları, blok işgal durumları, istasyon duruş (dwell) süreleri, hemzemin geçit tipleri ve tramvayın fiziksel durumlarının (kütle, çekiş kuvveti ve gücü, frenleme, seyir direnci, uzunluk, azami hız) birlikte değerlendirilmesiyle — UIC 406 blocking-time (Sperrzeitentreppe) esasıyla — ölçülür`} <span class="gs-o">→ ${en ? "Result" : "Çıktı"}:</span> ${en
-    ? `theoretical maximum <b>${maks.nTeorik} trams</b> (sustainable ${maks.nSurdurulebilir}) and minimum headway <b>${Math.round(maks.hMin)} s</b> at the determining constraint (${esc(maks.baglayanAd || "—")}) — identical to the live simulation.`
-    : `teorik en fazla <b>${maks.nTeorik} tramvay</b> (sürdürülebilir ${maks.nSurdurulebilir}) ve belirleyici kısıtta (${esc(maks.baglayanAd || "—")}) minimum headway <b>${Math.round(maks.hMin)} s</b> — canlı simülasyonla birebir aynı.`}</div>`;
+    ? `theoretical maximum <b>${maks.nTeorik} trams</b> (sustainable ${maks.nSurdurulebilir}) and minimum headway <b>${Math.round(maks.hMin)} s</b> at the determining constraint (${esc(maks.baglayanAd || "—")}).`
+    : `teorik en fazla <b>${maks.nTeorik} tramvay</b> (sürdürülebilir ${maks.nSurdurulebilir}) ve belirleyici kısıtta (${esc(maks.baglayanAd || "—")}) minimum headway <b>${Math.round(maks.hMin)} s</b>.`}</div>`;
 
   // Onayın hemen üstündeki bağımsız çekirdek doğrulama satırı (kurumsal, tek satır).
   const cekirdekNot = `<div class="cekirdek">${en
