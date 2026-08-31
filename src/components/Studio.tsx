@@ -285,6 +285,15 @@ function StudioIc() {
               ? "✓ Yolcu verisi girili — öneri talebe göre de kontrol edildi (tıkanma/dönüş ihtiyacı aşağıda)."
               : <>Öneri hedef headway kuralından ({Math.round(hedefHeadwaySn)} s = tasarım). Talebe göre (tıkanma/dönüş ihtiyacı) kontrol için <button type="button" className="font-semibold underline" style={{ color: brand.ink }} onClick={() => setTalepPopup(true)}>yolcu verisi gir</button>.</>}
           </div>
+          {/* Önerilen (ihtiyaç) vs sürdürülebilir (tavan) — basit ayrım + işletme kapasitesi ilişkisi */}
+          <div className="mt-2 rounded border-l-2 pl-2 text-[0.7rem] leading-relaxed" style={{ borderColor: CK.good, color: brand.muted }}>
+            <b style={{ color: brand.ink }}>Önerilen {oneriTramvay} — sürdürülebilir {maks.nSurdurulebilir}?</b>{" "}
+            <b>Önerilen = ihtiyaç</b> (hedef sıklığın için kaç tren çalıştırmalısın). <b>Sürdürülebilir = tavan</b> (bu hatta aynı anda güvenle en fazla kaç tramvay sığar).{" "}
+            {oneriTramvay <= maks.nSurdurulebilir
+              ? <>Öneri tavanın <b>altında</b> — {maks.nSurdurulebilir - oneriTramvay} araç pay var, istediğin sıklık rahat sağlanır.</>
+              : <>Öneri tavanı <b>aşıyor</b> — bu sıklık hatta sığmaz, aralığı büyütmen gerekir.</>}{" "}
+            <span style={{ color: brand.faint }}>İşletme kapasitesi = aynı tavanın <i>saatlik akış</i> hâli (~{(3600 / Math.max(1, maks.hMin) * (maks.dolulukTavani || 1)).toFixed(0)} tren/saat): {maks.nSurdurulebilir} “aynı anda kaç araç”, işletme kapasitesi “saatte kaç tren geçer”.</span>
+          </div>
         </div>
 
         {/* ② Filo (oynanır) + ulaşılan/hedef headway + kapasite */}
