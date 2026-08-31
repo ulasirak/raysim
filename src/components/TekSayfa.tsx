@@ -22,6 +22,7 @@ import { RingEditor } from "@/components/RingEditor";
 import { SistemMerkezi } from "@/components/SistemMerkezi";
 import { TersIsletme } from "@/components/TersIsletme";
 import { Belgeler } from "@/components/Belgeler";
+import { Karsilastirma } from "@/components/Karsilastirma";
 import { SaltOkunurKalkan } from "@/components/SaltOkunurKalkan";
 import { brand } from "@/lib/anaray/brand";
 
@@ -33,7 +34,7 @@ import { brand } from "@/lib/anaray/brand";
 // Önce girdi, sonra çıktı: yeni kullanıcı hattı KURDUĞU yerden başlar, boş bir
 // simülasyona bakmaz.
 export const BOLUM_SLUG = [
-  "ringler", "sefer", "sistem", "tersisletme", "belgeler",
+  "ringler", "sefer", "sistem", "tersisletme", "belgeler", "karsilastirma",
 ] as const;
 export type BolumSlug = (typeof BOLUM_SLUG)[number];
 
@@ -44,6 +45,7 @@ const BOLUMLER: { slug: BolumSlug; el: React.ReactNode; faz?: { ad: string; not:
   { slug: "sistem", el: <SistemMerkezi /> },
   { slug: "tersisletme", el: <TersIsletme /> },
   { slug: "belgeler", el: <Belgeler />, faz: { ad: "BELGELE", not: "Analizden profesyonel tasarım dokümantasyonu üret." } },
+  { slug: "karsilastirma", el: <Karsilastirma />, faz: { ad: "KARŞILAŞTIR", not: "Senaryoları/projeleri yan yana koy — objektif karar desteği." } },
 ];
 
 function FazBasligi({ ad, not }: { ad: string; not: string }) {

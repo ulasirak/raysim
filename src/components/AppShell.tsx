@@ -40,6 +40,7 @@ const MODULLER: Modul[] = [
   { href: "/sistem", slug: "sistem", ad: "Sistem Merkezi", rol: "Kapasite · blocking-time · teşhis", kod: "SR-0003", rota: "Kapasite Analizi & Durum" },
   { href: "/tersisletme", slug: "tersisletme", ad: "Ters İşletme", rol: "Kısa dönüş · makas varyasyonları · talep-dönüş · filo", kod: "SR-0004", rota: "Ters İşletme & Kısa Dönüş Analizi" },
   { href: "/belgeler", slug: "belgeler", ad: "Teknik Belgeler", rol: "Ücretli PDF rapor · tasarım el kitabı", kod: "SR-0005", rota: "Teknik Dokümantasyon Üretimi" },
+  { href: "/karsilastirma", slug: "karsilastirma", ad: "Karşılaştırma", rol: "Senaryo/proje kıyas · karar desteği", kod: "SR-0006", rota: "Senaryo Karşılaştırma & Karar" },
 ];
 
 // slug sırası ile BOLUM_SLUG'ın kaymadığını derleme anında yakalar.
