@@ -270,8 +270,8 @@ export function tersIsletmeAnaliz(
       const onerilir = oran < 0.6; // sessiz taraf yoğun tarafın %60'ından azsa kısa dönüş kazançlı
       const kisaDonusYuzde = Math.round(Math.max(0, 1 - oran) * 100);
       const sureNotu = xVar
-        ? "X (scissors): kısa dönen trenler ardışık hızlıca çevrilir (boğaz 1× işgal)."
-        : "S (tek crossover): kısa dönüşler seri gerçekleşir (boğaz 2× işgal); sık kısa dönüşte kuyruk riski oluşur.";
+        ? "X (scissors): kısa dönen trenler ardışık ve hızlı çevrilir; makas boğazı yalnızca bir kez işgal edilir."
+        : "S (tek crossover): kısa dönüşler sırayla gerçekleşir ve makas boğazını iki kez işgal eder; bu nedenle sık kısa dönüş talebinde kuyruk (bekleme) oluşabilir.";
       return {
         ad: duraklarT[idx].ad, konum: m.konum, crossover: xVar ? "x" as const : "s" as const,
         makasSayisi: grup.reduce((s, x) => s + x.makasSayisi, 0),
