@@ -230,6 +230,27 @@ export function LiveNetwork({
     });
   }, [basePts]);
 
+  // TERS İŞLETME MAKASLARI = uçlarda OLMAYAN (ara-hat) makaslar → kısa dönüş/turnback
+  // noktaları (terminal makasları zaten otomatik turnback; onlar hariç). Props'tan türetilir.
+  const tersMakaslar = useMemo(() => {
+    const istPozlar = line.stations.filter((st) => st.tip !== "gecit").map((st) => st.position);
+    const N = istPozlar.length;
+    const enYakin = (pos: number) => { let bi = 0, bd = Infinity; istPozlar.forEach((p, i) => { const d = Math.abs(p - pos); if (d < bd) { bd = d; bi = i; } }); return bi; };
+    return features.filter((f) => { if (f.kind !== "makas") return false; const i = enYakin(f.pos); return i > 0 && i < N - 1; });
+  }, [features, line]);
+  const vTers = loop ? loop.loopLen / Math.max(1, loop.periyot) : 10; // ters dönüş ort. hızı (m/s)
+
+  // Zamanlayıcının okuduğu ref'leri render SONRASI (effect'te) senkronla — render
+  // sırasında ref yazmak/okumak React kuralına aykırı; effect doğru yer.
+  useEffect(() => {
+    loopRef.current = loop;
+    tersMakasRef.current = tersMakaslar;
+    kararRef.current = karar;
+    vTersRef.current = vTers;
+    tersAktifIdxRef.current = new Set(tersHareket.map((r) => r.idx));
+    tersHareketRef.current = tersHareket;
+  });
+
   if (!mounted) {
     // Yer tutucu SVG ile aynı en-boy oranında olsun → mount'ta sıçrama olmaz.
     return <div className="w-full animate-pulse rounded-md" style={{ background: CK.track, aspectRatio: `${VBW} / ${VBH}` }} aria-hidden />;
@@ -290,27 +311,8 @@ export function LiveNetwork({
     const fp = gidis ? Math.min(loop.L, r.s) : Math.max(0, loop.loopLen - r.s);
     return { tr: trBase, fp, up: gidis, v: r.v, durum: r.durum, ad: r.ad };
   }) : [];
-  // TERS İŞLETME MAKASLARI = uçlarda OLMAYAN (ara-hat) makaslar → kısa dönüş/turnback
-  // noktaları (terminal makasları zaten otomatik turnback; onlar hariç).
-  const istPozlar = line.stations.filter((st) => st.tip !== "gecit").map((st) => st.position);
-  const NIST = istPozlar.length;
-  const enYakinIst = (pos: number) => {
-    let bi = 0, bd = Infinity;
-    istPozlar.forEach((p, i) => { const dd = Math.abs(p - pos); if (dd < bd) { bd = dd; bi = i; } });
-    return bi;
-  };
-  const tersMakaslar = features.filter((f) => { if (f.kind !== "makas") return false; const i = enYakinIst(f.pos); return i > 0 && i < NIST - 1; });
-
-  // Ref senkron (zamanlayıcı bunları okur — render sonrası tetiklenir).
-  loopRef.current = loop;
-  tersMakasRef.current = tersMakaslar;
-  kararRef.current = karar;
-  vTersRef.current = loop ? loop.loopLen / Math.max(1, loop.periyot) : 10;
-  const tersAktifIdx = new Set(tersHareket.map((r) => r.idx));
-  tersAktifIdxRef.current = tersAktifIdx;
-  tersHareketRef.current = tersHareket;
-
   // Ters işletmeye geçmiş trenler normal döngüden çıkarılır (kendi overlay'iyle çizilir).
+  const tersAktifIdx = new Set(tersHareket.map((r) => r.idx));
   const gorunenLoop = loop ? loopNow.filter((x) => !tersAktifIdx.has(x.tr.index)) : [];
   const gidenler = loop ? gorunenLoop.filter((x) => x.up) : upNow;
   const gelenler = loop ? gorunenLoop.filter((x) => !x.up) : downNow;
@@ -319,7 +321,7 @@ export function LiveNetwork({
   // Ters işletmeye geçen trenler: makastan başa (0) doğru DÖNÜŞ (üst) şeritte geri gider.
   const tersNow = loop ? tersHareket.map((r) => {
     const dt = Math.max(0, t - r.t0);
-    const fp = Math.max(0, r.makasPos - vTersRef.current * dt);
+    const fp = Math.max(0, r.makasPos - vTers * dt);
     return { idx: r.idx, no: r.no, fp };
   }) : [];
 
@@ -689,7 +691,7 @@ export function LiveNetwork({
         {gidenler.map(wagon)}
         {gelenler.map((x, i) => wagon(x, i + gidenler.length))}
         {/* Ters işletmeye geçen trenler — DÖNÜŞ (üst) şeritte makastan başa geri döner */}
-        {loop && tersNow.map((r, i) => wagon({ tr: { index: r.idx, points: [], arr: 0, delay: 0 } as SignalTrain, fp: r.fp, up: false, v: vTersRef.current, durum: "donus" as LoopDurum, ad: "ters işletme — karşı şeride geçti, geri dönüyor" }, 900 + i))}
+        {loop && tersNow.map((r, i) => wagon({ tr: { index: r.idx, points: [], arr: 0, delay: 0 } as SignalTrain, fp: r.fp, up: false, v: vTers, durum: "donus" as LoopDurum, ad: "ters işletme — karşı şeride geçti, geri dönüyor" }, 900 + i))}
 
         {/* İstasyon ADLARI — EN ÜST katman (depo kutuları + trenlerden SONRA çizilir →
             hiçbir tren kutusu / depo etiketi durak adını örtemez). Gerçek adlar

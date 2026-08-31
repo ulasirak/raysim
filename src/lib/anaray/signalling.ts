@@ -360,8 +360,8 @@ export function loopYorunge(
     // Durağa/terminale varış
     const vAllowed = allowedSpeed(loopHat, stock, Math.min(s, loopLen - 1e-6), Math.min(d.pos, loopLen - 1e-6), b);
     const step = stepMotion(stock, v, vAllowed, segAt(loopHat, Math.min(s, loopLen - 1e-6)).gradient, dt, meff, b);
-    let vNew = step.vNew;
-    let sNew = s + ((v + vNew) / 2) * dt;
+    const vNew = step.vNew;
+    const sNew = s + ((v + vNew) / 2) * dt;
     if (sNew >= d.pos - 1e-6) {
       // vardı → dur + dwell
       s = d.pos; v = 0;

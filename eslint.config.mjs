@@ -5,6 +5,9 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  // Türkçe metinde apostrof/tırnak (İşletme'nin, "..." ) yaygın ve React bunları
+  // sorunsuz basar — kaçış zorunluluğu yalnız gürültü yaratır (kaynağı çirkinleştirir).
+  { rules: { "react/no-unescaped-entities": "off" } },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

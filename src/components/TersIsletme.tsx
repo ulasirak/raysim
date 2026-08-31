@@ -8,7 +8,7 @@ import { useMemo, useState } from "react";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import { tersIsletmeAnaliz } from "@/lib/anaray/tersisletme";
-import { Num, Panel, SubBaslik } from "@/components/RingUI";
+import { Num, SubBaslik } from "@/components/RingUI";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 
@@ -38,8 +38,7 @@ const FILO_RENK: Record<string, { bg: string; bd: string; ad: string }> = {
   kapasiteYetmez: { bg: "#FEF2F2", bd: CK.red, ad: "KAPASİTE YETMEZ" },
 };
 
-const DRAWERLAR = ["girdi", "depo", "donus", "makas", "profil"] as const;
-type DrawerId = (typeof DRAWERLAR)[number];
+type DrawerId = "girdi" | "depo" | "donus" | "makas" | "profil";
 
 export function TersIsletme() {
   const { cfg } = useSimConfig();
