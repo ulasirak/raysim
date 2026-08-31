@@ -16,6 +16,7 @@
   "dependencies": {
     "docx": "^9.7.1",
     "exceljs": "^4.4.0",
+    "fflate": "^0.8.3",
     "firebase": "^12.16.0",
     "firebase-admin": "^14.2.0",
     "jose": "^6.2.4",

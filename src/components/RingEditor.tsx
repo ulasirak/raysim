@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { RollingStock } from "@/lib/anaray/types";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
+import { GtfsImport } from "@/components/GtfsImport";
 import { etkinBogazIsgali, terminalDonusParalel, etkinPeronSayisi, terminalMakasSayilari, terminalSeriDonus, type SimConfig, type DonusTip, type TerminalConfig, type Isletme } from "@/lib/anaray/config";
 import { maksimumTren } from "@/lib/anaray/kapasite";
 import { yolcuAkisSuresi } from "@/lib/anaray/yolcu";
@@ -68,7 +69,7 @@ const DONUS_TIP_ACIKLAMA: Record<DonusTip, string> = {
 
 export function RingEditor() {
   const { cfg } = useSimConfig();
-  const { rings, setRings, sifirlaRings, meta, yukleniyor, yazilabilir } = useProje();
+  const { rings, setRings, sifirlaRings, meta, patchMeta, yukleniyor, yazilabilir } = useProje();
   // Araç ve işletme parametreleri KALICI (projeye kayıtlı) — tek kaynak.
   const { arac: stock } = useArac();
   const { isletme, patchIsletme } = useIsletme();
@@ -247,6 +248,12 @@ export function RingEditor() {
             ↺ Silmeyi geri al
           </button>
         </div>
+      )}
+
+      {/* GTFS içe aktarma — bir toplu taşıma ağının .zip'inden hattı otomatik kurar
+          (mevcut hattın üzerine yazar; "Silmeyi geri al" ile dönülebilir). */}
+      {!yukleniyor && (
+        <GtfsImport onIceAktar={(yeni, ad) => { silHatirla(() => yeni); patchMeta({ hatAdi: ad }); }} disabled={!yazilabilir} />
       )}
 
       {/* DURAKLAR & MESAFELER — hattın GİRİŞ NOKTASI. Boş hatta da görünür: müşteri
