@@ -279,15 +279,15 @@ export function tersIsletmeAnaliz(
         kisaDonusOnerilir: onerilir, kisaDonusYuzde,
         varyasyonlar: [
           { ad: "Depo çıkışı — ters yön", aciklama: `Depodan çıkan tren bu makastan karşı şeride geçip ${sessizUc === "bitiş" ? "gidiş" : "dönüş"} yönünde işe başlar (tek depodan iki yönü dengeler).` },
-          { ad: "Kısa dönüş (turnback)", aciklama: onerilir ? `Sessiz ${sessizUc} kolu yoğun taraftan sönük olduğundan trenlerin yaklaşık %${kisaDonusYuzde}'i burada dönüp yalnız yoğun çekirdeği besler; dış kolda boş sefer oluşmaz.` : `İki taraf da benzer yoğunlukta olduğundan kısa dönüş kazancı düşüktür; tam tur daha verimlidir.` },
+          { ad: "Kısa dönüş (turnback)", aciklama: onerilir ? `Düşük talepli ${sessizUc} yakası yoğun taraftan belirgin biçimde daha az yük taşıdığından, trenlerin yaklaşık %${kisaDonusYuzde}'i burada geri dönerek yalnızca yoğun çekirdeği besler; böylece dış yakada boş sefer oluşmaz.` : `İki yaka da benzer yoğunlukta olduğundan kısa dönüş kazancı düşüktür; tam tur işletim daha verimlidir.` },
           { ad: "Yoğunluk atağı", aciklama: `Ani biniş dalgasında (etkinlik/pik) bu makastan ek tren verilerek yoğun tarafın aralığı düşürülür; hat süreleri değişmeden sıklık artar.` },
         ],
         sureNotu: sureNotu + (tersSinyalVar
           ? " ✓ Ters işletme sinyali mevcut; dönüş güvenli (karşı yönden gelenle çakışma korumalı)."
           : (onerilir ? " ⚠ Ters işletme sinyali YOK — kısa dönüş için gitme yönünün tersine ters işletme sinyali eklenmeli." : "")),
         yorum: onerilir
-          ? `Kısa dönüş noktası ADAYI: yoğun taraf ${Math.round(yuksek)} vs sessiz ${Math.round(dusuk)} yolcu/saat.`
-          : `Dengeli kesim; kısa dönüş gerekmez.`,
+          ? `Bu istasyon, kısa dönüş (turnback) için bir aday noktadır: makasın ayırdığı iki yakadan biri diğerinden belirgin biçimde daha yoğun olduğundan, trenlerin bir bölümünü burada geri döndürmek düşük talepli yakaya boş tren gönderilmesini önler.`
+          : `Bu kesimde makasın iki yakası benzer yoğunlukta olduğundan kısa dönüşe gerek yoktur; tam tur işletim daha verimlidir.`,
       };
     });
 
