@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { RailNetwork, Route, Line } from "@/lib/anaray/types";
 import type { SignalTrain, DepotInfo, LoopYorunge, LoopDurum } from "@/lib/anaray/signalling";
 import type { HatOzellik } from "@/lib/anaray/network";
+import type { TerminalConfig, DonusTip } from "@/lib/anaray/config";
 import { saat } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
 import { CK, ASPEKT } from "@/lib/anaray/chartkit";
@@ -73,7 +74,7 @@ function sampleLoop(orn: LoopYorunge["ornekler"], phase: number): { s: number; d
 }
 
 export function LiveNetwork({
-  network, route, line, blocks, up = [], down = [], tMax, trainLen = 40, faultBlocks = [], onBlockClick, depots = [], features = [], loop,
+  network, route, line, blocks, up = [], down = [], tMax, trainLen = 40, faultBlocks = [], onBlockClick, depots = [], features = [], loop, terminalBas, terminalSon,
 }: {
   network: RailNetwork;
   route: Route;
@@ -90,6 +91,8 @@ export function LiveNetwork({
   /** DÖNGÜ modu: tek-tren yörüngesi + faz — trenler uçta döner (git-gel), üstlerinde durum rozeti.
    *  dagitim: her tren parklanma alanından çıkar (düz gidiş / makastan geçip ters), dispatchT'de. */
   loop?: LoopYorunge & { count: number; offset: number; dagitim?: { parkPos: number; gidis: boolean; dispatchT: number; startPhase: number }[] };
+  terminalBas?: TerminalConfig; // başlangıç terminali dönüş tipi (görsel turnback biçimi)
+  terminalSon?: TerminalConfig; // bitiş terminali dönüş tipi
 }) {
   const [t, setT] = useState(0);
   const [secili, setSecili] = useState<number | null>(null); // döngüde tıklanan tren (detay kutusu)
@@ -397,31 +400,97 @@ export function LiveNetwork({
   };
 
   // Depo (parklanma) — gidiş (alt) şeridinin yanında bir yard kutusu: bekleyen
-  // trenler dolu (mavi), çıkanlar soluk. Zaman ilerledikçe kuyruk boşalır (releaseTimes>t).
-  const depotBekleyen = (d: DepotInfo) => d.releaseTimes.filter((rt) => rt > t + 1e-6).length;
+  // trenler dolu (mavi), çıkanlar soluk. CANLI dağıtımdan (loop.dagitim) türetilir →
+  // depodaki tram sayısı gerçek filoyla birebir; her tren dispatchT'sinde çıktıkça azalır.
+  const depoKuyrukRT = (d: DepotInfo): number[] => {
+    const dg = loop?.dagitim;
+    if (dg && dg.length) return dg.filter((x) => Math.abs(x.parkPos - d.position) < 1).map((x) => x.dispatchT).sort((a, b) => a - b);
+    return d.releaseTimes;
+  };
+  // Çıkışa hazır = dispatchT'si henüz gelmemiş (t ona ulaşınca tren yola çıkar, kutu azalır).
+  const depotBekleyen = (d: DepotInfo) => depoKuyrukRT(d).filter((rt) => rt >= t - 1e-6).length;
   const depotMark = (d: DepotInfo) => {
+    const q = depoKuyrukRT(d).length;
+    if (q <= 0) return null;
     const waiting = depotBekleyen(d);
-    const dispatched = d.queued - waiting;
+    const dispatched = q - waiting;
     const lp = laneAt(d.position, UP_SIDE);          // üst şerit üzerindeki bağlantı noktası
+    const sqW = q > 12 ? Math.max(3, Math.floor(120 / q)) : 8; // çok tram varsa kareleri daralt
+    const rectW = Math.max(2, sqW - 2);
     const bc = offsetAt(d.position, GAP + 30, UP_SIDE); // kutu merkezi (şeridin üstünde)
-    const boxW = Math.max(34, d.queued * 8 + 10), boxH = 17;
+    const boxW = Math.max(34, q * sqW + 10), boxH = 17;
     const bx = bc.x - boxW / 2, by = bc.y - boxH / 2;
+    const etk = `🅿 ${waiting}/${q} hazır`;
     return (
       <g key={`dep${d.id}`}>
         <line x1={lp.x} y1={lp.y} x2={bc.x} y2={by + boxH} stroke={brand.faint} strokeWidth={1} strokeDasharray="2 2" />
         <rect x={bx} y={by} width={boxW} height={boxH} rx={3} fill={CK.track} stroke={brand.borderStrong} strokeWidth={1} />
-        {Array.from({ length: d.queued }).map((_, i) => {
+        {Array.from({ length: q }).map((_, i) => {
           const gone = i < dispatched; // baştan çıkanlar soluk
-          return <rect key={i} x={bx + 6 + i * 8} y={by + 4.5} width={6} height={8} rx={1}
-            fill={gone ? "none" : UP_COL} stroke={gone ? brand.faint : "#fff"} strokeWidth={gone ? 1 : 0.8} opacity={gone ? 0.45 : 1} />;
+          return <rect key={i} x={bx + 6 + i * sqW} y={by + 4.5} width={rectW} height={8} rx={1}
+            fill={gone ? "none" : UP_COL} stroke={gone ? brand.faint : "#fff"} strokeWidth={gone ? 1 : 0.8} opacity={gone ? 0.45 : 1}>
+            <title>{gone ? "yola çıktı" : "depoda çıkışa hazır"}</title>
+          </rect>;
         })}
-        <rect x={bc.x - (`🅿 ${waiting}/${d.queued} hazır`.length * 2.6 + 4)} y={by - 11} width={(`🅿 ${waiting}/${d.queued} hazır`.length * 2.6 + 4) * 2} height={11} rx={2} fill={brand.surface} opacity={0.85} />
-        <text x={bc.x} y={by - 3} fill={brand.inkSoft} fontSize={8} fontWeight={700} textAnchor="middle">🅿 {waiting}/{d.queued} hazır</text>
+        <rect x={bc.x - (etk.length * 2.6 + 4)} y={by - 11} width={(etk.length * 2.6 + 4) * 2} height={11} rx={2} fill={brand.surface} opacity={0.85} />
+        <text x={bc.x} y={by - 3} fill={brand.inkSoft} fontSize={8} fontWeight={700} textAnchor="middle">{etk}</text>
       </g>
     );
   };
-  const depoToplam = depots.reduce((a, d) => a + d.queued, 0);
+  const depoToplam = depots.reduce((a, d) => a + depoKuyrukRT(d).length, 0);
   const depoBekleyenToplam = depots.reduce((a, d) => a + depotBekleyen(d), 0);
+
+  // TERMİNAL DÖNÜŞ BİÇİMİ — dönüş tipine göre uçta farklı geometri çizilir; tip
+  // değişince görsel de değişir (Ringler → Dönüş tipi). Gidiş (alt) ↔ dönüş (üst) uçları bağlanır.
+  const TERM_TIP_KISA: Record<DonusTip, string> = { korTerminal: "kör terminal", ciftPeron: "çift peron", dongu: "balon loop", makasliGecis: "makaslı geçiş" };
+  const terminalGlyph = (uc: "bas" | "son", tc?: TerminalConfig) => {
+    if (!tc || basePts.length < 2) return null;
+    const termPos = uc === "bas" ? 0 : L;
+    const s = segAt(termPos);
+    const dir = uc === "bas" ? -1 : 1;                          // hat boyunca dışa doğru
+    const uo = { x: Math.cos(s.ang) * dir, y: Math.sin(s.ang) * dir };
+    const pu = laneAt(termPos, UP_SIDE);                        // gidiş (alt) ucu
+    const pd = laneAt(termPos, DOWN_SIDE);                      // dönüş (üst) ucu
+    const R = 16;
+    const col = brand.inkSoft;
+    const puO = { x: pu.x + uo.x * R, y: pu.y + uo.y * R };
+    const pdO = { x: pd.x + uo.x * R, y: pd.y + uo.y * R };
+    const mid = { x: (pu.x + pd.x) / 2, y: (pu.y + pd.y) / 2 };
+    const tip = { x: mid.x + uo.x * (R + 7), y: mid.y + uo.y * (R + 7) };
+    const sekil = tc.tip === "dongu" ? (
+      // Balon (loop): tren durmadan döner — pu'dan dışa büyük kavis → pd (damla).
+      <path d={`M ${pu.x} ${pu.y} C ${pu.x + uo.x * R * 2.4} ${pu.y + uo.y * R * 2.4} ${pd.x + uo.x * R * 2.4} ${pd.y + uo.y * R * 2.4} ${pd.x} ${pd.y}`} fill="none" stroke={col} strokeWidth={1.7} strokeLinecap="round" />
+    ) : tc.tip === "ciftPeron" ? (
+      // Çift peron + makas: iki paralel peron kolu, aralarında X makas (biri dönerken diğeri girer).
+      <>
+        <line x1={pu.x} y1={pu.y} x2={puO.x} y2={puO.y} stroke={col} strokeWidth={1.7} strokeLinecap="round" />
+        <line x1={pd.x} y1={pd.y} x2={pdO.x} y2={pdO.y} stroke={col} strokeWidth={1.7} strokeLinecap="round" />
+        <line x1={pu.x} y1={pu.y} x2={pdO.x} y2={pdO.y} stroke={col} strokeWidth={1} opacity={0.85} />
+        <line x1={pd.x} y1={pd.y} x2={puO.x} y2={puO.y} stroke={col} strokeWidth={1} opacity={0.85} />
+      </>
+    ) : tc.tip === "makasliGecis" ? (
+      // Makaslı geçiş: uçta X crossover (scissors) — iki şeridi çaprazlar.
+      <>
+        <line x1={pu.x} y1={pu.y} x2={pdO.x} y2={pdO.y} stroke={col} strokeWidth={1.7} strokeLinecap="round" />
+        <line x1={pd.x} y1={pd.y} x2={puO.x} y2={puO.y} stroke={col} strokeWidth={1.7} strokeLinecap="round" />
+        <circle cx={pu.x} cy={pu.y} r={1.2} fill={col} /><circle cx={pd.x} cy={pd.y} r={1.2} fill={col} />
+      </>
+    ) : (
+      // Kör (stub) terminal: iki kısa kol + kalın tampon barı (dead-end) — tren durup ters döner.
+      <>
+        <line x1={pu.x} y1={pu.y} x2={puO.x} y2={puO.y} stroke={col} strokeWidth={1.7} strokeLinecap="round" />
+        <line x1={pd.x} y1={pd.y} x2={pdO.x} y2={pdO.y} stroke={col} strokeWidth={1.7} strokeLinecap="round" />
+        <line x1={puO.x} y1={puO.y} x2={pdO.x} y2={pdO.y} stroke={col} strokeWidth={2.8} strokeLinecap="round" />
+      </>
+    );
+    return (
+      <g key={`term${uc}`} opacity={0.92}>
+        {sekil}
+        <text x={Math.max(28, Math.min(VBW - 28, tip.x))} y={tip.y + (uo.y >= 0 ? 8 : -3)} textAnchor="middle" fontSize={6.5} fontWeight={600} fill={brand.muted}>{TERM_TIP_KISA[tc.tip]}</text>
+        <title>{`${uc === "bas" ? "Başlangıç" : "Bitiş"} terminali — ${TERM_TIP_KISA[tc.tip]}${tc.tip === "dongu" ? " (dönüş beklemesi ≈ 0)" : ""}`}</title>
+      </g>
+    );
+  };
 
   // İstasyon ADI yerleşimi — ÇAKIŞMA-FARKINDA PULL-UP: adları soldan sağa gezip
   // her birini, o kademede yatay biniş YOKSA en alt kademeye koyar; biniş varsa
@@ -609,6 +678,10 @@ export function LiveNetwork({
             );
           }
         })}
+        {/* TERMİNAL DÖNÜŞ BİÇİMİ — dönüş tipine göre uçlarda farklı geometri */}
+        {terminalGlyph("bas", terminalBas)}
+        {terminalGlyph("son", terminalSon)}
+
         {/* Depolar (parklanma alanları) — gidiş (alt) şeridinin yanında */}
         {depots.map(depotMark)}
 
@@ -701,6 +774,7 @@ export function LiveNetwork({
         {" "}<span style={{ color: ASPEKT.yesil }}>●</span> otomatik blok sınırı (boş kesim bölme — sinyal değil, sadece blok işareti). GERÇEK sinyaller elle metrajla konur: 3-aspect direk sinyali <b>▶</b> giden / <b>◀</b> gelen yön, <span style={{ color: CK.amber }}>amber ↺</span> = ters işletme (turnback) sinyali (kırmızı/sarı/yeşil = önündeki blok işgaline göre yanar). Hat özellikleri: <span style={{ color: CK.blue }}>◉</span> yaya geçidi · <span style={{ color: CK.amber }}>⊞</span> karayolu geçidi · <span style={{ color: brand.ink }}>◆</span> makas — <b>S</b> tek / <b>X</b> scissors (✕). İşgal edilen blok kırmızı segmentle görünür.
         {depoToplam > 0 && <> · 🅿 <b>Depo (parklanma):</b> bekleyen trenler sırayla headway aralığıyla servise çıkar; kutudaki dolu kareler çıkışa hazır, soluk kareler çıkmış trenlerdir.</>}
         {tersMakaslar.length > 0 && <> · <span style={{ color: CK.amber }}>↺</span> <b>Ters işletme makası:</b> giden bir tren ara-hat makasına ulaşınca süre durur ve onay istenir; onaylarsanız o tren karşı (dönüş) şeride geçip başa geri döner.</>}
+        {(terminalBas || terminalSon) && <> · <b>Terminal dönüş biçimi:</b> hattın uçlarında dönüş tipine göre çizilir — <b>kör terminal</b> (tampon barı = çıkmaz, perondan ters döner) · <b>çift peron</b> (iki kol + X makas, biri dönerken diğeri girer) · <b>balon loop</b> (durmadan döner, dönüş beklemesi ≈ 0) · <b>makaslı geçiş</b> (uçta X crossover). Ringler → Dönüş tipi değişince şekil değişir.</>}
       </p>
 
       {/* ETKİLEŞİMLİ TERS İŞLETME — onay pop-up (süre durdurulmuşken) */}

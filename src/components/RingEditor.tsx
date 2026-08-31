@@ -58,6 +58,14 @@ const DONUS_TIP_AD: Record<DonusTip, string> = {
   makasliGecis: "Makaslı geçiş",
 };
 
+// Her dönüş tipinin ne olduğu + terminal aralığına/kapasiteye NE FARK yarattığı (dürüst).
+const DONUS_TIP_ACIKLAMA: Record<DonusTip, string> = {
+  korTerminal: "Tren tek perona girer, durur, aynı perondan ters yönde çıkar. Dönüş süresi = peron işgali ÷ etkin dönüş yolu; tek peron/tek makasla en yavaş dönüş → terminal darboğazının alt sınırını bu belirler. En yaygın basit tramvay terminali.",
+  ciftPeron: "İki ayrı peron: biri dönerken diğerine gelen tren girer → dönüşler paralel. Etkin dönüş = min(peron, makas yolu) arttıkça terminal aralığı buna bölünür (ör. 2 peron → ~yarı süre) → daha sık sefer.",
+  dongu: "Balon (loop) hattı: tren durmadan döner, ters dönüş yok. Terminal dönüş beklemesi ≈ 0 (turnback süresi sıfır) → en yüksek kapasite; ama fiziksel loop alanı ister, tramvayda nadir.",
+  makasliGecis: "Hat üstü makas (crossover) ile ters dönüş — ayrı terminal peronu şart değil, ara noktada da olabilir. Dönüş kapasitesi makas (S/X) yoluyla sınırlı; kısa dönüş / esnek işletme için uygun.",
+};
+
 export function RingEditor() {
   const { cfg } = useSimConfig();
   const { rings, setRings, sifirlaRings, meta, yukleniyor, yazilabilir } = useProje();
@@ -269,6 +277,9 @@ export function RingEditor() {
                       </select>
                       <Kucuk>terminalin fiziksel dönüş biçimi</Kucuk>
                     </label>
+                    <p className="mt-1 rounded border-l-2 py-1 pl-2 text-[0.68rem] leading-relaxed" style={{ borderColor: t.tip === "dongu" ? CK.good : CK.amber, background: t.tip === "dongu" ? CK.goodBg : CK.amberBg, color: brand.inkSoft }}>
+                      {DONUS_TIP_ACIKLAMA[t.tip]}
+                    </p>
                     <div className="mt-2 grid grid-cols-2 gap-3">
                       <div>
                         <Num label="Peron sayısı" suffix="peron" step={1} max={6} value={t.peronSayisi}
@@ -509,6 +520,9 @@ export function RingEditor() {
                                   onChange={(e) => patch(r.id, { binenYolcu: Math.max(0, parseFloat(e.target.value) || 0) })}
                                   className="w-12 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
                               <span title="Yolcu akışından hesaplanan bölüm" style={{ color: CK.good }}>yolcu {Math.round(yolcuHesap)}s ✓</span>
+                              <span className="basis-full rounded border-l-2 py-0.5 pl-2 text-[0.66rem] leading-snug" style={{ borderColor: CK.good, background: CK.goodBgSoft, color: brand.inkSoft }}>
+                                <b>oto dwell</b>: bekleme yolcudan hesaplanır → kapı aç {Math.round(dwellBilesen(r).ac)}s + yolcu [(inen+binen) ÷ (kapı {stock.kapiSayisi ?? 4} × genişlik {stock.kapiGenisligi ?? 1.3}m × akış {isletme.yolcuAkisHizi})] + kapı kapa {Math.round(dwellBilesen(r).kapa)}s; en az {isletme.minDurusSuresi}s. Şu an yolcu {Math.round(yolcuHesap)}s → toplam <b>{Math.round(etkinDwell(r))}s</b>.
+                              </span>
                             </>
                           ) : (
                             <span className="flex items-center gap-1" title="Yolcu değişimi / iniş-biniş süresi (s)">yolcu
