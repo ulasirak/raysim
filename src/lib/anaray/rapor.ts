@@ -201,8 +201,8 @@ function bildfahrplanSvg(line: Line, stock: RollingStock, cfg: SimConfig, count:
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${tg}${st}${upLines}${dnLines}${leg}</svg>`;
 }
 
-// Gerçek Sperrzeitentreppe (gömülü SVG): iki ardışık tren + her bloğun blocking-time
-// dikdörtgeni. Kritik blokta ikinci trenin başlangıcı birincinin bitişine DEĞER = min headway.
+// Gerçek Sperrzeitentreppe (gömülü SVG): iki ardışık tramvay + her bloğun blocking-time
+// dikdörtgeni. Kritik blokta ikinci tramvayın başlangıcı birincinin bitişine DEĞER = min headway.
 function sperrzeitSvg(bt: ReturnType<typeof blockingTimeRing>, L: number, kritikRenk: string = CK.red, en = false): string {
   if (!bt.bloklar.length || L <= 0) return "";
   const h = bt.minHeadway;
@@ -283,28 +283,28 @@ function rDil(lang: RaporDil) {
     foot: "Kontrollü doküman", dockontrol: "Doküman Kontrol", toc: "İçindekiler",
     qrCap: "Bu hattın canlı simülasyonu", qrCapGenel: "RaySim — canlı simülasyon", qrHint: "kamerayla tarayın",
     kunye: { proje: "Proje", hat: "Hat", dok: "Doküman No", rev: "Revizyon", tarih: "Tarih", idare: "İdare", yuk: "Yüklenici", mus: "Müşavir", firma: "Sinyalizasyon Firması" },
-    kpi: { hucre: "Durak arası hücre", hedef: "Hedef headway", sigan: "Headway'de sığan tren", kapasite: "Teorik kapasite", pratik: "İşletme kapasitesi", uic: "UIC 406 doluluk", ch: "Challenge / kritik" },
-    altMakas: (n: number) => `${n} makas`, altTumu: "tümü uygun", altIhlal: "ihlal var", altTur: (s: string) => `tur ${s}`, altTph: "tren/saat", altUygun: "uygun", altIhlalK: "ihlal", altRisk: "risk kaydı",
+    kpi: { hucre: "Durak arası hücre", hedef: "Hedef headway", sigan: "Headway'de sığan tramvay", kapasite: "Teorik kapasite", pratik: "İşletme kapasitesi", uic: "UIC 406 doluluk", ch: "Challenge / kritik" },
+    altMakas: (n: number) => `${n} makas`, altTumu: "tümü uygun", altIhlal: "ihlal var", altTur: (s: string) => `tur ${s}`, altTph: "tramvay/saat", altUygun: "uygun", altIhlalK: "ihlal", altRisk: "risk kaydı",
     s1: "Kapasite Sonucu ve Parametreler", s1i: "Hattın azami tramvay kapasitesi ve belirleyici kısıtlar; sinyalizasyon, makas tip/sayıları, istasyon duruş süreleri, terminal dönüşü, hemzemin geçitler ve araç dinamiği parametrelerinden hesaplanmıştır.",
     thParam: ["Parametre", "Değer", "Etkisi"],
     s2: "Durak Arası İşletim Hücreleri", s2i: (n: number, h: number) => `Hat, ${n} durak-arası hücreye (ring) ayrılmıştır; her hücre kendi mesafe, makas, hemzemin geçit ve tehlike noktası şartlarını taşır (hedef aralık ${h} s).`,
     fig1: "Şekil 1 — Hat şeması: istasyon zinciri, makas (⑂) ve hemzemin geçit dağılımı.",
     figEnergy: (net: number, perKm: number) => `Şekil 2 — Enerji-mesafe: kümülatif çekiş enerjisi. Net ${net.toFixed(1)} kWh · ${perKm.toFixed(2)} kWh/km.`,
     gClimb: "tırmanış", gDescent: "iniş", gGrade: "eğim", gNoElev: "Yükseklik verisi girilmedi — düz profil varsayıldı", mUnit: "m",
-    fig3: (c: number, h: number) => `Şekil 3 — Zaman-mesafe diyagramı (Bildfahrplan): gidiş (mavi) + dönüş (turuncu), ${c}+${c} tren, ${h} s aralık.`,
+    fig3: (c: number, h: number) => `Şekil 3 — Zaman-mesafe diyagramı (Bildfahrplan): gidiş (mavi) + dönüş (turuncu), ${c}+${c} tramvay, ${h} s aralık.`,
     thRing: ["No", "Durak Arası", "Mesafe (m)", "Worst (m)", "Makas", "Hemzemin", "Tehlike", "Worst Toplam", "Headway"],
     s21: "2.1 Ring Bazında Kısıt ve Risk (Challenge) Analizi",
     thKisit: ["Kısıt", "Kilometraj", "Detay"], noKisit: "Kısıt yok; kesintisiz seyir.",
     pillOk: "UYGUN", pillBad: "İHLAL",
-    s4: "Kapasite ve Blocking-Time Analizi", s4i: "Minimum tren aralığını (headway), en yüksek blocking-time'lı blok belirler.",
+    s4: "Kapasite ve Blocking-Time Analizi", s4i: "Minimum tramvay aralığını (headway), en yüksek blocking-time'lı blok belirler.",
     thGost: ["Gösterge", "Değer"],
-    kapTur: "Tur süresi (worst-case seyir)", kapDonus: "Dönüş bekleme (tur başına)", kapCevrim: "Çevrim süresi (dönüş bekleme dâhil)", kapHedef: "Hedef headway", kapSigan: "Headway'de gereken tren", kapDarbogaz: "Darboğaz hücre", kapDenge: "Denge (eşit şartlar)", kapDengeli: "Dengeli", kapSapma: (p: string) => `%${p} sapma`, kapMin: "Minimum headway (kritik blok)", kapTeorik: "Teorik kapasite (tamponsuz üst sınır)", kapPratik: "İşletme kapasitesi (UIC 406 doluluk tavanı)", kapUIC: "UIC 406 doluluk (hedef headway'de)", tphSuffix: "tren/saat",
+    kapTur: "Tur süresi (worst-case seyir)", kapDonus: "Dönüş bekleme (tur başına)", kapCevrim: "Çevrim süresi (dönüş bekleme dâhil)", kapHedef: "Hedef headway", kapSigan: "Headway'de gereken tramvay", kapDarbogaz: "Darboğaz hücre", kapDenge: "Denge (eşit şartlar)", kapDengeli: "Dengeli", kapSapma: (p: string) => `%${p} sapma`, kapMin: "Minimum headway (kritik blok)", kapTeorik: "Teorik kapasite (tamponsuz üst sınır)", kapPratik: "İşletme kapasitesi (UIC 406 doluluk tavanı)", kapUIC: "UIC 406 doluluk (hedef headway'de)", tphSuffix: "tramvay/saat",
     kapNot: "Teorik kapasite tamponsuz üst sınırdır; işletme kapasitesi UIC 406 doluluk tavanıyla sürdürülebilir değeri verir.",
     s41: "4.1 Blocking-Time (Sperrzeitentreppe)",
     fig4: (h: number) => `Şekil 4 — Sperrzeitentreppe: blok işgal (blocking-time) pencereleri; min headway ${h} s.`,
     fig5: "Şekil 5 — Blok başına blocking-time bileşen dağılımı (kritik blok kırmızı etiketli).",
     thBt: ["Blok", "Tanzim", "Görme", "Yaklaşma", "Seyir", "Temizleme", "Serbest", "Toplam"],
-    btTanim: "<b>Tanzim</b> = rota tanzimi ve kilitleme süresi (makas–sinyal hazırlığı) · <b>Görme</b> = makinistin sinyali algılaması için tanınan süre · <b>Yaklaşma</b> = önceki sinyalden blok girişine kadar seyir · <b>Seyir</b> = bloğun kat edilme süresi · <b>Temizleme</b> = tren boyunun bloğu tümüyle terk etme süresi · <b>Serbest</b> = rotanın serbest bırakılması (kilit açılışı) · <b>Toplam</b> = bloğun tek bir trence toplam işgali (Sperrzeit).",
+    btTanim: "<b>Tanzim</b> = rota tanzimi ve kilitleme süresi (makas–sinyal hazırlığı) · <b>Görme</b> = vatmanın sinyali algılaması için tanınan süre · <b>Yaklaşma</b> = önceki sinyalden blok girişine kadar seyir · <b>Seyir</b> = bloğun kat edilme süresi · <b>Temizleme</b> = tramvay boyunun bloğu tümüyle terk etme süresi · <b>Serbest</b> = rotanın serbest bırakılması (kilit açılışı) · <b>Toplam</b> = bloğun tek bir tramvay tarafından toplam işgali (Sperrzeit).",
     s5: "Onay", thImza: ["Hazırlayan", "Onaylayan"], imzaTarih: "İmza / Tarih",
   };
   const en: typeof tr = {
@@ -387,7 +387,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const bfCount = Math.max(3, Math.min(8, filoGercek));
   const eg = line ? energyGradeSvg(line, stock, en) : null;
   const energyFig = eg && eg.svg ? `<div class="fig">${eg.svg}<div class="cap">${L.figEnergy(eg.net, eg.perKm)}</div></div>` : "";
-  const bfFazla = filoGercek > bfCount ? (lang === "en" ? ` (showing ${bfCount} of ${filoGercek} trains)` : ` (${filoGercek} trenin ${bfCount} tanesi çiziliyor)`) : "";
+  const bfFazla = filoGercek > bfCount ? (lang === "en" ? ` (showing ${bfCount} of ${filoGercek} trains)` : ` (${filoGercek} tramvayın ${bfCount} tanesi çiziliyor)`) : "";
   const bfFig = line ? `<div class="fig">${bildfahrplanSvg(line, stock, cfg, bfCount, sinyaller, en)}<div class="cap">${L.fig3(bfCount, cfg.headway)}${bfFazla}</div></div>` : "";
 
   // ---- Kapak künye ----
@@ -401,7 +401,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const kpi = (etiket: string, deger: string, alt: string, renk = INK) =>
     `<div class="kpi"><div class="kpi-l">${esc(etiket)}</div><div class="kpi-v" style="color:${renk}">${esc(deger)}</div><div class="kpi-a">${esc(alt)}</div></div>`;
   // Kapasite KPI'ları sim/Ringler ile BİREBİR (maksimumTren): teorik maks · sürdürülebilir ·
-  // planlanan filo · min headway (darboğaz) · işletme kapasitesi (tren/saat) · UIC 406 doluluk.
+  // planlanan filo · min headway (darboğaz) · işletme kapasitesi (tramvay/saat) · UIC 406 doluluk.
   const teorikMaksEt = lang === "en" ? "Theoretical max trams" : "Teorik maks tramvay";
   const surdurEt = lang === "en" ? "Sustainable trams" : "Sürdürülebilir tramvay";
   const minHwEt = lang === "en" ? "Min headway" : "Min headway";
@@ -464,7 +464,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const btTbl = tbl(L.thBt,
     bt.bloklar.map((b) => [`#${b.i}${b.makasBlok ? " ⑂" : ""}`, `${b.tSetup} s`, `${b.tSighting} s`, `${b.tApproach.toFixed(0)} s`, `${b.tRunning.toFixed(0)} s`, `${b.tClearing.toFixed(0)} s`, `${b.tRelease} s`, `${b.toplam.toFixed(0)} s`]), { first: true });
 
-  // Kapasite okuması yorumu — "sığan tren" (filo) ile "işletme kapasitesi" (tavan)
+  // Kapasite okuması yorumu — "sığan tramvay" (filo) ile "işletme kapasitesi" (tavan)
   // farkını gerçek değerlerden açıklar; hattın yedek kapasitesini okur.
   const yedekYuzde = Math.max(0, Math.round(100 - uicDoluluk));
   const kapBol = uicDoluluk <= 100 || sunum;
@@ -472,10 +472,10 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     ? (en ? ` (operational min headway including critical-station dwell; signalling-block Sperrzeit below: ${Math.round(bt.minHeadway)} s)` : ` (kritik istasyon duruşunu içeren operasyonel min headway; sinyal-bloğu Sperrzeit'i: ${Math.round(bt.minHeadway)} s)`)
     : "";
   // Kurumsal ama sade anlatım: belirleyici kısıt nedir → yedek kapasite → azami tramvay
-  // senaryosunda headway'in düşmesi → belirleyici noktadan saatlik tren sayısı. Adım adım.
+  // senaryosunda headway'in düşmesi → belirleyici noktadan saatlik tramvay sayısı. Adım adım.
   const kapYorum = en
     ? `<b>Determining constraint: ${esc(maks.baglayanAd || "—")}</b> — this is the tightest point on the line, and it is what sets how many trams can pass a given point each hour. When the line is operated at its ${cfg.headway} s design headway, this point still has about <b>${yedekYuzde}% spare capacity</b>${kapBol ? `. In the scenario where the aim is to run the maximum number of trams, this spare is also drawn on: the headway can be tightened from <b>${cfg.headway} s down to ${Math.round(maks.hMin)} s</b>, and at that point <b>${teorikTph.toFixed(0)} trains pass per hour</b>.${sperrNot}` : `, so the ${cfg.headway} s target is within the limit this point allows.${sperrNot}`}`
-    : `<b>Belirleyici kısıt: ${esc(maks.baglayanAd || "—")}</b> — hattın en dar noktası burasıdır ve bir noktadan saatte kaç tramvayın geçebileceğini bu nokta belirler. Hat, tasarım hedefi olan ${cfg.headway} saniyelik sefer aralığıyla işletildiğinde bu noktada hâlâ yaklaşık <b>%${yedekYuzde} yedek kapasite</b> bulunur${kapBol ? `. Hattan azami sayıda tramvay geçirilmek istenen senaryoda bu yedek de devreye alınır: sefer aralığı <b>${cfg.headway} saniyeden ${Math.round(maks.hMin)} saniyeye</b> kadar sıkılaştırılabilir ve bu durumda belirleyici noktadan <b>saatte ${teorikTph.toFixed(0)} tren</b> geçer.${sperrNot}` : `; bu nedenle ${cfg.headway} saniyelik hedef, bu noktanın izin verdiği sınırın içindedir.${sperrNot}`}`;
+    : `<b>Belirleyici kısıt: ${esc(maks.baglayanAd || "—")}</b> — hattın en dar noktası burasıdır ve bir noktadan saatte kaç tramvayın geçebileceğini bu nokta belirler. Hat, tasarım hedefi olan ${cfg.headway} saniyelik sefer aralığıyla işletildiğinde bu noktada hâlâ yaklaşık <b>%${yedekYuzde} yedek kapasite</b> bulunur${kapBol ? `. Hattan azami sayıda tramvay geçirilmek istenen senaryoda bu yedek de devreye alınır: sefer aralığı <b>${cfg.headway} saniyeden ${Math.round(maks.hMin)} saniyeye</b> kadar sıkılaştırılabilir ve bu durumda belirleyici noktadan <b>saatte ${teorikTph.toFixed(0)} tramvay</b> geçer.${sperrNot}` : `; bu nedenle ${cfg.headway} saniyelik hedef, bu noktanın izin verdiği sınırın içindedir.${sperrNot}`}`;
 
   const bugun = meta.tarih || "";
   const siteUrl = (typeof window !== "undefined" && window.location?.origin) ? window.location.origin : "https://raysim.vercel.app";
@@ -583,7 +583,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     const farkStr = `${fark > 0 ? "+" : ""}${fark}${fark === 0 ? (en ? " (balanced)" : " (dengede)") : (fark > 0 ? (en ? " (add)" : " (ilave)") : (en ? " (surplus)" : " (fazla)"))}`;
     const ozetSatir = en
       ? `Peak load <b>${tia.tepeYuk} pax/h</b> at <b>${esc(tia.tepeDurak)}</b> · cycle <b>${cevrimDk} min</b> · frequency <b>${tia.mevcutFrekans.toFixed(1)} trains/h</b> · vehicle <b>${tia.aracKapasite} pax</b>.`
-      : `Tepe yük <b>${tia.tepeYuk} yolcu/saat</b> · <b>${esc(tia.tepeDurak)}</b> · çevrim <b>${cevrimDk} dk</b> · frekans <b>${tia.mevcutFrekans.toFixed(1)} tren/sa</b> · araç <b>${tia.aracKapasite} kişi</b>.`;
+      : `Tepe yük <b>${tia.tepeYuk} yolcu/saat</b> · <b>${esc(tia.tepeDurak)}</b> · çevrim <b>${cevrimDk} dk</b> · frekans <b>${tia.mevcutFrekans.toFixed(1)} tramvay/sa</b> · araç <b>${tia.aracKapasite} kişi</b>.`;
     // 5.5 SADE TASARIM: renkli kart panosu yerine kurumsal metrik tablo (navy değerler) +
     // öneri notu (navy, renksiz vurgu). Belirleyici sayı Fark satırında.
     const b55 = `<h3 class="sub">5.5 ${en ? "Fleet & Recommendation" : "Filo & Öneri"}</h3>
@@ -668,7 +668,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     : `Örnek olarak 1–12. seferler gösterilmiştir; tam çizelge (${tarife.seferSayisi} sefer) ve araç bazlı diyagram canlı simülasyonda üretilir.`}</div>` : "";
 
   // ---- 07 DUYARLILIK (tornado) — hangi parametre işletme kapasitesini en çok oynatıyor ----
-  // Her parametre ±%20 oynatılıp diğerleri sabit tutulur; işletme kapasitesinin (tren/saat)
+  // Her parametre ±%20 oynatılıp diğerleri sabit tutulur; işletme kapasitesinin (tramvay/saat)
   // aldığı aralık ölçülür. Salınıma göre sıralı → en güçlü kaldıraç tepede. Motorla hesaplanır.
   const duy = maks.gecerli && rings.length ? duyarlilikAnaliz(rings, stock, cfg, isletme, "isletmeKap", 20) : null;
   let duyarlilikBolum = "";
@@ -689,14 +689,14 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     duyarlilikBolum = `
   <div class="banner"><span class="no">07</span>${en ? "SENSITIVITY (TORNADO)" : "DUYARLILIK (TORNADO)"}</div>
   <p>${en
-    ? `Each parameter is perturbed ±${duy.deltaYuzde}% while the rest are held fixed, and the resulting range of the operating capacity (trains/hour) is measured. Parameters are ranked by swing — the longest bar is the strongest lever. The vertical line marks the current design value (${duy.taban.toFixed(0)} ${en ? "tph" : "tren/sa"}).`
-    : `Her parametre ±%${duy.deltaYuzde} oynatılıp diğerleri sabit tutulur ve işletme kapasitesinin (tren/saat) aldığı aralık ölçülür. Salınıma göre sıralanır — en uzun çubuk en güçlü kaldıraçtır. Dikey çizgi mevcut tasarım değerini gösterir (${duy.taban.toFixed(0)} tren/sa).`}</p>
+    ? `Each parameter is perturbed ±${duy.deltaYuzde}% while the rest are held fixed, and the resulting range of the operating capacity (trains/hour) is measured. Parameters are ranked by swing — the longest bar is the strongest lever. The vertical line marks the current design value (${duy.taban.toFixed(0)} ${en ? "tph" : "tramvay/sa"}).`
+    : `Her parametre ±%${duy.deltaYuzde} oynatılıp diğerleri sabit tutulur ve işletme kapasitesinin (tramvay/saat) aldığı aralık ölçülür. Salınıma göre sıralanır — en uzun çubuk en güçlü kaldıraçtır. Dikey çizgi mevcut tasarım değerini gösterir (${duy.taban.toFixed(0)} tramvay/sa).`}</p>
   <div class="tor"><table class="tor-tbl"><colgroup><col style="width:26%"><col style="width:44%"><col style="width:15%"><col style="width:15%"></colgroup>
   <thead><tr><th class="l">${en ? "Parameter" : "Parametre"}</th><th>${en ? "Effect on operating capacity" : "İşletme kapasitesine etki"}</th><th>${en ? "Range" : "Aralık"}</th><th>${en ? "Swing" : "Salınım"}</th></tr></thead>
   <tbody>${satirHtml}</tbody></table></div>
   <div class="gs">${en
     ? `The strongest lever here is <b>${esc(okKok.ad)}</b> (swing ${okKok.salinim.toFixed(0)} tph) — the parameter to secure first in design and operation. ▲ = capacity rises as the parameter rises; ▼ = it falls.`
-    : `Bu hatta en güçlü kaldıraç <b>${esc(okKok.ad)}</b> (salınım ${okKok.salinim.toFixed(0)} tren/sa) — tasarımda ve işletmede önce güvenceye alınması gereken parametre. ▲ = parametre artınca kapasite artar; ▼ = azalır.`}</div>`;
+    : `Bu hatta en güçlü kaldıraç <b>${esc(okKok.ad)}</b> (salınım ${okKok.salinim.toFixed(0)} tramvay/sa) — tasarımda ve işletmede önce güvenceye alınması gereken parametre. ▲ = parametre artınca kapasite artar; ▼ = azalır.`}</div>`;
   }
 
   // Altbilgi (onay şeridi) içeriği — İKİ yerde kullanılır: (1) tfoot içinde GÖRÜNMEZ kopya

@@ -1,6 +1,6 @@
 // raysim — TERS İŞLETME ANALİZİ (kısa dönüş / makas varyasyonları / talep-dönüş / filo).
 //
-// Bütün trenler TEK depodan çıkar; bazıları ilk makastan karşı şeride geçip ters
+// Bütün tramvaylar TEK depodan çıkar; bazıları ilk makastan karşı şeride geçip ters
 // yönde işe başlar, bazıları kendi yönünden çıkar. Her makas bölgesi bir kısa-dönüş
 // (turnback) noktasıdır. Bu modül:
 //   1) İstasyon rolünden yolcu TALEP profilini (OD-lite) kurar → hat-boyu yük eğrisi.
@@ -41,7 +41,7 @@ export interface MakasTers {
   yuksekYuk: number;     // makasın YOĞUN tarafındaki tepe yük
   dusukYuk: number;      // makasın SESSİZ (uç) tarafındaki tepe yük
   kisaDonusOnerilir: boolean;
-  kisaDonusYuzde: number;    // sessiz taraf ne kadar sönükse o kadar tren buradan kısa döner
+  kisaDonusYuzde: number;    // sessiz taraf ne kadar sönükse o kadar tramvay buradan kısa döner
   varyasyonlar: { ad: string; aciklama: string }[];
   sureNotu: string;
   yorum: string;
@@ -73,7 +73,7 @@ export interface TersIsletmeRapor {
   filo: FiloOnerisi;
   tepeYuk: number;
   tepeDurak: string;
-  mevcutFrekans: number;   // tren/saat
+  mevcutFrekans: number;   // tramvay/saat
   aracKapasite: number;
   cevrimSn: number;
   maksSurdurulebilir: number;
@@ -163,7 +163,7 @@ export function tersIsletmeAnaliz(
   const maksSurdurulebilir = maks.nSurdurulebilir || maks.nTeorik || 1;
   const C = Math.max(1, isletme.aracYolcuKapasite || 220);
   const pikFilo = Math.max(1, isletme.pikFilo || 1);
-  const mevcutFrekans = pikFilo * 3600 / cevrimSn; // tren/saat
+  const mevcutFrekans = pikFilo * 3600 / cevrimSn; // tramvay/saat
   const dolulukHedefi = Math.min(1, Math.max(0.3, isletme.dolulukHedefi || 0.85));
   const B = Math.max(0, isletme.pikYolcuSaat || 0);
 
@@ -270,7 +270,7 @@ export function tersIsletmeAnaliz(
       const onerilir = oran < 0.6; // sessiz taraf yoğun tarafın %60'ından azsa kısa dönüş kazançlı
       const kisaDonusYuzde = Math.round(Math.max(0, 1 - oran) * 100);
       const sureNotu = xVar
-        ? "X-makas: kısa dönen trenler ardışık ve hızlı çevrilir; makas boğazı yalnızca bir kez işgal edilir."
+        ? "X-makas: kısa dönen tramvaylar ardışık ve hızlı çevrilir; makas boğazı yalnızca bir kez işgal edilir."
         : "S-makas: kısa dönüşler sırayla gerçekleşir ve makas boğazını iki kez işgal eder; bu nedenle sık kısa dönüş talebinde kuyruk (bekleme) oluşabilir.";
       return {
         ad: duraklarT[idx].ad, konum: m.konum, crossover: xVar ? "x" as const : "s" as const,
@@ -278,15 +278,15 @@ export function tersIsletmeAnaliz(
         yuksekYuk: Math.round(yuksek), dusukYuk: Math.round(dusuk),
         kisaDonusOnerilir: onerilir, kisaDonusYuzde,
         varyasyonlar: [
-          { ad: "Depo çıkışı — ters yön", aciklama: `Depodan çıkan tren bu makastan karşı şeride geçip ${sessizUc === "bitiş" ? "gidiş" : "dönüş"} yönünde işe başlar (tek depodan iki yönü dengeler).` },
-          { ad: "Kısa dönüş (turnback)", aciklama: onerilir ? `Düşük talepli ${sessizUc} yakası yoğun taraftan belirgin biçimde daha az yük taşıdığından, trenlerin yaklaşık %${kisaDonusYuzde}'i burada geri dönerek yalnızca yoğun çekirdeği besler; böylece dış yakada boş sefer oluşmaz.` : `İki yaka da benzer yoğunlukta olduğundan kısa dönüş kazancı düşüktür; tam tur işletim daha verimlidir.` },
-          { ad: "Yoğunluk atağı", aciklama: `Ani biniş dalgasında (etkinlik/pik) bu makastan ek tren verilerek yoğun tarafın aralığı düşürülür; hat süreleri değişmeden sıklık artar.` },
+          { ad: "Depo çıkışı — ters yön", aciklama: `Depodan çıkan tramvay bu makastan karşı şeride geçip ${sessizUc === "bitiş" ? "gidiş" : "dönüş"} yönünde işe başlar (tek depodan iki yönü dengeler).` },
+          { ad: "Kısa dönüş (turnback)", aciklama: onerilir ? `Düşük talepli ${sessizUc} yakası yoğun taraftan belirgin biçimde daha az yük taşıdığından, tramvayların yaklaşık %${kisaDonusYuzde}'i burada geri dönerek yalnızca yoğun çekirdeği besler; böylece dış yakada boş sefer oluşmaz.` : `İki yaka da benzer yoğunlukta olduğundan kısa dönüş kazancı düşüktür; tam tur işletim daha verimlidir.` },
+          { ad: "Yoğunluk atağı", aciklama: `Ani biniş dalgasında (etkinlik/pik) bu makastan ek tramvay verilerek yoğun tarafın aralığı düşürülür; hat süreleri değişmeden sıklık artar.` },
         ],
         sureNotu: sureNotu + (tersSinyalVar
-          ? " Bu noktada ters işletme sinyali mevcut olduğundan, karşı yönden gelen trenle çakışma önlenir ve dönüş güvenli biçimde gerçekleştirilebilir."
+          ? " Bu noktada ters işletme sinyali mevcut olduğundan, karşı yönden gelen tramvayla çakışma önlenir ve dönüş güvenli biçimde gerçekleştirilebilir."
           : (onerilir ? " Kısa dönüşün bu noktada güvenle uygulanabilmesi için, gidiş yönünün tersine bir ters işletme sinyali tesis edilmesi gerekmektedir; mevcut tasarımda bu sinyal bulunmamaktadır." : "")),
         yorum: onerilir
-          ? `Bu istasyon, kısa dönüş (turnback) için bir aday noktadır: makasın ayırdığı iki yakadan biri diğerinden belirgin biçimde daha yoğun olduğundan, trenlerin bir bölümünü burada geri döndürmek düşük talepli yakaya boş tren gönderilmesini önler.`
+          ? `Bu istasyon, kısa dönüş (turnback) için bir aday noktadır: makasın ayırdığı iki yakadan biri diğerinden belirgin biçimde daha yoğun olduğundan, tramvayların bir bölümünü burada geri döndürmek düşük talepli yakaya boş tramvay gönderilmesini önler.`
           : `Bu kesimde makasın iki yakası benzer yoğunlukta olduğundan kısa dönüşe gerek yoktur; tam tur işletim daha verimlidir.`,
       };
     });
@@ -314,9 +314,9 @@ export function tersIsletmeAnaliz(
   donusIhtiyaclari.sort((a, b) => b.doluluk - a.doluluk);
 
   // ————— Filo önerisi (pik talebi tıkanmadan) —————
-  const gerekenFrekans = tepeYuk / (C * dolulukHedefi); // tren/saat
+  const gerekenFrekans = tepeYuk / (C * dolulukHedefi); // tramvay/saat
   const gerekenArac = Math.max(1, Math.ceil(gerekenFrekans * cevrimSn / 3600));
-  // Kısa dönüş tasarrufu: en iyi kısa-dönüş makası dış kolu sönükse, dış kola daha az tren.
+  // Kısa dönüş tasarrufu: en iyi kısa-dönüş makası dış kolu sönükse, dış kola daha az tramvay.
   let tasarruf = 0;
   const enIyi = makaslar.filter((m) => m.kisaDonusOnerilir).sort((a, b) => b.kisaDonusYuzde - a.kisaDonusYuzde)[0];
   if (enIyi) {
@@ -351,7 +351,7 @@ export function tersIsletmeAnaliz(
     tepeYuk, tepeDurak, mevcutFrekans, aracKapasite: C, cevrimSn, maksSurdurulebilir, gercekVeri,
     depoDagilim: {
       gidis: depoGidis, donus: depoDonus,
-      aciklama: `Servis başında ${pikFilo} tren tek depodan çıkar: yaklaşık ${depoGidis} tanesi kendi yönünde (gidiş), ${depoDonus} tanesi ilk makastan karşı şeride geçip ters (dönüş) yönde işe başlar; böylece iki yön eşzamanlı dolar.`,
+      aciklama: `Servis başında ${pikFilo} tramvay tek depodan çıkar: yaklaşık ${depoGidis} tanesi kendi yönünde (gidiş), ${depoDonus} tanesi ilk makastan karşı şeride geçip ters (dönüş) yönde işe başlar; böylece iki yön eşzamanlı dolar.`,
     },
   };
 }

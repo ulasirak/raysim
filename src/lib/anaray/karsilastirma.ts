@@ -58,9 +58,9 @@ export const SATIRLAR: Satir[] = [
   { etiket: "Sürdürülebilir (UIC 406)", al: (m) => m.nSurdurulebilir, yaz: (m) => `${m.nSurdurulebilir}`, yon: "yuksek" },
   { etiket: "Min headway (s)", al: (m) => m.hMin, yaz: (m) => `${m.hMin}`, yon: "dusuk" },
   { etiket: "Çevrim (dk)", al: (m) => m.cevrimDk, yaz: (m) => `${m.cevrimDk}`, yon: "dusuk" },
-  { etiket: "İşletme kapasitesi (tren/sa)", al: (m) => m.isletmeKap, yaz: (m) => `${m.isletmeKap}`, yon: "yuksek" },
+  { etiket: "İşletme kapasitesi (tramvay/sa)", al: (m) => m.isletmeKap, yaz: (m) => `${m.isletmeKap}`, yon: "yuksek" },
   { etiket: "UIC doluluk (%)", al: (m) => m.uic, yaz: (m) => `%${m.uic}`, yon: "none" },
-  { etiket: "Hedef sıklıkta gereken tren", al: (m) => m.siganTren, yaz: (m) => `${m.siganTren}`, yon: "dusuk" },
+  { etiket: "Hedef sıklıkta gereken tramvay", al: (m) => m.siganTren, yaz: (m) => `${m.siganTren}`, yon: "dusuk" },
   { etiket: "Gereken filo (talep)", al: (m) => m.gerekenFilo, yaz: (m) => `${m.gerekenFilo}`, yon: "dusuk" },
   { etiket: "Tepe yük (yolcu/sa)", al: (m) => m.tepeYuk, yaz: (m) => `${m.tepeYuk}`, yon: "none" },
 ];
@@ -122,7 +122,7 @@ export function karsilastirmaHTML(senaryolar: KarsSenaryo[], meta: ProjeMeta, al
     }).join("");
     return `<div class="cb-kart"><div class="cb-baslik">${esc(baslik)}</div>${rows}</div>`;
   };
-  const cubuklar = `<div class="cb-grid">${cubuk("Teorik maks tramvay", (m) => m.nTeorik, "#2F6DB3")}${cubuk("İşletme kapasitesi (tren/sa)", (m) => m.isletmeKap, "#2E7D57")}${cubuk("Gereken filo (talep)", (m) => m.gerekenFilo, "#C8702A")}</div>`;
+  const cubuklar = `<div class="cb-grid">${cubuk("Teorik maks tramvay", (m) => m.nTeorik, "#2F6DB3")}${cubuk("İşletme kapasitesi (tramvay/sa)", (m) => m.isletmeKap, "#2E7D57")}${cubuk("Gereken filo (talep)", (m) => m.gerekenFilo, "#C8702A")}</div>`;
 
   // Objektif öneri
   let oneri = "";
@@ -134,7 +134,7 @@ export function karsilastirmaHTML(senaryolar: KarsSenaryo[], meta: ProjeMeta, al
       <tr><td class="l">En yüksek sürdürülebilir kapasite</td><td><b>${esc(k.ad)}</b> · ${k.nSurdurulebilir} tramvay</td></tr>
       <tr><td class="l">En düşük filo ihtiyacı</td><td><b>${esc(f.ad)}</b> · ${f.gerekenFilo} araç</td></tr>
       <tr><td class="l">En kısa çevrim (tur)</td><td><b>${esc(c.ad)}</b> · ${c.cevrimDk} dk</td></tr>
-      <tr><td class="l">En yüksek işletme kapasitesi</td><td><b>${esc(i.ad)}</b> · ${i.isletmeKap} tren/sa</td></tr>
+      <tr><td class="l">En yüksek işletme kapasitesi</td><td><b>${esc(i.ad)}</b> · ${i.isletmeKap} tramvay/sa</td></tr>
     </tbody></table>
     <p class="not">Ölçütler nesneldir; nihai karar talep, bütçe ve etaplama stratejisine göre verilir.</p>`;
   }
