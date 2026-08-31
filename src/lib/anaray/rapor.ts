@@ -881,6 +881,14 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     border-top: .75pt solid #DCE1E7; padding-top: 1.4mm; margin-top: 2.5mm; font-size: 7.5pt; color: #6B7A8A; }
   /* Onay şeridi — HER sayfa altbilgisinde (title-block): imza kutuları. Ayrı "Onay" bölümü
      yerine geçer; kompakt tutulur ki içerik alanını daraltıp taşma/sıkışma yapmasın. */
+  /* Altbilgi (onay şeridi) HER sayfanın FİZİKSEL altına sabit: son sayfada da ortada
+     kalmaz. @page bottom margin (26mm) ayrılan bölgeye oturur; içerik binmez. Ekranda
+     gizli (önizleme yalnız içeriktir; şerit PDF'te görünür). */
+  /* Boş tfoot HER sayfada alt boşluğu REZERVE eder (içerik footer'a binmez); görünen
+     onay şeridi ise .sayfa-alt olarak position:fixle her sayfanın altına sabitlenir. */
+  .alt-bosluk { height: 17mm; }
+  @media screen { .sayfa-alt { display: none; } }
+  @media print { .sayfa-alt { position: fixed; left: 15mm; right: 15mm; bottom: 8mm; } }
   .onay-serit { display: flex; gap: 5mm; margin-top: 3.5mm; }
   .onay-kutu { flex: 1; border: .75pt solid #C9D2DA; border-radius: 2px; padding: 1.2mm 2.4mm; min-height: 8mm;
     display: flex; flex-direction: column; justify-content: space-between; }
@@ -899,16 +907,19 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <button onclick="window.print()">${L.barBtn}</button>
 </div>
 <div class="sheet">
-<!-- Sayfa çerçevesi: antet üst/alt HER sayfada AKIŞTA tekrarlanır (fixed değil). -->
-<table class="pageframe"><thead class="antet-head"><tr><td>
-  <div class="antet-ust">${antetSol}<span class="dok">${esc(meta.dokumanNo)}${meta.revizyon ? " · " + esc(meta.revizyon.split("—")[0].trim()) : ""}</span></div>
-</td></tr></thead><tfoot class="antet-foot"><tr><td>
+<!-- Antet ÜST: thead ile her sayfada AKIŞTA tekrarlanır. Altbilgi (onay şeridi) ise
+     position:fixed ile her sayfanın FİZİKSEL altına sabitlenir → tfoot'un aksine son
+     sayfada ortada kalmaz. @page bottom margin footer'a yer ayırır (içerik binmez). -->
+<div class="sayfa-alt">
   <div class="onay-serit">
     <div class="onay-kutu"><div><span class="ok-et">${esc(L.thImza[0])}</span><div class="ok-ad">${esc(meta.hazirlayan) || "&nbsp;"}</div></div><div class="ok-imza">${esc(L.imzaTarih)}</div></div>
     <div class="onay-kutu"><div><span class="ok-et">${esc(L.thImza[1])}</span><div class="ok-ad">${esc(meta.onaylayan) || "&nbsp;"}</div></div><div class="ok-imza">${esc(L.imzaTarih)}</div></div>
   </div>
   <div class="antet-alt"><span>${esc(meta.sinyalizasyonFirmasi || "RaySim")} · ${esc(meta.projeAdi)}</span><span>${bugun ? esc(bugun) + " · " : ""}${esc(meta.dokumanNo)}</span></div>
-</td></tr></tfoot><tbody><tr><td>
+</div>
+<table class="pageframe"><thead class="antet-head"><tr><td>
+  <div class="antet-ust">${antetSol}<span class="dok">${esc(meta.dokumanNo)}${meta.revizyon ? " · " + esc(meta.revizyon.split("—")[0].trim()) : ""}</span></div>
+</td></tr></thead><tfoot class="antet-foot"><tr><td><div class="alt-bosluk"></div></td></tr></tfoot><tbody><tr><td>
 
   <!-- KAPAK — ANA MARKA = sinyalizasyon firması (büyük). RaySim, altta küçük
        "Powered by" rozetine indirgenir (araç/motor kimliği). -->
