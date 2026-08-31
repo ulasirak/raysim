@@ -508,37 +508,37 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const tia = rings.length >= 2 ? tersIsletmeAnaliz(rings, stock, isletme, cfg, "toplam") : null;
   // Girdi→sonuç notu kutusu (altın vurgulu, şık).
   const gsNot = (girdi: string, sonuc: string) =>
-    `<div class="gs"><span class="gs-i">▸ ${en ? "Your inputs" : "Girdileriniz"}:</span> ${girdi} <span class="gs-o">→ ${en ? "Result" : "Sonuç"}:</span> ${sonuc}</div>`;
+    `<div class="gs"><span class="gs-i">${en ? "Basis" : "Esas"}:</span> ${girdi} · <span class="gs-o">${en ? "Result" : "Sonuç"}:</span> ${sonuc}</div>`;
   let isletmeBolum = "";
   if (tia) {
     const talepGirdi = en
-      ? `the total peak demand you entered (${Math.round(isletme.pikYolcuSaat || 0)} pax/h) distributed by station role (hospital/interchange/stadium/centre = high)`
-      : `girdiğiniz toplam pik talep (${Math.round(isletme.pikYolcuSaat || 0)} yolcu/saat), istasyon rolüne göre dağıtıldı (hastane/aktarma/stadyum/merkez = yoğun)`;
+      ? `total peak demand ${Math.round(isletme.pikYolcuSaat || 0)} pax/h, distributed by station role (high: hospital · interchange · stadium · centre)`
+      : `toplam pik talep ${Math.round(isletme.pikYolcuSaat || 0)} yolcu/saat, istasyon rolüne göre dağıtılmış (yoğun: hastane · aktarma · stadyum · merkez)`;
     const kapNote = en ? `vehicle capacity ${tia.aracKapasite} pax and ${tia.filo.mevcutPik} peak trams` : `araç kapasitesi ${tia.aracKapasite} yolcu ve ${tia.filo.mevcutPik} pik tramvay`;
 
     // 5.1 Yolcu Yük Profilleri
     const yukThead = en ? ["Stop", "Board", "Alight", "Load ▶", "Load ◀", "Peak", "Occ."] : ["Durak", "Binen", "İnen", "Yük ▶", "Yük ◀", "Tepe", "Doluluk"];
     const yukRows = tia.duraklar.map((d) => [esc(d.ad), `${d.binen}`, `${d.inen}`, `${d.yukGidis}`, `${d.yukDonus}`, `${d.tepeYuk}`, `%${Math.round(d.doluluk * 100)}`]);
     const b51 = `<h3 class="sub">5.1 ${en ? "Passenger Load Profiles" : "Yolcu Yük Profilleri"}</h3>
-      ${gsNot(talepGirdi, en ? `directional load per stop; peak load <b>${tia.tepeYuk} pax/h</b> at <b>${esc(tia.tepeDurak)}</b>${tia.gercekVeri ? " (from your real counts)" : " (role-based estimate — enter real counts for exact figures)"}` : `durak-başı yönlü yük; en yüksek yük <b>${tia.tepeYuk} yolcu/saat</b>, <b>${esc(tia.tepeDurak)}</b> durağında${tia.gercekVeri ? " (gerçek girdinizden)" : " (rol-tabanlı tahmin — kesin değer için gerçek iniş/biniş girin)"}`)}
+      ${gsNot(talepGirdi, en ? `directional load per stop; peak load <b>${tia.tepeYuk} pax/h</b> at <b>${esc(tia.tepeDurak)}</b>${tia.gercekVeri ? " (measured counts)" : " (role-based estimate)"}` : `durak-başı yönlü yük profili; azami yük <b>${tia.tepeYuk} yolcu/saat</b> (<b>${esc(tia.tepeDurak)}</b>)${tia.gercekVeri ? ", ölçülen sayımlardan" : ", rol-tabanlı tahmin"}`)}
       ${tbl(yukThead, yukRows, { first: true })}`;
 
     // 5.2 Depo Çıkışı
     const b52 = `<h3 class="sub">5.2 ${en ? "Depot Dispatch — One Depot, Two Directions" : "Depo Çıkışı — Tek Depodan İki Yön"}</h3>
-      ${gsNot(en ? `the fleet you confirmed (${tia.filo.mevcutPik} trams) and the switch (crossover) at the depot` : `onayladığınız filo (${tia.filo.mevcutPik} tramvay) ve depodaki makas (crossover)`, esc(tia.depoDagilim.aciklama))}`;
+      ${gsNot(en ? `peak fleet ${tia.filo.mevcutPik} trams and the depot crossover` : `pik filo ${tia.filo.mevcutPik} tramvay ve depo makası (crossover)`, esc(tia.depoDagilim.aciklama))}`;
 
     // 5.3 Dönüşe İhtiyaç Duyan Duraklar
     const dThead = en ? ["Stop", "Occ.", "Segment", "Suggested switch", "Severity"] : ["Durak", "Doluluk", "Segman", "Önerilen makas", "Şiddet"];
     const dRows = tia.donusIhtiyaclari.map((d) => [esc(d.durak), `%${Math.round(d.doluluk * 100)}`, esc(d.segman), esc(d.oneriMakas), d.siddet]);
     const b53 = `<h3 class="sub">5.3 ${en ? "Stops Needing Turnback" : "Dönüşe İhtiyaç Duyan Duraklar"}</h3>
       ${tia.donusIhtiyaclari.length
-        ? gsNot(en ? `the ${Math.round((isletme.dolulukHedefi || 0.85) * 100)}% occupancy target and ${kapNote}` : `girdiğiniz %${Math.round((isletme.dolulukHedefi || 0.85) * 100)} doluluk hedefi ve ${kapNote}`, en ? `${tia.donusIhtiyaclari.length} stop(s) exceed the target → short-turn (turnback) suggested` : `${tia.donusIhtiyaclari.length} durak hedefi aşıyor → kısa dönüş (turnback) öneriliyor`) + tbl(dThead, dRows, { first: true })
+        ? gsNot(en ? `${Math.round((isletme.dolulukHedefi || 0.85) * 100)}% occupancy target, ${kapNote}` : `%${Math.round((isletme.dolulukHedefi || 0.85) * 100)} doluluk hedefi, ${kapNote}`, en ? `${tia.donusIhtiyaclari.length} stop(s) exceed the target; short-turn (turnback) required` : `${tia.donusIhtiyaclari.length} durak doluluk hedefini aşıyor; kısa dönüş (turnback) gerekir`) + tbl(dThead, dRows, { first: true })
         : `<p class="muted">${en ? "All stops within the occupancy target — no turnback needed." : "Tüm duraklar doluluk hedefinde — dönüşe ihtiyaç yok."}</p>`}`;
 
     // 5.4 Makas Bölgesi Başına Ters İşletme Varyasyonları
     const b54ic = tia.makaslar.length
       ? tia.makaslar.map((m) => `<div class="ring-detay"><h4>${esc(m.ad)} (${m.crossover.toUpperCase()} · ${m.makasSayisi} PM)</h4>
-          ${gsNot(en ? `the ${m.crossover.toUpperCase()} switch you placed here (${m.makasSayisi} PM) and the load balance of its two arms (${m.yuksekYuk} vs ${m.dusukYuk} pax/h)` : `buraya girdiğiniz ${m.crossover.toUpperCase()} makas (${m.makasSayisi} PM) ve iki kolun yük dengesi (${m.yuksekYuk} / ${m.dusukYuk} yolcu/saat)`, esc(m.yorum))}
+          ${gsNot(en ? `${m.crossover.toUpperCase()} switch (${m.makasSayisi} PM); two-arm load balance ${m.yuksekYuk} vs ${m.dusukYuk} pax/h` : `${m.crossover.toUpperCase()} makas (${m.makasSayisi} PM); iki kol yük dengesi ${m.yuksekYuk} / ${m.dusukYuk} yolcu/saat`, esc(m.yorum))}
           <ul class="ch">${m.varyasyonlar.map((v) => `<li><b>${esc(v.ad)}:</b> ${esc(v.aciklama)}</li>`).join("")}</ul>
           <p class="muted" style="font-size:9.5pt">${esc(m.sureNotu)}</p></div>`).join("")
       : `<p class="muted">${en ? "No mid-line switch zones — reverse-running variations apply only at terminals." : "Ara-hat makas bölgesi yok — ters işletme varyasyonları yalnız terminallerde geçerli."}</p>`;
@@ -569,7 +569,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <p>${en
     ? `Effect of the demand, fleet and switch inputs on operation: passenger load profiles, single-depot two-direction dispatch, stops needing a turnback, per-switch reverse-running variations, and the fleet recommendation.`
     : `Talep, filo ve makas girdilerinin işletmeye etkisi: yolcu yük profilleri, tek-depodan iki-yön çıkışı, dönüşe ihtiyaç duyan duraklar, makas-başı ters işletme varyasyonları ve filo önerisi.`}</p>
-  <div class="gs"><span class="gs-i">▸ ${en ? "Passenger & occupancy basis" : "Yolcu ve doluluk esası"}:</span> ${en
+  <div class="gs"><span class="gs-i">${en ? "Passenger & occupancy basis" : "Yolcu ve doluluk esası"}:</span> ${en
     ? `passenger measurement is central: from the boarding/alighting counts measured per station (or, where not entered, the role-based demand distribution) together with the vehicle passenger capacity and service frequency, the directional load profile along the line and the per-stop <b>occupancy ratio</b> are derived; the stops exceeding the occupancy target and the need for a short-turn are determined from these measurements. The tram’s capacity and physical states (door count/width, floor area, mass, tractive effort, braking) are taken as parameters.`
     : `yolcu ölçümü esastır: her istasyona ölçülen iniş-biniş sayıları (girilmediyse istasyon rolüne göre talep dağılımı) ile araç yolcu kapasitesi ve servis frekansı birlikte değerlendirilerek hat-boyu yönlü yük profili ve durak-başı <b>doluluk oranı</b> çıkarılır; doluluk hedefini aşan duraklar ve kısa dönüş ihtiyacı bu ölçümlerden belirlenir. Değerlendirmede tramvayın kapasite ve fiziksel durumları (kapı sayısı/genişliği, taban alanı, kütle, çekiş, frenleme) parametre olarak alınır.`}</div>
   ${b51}${b52}${b53}${b54}${b55}
@@ -578,9 +578,9 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
 
   // Kapasite ÖLÇÜM ESASLARI — hangi saha girdilerinin birlikte değerlendirildiği (iç
   // formül/algoritma açığa çıkmadan; yöntem UIC 406 blocking-time esaslı).
-  const kapGirdiNot = `<div class="gs"><span class="gs-i">▸ ${en ? "Measurement basis" : "Ölçüm esasları"}:</span> ${en
-    ? `the maximum trams on the line (“trains within headway”) is measured not from a single assumption but from the joint evaluation of terminal throat occupation times, switch types and counts (S single / X scissors crossover), signal-lamp positions, directions and aspect states, block-occupation states, station dwell times, level-crossing types, and the tram’s physical states (mass, tractive effort and power, braking, running resistance, length, maximum speed) — on a UIC 406 blocking-time (Sperrzeitentreppe) basis`
-    : `hattın azami tramvay sayısı (“headway’de sığan tren”) tek bir kabulle değil; terminal boğaz işgal süreleri, makas tip ve sayıları (S tek / X scissors crossover), sinyal lambası konum, yön ve aspect durumları, blok işgal durumları, istasyon duruş (dwell) süreleri, hemzemin geçit tipleri ve tramvayın fiziksel durumlarının (kütle, çekiş kuvveti ve gücü, frenleme, seyir direnci, uzunluk, azami hız) birlikte değerlendirilmesiyle — UIC 406 blocking-time (Sperrzeitentreppe) esasıyla — ölçülür`} <span class="gs-o">→ ${en ? "Result" : "Çıktı"}:</span> ${en
+  const kapGirdiNot = `<div class="gs"><span class="gs-i">${en ? "Measurement basis" : "Ölçüm esasları"}:</span> ${en
+    ? `terminal throat occupation times, switch types and counts (S single / X scissors crossover), signal-lamp positions, directions and aspect states, block-occupation states, station dwell times, level-crossing types, and the tram’s physical characteristics (mass, tractive effort and power, braking, running resistance, length, maximum speed) are evaluated jointly on a UIC 406 blocking-time (Sperrzeitentreppe) basis`
+    : `terminal boğaz işgal süreleri, makas tip ve sayıları (S tek / X scissors crossover), sinyal lambası konum/yön/aspect durumları, blok işgal durumları, istasyon duruş (dwell) süreleri, hemzemin geçit tipleri ve tramvayın fiziksel özellikleri (kütle, çekiş kuvveti ve gücü, frenleme, seyir direnci, uzunluk, azami hız) UIC 406 blocking-time (Sperrzeitentreppe) esasıyla birlikte değerlendirilir`} · <span class="gs-o">${en ? "Result" : "Sonuç"}:</span> ${en
     ? `theoretical maximum <b>${maks.nTeorik} trams</b> (sustainable ${maks.nSurdurulebilir}) and minimum headway <b>${Math.round(maks.hMin)} s</b> at the determining constraint (${esc(maks.baglayanAd || "—")}).`
     : `teorik en fazla <b>${maks.nTeorik} tramvay</b> (sürdürülebilir ${maks.nSurdurulebilir}) ve belirleyici kısıtta (${esc(maks.baglayanAd || "—")}) minimum headway <b>${Math.round(maks.hMin)} s</b>.`}</div>`;
 

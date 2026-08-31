@@ -279,15 +279,15 @@ export function tersIsletmeAnaliz(
         kisaDonusOnerilir: onerilir, kisaDonusYuzde,
         varyasyonlar: [
           { ad: "Depo çıkışı — ters yön", aciklama: `Depodan çıkan tren bu makastan karşı şeride geçip ${sessizUc === "bitiş" ? "gidiş" : "dönüş"} yönünde işe başlar (tek depodan iki yönü dengeler).` },
-          { ad: "Kısa dönüş (turnback)", aciklama: onerilir ? `Sessiz ${sessizUc} kolu yoğun taraftan sönük → trenlerin ~%${kisaDonusYuzde}'i burada dönüp yalnız yoğun çekirdeği besler (dış kolda boş sefer yok).` : `İki taraf da benzer yoğunlukta → kısa dönüş kazancı düşük, tam tur daha verimli.` },
-          { ad: "Yoğunluk atağı", aciklama: `Ani biniş dalgasında (etkinlik/pik) bu makastan ek tren enjekte edilerek yoğun tarafın aralığı düşürülür — hat süreleri değişmeden sıklık artar.` },
+          { ad: "Kısa dönüş (turnback)", aciklama: onerilir ? `Sessiz ${sessizUc} kolu yoğun taraftan sönük olduğundan trenlerin yaklaşık %${kisaDonusYuzde}'i burada dönüp yalnız yoğun çekirdeği besler; dış kolda boş sefer oluşmaz.` : `İki taraf da benzer yoğunlukta olduğundan kısa dönüş kazancı düşüktür; tam tur daha verimlidir.` },
+          { ad: "Yoğunluk atağı", aciklama: `Ani biniş dalgasında (etkinlik/pik) bu makastan ek tren verilerek yoğun tarafın aralığı düşürülür; hat süreleri değişmeden sıklık artar.` },
         ],
         sureNotu: sureNotu + (tersSinyalVar
-          ? " ✓ Ters işletme sinyali mevcut → dönüş güvenli (karşı yönden gelenle çakışma korumalı)."
+          ? " ✓ Ters işletme sinyali mevcut; dönüş güvenli (karşı yönden gelenle çakışma korumalı)."
           : (onerilir ? " ⚠ Ters işletme sinyali YOK — kısa dönüş için gitme yönünün tersine ters işletme sinyali eklenmeli." : "")),
         yorum: onerilir
           ? `Kısa dönüş noktası ADAYI: yoğun taraf ${Math.round(yuksek)} vs sessiz ${Math.round(dusuk)} yolcu/saat.`
-          : `Dengeli kesim — kısa dönüş şart değil.`,
+          : `Dengeli kesim; kısa dönüş gerekmez.`,
       };
     });
 
@@ -329,16 +329,16 @@ export function tersIsletmeAnaliz(
   let aciklama: string;
   if (gerekenArac > maksSurdurulebilir) {
     oneri = "kapasiteYetmez";
-    aciklama = `Pik talep için ${gerekenArac} araç gerekiyor ama hattın sürdürülebilir tavanı ${maksSurdurulebilir} tramvay. Tek başına araç eklemek yetmez → kısa dönüş (yoğun çekirdeği sıklaştır) + altyapı (blok/terminal) iyileştirmesi şart.`;
+    aciklama = `Pik talep için ${gerekenArac} araç gerekiyor; hattın sürdürülebilir tavanı ise ${maksSurdurulebilir} tramvay. Tek başına araç eklemek yeterli değildir; yoğun çekirdeği sıklaştıran kısa dönüş ile blok/terminal altyapı iyileştirmesi birlikte gereklidir.`;
   } else if (gerekenArac > pikFilo) {
     oneri = "arttir";
-    aciklama = `Pik talebi (%${Math.round(dolulukHedefi * 100)} doluluk) karşılamak için ${gerekenArac} araç gerekiyor; şu an ${pikFilo}. Pik saatte hatta ${gerekenArac - pikFilo} araç DAHA çıkarılmalı${tasarruf > 0 ? ` (kısa dönüşle ${gerekenKisaDonusle}'e inebilir)` : ""}.`;
+    aciklama = `Pik talebi (%${Math.round(dolulukHedefi * 100)} doluluk) karşılamak için ${gerekenArac} araç gerekiyor; mevcut filo ${pikFilo}. Pik saatte hatta ${gerekenArac - pikFilo} araç daha çıkarılmalıdır${tasarruf > 0 ? ` (kısa dönüşle ${gerekenKisaDonusle} araca inebilir)` : ""}.`;
   } else if (gerekenArac < pikFilo) {
     oneri = "azalt";
-    aciklama = `Talep ${pikFilo} araca göre düşük; ${gerekenArac} araç %${Math.round(dolulukHedefi * 100)} dolulukla yeter → pik filodan ${pikFilo - gerekenArac} araç çekilip depoda tutulabilir (enerji/işletme tasarrufu).`;
+    aciklama = `Talep mevcut ${pikFilo} araca göre düşük; ${gerekenArac} araç %${Math.round(dolulukHedefi * 100)} dolulukla yeterlidir. Pik filodan ${pikFilo - gerekenArac} araç çekilip depoda tutulabilir (enerji/işletme tasarrufu).`;
   } else {
     oneri = "yeterli";
-    aciklama = `Mevcut pik filo (${pikFilo}) pik talebi %${Math.round(dolulukHedefi * 100)} dolulukla tam karşılıyor — ekleme/çıkarma gerekmiyor.`;
+    aciklama = `Mevcut pik filo (${pikFilo}) pik talebi %${Math.round(dolulukHedefi * 100)} dolulukla tam karşılıyor; ekleme veya çıkarma gerekmiyor.`;
   }
 
   // ————— Depo dağılımı (tek depodan iki yön) —————
@@ -351,7 +351,7 @@ export function tersIsletmeAnaliz(
     tepeYuk, tepeDurak, mevcutFrekans, aracKapasite: C, cevrimSn, maksSurdurulebilir, gercekVeri,
     depoDagilim: {
       gidis: depoGidis, donus: depoDonus,
-      aciklama: `Servis başında ${pikFilo} tren tek depodan çıkar: ~${depoGidis} tanesi kendi yönünden (gidiş), ~${depoDonus} tanesi ilk makastan karşı şeride geçip ters (dönüş) yönde işe başlar → iki yön eşzamanlı dolar.`,
+      aciklama: `Servis başında ${pikFilo} tren tek depodan çıkar: yaklaşık ${depoGidis} tanesi kendi yönünde (gidiş), ${depoDonus} tanesi ilk makastan karşı şeride geçip ters (dönüş) yönde işe başlar; böylece iki yön eşzamanlı dolar.`,
     },
   };
 }
