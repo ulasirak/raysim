@@ -512,8 +512,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const sinyalBolum = `
   <div class="banner"><span class="no">03</span>${lang === "en" ? "SIGNALLING — SIGNAL LAMPS (SG)" : "SİNYALİZASYON — SİNYAL LAMBALARI (SG)"}</div>
   <p>${lang === "en"
-    ? `The line is protected by <b>${sinyalSayisi} three-aspect signal lamps</b> (SG: red / yellow / green); each outbound signal is a <b>block boundary</b>. The design layout is summarised below; the full signal schedule (per-lamp chainages) is held in the design model.`
-    : `Hat, <b>${sinyalSayisi} adet 3-aspect sinyal lambası</b> (SG: kırmızı / sarı / yeşil) ile korunur; her giden yön sinyali bir <b>blok sınırıdır</b>. Aşağıda sinyal düzeninin özeti verilmiştir; tam metraj listesi (sinyal-başı kilometraj) tasarım modelinde tutulur.`}</p>
+    ? `The line is protected by <b>${sinyalSayisi} signal lamps</b> (SG: red / yellow / green); each outbound signal is a <b>block boundary</b>. The design layout is summarised below; the full signal schedule (per-lamp chainages) is held in the design model.`
+    : `Hat, <b>${sinyalSayisi} adet sinyal lambası</b> (SG: kırmızı / sarı / yeşil) ile korunur; her giden yön sinyali bir <b>blok sınırıdır</b>. Aşağıda sinyal düzeninin özeti verilmiştir; tam metraj listesi (sinyal-başı kilometraj) tasarım modelinde tutulur.`}</p>
   ${sinyalListe.length ? tbl(lang === "en" ? ["Indicator", "Value"] : ["Gösterge", "Değer"], sinyalOzetRows, { first: true }) : `<p class="muted">${lang === "en" ? "No signal lamps defined on this line yet (positions are entered in the Ringler module)." : "Bu hatta henüz sinyal lambası tanımlı değil (konumlar Ringler modülünde girilir)."}</p>`}
 `;
 
