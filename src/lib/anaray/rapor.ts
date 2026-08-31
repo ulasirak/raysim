@@ -304,6 +304,7 @@ function rDil(lang: RaporDil) {
     fig4: (h: number) => `Şekil 4 — Sperrzeitentreppe: blok işgal (blocking-time) pencereleri; min headway ${h} s.`,
     fig5: "Şekil 5 — Blok başına blocking-time bileşen dağılımı (kritik blok kırmızı etiketli).",
     thBt: ["Blok", "Setup", "Görme", "Yaklaşma", "Seyir", "Temizleme", "Release", "Toplam"],
+    btTanim: "<b>Setup</b> = rota tanzim ve kilitleme süresi (makas–sinyal hazırlığı) · <b>Görme</b> = makinistin sinyali algılaması için tanınan süre · <b>Yaklaşma</b> = önceki sinyalden blok girişine kadar seyir · <b>Seyir</b> = bloğun kat edilme süresi · <b>Temizleme</b> = tren boyunun bloğu tümüyle terk etme süresi · <b>Release</b> = rota serbest bırakma (kilit açılışı) · <b>Toplam</b> = bloğun tek bir trence toplam işgali (Sperrzeit).",
     s5: "Onay", thImza: ["Hazırlayan", "Onaylayan"], imzaTarih: "İmza / Tarih",
   };
   const en: typeof tr = {
@@ -335,6 +336,7 @@ function rDil(lang: RaporDil) {
     fig4: (h) => `Figure 4 — Sperrzeitentreppe: block occupation (blocking-time) windows; min headway ${h}s.`,
     fig5: "Figure 5 — Per-block blocking-time component breakdown (critical block labelled red).",
     thBt: ["Block", "Setup", "Sighting", "Approach", "Running", "Clearing", "Release", "Total"],
+    btTanim: "<b>Setup</b> = route setting and locking time (switch–signal preparation) · <b>Sighting</b> = allowance for the driver to recognise the signal · <b>Approach</b> = run from the previous signal to the block entry · <b>Running</b> = traversal of the block · <b>Clearing</b> = time for the full train length to clear the block · <b>Release</b> = route release (unlocking) · <b>Total</b> = the block's total occupation by a single train (Sperrzeit).",
     s5: "Approval", thImza: ["Prepared by", "Approved by"], imzaTarih: "Signature / Date",
   };
   return lang === "en" ? en : tr;
@@ -513,8 +515,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const sinyalBolum = `
   <div class="banner"><span class="no">03</span>${lang === "en" ? "SIGNALLING — SIGNAL LAMPS (SG)" : "SİNYALİZASYON — SİNYAL LAMBALARI (SG)"}</div>
   <p>${lang === "en"
-    ? `The line is protected by <b>${sinyalSayisi} signal lamps</b> (SG: red / yellow / green); each outbound signal is a <b>block boundary</b>. The design layout is summarised below; the full signal schedule (per-lamp chainages) is held in the design model.`
-    : `Hat, <b>${sinyalSayisi} adet sinyal lambası</b> (SG: kırmızı / sarı / yeşil) ile korunur; her giden yön sinyali bir <b>blok sınırıdır</b>. Aşağıda sinyal düzeninin özeti verilmiştir; tam metraj listesi (sinyal-başı kilometraj) tasarım modelinde tutulur.`}</p>
+    ? `The line is protected by <b>${sinyalSayisi} signal lamps</b>; each outbound signal is a <b>block boundary</b>. The design layout is summarised below; the full signal schedule (per-lamp chainages) is held in the design model.`
+    : `Hat, <b>${sinyalSayisi} adet sinyal lambası</b> ile korunur; her giden yön sinyali bir <b>blok sınırıdır</b>. Aşağıda sinyal düzeninin özeti verilmiştir; tam metraj listesi (sinyal-başı kilometraj) tasarım modelinde tutulur.`}</p>
   ${sinyalListe.length ? tbl(lang === "en" ? ["Indicator", "Value"] : ["Gösterge", "Değer"], sinyalOzetRows, { first: true }) : `<p class="muted">${lang === "en" ? "No signal lamps defined on this line yet (positions are entered in the Ringler module)." : "Bu hatta henüz sinyal lambası tanımlı değil (konumlar Ringler modülünde girilir)."}</p>`}
 `;
 
@@ -559,20 +561,15 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
         : `<p class="muted">${en ? "All stops within the occupancy target — no turnback needed." : "Tüm duraklar doluluk hedefinde — dönüşe ihtiyaç yok."}</p>`}`;
 
     // 5.4 Makas Bölgesi Başına Ters İşletme Varyasyonları
-    // PM = point machine (makas motoru). "makasSayisi" alanı makas MOTORU adedidir
-    // (crossover/makas ADEDİ değil). Fiziksel taban: her crossover en az 2 makas motoru
-    // barındırır (tek/S crossover 2 dil = 2 motor; scissors/X 4 motor) → gösterimde ≥2.
-    const pmAdet = (m: { crossover: "s" | "x"; makasSayisi: number }) =>
-      Math.max(m.crossover === "x" ? 4 : 2, m.makasSayisi);
-    const pmEt = (n: number) => en ? `${n} point machines` : `${n} makas motoru`;
-    const b54not = gsNot(en
-      ? "PM = point machine (switch motor). The figure is the number of switch <b>motors</b>, not the number of crossovers: every crossover contains at least 2 point machines — a single (S) crossover has 2 (its two switch blades), a scissors (X) crossover has 4."
-      : "PM = makas motoru (point machine). Buradaki sayı makas <b>motoru</b> adedidir, crossover (makas) adedi değildir: her crossover en az 2 makas motoru içerir — tek (S) crossover 2 motorludur (iki makas dili), scissors (X) crossover 4 motorludur.");
+    // Makas gösterimi: MAKAS SAYISI + tipi (S-makas / X-makas). Makas motoru (point machine)
+    // adedi içseldir (S-makas 2, X-makas 4) — raporda gösterilmez, hep makas sayısına bakılır.
+    const makasEt = (m: { crossover: "s" | "x"; makasSayisi: number }) =>
+      en ? `${m.makasSayisi} ${m.crossover === "x" ? "X" : "S"}-type switch` : `${m.makasSayisi} ${m.crossover === "x" ? "X" : "S"}-makas`;
     const b54ic = tia.makaslar.length
-      ? b54not + tia.makaslar.map((m) => `<div class="ring-detay"><h4>${esc(m.ad)} (${m.crossover.toUpperCase()} · ${pmEt(pmAdet(m))})</h4>
+      ? tia.makaslar.map((m) => `<div class="ring-detay"><h4>${esc(m.ad)} (${makasEt(m)})</h4>
           ${gsNot(en
-            ? `${esc(m.yorum)} The reason is the load imbalance between the two arms of this ${m.crossover.toUpperCase()} switch (${pmEt(pmAdet(m))}): one arm carries ${m.yuksekYuk} pax/h while the other carries ${m.dusukYuk}, and as this gap widens the benefit of reverse running at this location increases.`
-            : `${esc(m.yorum)} Bunun nedeni, bu bölgedeki ${m.crossover.toUpperCase()} makasın (${pmEt(pmAdet(m))}) iki kolu arasındaki yük farkıdır; bir kol ${m.yuksekYuk} yolcu/saat taşırken diğeri ${m.dusukYuk} taşımakta, fark büyüdükçe buradaki ters işletmenin sağladığı kazanç artmaktadır.`)}
+            ? `${esc(m.yorum)} The reason is the load imbalance between the two arms of this ${makasEt(m)}: one arm carries ${m.yuksekYuk} pax/h while the other carries ${m.dusukYuk}, and as this gap widens the benefit of reverse running at this location increases.`
+            : `${esc(m.yorum)} Bunun nedeni, bu bölgedeki ${makasEt(m)}ın iki kolu arasındaki yük farkıdır; bir kol ${m.yuksekYuk} yolcu/saat taşırken diğeri ${m.dusukYuk} taşımakta, fark büyüdükçe buradaki ters işletmenin sağladığı kazanç artmaktadır.`)}
           <ul class="ch">${m.varyasyonlar.map((v) => `<li><b>${esc(v.ad)}:</b> ${esc(v.aciklama)}</li>`).join("")}</ul>
           <p class="muted" style="font-size:9.5pt">${esc(m.sureNotu)}</p></div>`).join("")
       : `<p class="muted">${en ? "No mid-line switch zones — reverse-running variations apply only at terminals." : "Ara-hat makas bölgesi yok — ters işletme varyasyonları yalnız terminallerde geçerli."}</p>`;
@@ -617,8 +614,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   // Kapasite ÖLÇÜM ESASLARI — hangi saha girdilerinin birlikte değerlendirildiği (iç
   // formül/algoritma açığa çıkmadan; yöntem UIC 406 blocking-time esaslı).
   const kapGirdiNot = `<div class="gs">${en
-    ? `This figure does not rest on a single measurement; it results from evaluating all field constraints together: the terminal throat occupation times, the switch types and counts (S single / X scissors crossover), the signal lamps' positions, directions and aspect states, the block occupations, the station dwell times, the level crossings, and the tram's physical characteristics (mass, tractive effort and power, braking, running resistance, length, top speed) — all assessed jointly under the UIC 406 blocking-time (Sperrzeitentreppe) method. As a result of this assessment, the line carries a theoretical maximum of <b>${maks.nTeorik} trams</b> (sustainable ${maks.nSurdurulebilir}), and at the tightest constraint (${esc(maks.baglayanAd || "—")}) the minimum interval between trams is determined as <b>${Math.round(maks.hMin)} s</b>.`
-    : `Bu değer tek bir ölçüme dayanmaz; sahadaki bütün kısıtların birlikte değerlendirilmesinden elde edilir: terminal boğazının işgal süreleri, makasların tip ve sayısı (S tek / X scissors crossover), sinyal lambalarının konumu, yönü ve aspect durumları, blok işgalleri, istasyon duruş (dwell) süreleri, hemzemin geçitler ve tramvayın fiziksel özellikleri (kütle, çekiş kuvveti ve gücü, frenleme, seyir direnci, uzunluk, azami hız) — tümü UIC 406 blocking-time (Sperrzeitentreppe) yöntemiyle birlikte ele alınır. Bu değerlendirme sonucunda hat teorik olarak en fazla <b>${maks.nTeorik} tramvay</b> (sürdürülebilir ${maks.nSurdurulebilir}) taşımakta; en dar kısıtta (${esc(maks.baglayanAd || "—")}) tramvaylar arasındaki en küçük aralık <b>${Math.round(maks.hMin)} s</b> olarak belirlenmektedir.`}</div>`;
+    ? `This figure does not rest on a single measurement; it results from evaluating all field constraints together: the terminal throat occupation times, the switch types and counts (S-makas / X-makas), the signal lamps' positions, directions and aspect states, the block occupations, the station dwell times, the level crossings, and the tram's physical characteristics (mass, tractive effort and power, braking, running resistance, length, top speed) — all assessed jointly under the UIC 406 blocking-time (Sperrzeitentreppe) method. As a result of this assessment, the line carries a theoretical maximum of <b>${maks.nTeorik} trams</b> (sustainable ${maks.nSurdurulebilir}), and at the tightest constraint (${esc(maks.baglayanAd || "—")}) the minimum interval between trams is determined as <b>${Math.round(maks.hMin)} s</b>.`
+    : `Bu değer tek bir ölçüme dayanmaz; sahadaki bütün kısıtların birlikte değerlendirilmesinden elde edilir: terminal boğazının işgal süreleri, makasların tip ve sayısı (S-makas / X-makas), sinyal lambalarının konumu, yönü ve aspect durumları, blok işgalleri, istasyon duruş (dwell) süreleri, hemzemin geçitler ve tramvayın fiziksel özellikleri (kütle, çekiş kuvveti ve gücü, frenleme, seyir direnci, uzunluk, azami hız) — tümü UIC 406 blocking-time (Sperrzeitentreppe) yöntemiyle birlikte ele alınır. Bu değerlendirme sonucunda hat teorik olarak en fazla <b>${maks.nTeorik} tramvay</b> (sürdürülebilir ${maks.nSurdurulebilir}) taşımakta; en dar kısıtta (${esc(maks.baglayanAd || "—")}) tramvaylar arasındaki en küçük aralık <b>${Math.round(maks.hMin)} s</b> olarak belirlenmektedir.`}</div>`;
 
   // Onayın hemen üstündeki bağımsız çekirdek doğrulama satırı (kurumsal, tek satır).
   const cekirdekNot = `<div class="cekirdek">${en
@@ -1012,6 +1009,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <h3 class="sub">${L.s41}</h3>
   <div class="fig">${line ? sperrzeitSvg(bt, line.length, kritikRenk, en) : ""}<div class="cap">${sunum ? (lang === "en" ? `Figure 4 — Sperrzeitentreppe: block occupation (blocking-time) windows; min headway ${Math.round(bt.minHeadway)}s.` : `Şekil 4 — Sperrzeitentreppe: blok işgal (blocking-time) pencereleri; min headway ${Math.round(bt.minHeadway)} s.`) : L.fig4(Math.round(bt.minHeadway))}</div></div>
   <div class="fig">${blockingBarSvg(bt.bloklar, bt.kritikBlok, kritikRenk, en)}<div class="cap">${sunum ? (lang === "en" ? "Figure 5 — Per-block blocking-time component distribution (determining block highlighted)." : "Şekil 5 — Blok başına blocking-time bileşen dağılımı (belirleyici blok vurgulu).") : L.fig5}${bt.bloklar.length > 16 ? (lang === "en" ? ` (highest 16 of ${bt.bloklar.length} blocks; full list in the table below)` : ` (${bt.bloklar.length} bloktan en yüksek 16'sı; tümü aşağıdaki tabloda)`) : ""}</div></div>
+  <div class="gs" style="font-size:9pt">${L.btTanim}</div>
   ${btTbl}
 
   <!-- 5: İşletme & Talep Analizi (ters işletme) -->
