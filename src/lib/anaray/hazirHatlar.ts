@@ -232,16 +232,17 @@ const T1_MESAFE = [261, 881, 699, 1006, 871, 564, 918];
 //   Mevlana   → 2×T/O R100 LH · PM4/PM5 — crossover
 //   MKM       → 2×T/O R100 LH · PM6/PM7 — crossover
 //   Adliye    → 2×T/O R100 (RH+LH) · PM8/PM9 — U-dönüş crossover
-//   Hükümet/Fetih/Spor ve Kongre/Karşehir → makas YOK (şemada PM yok). EKSİKSİZ.
+//   Hükümet   → 1 S-makas (kullanıcı teyidi: orada makas VAR — şema PM'i göstermese de kalıyor)
+//   Fetih/Spor ve Kongre/Karşehir → makas YOK (şemada PM yok). EKSİKSİZ.
 // Geçiş hızı 15 km/h = Şartname 3.4.8.2 (varsayılan vMakas) — R50 en dar yarıçapı
 // yönetir; CAD hız sayısı vermez, geometri (R50/R100·1/6) verir.
 const T1_EK: Record<number, RingEk> = {
   0: { fromDepot: true, makas: [{ tip: "karsilasmali", konumOran: 0.3, sayi: 4, crossover: "s" }], dwell: 40 }, // Alaaddin dönüş yelpazesi
-  1: { makas: [{ tip: "karsilasmali", konumOran: 0.06, sayi: 1, crossover: "s" }] },             // Hükümet crossover (kullanıcı: 1 S)
-  2: { makas: [{ tip: "karsilasmali", konumOran: 0.08, sayi: 1, crossover: "s" }] },             // Mevlana crossover (kullanıcı: 1 S)
+  1: { makas: [{ tip: "karsilasmali", konumOran: 0.06, sayi: 1, crossover: "s" }] },             // Hükümet — 1 S-makas (kullanıcı teyidi: makas VAR)
+  2: { makas: [{ tip: "karsilasmali", konumOran: 0.08, sayi: 1, crossover: "s" }] },             // Mevlana — 1 S-makas (CAD: PM4/PM5 = S-makasın 2 motoru)
   3: { makas: [{ tip: "karsilasmali", konumOran: 0.08, sayi: 1, crossover: "s" }],
-       hemzemin: [{ tip: "karayolu", konumOran: 0.5 }] },                                       // Mevlana Kültür Merkezi crossover (kullanıcı: 1 S) + karayolu
-  6: { makas: [{ tip: "udonus", konumOran: 0.75, sayi: 2, crossover: "s" }], dwell: 45 },        // Adliye U-dönüş — 2 S (kullanıcı: Adliye 2 S)
+       hemzemin: [{ tip: "karayolu", konumOran: 0.5 }] },                                       // MKM — 1 S-makas (CAD: PM6/PM7 = S-makasın 2 motoru) + karayolu
+  6: { makas: [{ tip: "udonus", konumOran: 0.75, sayi: 1, crossover: "s" }], dwell: 45 },        // Adliye U-dönüş — 1 S (kullanıcı)
 };
 
 // ————————————————————————————————————————————————
@@ -294,6 +295,9 @@ const ETAP2_MESAFE = [413, 762, 880, 853, 1011, 1446, 1137, 1062, 1057];
 // v8: 4. hat — Bütünleşik Hat (Alaaddin–Stadyum), üç etap tek sürekli hatta birleşik.
 // v9: makas S/X crossover geometrisi + terminal makas sayıları (gerçek CAD/kullanıcı verisi).
 export const HAZIR_VERI_SURUM = 10; // v10: SİNYAL LAMBASI metrajları (Sinyalizasyon Projesi V0808) 4 projeye eklendi (SG1–79, gerçek kilometraj)
+// NOT (model): makasSayisi = MAKAS ADEDİ (S/X), makas MOTORU değil. Her makas ya S-makas (2 motor)
+// ya X-makas (4 motor); motor sayısı içseldir, raporda gösterilmez. CAD'den okurken yakın 2 motor
+// = 1 S-makas, yakın 4 motor = 1 X-makas.
 
 export interface HazirHat {
   key: "mevcut" | "etap1" | "etap2" | "birlesik";
@@ -336,15 +340,15 @@ export function hazirHatlar(): HazirHat[] {
   //   U17 DEPO merdiveni PM18–23+PM38–41 · U21/U22 Şehir Hast.–Adliye dönüş fanı PM10–17.
   const etap1Ek: Record<number, RingEk> = {
     0: { fromDepot: true, makas: [{ tip: "karsilasmali", konumOran: 0.2, sayi: 2, crossover: "s" }], dwell: 40 }, // U10 Aslım/TÜMOSAN kavşağı (2 S)
-    1: { makas: [{ tip: "karsilasmali", konumOran: 0.06, sayi: 2, crossover: "s" }] },            // U11 Ravza Camii crossover (PM24/PM25)
+    1: { makas: [{ tip: "karsilasmali", konumOran: 0.06, sayi: 1, crossover: "s" }] },            // U11 Ravza Camii — 1 S (kullanıcı)
     6: { hemzemin: [{ tip: "karayolu", konumOran: 0.5 }] },                                       // U16 Sedirler Kavşağı
-    7: { makas: [{ tip: "depo", konumOran: 0.6, sayi: 3, crossover: "s" }] },                     // U17 DEPO merdiveni (PM18–23, PM38–41)
+    7: { makas: [{ tip: "depo", konumOran: 0.6, sayi: 2, crossover: "s" }] },                     // U17 DEPO — 2 S (kullanıcı)
     // U21/U22 Şehir Hastanesi–Adliye dönüş fanı (PM10–17): Şehir Hastanesi 2 S + 1 X (kullanıcı) + Adliye 2 S
     11: { makas: [
       { tip: "udonus", konumOran: 0.08, sayi: 1, crossover: "x" },   // Şehir Hastanesi scissors (1 X)
       { tip: "udonus", konumOran: 0.14, sayi: 1, crossover: "s" },   // Şehir Hastanesi S #1
       { tip: "udonus", konumOran: 0.20, sayi: 1, crossover: "s" },   // Şehir Hastanesi S #2
-      { tip: "udonus", konumOran: 0.88, sayi: 2, crossover: "s" },   // Adliye U-dönüş 2 S
+      { tip: "udonus", konumOran: 0.88, sayi: 1, crossover: "s" },   // Adliye U-dönüş 1 S (kullanıcı)
     ], dwell: 45 },
   };
   const etap1Rings = hatKur(ETAP1_DURAK, ETAP1_MESAFE, etap1Ek);
@@ -386,9 +390,9 @@ export function hazirHatlar(): HazirHat[] {
       { tip: "udonus", konumOran: 0.28, sayi: 1, crossover: "s" },  // Stadyum S #1
       { tip: "udonus", konumOran: 0.34, sayi: 1, crossover: "s" },  // Stadyum S #2
     ], dwell: 50 },
-    3: { makas: [{ tip: "karsilasmali", konumOran: 0.12, sayi: 2, crossover: "s" }],
+    3: { makas: [{ tip: "karsilasmali", konumOran: 0.12, sayi: 1, crossover: "s" }],
          hemzemin: [{ tip: "karayolu", konumOran: 0.55 }] },                                      // U4 Otogar kavşağı (M9/M10) + karayolu
-    5: { makas: [{ tip: "karsilasmali", konumOran: 0.06, sayi: 2, crossover: "s" }] },            // U6 Betoncular crossover (PM30–32)
+    5: { makas: [{ tip: "karsilasmali", konumOran: 0.06, sayi: 1, crossover: "s" }] },            // U6 Betoncular — 1 S (kullanıcı)
     6: { dwell: 30 },                                                                             // U7 Banliyö Aktarma — makas YOK, aktarma beklemesi
     8: { fromDepot: false, makas: [{ tip: "karsilasmali", konumOran: 0.8, sayi: 2, crossover: "s" }], dwell: 40 },// U9 TÜMOSAN kavşağı (M11–14/PM26–29)
   };
