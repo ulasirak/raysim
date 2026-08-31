@@ -344,7 +344,7 @@ function StudioIc() {
           faultBlocks={ariza} onBlockClick={arizaToggle} depots={depotPlan.depots} features={hatOzellik} loop={loopVeri} />
         {/* Otomatik blok bölme — elle sinyal KOYMADIĞIN açık kesimleri doldurur */}
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs" style={{ color: brand.inkSoft }}>
-          <span>🚦 Otomatik blok bölme (boş kesim)</span>
+          <span>▦ Otomatik blok bölme (boş kesim · sinyal değil)</span>
           <button type="button" onClick={() => patchCfg({ blokMaxUzunluk: Math.max(100, Math.round((cfg.blokMaxUzunluk - 50) / 50) * 50) })}
             className="flex h-5 w-5 items-center justify-center rounded border font-semibold" style={{ borderColor: brand.border, color: brand.ink }} title="Sıklaştır (kısa blok = daha çok sinyal)">−</button>
           <input type="number" min={100} max={1500} step={50} value={Math.round(cfg.blokMaxUzunluk)}

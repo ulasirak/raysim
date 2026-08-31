@@ -223,11 +223,7 @@ export function LiveNetwork({
   for (const x of gidenler) { const i = blokIndeks(x.fp); if (i >= 0) occUp.add(i); }
   for (const x of gelenler) { const i = blokIndeks(x.fp); if (i >= 0) occDown.add(i); }
 
-  // Sinyal fener aspekti (sabit blok, 3 fener): korunan blok dolu → KIRMIZI;
-  // bir sonraki blok dolu → SARI (dikkat); ikisi de boş → YEŞİL.
   const nb = blocks.length - 1;
-  const asp = (occ: Set<number>, ahead: number, after: number) =>
-    occ.has(ahead) ? ASPEKT.kirmizi : occ.has(after) ? ASPEKT.sari : ASPEKT.yesil;
 
   // Depo hattı (rota dışı kenarlar) statik
   const spur = network.edges
@@ -395,23 +391,24 @@ export function LiveNetwork({
           );
         })}
 
-        {/* Sinyal fenerleri (3 aspekt) — gidiş şeridi üstte, dönüş şeridi altta */}
+        {/* OTOMATİK BLOK SINIRLARI — düz yeşil blok işareti (sinyal DEĞİL; gerçek sinyaller
+            elle metrajla konur). Doluluk kırmızı blok segmentiyle görünür. Arızalı = koyu kırmızı. */}
         {Array.from({ length: nb }).map((_, i) => {
           const p = offsetAt(blocks[i], GAP + 6, UP_SIDE);
           const arizali = faultBlocks.includes(i);
           return (
-            <circle key={`su${i}`} cx={p.x} cy={p.y} r={onBlockClick ? 3.6 : 3.1}
-              fill={arizali ? "#7A0A1C" : asp(occUp, i, i + 1)} stroke="#fff" strokeWidth={1}
-              style={{ transition: "fill 0.35s ease", cursor: onBlockClick ? "pointer" : "default" }}
+            <circle key={`su${i}`} cx={p.x} cy={p.y} r={onBlockClick ? 3.2 : 2.7}
+              fill={arizali ? "#7A0A1C" : ASPEKT.yesil} stroke="#fff" strokeWidth={0.9}
+              style={{ cursor: onBlockClick ? "pointer" : "default" }}
               onClick={onBlockClick ? () => onBlockClick(i) : undefined}>
-              {onBlockClick && <title>{`Blok ${i} — tıkla: arıza aç/kapat`}</title>}
+              {onBlockClick && <title>{`Blok sınırı ${i} (otomatik bölme) — tıkla: arıza aç/kapat`}</title>}
             </circle>
           );
         })}
         {Array.from({ length: nb }).map((_, k) => {
           const i = k + 1;
           const p = offsetAt(blocks[i], GAP + 6, DOWN_SIDE);
-          return <circle key={`sd${i}`} cx={p.x} cy={p.y} r={3.1} fill={asp(occDown, i - 1, i - 2)} stroke="#fff" strokeWidth={1} style={{ transition: "fill 0.35s ease" }} />;
+          return <circle key={`sd${i}`} cx={p.x} cy={p.y} r={2.7} fill={ASPEKT.yesil} stroke="#fff" strokeWidth={0.9} />;
         })}
 
         {/* İstasyonlar — peron markası + dik iniş çubuğu (etiketler AYRI katmanda) */}
@@ -580,7 +577,7 @@ export function LiveNetwork({
       </div>
       <p className="text-xs" style={{ color: brand.muted }}>
         <span style={{ color: DOWN }}>▬</span> Üst şerit: Dönüş (sağ→sol) · <span style={{ color: UP_COL }}>▬</span> Alt şerit: Gidiş (sol→sağ) · <span style={{ color: CK.red }}>▬</span> işgal edilen blok.
-        {" "}Sinyal: <span style={{ color: ASPEKT.yesil }}>●</span> yeşil (serbest) · <span style={{ color: ASPEKT.sari }}>●</span> sarı (dikkat) · <span style={{ color: ASPEKT.kirmizi }}>●</span> kırmızı (dur). Sabit blok 3-fener mantığı canlı akıyor. Hat özellikleri: <span style={{ color: CK.blue }}>◉</span> yaya geçidi (yavaşlar) · <span style={{ color: CK.amber }}>⊞</span> karayolu geçidi (durma varsa bekler) · <span style={{ color: brand.ink }}>◆</span> makas/kavşak koruyucu sinyali — <b>S</b> tek crossover, <b>X</b> scissors (çift, ✕ işaretli) · 3-aspect direk sinyali <b>▶</b> giden / <b>◀</b> gelen yön, <span style={{ color: CK.amber }}>amber ↺</span> = ters işletme (turnback) sinyali. Her işaretin raya bağ çizgisi konumunu gösterir. <b>Not:</b> sinyaller yalnız duraklarda değil; geçit ve makas/kavşakta da beklemeyi bu koruyucu sinyaller sağlar — rota/kavşak müsait değilse tren o sinyalde durur.
+        {" "}<span style={{ color: ASPEKT.yesil }}>●</span> otomatik blok sınırı (boş kesim bölme — sinyal değil, sadece blok işareti). GERÇEK sinyaller elle metrajla konur: 3-aspect direk sinyali <b>▶</b> giden / <b>◀</b> gelen yön, <span style={{ color: CK.amber }}>amber ↺</span> = ters işletme (turnback) sinyali (kırmızı/sarı/yeşil = önündeki blok işgaline göre yanar). Hat özellikleri: <span style={{ color: CK.blue }}>◉</span> yaya geçidi · <span style={{ color: CK.amber }}>⊞</span> karayolu geçidi · <span style={{ color: brand.ink }}>◆</span> makas — <b>S</b> tek / <b>X</b> scissors (✕). İşgal edilen blok kırmızı segmentle görünür.
         {depoToplam > 0 && <> · 🅿 <b>Depo (parklanma):</b> bekleyen trenler sırayla headway aralığıyla servise çıkar; kutudaki dolu kareler çıkışa hazır, soluk kareler çıkmış trenlerdir.</>}
       </p>
     </div>
