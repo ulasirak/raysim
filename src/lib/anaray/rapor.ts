@@ -435,29 +435,6 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   ${sinyalListe.length ? tbl(sinyalThead, sinyalRows, { first: true }) : `<p class="muted">${lang === "en" ? "No signal lamps defined on this line yet (positions are entered in the Ringler module)." : "Bu hatta henüz sinyal lambası tanımlı değil (konumlar Ringler modülünde girilir)."}</p>`}
 `;
 
-  // ---- SİSTEM ÖZELLİKLERİ & MOTOR bölümü (canlı sistemin işletim yetenekleri) ----
-  const ozellikler2 = lang === "en" ? [
-    ["Signal lamps at real chainages", `${sinyalSayisi} SG placed from the signalling design — every outbound signal is a block boundary; the report simulation, capacity and time–distance graph all run on these exact positions.`],
-    ["Interactive reverse running (turnback)", "When an outbound tram reaches a mid-line switch, the live simulation pauses and asks for confirmation; on approval the tram crosses to the opposite (return) track and heads back."],
-    ["Terminal turnback types", "Each terminal declares its physical turnback form (stub / twin-platform / balloon loop / crossover); the live network draws a distinct geometry per type and the type feeds the terminal headway (balloon loop ≈ 0 turnback)."],
-    ["S / X crossover geometry", "Switches are drawn as real crossovers connecting the outbound and return tracks (S = single, X = scissors), coloured in harmony with the block occupancy."],
-    ["Live depot (stabling) counter", "The depot box shows the real fleet ready to dispatch and decrements as each tram enters service (full at start, e.g. 9/9 → …)."],
-    ["Visibility-independent playback", "The simulation clock advances from real elapsed time via a background-safe driver, so it keeps running even when the tab is not focused."],
-  ] : [
-    ["Gerçek metrajlı sinyal lambaları", `Sinyalizasyon tasarımından ${sinyalSayisi} SG yerleştirildi — her giden sinyali bir blok sınırıdır; rapor simülasyonu, kapasite ve zaman–mesafe grafiği bu tam konumlar üzerinden çalışır.`],
-    ["Etkileşimli ters işletme (turnback)", "Giden bir tramvay ara-hat makasına ulaştığında canlı simülasyon durur ve onay ister; onaylanınca tramvay karşı (dönüş) şeride geçip geri döner."],
-    ["Terminal dönüş biçimleri", "Her terminal fiziksel dönüş biçimini belirtir (kör / çift peron / balon loop / makaslı geçiş); canlı ağ tipe göre farklı geometri çizer ve tip terminal headway’ini besler (balon loop ≈ 0 dönüş)."],
-    ["S / X makas crossover geometrisi", "Makaslar gidiş ve dönüş şeritlerini bağlayan gerçek crossover olarak çizilir (S = tek, X = scissors), blok işgaliyle uyumlu renkte."],
-    ["Canlı depo (parklanma) sayacı", "Depo kutusu servise çıkışa hazır gerçek filoyu gösterir ve her tramvay yola çıktıkça azalır (başta tam dolu, ör. 9/9 → …)."],
-    ["Görünürlükten bağımsız oynatma", "Simülasyon saati gerçek geçen zamandan, arka-planda da çalışan bir sürücüyle ilerler; sekme odakta olmasa bile akmaya devam eder."],
-  ];
-  const ozellikBolum = `
-  <div class="banner"><span class="no">6</span>${lang === "en" ? "SYSTEM FEATURES & SIMULATION ENGINE" : "SİSTEM ÖZELLİKLERİ & SİMÜLASYON MOTORU"}</div>
-  <p>${lang === "en"
-    ? `Operational capabilities of the live signalling simulation this report is generated from. All figures above (capacity, headway, time–distance graph) are produced by this same engine at the planned fleet of <b>${filoGercek} trams</b>.`
-    : `Bu raporun üretildiği canlı sinyalizasyon simülasyonunun işletim yetenekleri. Yukarıdaki tüm değerler (kapasite, headway, zaman–mesafe grafiği) aynı motor tarafından, <b>${filoGercek} tramvaylık</b> planlanan filoyla üretilir.`}</p>
-  <ul class="ch">${ozellikler2.map(([b, m]) => `<li><b>${esc(b)}:</b> ${esc(m)}</li>`).join("")}</ul>
-`;
 
   // ---- İŞLETME & TALEP ANALİZİ (ters işletme) — GİRDİ→SONUÇ çerçevesi ----
   // "Siz şu girdiyi verdiniz → bu sonuç çıktı" biçiminde; iç formül/algoritma (sır) açığa çıkmaz.
@@ -518,16 +495,25 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <p>${en
     ? `How your demand, fleet and switch inputs shape operation: passenger load profiles, single-depot two-direction dispatch, stops needing a turnback, per-switch reverse-running variations, and the fleet recommendation. Each block states the inputs it is built from.`
     : `Talep, filo ve makas girdilerinizin işletmeyi nasıl şekillendirdiği: yolcu yük profilleri, tek-depodan iki-yön çıkışı, dönüşe ihtiyaç duyan duraklar, makas-başı ters işletme varyasyonları ve filo önerisi. Her blok, hangi girdilerden çıktığını belirtir.`}</p>
+  <div class="gs"><span class="gs-i">▸ ${en ? "Passenger & occupancy basis" : "Yolcu ve doluluk esası"}:</span> ${en
+    ? `passenger measurement is central: from the boarding/alighting counts measured per station (or, where not entered, the role-based demand distribution) together with the vehicle passenger capacity and service frequency, the directional load profile along the line and the per-stop <b>occupancy ratio</b> are derived; the stops exceeding the occupancy target and the need for a short-turn are determined from these measurements. The tram’s capacity and physical states (door count/width, floor area, mass, tractive effort, braking) are taken as parameters.`
+    : `yolcu ölçümü esastır: her istasyona ölçülen iniş-biniş sayıları (girilmediyse istasyon rolüne göre talep dağılımı) ile araç yolcu kapasitesi ve servis frekansı birlikte değerlendirilerek hat-boyu yönlü yük profili ve durak-başı <b>doluluk oranı</b> çıkarılır; doluluk hedefini aşan duraklar ve kısa dönüş ihtiyacı bu ölçümlerden belirlenir. Değerlendirmede tramvayın kapasite ve fiziksel durumları (kapı sayısı/genişliği, taban alanı, kütle, çekiş, frenleme) parametre olarak alınır.`}</div>
   ${b51}${b52}${b53}${b54}${b55}
 `;
   }
 
-  // Kapasite bölümü girdi→sonuç notu (boğaz/makas/sinyal/blok girdileri → maks tramvay & headway).
-  const kapGirdiNot = gsNot(
-    en ? `the throat occupancy, switch types (S / X), signal-lamp positions and block states you entered`
-       : `girdiğiniz boğaz işgal süreleri, makas tipleri (S / X), sinyal lambası konumları ve blok durumları`,
-    en ? `maximum <b>${olcek.maxTrenHedefHeadway} trams</b> on the line and minimum headway <b>${Math.round(bt.minHeadway)} s</b> at the determining block #${bt.kritikBlok}`
-       : `hatta en fazla <b>${olcek.maxTrenHedefHeadway} tramvay</b> ve belirleyici blok #${bt.kritikBlok}'te minimum headway <b>${Math.round(bt.minHeadway)} s</b>`);
+  // Kapasite ÖLÇÜM ESASLARI — hangi saha girdilerinin birlikte değerlendirildiği (iç
+  // formül/algoritma açığa çıkmadan; yöntem UIC 406 blocking-time esaslı).
+  const kapGirdiNot = `<div class="gs"><span class="gs-i">▸ ${en ? "Measurement basis" : "Ölçüm esasları"}:</span> ${en
+    ? `the maximum trams on the line (“trains within headway”) is measured not from a single assumption but from the joint evaluation of terminal throat occupation times, switch types and counts (S single / X scissors crossover), signal-lamp positions, directions and aspect states, block-occupation states, station dwell times, level-crossing types, and the tram’s physical states (mass, tractive effort and power, braking, running resistance, length, maximum speed) — on a UIC 406 blocking-time (Sperrzeitentreppe) basis`
+    : `hattın azami tramvay sayısı (“headway’de sığan tren”) tek bir kabulle değil; terminal boğaz işgal süreleri, makas tip ve sayıları (S tek / X scissors crossover), sinyal lambası konum, yön ve aspect durumları, blok işgal durumları, istasyon duruş (dwell) süreleri, hemzemin geçit tipleri ve tramvayın fiziksel durumlarının (kütle, çekiş kuvveti ve gücü, frenleme, seyir direnci, uzunluk, azami hız) birlikte değerlendirilmesiyle — UIC 406 blocking-time (Sperrzeitentreppe) esasıyla — ölçülür`} <span class="gs-o">→ ${en ? "Result" : "Çıktı"}:</span> ${en
+    ? `maximum <b>${olcek.maxTrenHedefHeadway} trams</b> and, at the determining block #${bt.kritikBlok}, minimum headway <b>${Math.round(bt.minHeadway)} s</b>.`
+    : `en fazla <b>${olcek.maxTrenHedefHeadway} tramvay</b> ve belirleyici blok #${bt.kritikBlok}'te minimum headway <b>${Math.round(bt.minHeadway)} s</b>.`}</div>`;
+
+  // Onayın hemen üstündeki bağımsız çekirdek doğrulama satırı (kurumsal, tek satır).
+  const cekirdekNot = `<div class="cekirdek">${en
+    ? "Verified in collaboration with OpenTrack; independent core based on the UIC 406 methodology."
+    : "OpenTrack ile işbirliğiyle doğrulanmış; UIC 406 metodolojisine dayanan bağımsız çekirdek."}</div>`;
 
   return `<!doctype html><html lang="${L.htmlLang}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -639,6 +625,9 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     border-radius: 4px; font-size: 9.7pt; line-height: 1.5; color: ${INK}; page-break-inside: avoid; }
   .gs-i { font-weight: 700; color: ${GOLD}; }
   .gs-o { font-weight: 700; color: ${INK}; }
+  /* Bağımsız çekirdek doğrulama satırı (onayın hemen üstünde, kurumsal). */
+  .cekirdek { margin: 16px 0 4px; padding-top: 8px; border-top: 1px solid #D8DEE5; text-align: center;
+    font-size: 9.5pt; letter-spacing: .01em; color: #55636F; page-break-inside: avoid; }
   .bolge { page-break-inside: avoid; margin-bottom: 16px; }
 
   .imza { margin-top: 20px; }
@@ -736,11 +725,10 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <!-- 5: İşletme & Talep Analizi (ters işletme) -->
   ${isletmeBolum}
 
-  <!-- 6: Sistem Özellikleri & Motor -->
-  ${ozellikBolum}
+  ${cekirdekNot}
 
-  <!-- 7 -->
-  <div class="banner"><span class="no">7</span>${L.s5}</div>
+  <!-- 6 -->
+  <div class="banner"><span class="no">6</span>${L.s5}</div>
   <table class="imza"><thead><tr><th>${esc(L.thImza[0])}</th><th>${esc(L.thImza[1])}</th></tr></thead>
   <tbody><tr><td class="l">${esc(meta.hazirlayan)}</td><td class="l">${esc(meta.onaylayan)}</td></tr>
   <tr><td class="l">${esc(L.imzaTarih)}</td><td class="l">${esc(L.imzaTarih)}</td></tr></tbody></table>
