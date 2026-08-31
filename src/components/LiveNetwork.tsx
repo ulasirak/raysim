@@ -345,7 +345,13 @@ export function LiveNetwork({
     .map((e) => ({ a: nodeById[e.from], b: nodeById[e.to] }))
     .filter((e) => e.a && e.b);
 
-  const oynatDurdur = () => { if (t >= T) { setT(0); tRef.current = 0; } setOynat((o) => !o); };
+  const oynatDurdur = () => {
+    if (t >= T) { setT(0); tRef.current = 0; }
+    // Oynat'a basınca, kullanıcı başka bir trene tıklamadıysa Tren 1'i otomatik seç →
+    // detay kutusu açık başlar ve o an ne yaptığı (→ seyir vb.) canlı görünür.
+    if (!oynat && loop && secili === null) setSecili(0);
+    setOynat((o) => !o);
+  };
   // Ters işletme onaylandı → tren karşı (dönüş) şeride geçer, süre yeniden akar.
   const onayla = () => {
     if (!karar) return;

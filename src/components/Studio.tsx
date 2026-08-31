@@ -4,7 +4,8 @@
 // Ağ + araç düzenlenir; her değişiklikte flattenRoute→simulate→paneller anında güncellenir.
 // Senaryolar Firestore'a kaydedilir/yüklenir. İstasyon ekle/sil grafı düzenler.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import type { RailNetwork, Route } from "@/lib/anaray/types";
 import { flattenRoute, ringlerdenSebeke, hemzeminDuruslari, duruslariEkle, kalkisEkle, hatOzellikleri } from "@/lib/anaray/network";
@@ -91,6 +92,10 @@ function StudioIc() {
   const [mc, setMc] = useState<MonteCarloResult | null>(null);
   const [mcRunning, setMcRunning] = useState(false);
   const [talepPopup, setTalepPopup] = useState(false); // yolcu verisi yokken talep-öneri uyarısı
+  // Pop-up'ı BODY'ye portallamak için mount bekle (SSR'da document yok). Portal,
+  // modal'ı dar/dönüştürülmüş atalardan çıkarır → daima ekranın ORTASINDA açılır.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   // Hemzemin geçit koruma duruşları (bekleme>0 karayolu geçitleri) — hem gidiş hem
   // dönüş hattına eklenir: tren orada durur+bekler ve o nokta blok sınırı/sinyal olur.
@@ -223,9 +228,11 @@ function StudioIc() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
-      {/* Talebe göre öneri için yolcu verisi gerekli — pop-up (tahmin YOK) */}
-      {talepPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.45)" }} onClick={() => setTalepPopup(false)}>
+      {/* Talebe göre öneri için yolcu verisi gerekli — pop-up (tahmin YOK).
+          BODY'ye portallanır → sayfanın neresinde olursak olalım ekranın tam
+          ORTASINDA (viewport merkezinde) açılır, yukarıda takılı kalmaz. */}
+      {mounted && talepPopup && createPortal((
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.45)" }} onClick={() => setTalepPopup(false)}>
           <div className="max-w-md rounded-lg p-5 shadow-xl" style={{ background: "#fff", border: `1px solid ${brand.border}` }} onClick={(e) => e.stopPropagation()}>
             <div className="text-sm font-bold" style={{ color: brand.ink }}>Talebe göre öneri için yolcu verisi gerekli</div>
             <p className="mt-2 text-xs" style={{ color: brand.inkSoft }}>Tıkanma, dönüş ihtiyacı ve talep-filosu <b>tahmin edilmez</b> — gerçek yolcu sayılarını girmelisin. Şu bölümlerde giriş yap:</p>
@@ -236,7 +243,7 @@ function StudioIc() {
             <div className="mt-3 text-right"><button type="button" onClick={() => setTalepPopup(false)} className="rounded px-3 py-1.5 text-xs font-semibold text-white" style={{ background: brand.ink }}>Anladım</button></div>
           </div>
         </div>
-      )}
+      ), document.body)}
       {/* Rapor başlığı */}
       <div className="mb-6 border-b pb-4" style={{ borderColor: brand.border }}>
         <div className="field-label">Sefer Simülasyon Raporu</div>
@@ -452,7 +459,11 @@ function StudioIc() {
         </Panel>
       </section>
 
-      {/* Canlı ağ simülasyonu (kahraman) */}
+      {/* Canlı ağ simülasyonu (kahraman) — TAM GENİŞLİK: takip ekranı sayfanın dar
+          kolonundan (max-w-6xl) taşıp ekrana yayılır → çok daha büyük görünür.
+          Negatif marj tekniği (w-screen yok) → yatay kaydırma çubuğu oluşmaz. */}
+      <div className="mt-6 ml-[calc(-50vw+50%)] mr-[calc(-50vw+50%)] px-4 sm:px-8">
+      <div className="mx-auto max-w-[1600px]">
       <Panel baslik="Canlı Ağ Simülasyonu" aciklama="Trenler PARKLANMA ALANINDAN çıkar: Depo Çıkışı yöntemine göre bir kısmı DÜZ (gidiş), bir kısmı MAKASTAN karşı şeride geçip TERS (dönüş) yönde başlar; sıra bekleyenler ⏸ parkta durur. Hat DÖNGÜdür (lastik): tren gidiş şeridini yürür → terminalde peron işgali süresi kadar DÖNER (turnback) → dönüş şeridinden geri gelir → başta döner → tekrar. Her trenin üstünde o an ne yaşadığı (⤵ hız kısıtı · ⏸ istasyon duruşu · 🔄 terminal dönüşü · ↗ hızlanma · → seyir) rozetle görünür; bir trene TIKLA → bir tam turda hangi nedene kaç saniye geçirdiğinin dökümü açılır. Sinyaller blok sınırlarında 3-aspekt yanar. Oynat ▶">
         {simHazir ? (
         <LiveNetwork network={network} route={route} line={line} blocks={canliGidis.blocks}
@@ -513,6 +524,8 @@ function StudioIc() {
           </div>
         )}
       </Panel>
+      </div>
+      </div>
 
       {/* ⑤ CANLI ETKİLER — filo oynadıkça bağlı olduğu her durum canlı güncellenir */}
       {maks.gecerli && (
