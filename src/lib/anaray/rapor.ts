@@ -16,6 +16,8 @@ import type { SimConfig, ProjeMeta, Isletme } from "./config";
 import { PARAM_META, paramGoster, birim, varsayilanIsletme } from "./config";
 import { tersIsletmeAnaliz } from "./tersisletme";
 import { maksimumTren } from "./kapasite";
+import { tarifeUret } from "./tarife";
+import { duyarlilikAnaliz } from "./duyarlilik";
 import type { RollingStock } from "./types";
 import {
   ringSenaryo, ringChallenge, ringKisitDizisi, loopDenge,
@@ -606,6 +608,74 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     ? "Verified in collaboration with OpenTrack; independent core based on the UIC 406 methodology. Every figure in this report is reproducible in the live simulation."
     : "OpenTrack ile işbirliğiyle doğrulanmış; UIC 406 metodolojisine dayanan bağımsız çekirdek. Rapordaki her değer canlı simülasyonda birebir yeniden üretilebilir."}</div>`;
 
+  // ---- 06 TARİFE (zaman çizelgesi) ----
+  // Hedef sefer aralığında (cfg.headway) servis penceresi (06:00–24:00) boyunca kalkışlar
+  // + araç ataması. Filo = ⌈çevrim ÷ headway⌉ = siganTren → rapor başlığındaki "gereken
+  // filo" ile birebir. Çevrim maks.cevrimSuresi'nden (kapasite otoritesi) gelir.
+  const hhmm = (sn: number) => `${String(Math.floor(sn / 3600)).padStart(2, "0")}:${String(Math.floor((sn % 3600) / 60)).padStart(2, "0")}`;
+  // Çizelge PLANLANAN FİLO (filoGercek) ile ULAŞILAN sefer aralığından üretilir → rapordaki
+  // "Planlanan filo" KPI'ı ve İşletme bölümüyle birebir tutarlı (hedef headway'i değil, fiilen
+  // koşulan aralığı gösterir; aksi halde 6 planlı iken "gereken 34" çelişkisi doğardı).
+  const tarifeHeadway = maks.gecerli && filoGercek > 0 ? maks.cevrimSuresi / filoGercek : cfg.headway;
+  const tarife = maks.gecerli ? tarifeUret(maks.cevrimSuresi, tarifeHeadway, 21600, 86400) : null;
+  const tarifeBolum = tarife && tarife.gecerli ? `
+  <div class="banner"><span class="no">06</span>${en ? "TIMETABLE (SERVICE SCHEDULE)" : "TARİFE (ZAMAN ÇİZELGESİ)"}</div>
+  <p>${en
+    ? `Departures across the service window (06:00–24:00) for the planned fleet of ${filoGercek} trains; each vehicle completes one full round trip (cycle) and returns to the queue. The interval below is the headway this fleet actually achieves.`
+    : `Servis penceresi (06:00–24:00) boyunca planlanan ${filoGercek} araçlık filoyla üretilen kalkışlar; her araç bir tam turu (çevrim) tamamlayıp sıraya döner. Aşağıdaki sefer aralığı, bu filonun fiilen sağladığı sıklıktır.`}</p>
+  ${tbl(
+    [en ? "Metric" : "Gösterge", en ? "Value" : "Değer"],
+    [
+      [en ? "Fleet in service" : "Serviste filo", `${tarife.filo}`],
+      [en ? "Daily trips (06:00–24:00)" : "Günlük sefer (06:00–24:00)", `${tarife.seferSayisi}`],
+      [en ? "Service span" : "Servis penceresi", `${hhmm(tarife.ilkKalkis)} – ${hhmm(tarife.sonKalkis)}`],
+      [en ? "Achieved headway (interval)" : "Ulaşılan sefer aralığı", `${Math.round(tarifeHeadway)} s · ${(tarifeHeadway / 60).toFixed(1)} ${en ? "min" : "dk"}`],
+      [en ? "Round-trip time (cycle)" : "Çevrim (tam tur)", `${s0(maks.cevrimSuresi)} · ${(maks.cevrimSuresi / 60).toFixed(1)} ${en ? "min" : "dk"}`],
+      [en ? "Layover per vehicle" : "Tur başı park (layover)", `${Math.round(tarife.layoverSn)} s`],
+    ],
+    { first: true },
+  )}
+  <h3 class="sub">6.1 ${en ? "First Departures (sample)" : "İlk Kalkışlar (örnek)"}</h3>
+  ${tbl(
+    [en ? "Trip" : "Sefer", en ? "Departure" : "Kalkış", en ? "Return arrival" : "Dönüş varış", en ? "Vehicle" : "Araç"],
+    tarife.seferler.slice(0, 12).map((s) => [`${s.no}`, hhmm(s.kalkisSn), hhmm(s.varisSn), `${s.aracNo}`]),
+  )}
+  <div class="gs">${en
+    ? `Departures 1–12 shown as a sample; the full schedule (${tarife.seferSayisi} trips) and per-vehicle diagram are generated in the live simulation.`
+    : `Örnek olarak 1–12. seferler gösterilmiştir; tam çizelge (${tarife.seferSayisi} sefer) ve araç bazlı diyagram canlı simülasyonda üretilir.`}</div>` : "";
+
+  // ---- 07 DUYARLILIK (tornado) — hangi parametre işletme kapasitesini en çok oynatıyor ----
+  // Her parametre ±%20 oynatılıp diğerleri sabit tutulur; işletme kapasitesinin (tren/saat)
+  // aldığı aralık ölçülür. Salınıma göre sıralı → en güçlü kaldıraç tepede. Motorla hesaplanır.
+  const duy = maks.gecerli && rings.length ? duyarlilikAnaliz(rings, stock, cfg, isletme, "isletmeKap", 20) : null;
+  let duyarlilikBolum = "";
+  if (duy && duy.satirlar.length) {
+    const tumDeger = duy.satirlar.flatMap((r) => [r.eksi, r.arti]).concat(duy.taban);
+    const axMin = Math.min(...tumDeger), axMax = Math.max(...tumDeger);
+    const pos = (v: number) => (axMax > axMin ? ((v - axMin) / (axMax - axMin)) * 100 : 50);
+    const bPos = pos(duy.taban);
+    const okKok = duy.satirlar[0];
+    const satirHtml = duy.satirlar.map((r) => {
+      const low = Math.min(r.eksi, r.arti), high = Math.max(r.eksi, r.arti);
+      const l = pos(low), w = Math.max(1.5, pos(high) - l);
+      const ok = r.yon === 1 ? "▲" : r.yon === -1 ? "▼" : "–";
+      return `<tr><td class="l">${esc(r.ad)}</td>`
+        + `<td class="trk-td"><div class="trk"><div class="barr" style="left:${l.toFixed(1)}%;width:${w.toFixed(1)}%"></div><div class="base" style="left:${bPos.toFixed(1)}%"></div></div></td>`
+        + `<td>${low.toFixed(0)}–${high.toFixed(0)}</td><td><b>${r.salinim.toFixed(0)}</b> ${ok}</td></tr>`;
+    }).join("");
+    duyarlilikBolum = `
+  <div class="banner"><span class="no">07</span>${en ? "SENSITIVITY (TORNADO)" : "DUYARLILIK (TORNADO)"}</div>
+  <p>${en
+    ? `Each parameter is perturbed ±${duy.deltaYuzde}% while the rest are held fixed, and the resulting range of the operating capacity (trains/hour) is measured. Parameters are ranked by swing — the longest bar is the strongest lever. The vertical line marks the current design value (${duy.taban.toFixed(0)} ${en ? "tph" : "tren/sa"}).`
+    : `Her parametre ±%${duy.deltaYuzde} oynatılıp diğerleri sabit tutulur ve işletme kapasitesinin (tren/saat) aldığı aralık ölçülür. Salınıma göre sıralanır — en uzun çubuk en güçlü kaldıraçtır. Dikey çizgi mevcut tasarım değerini gösterir (${duy.taban.toFixed(0)} tren/sa).`}</p>
+  <div class="tor"><table class="tor-tbl"><colgroup><col style="width:26%"><col style="width:44%"><col style="width:15%"><col style="width:15%"></colgroup>
+  <thead><tr><th class="l">${en ? "Parameter" : "Parametre"}</th><th>${en ? "Effect on operating capacity" : "İşletme kapasitesine etki"}</th><th>${en ? "Range" : "Aralık"}</th><th>${en ? "Swing" : "Salınım"}</th></tr></thead>
+  <tbody>${satirHtml}</tbody></table></div>
+  <div class="gs">${en
+    ? `The strongest lever here is <b>${esc(okKok.ad)}</b> (swing ${okKok.salinim.toFixed(0)} tph) — the parameter to secure first in design and operation. ▲ = capacity rises as the parameter rises; ▼ = it falls.`
+    : `Bu hatta en güçlü kaldıraç <b>${esc(okKok.ad)}</b> (salınım ${okKok.salinim.toFixed(0)} tren/sa) — tasarımda ve işletmede önce güvenceye alınması gereken parametre. ▲ = parametre artınca kapasite artar; ▼ = azalır.`}</div>`;
+  }
+
   return `<!doctype html><html lang="${L.htmlLang}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(meta.dokumanNo)} — ${esc(meta.projeAdi)}</title>
@@ -740,6 +810,15 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   .fig { margin: 6px 0 16px; text-align: center; page-break-inside: avoid; }
   .fig .cap { font-size: 8.5pt; color: #6B7A8A; margin-top: 4px; }
 
+  /* Tornado (duyarlılık) — satır içi yatay çubuk: parametre ±%20 oynayınca metriğin
+     aldığı aralık; dikey çizgi = mevcut tasarım değeri. Çubuk hücreye gömülü konumlanır. */
+  .tor-tbl { table-layout: fixed; }
+  .tor-tbl td { vertical-align: middle; }
+  .tor-tbl td.trk-td { padding: 4px 8px; }
+  .tor .trk { position: relative; height: 13px; background: #EEF2F5; border-radius: 2px; }
+  .tor .barr { position: absolute; top: 2px; height: 9px; background: ${GOLD}; border-radius: 1px; }
+  .tor .base { position: absolute; top: -2px; height: 17px; width: 1.5px; background: ${INK}; }
+
   /* Ring detayları uzun olabildiğinden (kısıt tablosu + challenge listesi) sayfalar
      arası bölünebilir; başlık bir sonraki içerikten koparılmaz. */
   .ring-detay { page-break-inside: auto; margin-bottom: 14px; }
@@ -834,7 +913,9 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
         <li>5.3 ${en ? "Stops Needing Turnback" : "Dönüşe İhtiyaç Duyan Duraklar"}</li>
         <li>5.4 ${en ? "Reverse-Running Variations" : "Ters İşletme Varyasyonları"}</li>
         <li>5.5 ${en ? "Fleet & Recommendation" : "Filo & Öneri"}</li></ul></li>
-      <li><b>06</b>${L.s5}</li>
+      <li><b>06</b>${en ? "Timetable (Service Schedule)" : "Tarife (Zaman Çizelgesi)"}<ul><li>6.1 ${en ? "First Departures" : "İlk Kalkışlar"}</li></ul></li>
+      <li><b>07</b>${en ? "Sensitivity (Tornado)" : "Duyarlılık (Tornado)"}</li>
+      <li><b>08</b>${L.s5}</li>
     </ol>
     <div class="toc-fig">${en ? "Figures" : "Şekiller"}<ul>
       <li>${en ? "Fig. 1 — Line schematic" : "Şekil 1 — Hat şeması"}</li>
@@ -879,10 +960,14 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <!-- 5: İşletme & Talep Analizi (ters işletme) -->
   ${isletmeBolum}
 
+  ${tarifeBolum}
+
+  ${duyarlilikBolum}
+
   ${cekirdekNot}
 
-  <!-- 6 -->
-  <div class="banner"><span class="no">06</span>${L.s5}</div>
+  <!-- 8 -->
+  <div class="banner"><span class="no">08</span>${L.s5}</div>
   <table class="imza"><thead><tr><th>${esc(L.thImza[0])}</th><th>${esc(L.thImza[1])}</th></tr></thead>
   <tbody><tr><td class="l">${esc(meta.hazirlayan)}</td><td class="l">${esc(meta.onaylayan)}</td></tr>
   <tr><td class="l">${esc(L.imzaTarih)}</td><td class="l">${esc(L.imzaTarih)}</td></tr></tbody></table>
