@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     );
   }
 
-  let govde: { veri?: { rings?: DurakArasiRing[]; cfg?: Partial<SimConfig>; meta?: Partial<ProjeMeta>; arac?: RollingStock; turnaroundSn?: number; filo?: number; isletme?: Partial<Isletme> }; dil?: string };
+  let govde: { veri?: { rings?: DurakArasiRing[]; cfg?: Partial<SimConfig>; meta?: Partial<ProjeMeta>; arac?: RollingStock; turnaroundSn?: number; filo?: number; isletme?: Partial<Isletme>; qrUrl?: string }; dil?: string };
   try { govde = await req.json(); } catch { return NextResponse.json({ hata: "Geçersiz istek." }, { status: 400 }); }
 
   const rings = govde.veri?.rings;
@@ -73,6 +73,11 @@ export async function POST(req: Request) {
   // başla, istemci alanlarını üstüne yaz (tersIsletmeAnaliz içi kıskaçlar/guard'lar bozuk
   // sayıyı zaten nötrler).
   const isletme: Isletme = { ...varsayilanIsletme, ...(govde.veri?.isletme ?? {}) };
+  // QR DEEP-LINK: istemcinin ürettiği bu projenin salt-okunur paylaşım linki
+  // (<site>/?proje=<id>). Yalnız güvenli https + makul uzunluk kabul edilir; aksi
+  // halde boş bırakılır (rapor QR'ı ana sayfaya düşer). İçerik yalnız QR'a kodlanır.
+  const qrHam = typeof govde.veri?.qrUrl === "string" ? govde.veri.qrUrl : "";
+  const qrUrl = /^https:\/\/[^\s]{1,512}$/.test(qrHam) ? qrHam : "";
 
   // Bakiye ÖN-KONTROLÜ: muaf değilse ve bakiye yetersizse pahalı rapor üretimini
   // hiç çalıştırma (boşuna CPU / DoS önlemi). Asıl düşüm aşağıda atomik krediDus'ta.
@@ -88,7 +93,7 @@ export async function POST(req: Request) {
   // 1) Raporu ÜRET (başarısızsa kredi düşülmez).
   let html: string;
   try {
-    html = raporHTML(meta, cfg, rings, arac, dil, filo, isletme);
+    html = raporHTML(meta, cfg, rings, arac, dil, filo, isletme, qrUrl);
   } catch (e) {
     return NextResponse.json({ hata: `Rapor üretilemedi: ${e instanceof Error ? e.message : String(e)}` }, { status: 500 });
   }

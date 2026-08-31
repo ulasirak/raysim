@@ -9,7 +9,7 @@ import { useMemo, useState } from "react";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { sure } from "@/lib/anaray/format";
-import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
+import { useSimConfig, useProje, useArac, useIsletme, useHesap } from "@/components/SimConfigProvider";
 import { PROJE_META_ALANLAR } from "@/lib/anaray/config";
 import { loopDenge, olceklenme, ringChallenge, ringDogrula, loopTamMi } from "@/lib/anaray/ring";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
@@ -25,6 +25,12 @@ export function Belgeler() {
   const { yenile } = useCuzdan();
   const { arac: stock } = useArac();
   const { isletme } = useIsletme();
+  // QR DEEP-LINK: rapordaki QR, paylaşım açıksa BU projenin salt-okunur canlı
+  // simülasyon linkine (<site>/?proje=<id>) gider; müşavir kamerayla tarayınca hattı
+  // canlı görür. Kapalıysa boş bırakılır → rapor QR'ı ana sayfaya düşer.
+  const { aktifId, paylasimAcik, paylasimDegistir } = useHesap();
+  const qrUrl = aktifId && paylasimAcik && typeof window !== "undefined"
+    ? `${window.location.origin}/?proje=${aktifId}` : "";
   const turnaroundSn = Math.max(0, isletme.turnaroundDk) * 60; // dönüş bekleme → çevrim/filo hesabı
   // Yolcu dinamiği: dwell OTO ringlerin dwell'i hesaplanır → RAPOR da hesaplı dwell'i
   // kullanır (kapasite/canlı sim ile tutarlı). Ham ring yerine hesaplı ring geçilir.
@@ -70,7 +76,7 @@ export function Belgeler() {
     const yanit = await fetch("/api/rapor", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ veri: { rings, cfg, meta, arac: stock, turnaroundSn, filo: isletme.pikFilo, isletme }, dil }),
+      body: JSON.stringify({ veri: { rings, cfg, meta, arac: stock, turnaroundSn, filo: isletme.pikFilo, isletme, qrUrl }, dil }),
     });
     if (!yanit.ok) {
       const v = await yanit.json().catch(() => ({}));
@@ -146,6 +152,21 @@ export function Belgeler() {
           </div>
           <span className="text-xs" style={{ color: brand.muted }}>PDF rapor bu dilde üretilir (yapısal metinler; proje verisi/adlar kaynak dilde kalır).</span>
         </div>
+
+        {/* QR DEEP-LINK anahtarı — rapordaki kare kodun bu hattın canlı simülasyonuna
+            gitmesi paylaşımın açık olmasını gerektirir (salt-okunur, linki bilen görür). */}
+        {yazilabilir && (
+          <label className="mb-3 flex items-start gap-2 rounded border p-2.5 text-xs" style={{ borderColor: brand.border, color: brand.inkSoft }}>
+            <input type="checkbox" checked={paylasimAcik} onChange={(e) => paylasimDegistir(e.target.checked)} className="mt-0.5 shrink-0" />
+            <span>
+              <b>Kapaktaki QR → bu hattın canlı simülasyonu.</b> Açıkken rapordaki kare kod, <b>bu hattın</b> salt-okunur canlı simülasyonuna gider — müşavir kamerayla tarayıp hattı işler hâlde görür. Kapalıyken QR ana sayfaya düşer.
+              {paylasimAcik
+                ? <span style={{ color: CK.good }}> ✓ Açık — QR bu hatta gider (linki bilen yalnız görüntüler, düzenleyemez).</span>
+                : <span style={{ color: brand.muted }}> Kapalı. Açarsanız hat, linki bilen herkese salt-okunur görünür olur.</span>}
+            </span>
+          </label>
+        )}
+
         {!hatTam && (
           <div className="mb-3 rounded-md border-l-4 px-4 py-3 text-sm" style={{ background: CK.badBgSoft, borderColor: brand.red, color: brand.ink }}>
             <div className="font-medium" style={{ color: brand.red }}>

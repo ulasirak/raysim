@@ -279,7 +279,7 @@ function rDil(lang: RaporDil) {
     barBtn: "⭳ PDF olarak kaydet / Yazdır",
     sys: "SİNYALİZASYON SİSTEMİ", kit: "TASARIM EL KİTABI",
     foot: "Kontrollü doküman", dockontrol: "Doküman Kontrol", toc: "İçindekiler",
-    qrCap: "Bu hattın canlı simülasyonu", qrHint: "kamerayla tarayın",
+    qrCap: "Bu hattın canlı simülasyonu", qrCapGenel: "RaySim — canlı simülasyon", qrHint: "kamerayla tarayın",
     kunye: { proje: "Proje", hat: "Hat", dok: "Doküman No", rev: "Revizyon", tarih: "Tarih", idare: "İdare", yuk: "Yüklenici", mus: "Müşavir", firma: "Sinyalizasyon Firması" },
     kpi: { hucre: "Durak arası hücre", hedef: "Hedef headway", sigan: "Headway'de sığan tren", kapasite: "Teorik kapasite", pratik: "İşletme kapasitesi", uic: "UIC 406 doluluk", ch: "Challenge / kritik" },
     altMakas: (n: number) => `${n} makas`, altTumu: "tümü uygun", altIhlal: "ihlal var", altTur: (s: string) => `tur ${s}`, altTph: "tren/saat", altUygun: "uygun", altIhlalK: "ihlal", altRisk: "risk kaydı",
@@ -310,7 +310,7 @@ function rDil(lang: RaporDil) {
     barBtn: "⭳ Save as PDF / Print",
     sys: "SIGNALLING SYSTEM", kit: "DESIGN HANDBOOK",
     foot: "Controlled document", dockontrol: "Document Control", toc: "Contents",
-    qrCap: "This line, simulated live", qrHint: "scan with your camera",
+    qrCap: "This line, simulated live", qrCapGenel: "RaySim — live simulation", qrHint: "scan with your camera",
     kunye: { proje: "Project", hat: "Line", dok: "Document No", rev: "Revision", tarih: "Date", idare: "Authority", yuk: "Contractor", mus: "Consultant", firma: "Signalling Firm" },
     kpi: { hucre: "Inter-station cells", hedef: "Target headway", sigan: "Trains within headway", kapasite: "Theoretical capacity", pratik: "Operating capacity", uic: "UIC 406 occupancy", ch: "Challenges / critical" },
     altMakas: (n) => `${n} switches`, altTumu: "all compliant", altIhlal: "violations", altTur: (s) => `cycle ${s}`, altTph: "trains/hour", altUygun: "compliant", altIhlalK: "violation", altRisk: "risk records",
@@ -338,7 +338,7 @@ function rDil(lang: RaporDil) {
   return lang === "en" ? en : tr;
 }
 
-export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, lang: RaporDil = "tr", filo = 0, isletme: Isletme = varsayilanIsletme): string {
+export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, lang: RaporDil = "tr", filo = 0, isletme: Isletme = varsayilanIsletme, qrUrl = ""): string {
   const L = rDil(lang);
   // Sunum modu: hat kesinleşmiş/onaylı bir tasarım olarak sunulur — challenge (risk/
   // uyarı) bayrakları, denge sapması ve "ihlal" işaretleri gösterilmez; göstergeler
@@ -474,6 +474,11 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
 
   const bugun = meta.tarih || "";
   const siteUrl = (typeof window !== "undefined" && window.location?.origin) ? window.location.origin : "https://raysim.vercel.app";
+  // QR DEEP-LINK: qrUrl verilmişse (bu projenin salt-okunur paylaşım linki) QR o hattın
+  // CANLI simülasyonuna gider; yoksa ana sayfaya düşer (genel). Yalnız güvenli https kabul.
+  const qrHedef = /^https:\/\/[^\s]{1,512}$/.test(qrUrl) ? qrUrl : siteUrl;
+  const derinLink = qrHedef !== siteUrl;
+  const qrHost = (() => { try { return new URL(qrHedef).host; } catch { return siteUrl.replace(/^https?:\/\//, ""); } })();
   // Firma Aslan Sinyalizasyon ise antette (sol üst) firma yazısı yerine ASLS logosu.
   const firmaAsls = firmaAslsMi(meta.sinyalizasyonFirmasi);
   const antetSol = firmaAsls
@@ -810,7 +815,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     <div class="proje">${esc(meta.projeAdi)}</div>
     <div class="hat">${esc(meta.hatAdi)}</div>
     <table class="kunye"><tbody>${kunye.map(([a, b]) => `<tr><td class="l k">${esc(a)}</td><td class="l">${esc(b)}</td></tr>`).join("")}</tbody></table>
-    <div class="qr">${qrSvg(siteUrl, 92)}<div class="qr-cap"><b>${L.qrCap}</b><br><span class="qr-hint">${L.qrHint}</span> · ${esc(siteUrl.replace(/^https?:\/\//, ""))}</div></div>
+    <div class="qr">${qrSvg(qrHedef, 92)}<div class="qr-cap"><b>${derinLink ? L.qrCap : L.qrCapGenel}</b><br><span class="qr-hint">${L.qrHint}</span> · ${esc(qrHost)}</div></div>
     <div class="poweredby"><span class="pb-emblem">${emblemSvg}</span><span class="pb-txt">Powered by <b>Ray<span class="r">Sim</span></b></span></div>
     <div class="foot">${esc(L.foot)}${bugun ? " · " + esc(bugun) : ""}</div>
   </section>
