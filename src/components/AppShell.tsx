@@ -185,6 +185,16 @@ function Govde({ children }: { children: React.ReactNode }) {
   const ilerleme = anaSayfa ? kaydirma : aktifIndex / Math.max(1, MODULLER.length - 1);
   const genisEkran = useGenisEkran();
 
+  // ÇIPLAK sayfa (/canli) — QR'dan gelen mobil ziyaretçi için nav/masthead YOK; sade tam
+  // ekran canlı simülasyon (paylaşım görünümü Kapı'yı açar, oturum gerekmez).
+  if (pathname.startsWith("/canli")) {
+    return (
+      <main className="min-h-full flex-1" style={{ background: brand.paper }}>
+        <Kapi>{children}</Kapi>
+      </main>
+    );
+  }
+
   return (
     <>
       {/* Header: marka + sağ slotta hesap/hat kontrolleri (girişsizken slot boş → sade) */}

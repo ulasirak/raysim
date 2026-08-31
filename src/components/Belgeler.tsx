@@ -31,7 +31,7 @@ export function Belgeler() {
   // boş bırakılır → rapor QR'ı ana sayfaya düşer.
   const { aktifId, paylasimAcik, paylasimDegistir } = useHesap();
   const qrUrl = aktifId && paylasimAcik && typeof window !== "undefined"
-    ? `${window.location.origin}/?proje=${aktifId}&oynat=1#canli` : "";
+    ? `${window.location.origin}/canli?proje=${aktifId}` : "";
   const turnaroundSn = Math.max(0, isletme.turnaroundDk) * 60; // dönüş bekleme → çevrim/filo hesabı
   // Yolcu dinamiği: dwell OTO ringlerin dwell'i hesaplanır → RAPOR da hesaplı dwell'i
   // kullanır (kapasite/canlı sim ile tutarlı). Ham ring yerine hesaplı ring geçilir.

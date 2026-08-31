@@ -238,7 +238,9 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
             const islH = { ...varsayilanIsletme, ...v.isletme };
             const mk = maksimumTren(dwellUygulanmisRings(v.rings, arac, islH), arac, cfgH, islH);
             const oneri = mk.gecerli ? Math.max(1, Math.ceil(mk.cevrimSuresi / Math.max(1, cfgH.headway))) : (islH.pikFilo || 4);
-            const islOnayli: Isletme = { ...islH, pikFilo: oneri, toplamFilo: oneri, pikDisiFilo: oneri, filoOnaylandi: true };
+            // Ters işletme KAPALI gelir (QR/önizleme akışında kesintili onay pop-up'ı çıkmasın);
+            // ziyaretçi canlı sim içindeki mod butonlarıyla dilerse açar.
+            const islOnayli: Isletme = { ...islH, pikFilo: oneri, toplamFilo: oneri, pikDisiFilo: oneri, filoOnaylandi: true, tersMod: "kapali" };
             if (bayat()) return;
             veriUygula({ ...v, isletme: islOnayli });
             setAktifAd(hat.ad);
