@@ -303,7 +303,7 @@ function rDil(lang: RaporDil) {
     s41: "4.1 Blocking-Time (Sperrzeitentreppe)",
     fig4: (h: number) => `Şekil 4 — Sperrzeitentreppe: blok işgal (blocking-time) pencereleri; min headway ${h} s.`,
     fig5: "Şekil 5 — Blok başına blocking-time bileşen dağılımı (kritik blok kırmızı etiketli).",
-    thBt: ["Blok", "Setup", "Görme", "Yaklaşma", "Seyir", "Temizleme", "Release", "Toplam (s)"],
+    thBt: ["Blok", "Setup", "Görme", "Yaklaşma", "Seyir", "Temizleme", "Release", "Toplam"],
     s5: "Onay", thImza: ["Hazırlayan", "Onaylayan"], imzaTarih: "İmza / Tarih",
   };
   const en: typeof tr = {
@@ -334,7 +334,7 @@ function rDil(lang: RaporDil) {
     s41: "4.1 Blocking-Time (Sperrzeitentreppe)",
     fig4: (h) => `Figure 4 — Sperrzeitentreppe: block occupation (blocking-time) windows; min headway ${h}s.`,
     fig5: "Figure 5 — Per-block blocking-time component breakdown (critical block labelled red).",
-    thBt: ["Block", "Setup", "Sighting", "Approach", "Running", "Clearing", "Release", "Total (s)"],
+    thBt: ["Block", "Setup", "Sighting", "Approach", "Running", "Clearing", "Release", "Total"],
     s5: "Approval", thImza: ["Prepared by", "Approved by"], imzaTarih: "Signature / Date",
   };
   return lang === "en" ? en : tr;
@@ -460,7 +460,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   ], { first: true });
 
   const btTbl = tbl(L.thBt,
-    bt.bloklar.map((b) => [`#${b.i}${b.makasBlok ? " ⑂" : ""}`, `${b.tSetup}`, `${b.tSighting}`, b.tApproach.toFixed(0), b.tRunning.toFixed(0), b.tClearing.toFixed(0), `${b.tRelease}`, b.toplam.toFixed(0)]), { first: true });
+    bt.bloklar.map((b) => [`#${b.i}${b.makasBlok ? " ⑂" : ""}`, `${b.tSetup} s`, `${b.tSighting} s`, `${b.tApproach.toFixed(0)} s`, `${b.tRunning.toFixed(0)} s`, `${b.tClearing.toFixed(0)} s`, `${b.tRelease} s`, `${b.toplam.toFixed(0)} s`]), { first: true });
 
   // Kapasite okuması yorumu — "sığan tren" (filo) ile "işletme kapasitesi" (tavan)
   // farkını gerçek değerlerden açıklar; hattın yedek kapasitesini okur.
@@ -558,11 +558,20 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
         : `<p class="muted">${en ? "All stops within the occupancy target — no turnback needed." : "Tüm duraklar doluluk hedefinde — dönüşe ihtiyaç yok."}</p>`}`;
 
     // 5.4 Makas Bölgesi Başına Ters İşletme Varyasyonları
+    // PM = point machine (makas motoru). "makasSayisi" alanı makas MOTORU adedidir
+    // (crossover/makas ADEDİ değil). Fiziksel taban: her crossover en az 2 makas motoru
+    // barındırır (tek/S crossover 2 dil = 2 motor; scissors/X 4 motor) → gösterimde ≥2.
+    const pmAdet = (m: { crossover: "s" | "x"; makasSayisi: number }) =>
+      Math.max(m.crossover === "x" ? 4 : 2, m.makasSayisi);
+    const pmEt = (n: number) => en ? `${n} point machines` : `${n} makas motoru`;
+    const b54not = gsNot(en
+      ? "PM = point machine (switch motor). The figure is the number of switch <b>motors</b>, not the number of crossovers: every crossover contains at least 2 point machines — a single (S) crossover has 2 (its two switch blades), a scissors (X) crossover has 4."
+      : "PM = makas motoru (point machine). Buradaki sayı makas <b>motoru</b> adedidir, crossover (makas) adedi değildir: her crossover en az 2 makas motoru içerir — tek (S) crossover 2 motorludur (iki makas dili), scissors (X) crossover 4 motorludur.");
     const b54ic = tia.makaslar.length
-      ? tia.makaslar.map((m) => `<div class="ring-detay"><h4>${esc(m.ad)} (${m.crossover.toUpperCase()} · ${m.makasSayisi} PM)</h4>
+      ? b54not + tia.makaslar.map((m) => `<div class="ring-detay"><h4>${esc(m.ad)} (${m.crossover.toUpperCase()} · ${pmEt(pmAdet(m))})</h4>
           ${gsNot(en
-            ? `${esc(m.yorum)} The reason is the load imbalance between the two arms of this ${m.crossover.toUpperCase()} switch (${m.makasSayisi} PM): one arm carries ${m.yuksekYuk} pax/h while the other carries ${m.dusukYuk}, and as this gap widens the benefit of reverse running at this location increases.`
-            : `${esc(m.yorum)} Bunun nedeni, bu bölgedeki ${m.crossover.toUpperCase()} makasın (${m.makasSayisi} PM) iki kolu arasındaki yük farkıdır; bir kol ${m.yuksekYuk} yolcu/saat taşırken diğeri ${m.dusukYuk} taşımakta, fark büyüdükçe buradaki ters işletmenin sağladığı kazanç artmaktadır.`)}
+            ? `${esc(m.yorum)} The reason is the load imbalance between the two arms of this ${m.crossover.toUpperCase()} switch (${pmEt(pmAdet(m))}): one arm carries ${m.yuksekYuk} pax/h while the other carries ${m.dusukYuk}, and as this gap widens the benefit of reverse running at this location increases.`
+            : `${esc(m.yorum)} Bunun nedeni, bu bölgedeki ${m.crossover.toUpperCase()} makasın (${pmEt(pmAdet(m))}) iki kolu arasındaki yük farkıdır; bir kol ${m.yuksekYuk} yolcu/saat taşırken diğeri ${m.dusukYuk} taşımakta, fark büyüdükçe buradaki ters işletmenin sağladığı kazanç artmaktadır.`)}
           <ul class="ch">${m.varyasyonlar.map((v) => `<li><b>${esc(v.ad)}:</b> ${esc(v.aciklama)}</li>`).join("")}</ul>
           <p class="muted" style="font-size:9.5pt">${esc(m.sureNotu)}</p></div>`).join("")
       : `<p class="muted">${en ? "No mid-line switch zones — reverse-running variations apply only at terminals." : "Ara-hat makas bölgesi yok — ters işletme varyasyonları yalnız terminallerde geçerli."}</p>`;
@@ -691,6 +700,16 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     ? `The strongest lever here is <b>${esc(okKok.ad)}</b> (swing ${okKok.salinim.toFixed(0)} tph) — the parameter to secure first in design and operation. ▲ = capacity rises as the parameter rises; ▼ = it falls.`
     : `Bu hatta en güçlü kaldıraç <b>${esc(okKok.ad)}</b> (salınım ${okKok.salinim.toFixed(0)} tren/sa) — tasarımda ve işletmede önce güvenceye alınması gereken parametre. ▲ = parametre artınca kapasite artar; ▼ = azalır.`}</div>`;
   }
+
+  // Altbilgi (onay şeridi) içeriği — İKİ yerde kullanılır: (1) tfoot içinde GÖRÜNMEZ kopya
+  // → her sayfada gerçek yükseklikte alan REZERVE eder (içerik binmez, iç-içe tablolarda da);
+  // (2) position:fixed görünür kopya → her sayfanın FİZİKSEL altına oturur (son sayfada ortada
+  // kalmaz). @page margin bu render hattında güvenilmez olduğundan rezervasyon tfoot'la yapılır.
+  const altbilgiIc = `<div class="onay-serit">
+    <div class="onay-kutu"><div><span class="ok-et">${esc(L.thImza[0])}</span><div class="ok-ad">${esc(meta.hazirlayan) || "&nbsp;"}</div></div><div class="ok-imza">${esc(L.imzaTarih)}</div></div>
+    <div class="onay-kutu"><div><span class="ok-et">${esc(L.thImza[1])}</span><div class="ok-ad">${esc(meta.onaylayan) || "&nbsp;"}</div></div><div class="ok-imza">${esc(L.imzaTarih)}</div></div>
+  </div>
+  <div class="antet-alt"><span>${esc(meta.sinyalizasyonFirmasi || "RaySim")} · ${esc(meta.projeAdi)}</span><span>${bugun ? esc(bugun) + " · " : ""}${esc(meta.dokumanNo)}</span></div>`;
 
   return `<!doctype html><html lang="${L.htmlLang}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -886,15 +905,19 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
      gizli (önizleme yalnız içeriktir; şerit PDF'te görünür). */
   /* Boş tfoot HER sayfada alt boşluğu REZERVE eder (içerik footer'a binmez); görünen
      onay şeridi ise .sayfa-alt olarak position:fixle her sayfanın altına sabitlenir. */
-  .alt-bosluk { height: 17mm; }
-  @media screen { .sayfa-alt { display: none; } }
-  @media print { .sayfa-alt { position: fixed; left: 15mm; right: 15mm; bottom: 8mm; } }
   .onay-serit { display: flex; gap: 5mm; margin-top: 3.5mm; }
   .onay-kutu { flex: 1; border: .75pt solid #C9D2DA; border-radius: 2px; padding: 1.2mm 2.4mm; min-height: 8mm;
     display: flex; flex-direction: column; justify-content: space-between; }
   .onay-kutu .ok-et { font-size: 6.5pt; letter-spacing: .12em; text-transform: uppercase; color: ${GOLD}; font-weight: 700; }
   .onay-kutu .ok-ad { font-size: 8pt; color: ${INK}; font-weight: 600; margin-top: .4mm; }
   .onay-kutu .ok-imza { font-size: 6.5pt; color: #9AA7B4; border-top: .5pt dotted #C9D2DA; padding-top: .8mm; margin-top: 1.4mm; }
+  /* tfoot içindeki kopya GÖRÜNMEZ ama yükseklik verir (alan rezervi); görünür kopya (.sayfa-alt)
+     ekranda gizli, baskıda her sayfanın fiziksel altına sabit. */
+  /* padding-top: görünür footer (bottom:8mm) rezerve alanın biraz üstüne taştığından, spacer'a
+     ek pay verilir → son satır footer'a değmez. */
+  .alt-spacer { visibility: hidden; padding-top: 9mm; }
+  @media screen { .sayfa-alt { display: none; } }
+  @media print { .sayfa-alt { position: fixed; left: 15mm; right: 15mm; bottom: 8mm; background: #fff; } }
   .antet-alt span:first-child { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .antet-alt span:last-child { flex: 0 0 auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
   /* Ekranda antet üst/alt görünür (önizleme). Araç çubuğu zaten .bar. */
@@ -907,19 +930,16 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <button onclick="window.print()">${L.barBtn}</button>
 </div>
 <div class="sheet">
-<!-- Antet ÜST: thead ile her sayfada AKIŞTA tekrarlanır. Altbilgi (onay şeridi) ise
-     position:fixed ile her sayfanın FİZİKSEL altına sabitlenir → tfoot'un aksine son
-     sayfada ortada kalmaz. @page bottom margin footer'a yer ayırır (içerik binmez). -->
-<div class="sayfa-alt">
-  <div class="onay-serit">
-    <div class="onay-kutu"><div><span class="ok-et">${esc(L.thImza[0])}</span><div class="ok-ad">${esc(meta.hazirlayan) || "&nbsp;"}</div></div><div class="ok-imza">${esc(L.imzaTarih)}</div></div>
-    <div class="onay-kutu"><div><span class="ok-et">${esc(L.thImza[1])}</span><div class="ok-ad">${esc(meta.onaylayan) || "&nbsp;"}</div></div><div class="ok-imza">${esc(L.imzaTarih)}</div></div>
-  </div>
-  <div class="antet-alt"><span>${esc(meta.sinyalizasyonFirmasi || "RaySim")} · ${esc(meta.projeAdi)}</span><span>${bugun ? esc(bugun) + " · " : ""}${esc(meta.dokumanNo)}</span></div>
-</div>
+<!-- Görünür onay şeridi: her sayfanın FİZİKSEL altına sabit. -->
+<div class="sayfa-alt">${altbilgiIc}</div>
+<!-- Sayfa çerçevesi: antet üst (thead) her sayfada tekrarlanır; tfoot içindeki GÖRÜNMEZ
+     onay kopyası her sayfada altbilgi kadar alan REZERVE eder → içerik (uzun/iç-içe tablolar
+     dâhil) footer'a binmez. Görünür kopya yukarıda position:fixle basılır. -->
 <table class="pageframe"><thead class="antet-head"><tr><td>
   <div class="antet-ust">${antetSol}<span class="dok">${esc(meta.dokumanNo)}${meta.revizyon ? " · " + esc(meta.revizyon.split("—")[0].trim()) : ""}</span></div>
-</td></tr></thead><tfoot class="antet-foot"><tr><td><div class="alt-bosluk"></div></td></tr></tfoot><tbody><tr><td>
+</td></tr></thead><tfoot class="antet-foot"><tr><td>
+  <div class="alt-spacer" aria-hidden="true">${altbilgiIc}</div>
+</td></tr></tfoot><tbody><tr><td>
 
   <!-- KAPAK — ANA MARKA = sinyalizasyon firması (büyük). RaySim, altta küçük
        "Powered by" rozetine indirgenir (araç/motor kimliği). -->

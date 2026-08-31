@@ -140,6 +140,13 @@ export function karsilastirmaHTML(senaryolar: KarsSenaryo[], meta: ProjeMeta, al
   }
 
   const siteUrl = "https://raysim.vercel.app";
+  // Altbilgi (onay şeridi): tfoot'ta GÖRÜNMEZ kopya alan rezerve eder, position:fixed görünür
+  // kopya her sayfanın altına oturur (son sayfada ortada kalmaz).
+  const altbilgiIc = `<div class="onay-serit">
+    <div class="onay-kutu"><div><span class="ok-et">Hazırlayan</span><div class="ok-ad">${esc(meta.hazirlayan) || "&nbsp;"}</div></div><div class="ok-imza">İmza / Tarih</div></div>
+    <div class="onay-kutu"><div><span class="ok-et">Onaylayan</span><div class="ok-ad">${esc(meta.onaylayan) || "&nbsp;"}</div></div><div class="ok-imza">İmza / Tarih</div></div>
+  </div>
+  <div class="antet-alt"><span>${esc(meta.sinyalizasyonFirmasi || "RaySim")} · Senaryo Karşılaştırma</span><span>${bugun ? esc(bugun) + " · " : ""}${esc(meta.dokumanNo || "")}</span></div>`;
   return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Senaryo Karşılaştırma — ${esc(meta.dokumanNo || "Karar Raporu")}</title>
 <style>
@@ -166,9 +173,9 @@ export function karsilastirmaHTML(senaryolar: KarsSenaryo[], meta: ProjeMeta, al
   .antet-ust .dok { color:#6B7A8A; }
   .antet-alt { display:flex; justify-content:space-between; border-top:.75pt solid #DCE1E7; padding-top:1.4mm; margin-top:2.5mm; font-size:7.5pt; color:#6B7A8A; }
   /* Onay şeridi — her sayfa altbilgisinde imza kutuları (ayrı Onay bölümü yerine); kompakt. */
-  .alt-bosluk { height:17mm; }
+  .alt-spacer { visibility:hidden; padding-top:9mm; }
   @media screen { .sayfa-alt { display:none; } }
-  @media print { .sayfa-alt { position:fixed; left:15mm; right:15mm; bottom:8mm; } }
+  @media print { .sayfa-alt { position:fixed; left:15mm; right:15mm; bottom:8mm; background:#fff; } }
   .onay-serit { display:flex; gap:5mm; margin-top:3.5mm; }
   .onay-kutu { flex:1; border:.75pt solid #C9D2DA; border-radius:2px; padding:1.2mm 2.4mm; min-height:8mm; display:flex; flex-direction:column; justify-content:space-between; }
   .onay-kutu .ok-et { font-size:6.5pt; letter-spacing:.12em; text-transform:uppercase; color:${GOLD}; font-weight:700; }
@@ -218,18 +225,11 @@ export function karsilastirmaHTML(senaryolar: KarsSenaryo[], meta: ProjeMeta, al
 <body>
 <div class="bar noprint"><b>RaySim · Karşılaştırma</b><span class="hint" style="font-size:11px;opacity:.8">Yazdır → “PDF olarak kaydet”.</span><span class="sp"></span><button onclick="window.print()">⭳ PDF olarak kaydet / Yazdır</button></div>
 <div class="sheet">
-<!-- Onay şeridi position:fix ile her sayfanın FİZİKSEL altına sabit (son sayfada ortada
-     kalmaz); boş tfoot her sayfada alt boşluğu rezerve eder (içerik binmez). -->
-<div class="sayfa-alt">
-  <div class="onay-serit">
-    <div class="onay-kutu"><div><span class="ok-et">Hazırlayan</span><div class="ok-ad">${esc(meta.hazirlayan) || "&nbsp;"}</div></div><div class="ok-imza">İmza / Tarih</div></div>
-    <div class="onay-kutu"><div><span class="ok-et">Onaylayan</span><div class="ok-ad">${esc(meta.onaylayan) || "&nbsp;"}</div></div><div class="ok-imza">İmza / Tarih</div></div>
-  </div>
-  <div class="antet-alt"><span>${esc(meta.sinyalizasyonFirmasi || "RaySim")} · Senaryo Karşılaştırma</span><span>${bugun ? esc(bugun) + " · " : ""}${esc(meta.dokumanNo || "")}</span></div>
-</div>
+<!-- Görünür onay şeridi: her sayfanın altına sabit. tfoot'taki görünmez kopya alan rezerve eder. -->
+<div class="sayfa-alt">${altbilgiIc}</div>
 <table class="pageframe"><thead class="antet-head"><tr><td style="padding:0;border:0">
   <div class="antet-ust">${antetSol}<span class="dok">${esc(meta.dokumanNo || "")}${meta.revizyon ? " · " + esc(meta.revizyon.split("—")[0].trim()) : ""}</span></div>
-</td></tr></thead><tfoot class="antet-foot"><tr><td style="padding:0;border:0"><div class="alt-bosluk"></div></td></tr></tfoot><tbody><tr><td style="padding:0;border:0">
+</td></tr></thead><tfoot class="antet-foot"><tr><td style="padding:0;border:0"><div class="alt-spacer" aria-hidden="true">${altbilgiIc}</div></td></tr></tfoot><tbody><tr><td style="padding:0;border:0">
 
   <section class="cover">
     <div class="cover-brand">${firmaAsls ? aslsLogoSvg : `<span class="cover-brand-name">${esc(meta.sinyalizasyonFirmasi || "")}</span>`}</div>
