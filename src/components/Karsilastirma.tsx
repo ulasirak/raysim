@@ -5,89 +5,21 @@
 //   • Projeler: kendi kayıtlı projelerinden 2-4'ünü yan yana kıyasla (Etap1/Etap2/…).
 //   • What-if : aktif hattın bir parametresini (headway/blok/doluluk) değiştirip
 //               varyasyonları kıyasla (aynı hat, farklı ayar).
-// Tüm metrikler simülasyonun kullandığı AYNI çekirdek (maksimumTren / tersIsletmeAnaliz)
-// ile hesaplanır → rapor/canlı sim ile birebir tutarlı. Çıktı: karar tablosu + çubuklar
-// + nesnel öneri özeti (ekran önizleme; PDF karşılaştırma raporu ayrı adımda).
+// Metrikler simülasyonun AYNI çekirdeğinden (lib/karsilastirma → maksimumTren/…) gelir;
+// ekran önizleme + baskıya hazır PDF karar raporu (aynı çekirdek → birebir tutarlı).
 
 import { useEffect, useMemo, useState } from "react";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { useSimConfig, useProje, useArac, useIsletme, useHesap } from "@/components/SimConfigProvider";
-import { maksimumTren } from "@/lib/anaray/kapasite";
-import { tersIsletmeAnaliz } from "@/lib/anaray/tersisletme";
-import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
-import { hatOzellikleri } from "@/lib/anaray/network";
-import { loopToHat } from "@/lib/anaray/hatsim";
+import { type Metrik, metrikHesapla, SATIRLAR, enIyiIndeks } from "@/lib/anaray/karsilastirma";
 import { projeGetir, type ProjeVerisi } from "@/lib/projeler";
 import { varsayilanArac } from "@/lib/anaray/vehicles";
 import { varsayilanConfig, varsayilanIsletme, type SimConfig, type Isletme } from "@/lib/anaray/config";
 import type { DurakArasiRing } from "@/lib/anaray/ring";
 import type { RollingStock } from "@/lib/anaray/types";
-
-// —— Bir senaryonun motor metrikleri (hepsi tek çekirdekten) ——
-interface Metrik {
-  ad: string;
-  gecerli: boolean;
-  uzunlukKm: number; durak: number; makas: number; sinyal: number;
-  nTeorik: number; nSurdurulebilir: number; hMin: number; cevrimDk: number;
-  isletmeKap: number; teorikKap: number; uic: number; siganTren: number;
-  gerekenFilo: number; tepeYuk: number; baglayan: string;
-}
-
-function metrikHesapla(ad: string, ringsHam: DurakArasiRing[], stock: RollingStock, cfg: SimConfig, isletme: Isletme): Metrik {
-  const rings = dwellUygulanmisRings(ringsHam ?? [], stock, isletme);
-  const m = maksimumTren(rings, stock, cfg, isletme);
-  const oz = hatOzellikleri(rings, cfg);
-  const line = rings.length ? loopToHat(rings, false, cfg).line : null;
-  const teorikKap = m.hMin > 0 ? 3600 / m.hMin : 0;
-  const isletmeKap = teorikKap * (m.dolulukTavani || 1);
-  const uic = (m.hMin > 0 && cfg.headway > 0) ? (m.hMin / cfg.headway) * 100 : 0;
-  const siganTren = m.gecerli ? Math.ceil(m.cevrimSuresi / Math.max(1, cfg.headway)) : 0;
-  const tia = rings.length >= 2 ? tersIsletmeAnaliz(rings, stock, isletme, cfg, "toplam") : null;
-  return {
-    ad, gecerli: m.gecerli,
-    uzunlukKm: line ? line.length / 1000 : 0,
-    durak: line ? line.stations.filter((s) => s.tip !== "gecit").length : 0,
-    makas: rings.reduce((n, r) => n + r.makaslar.length, 0),
-    sinyal: oz.filter((f) => f.kind === "sinyal").length,
-    nTeorik: m.nTeorik, nSurdurulebilir: m.nSurdurulebilir, hMin: Math.round(m.hMin),
-    cevrimDk: Math.round(m.cevrimSuresi / 60), isletmeKap: Math.round(isletmeKap),
-    teorikKap: Math.round(teorikKap), uic: Math.round(uic), siganTren,
-    gerekenFilo: tia ? tia.filo.gerekenArac : 0, tepeYuk: tia ? tia.tepeYuk : 0,
-    baglayan: m.baglayanAd,
-  };
-}
-
-// —— Karar tablosu satır tanımı ——
-type Yon = "yuksek" | "dusuk" | "none";
-interface Satir { etiket: string; al: (m: Metrik) => number; yaz: (m: Metrik) => string; yon: Yon; }
-const SATIRLAR: Satir[] = [
-  { etiket: "Hat uzunluğu (km)", al: (m) => m.uzunlukKm, yaz: (m) => m.uzunlukKm.toFixed(1), yon: "none" },
-  { etiket: "Durak", al: (m) => m.durak, yaz: (m) => `${m.durak}`, yon: "none" },
-  { etiket: "Makas", al: (m) => m.makas, yaz: (m) => `${m.makas}`, yon: "none" },
-  { etiket: "Sinyal (SG)", al: (m) => m.sinyal, yaz: (m) => `${m.sinyal}`, yon: "none" },
-  { etiket: "Teorik maks tramvay", al: (m) => m.nTeorik, yaz: (m) => `${m.nTeorik}`, yon: "yuksek" },
-  { etiket: "Sürdürülebilir (UIC 406)", al: (m) => m.nSurdurulebilir, yaz: (m) => `${m.nSurdurulebilir}`, yon: "yuksek" },
-  { etiket: "Min headway (s)", al: (m) => m.hMin, yaz: (m) => `${m.hMin}`, yon: "dusuk" },
-  { etiket: "Çevrim (dk)", al: (m) => m.cevrimDk, yaz: (m) => `${m.cevrimDk}`, yon: "dusuk" },
-  { etiket: "İşletme kapasitesi (tren/sa)", al: (m) => m.isletmeKap, yaz: (m) => `${m.isletmeKap}`, yon: "yuksek" },
-  { etiket: "UIC doluluk (%)", al: (m) => m.uic, yaz: (m) => `%${m.uic}`, yon: "none" },
-  { etiket: "Hedef sıklıkta gereken tren", al: (m) => m.siganTren, yaz: (m) => `${m.siganTren}`, yon: "dusuk" },
-  { etiket: "Gereken filo (talep)", al: (m) => m.gerekenFilo, yaz: (m) => `${m.gerekenFilo}`, yon: "dusuk" },
-  { etiket: "Tepe yük (yolcu/sa)", al: (m) => m.tepeYuk, yaz: (m) => `${m.tepeYuk}`, yon: "none" },
-];
-
-const enIyiIndeks = (ms: Metrik[], s: Satir): number => {
-  if (s.yon === "none" || ms.length < 2) return -1;
-  const gecerli = ms.map((m, i) => ({ m, i })).filter((x) => x.m.gecerli);
-  if (gecerli.length < 2) return -1;
-  // Tüm geçerli değerler eşitse KAZANAN YOK (beraberlik → altın vurgu yapma).
-  const degerler = gecerli.map((x) => s.al(x.m));
-  if (degerler.every((v) => v === degerler[0])) return -1;
-  let bi = -1, bv = s.yon === "yuksek" ? -Infinity : Infinity;
-  gecerli.forEach(({ m, i }) => { const v = s.al(m); if (s.yon === "yuksek" ? v > bv : v < bv) { bv = v; bi = i; } });
-  return bi;
-};
+import { getAuthInstance } from "@/lib/firebase";
+import { useCuzdan } from "@/components/CuzdanProvider";
 
 // —— What-if parametreleri (doluluk İLK: HER hatta sürdürülebilir/işletme kapasitesini
 // KESİN değiştirir → dinamikliği garanti eder; blok yalnız blok-bağlı hatlarda oynatır) ——
@@ -100,12 +32,16 @@ const WHATIF = {
 } as const;
 type WhatifKey = keyof typeof WHATIF;
 
+// PDF için bir senaryonun ham verisi (sunucu aynı çekirdekle yeniden hesaplar).
+interface SenaryoPayload { ad: string; rings: DurakArasiRing[]; cfg: SimConfig; arac: RollingStock; isletme: Isletme; }
+
 export function Karsilastirma() {
   const { cfg } = useSimConfig();
   const { rings: ringsHam, meta } = useProje();
   const { arac: stock } = useArac();
   const { isletme } = useIsletme();
   const { projeler } = useHesap();
+  const { yenile } = useCuzdan();
 
   const [mod, setMod] = useState<"projeler" | "whatif">("projeler");
 
@@ -127,16 +63,18 @@ export function Karsilastirma() {
     return () => { iptal = true; };
   }, [secili, cache]);
 
-  const projeMetrikler = useMemo<Metrik[]>(() => {
+  // Projeler modu — hem metrik hem PDF payload'ı tek kaynaktan (sıra korunur).
+  const projeSenaryolar = useMemo<SenaryoPayload[]>(() => {
     return [...secili]
-      .map((id) => ({ id, oz: projeler.find((p) => p.id === id), veri: cache[id] }))
+      .map((id) => ({ oz: projeler.find((p) => p.id === id), veri: cache[id] }))
       .filter((x) => x.veri)
-      .map(({ oz, veri }) => {
-        const c: SimConfig = { ...varsayilanConfig, ...(veri!.cfg ?? {}) };
-        const s: RollingStock = veri!.arac ?? varsayilanArac;
-        const isl: Isletme = { ...varsayilanIsletme, ...(veri!.isletme ?? {}) };
-        return metrikHesapla(oz?.ad ?? "Proje", veri!.rings ?? [], s, c, isl);
-      });
+      .map(({ oz, veri }) => ({
+        ad: oz?.ad ?? "Proje",
+        rings: veri!.rings ?? [],
+        cfg: { ...varsayilanConfig, ...(veri!.cfg ?? {}) },
+        arac: veri!.arac ?? varsayilanArac,
+        isletme: { ...varsayilanIsletme, ...(veri!.isletme ?? {}) },
+      }));
   }, [secili, cache, projeler]);
 
   // — What-if modu —
@@ -144,15 +82,19 @@ export function Karsilastirma() {
   const [wdegerler, setWdegerler] = useState<number[]>([...WHATIF.dolulukTavani.varsayilan]);
   const paramDegis = (k: WhatifKey) => { setWparam(k); setWdegerler([...WHATIF[k].varsayilan]); };
 
-  const whatifMetrikler = useMemo<Metrik[]>(() => {
+  const whatifSenaryolar = useMemo<SenaryoPayload[]>(() => {
     const w = WHATIF[wparam];
     return wdegerler.filter((v) => Number.isFinite(v) && v > 0).map((v) => {
       const ev = w.etkin(v); // etiket VE hesap aynı etkin değerle → çelişki yok
-      return metrikHesapla(`${ev} ${w.suffix}`, ringsHam, stock, w.uygula(cfg, ev), isletme);
+      return { ad: `${ev} ${w.suffix}`, rings: ringsHam, cfg: w.uygula(cfg, ev), arac: stock, isletme };
     });
   }, [wparam, wdegerler, cfg, ringsHam, stock, isletme]);
 
-  const metrikler = mod === "projeler" ? projeMetrikler : whatifMetrikler;
+  const senaryolar = mod === "projeler" ? projeSenaryolar : whatifSenaryolar;
+  const metrikler = useMemo<Metrik[]>(
+    () => senaryolar.map((s) => metrikHesapla(s.ad, s.rings, s.arac, s.cfg, s.isletme)),
+    [senaryolar]
+  );
   const yeterli = metrikler.filter((m) => m.gecerli).length >= 2;
 
   // What-if'te seçilen parametre metrikleri HİÇ oynatmadıysa (tüm sütunlar birebir aynı)
@@ -178,6 +120,40 @@ export function Karsilastirma() {
       isletme: enYuksek((m) => m.isletmeKap),
     };
   }, [metrikler]);
+
+  // — PDF karar raporu (sunucuda üret + kredi, /api/rapor ile aynı güvenlik) —
+  const [pdfMesgul, setPdfMesgul] = useState(false);
+  const [pdfDurum, setPdfDurum] = useState<{ tip: "ok" | "err"; metin: string } | null>(null);
+  const pdfUret = async () => {
+    setPdfMesgul(true); setPdfDurum(null);
+    const w = window.open("", "_blank", "width=920,height=1000");
+    try {
+      const a = getAuthInstance();
+      const token = await a?.currentUser?.getIdToken();
+      if (!token) { w?.close(); setPdfDurum({ tip: "err", metin: "Oturum bulunamadı — yeniden giriş yapın." }); return; }
+      const altBaslik = mod === "projeler"
+        ? `${senaryolar.length} proje karşılaştırması`
+        : `${meta.hatAdi || "Aktif hat"} · ${WHATIF[wparam].ad} varyasyonu`;
+      const yanit = await fetch("/api/karsilastirma", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ senaryolar, meta, altBaslik }),
+      });
+      if (!yanit.ok) {
+        w?.close();
+        const v = await yanit.json().catch(() => ({}));
+        setPdfDurum({ tip: "err", metin: v.hata === "yetersiz_kredi" ? `Rapor ${v.gereken} kredi ister; ${v.mevcut} krediniz var.` : (v.hata ?? "Rapor üretilemedi.") });
+        return;
+      }
+      const html = await yanit.text();
+      if (w) { w.document.open(); w.document.write(html); w.document.close(); }
+      await yenile();
+      setPdfDurum({ tip: "ok", metin: "Rapor yeni sekmede açıldı — yazdırma diyalogunda “PDF olarak kaydet”i seçin." });
+    } catch (e) {
+      w?.close();
+      setPdfDurum({ tip: "err", metin: `Rapor açılamadı: ${e instanceof Error ? e.message : String(e)}` });
+    } finally { setPdfMesgul(false); }
+  };
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
@@ -272,6 +248,16 @@ export function Karsilastirma() {
               ⚠ “{WHATIF[wparam].ad}” değişimi bu hatta metrikleri <b>oynatmadı</b> — bu hattın belirleyici kısıtı bu parametre değil (tablodaki <b>Belirleyici kısıt</b> satırına bak). <b>Doluluk tavanı</b> her hatta kapasiteyi değiştirir; <b>Blok</b> yalnız blok-bağlı hatta, <b>Headway</b> ise UIC doluluk / gereken tren'i.
             </div>
           )}
+
+          {/* PDF butonu */}
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <button onClick={pdfUret} disabled={pdfMesgul}
+              className="rounded-md px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: brand.red }}>
+              {pdfMesgul ? "Açılıyor…" : "🖨 PDF Karşılaştırma Raporu"}
+            </button>
+            {pdfDurum && <span className="text-sm" style={{ color: pdfDurum.tip === "err" ? brand.red : CK.good }}>{pdfDurum.tip === "ok" ? "✓ " : "⚠ "}{pdfDurum.metin}</span>}
+          </div>
+
           {/* Öneri özeti */}
           {oneri && (
             <div className="mt-6 rounded-lg border p-4" style={{ borderColor: brand.ink, background: "#F7F9FA" }}>
@@ -333,10 +319,6 @@ export function Karsilastirma() {
             <CubukKart baslik="İşletme kapasitesi (tren/sa)" ms={metrikler} al={(m) => m.isletmeKap} renk={CK.good} />
             <CubukKart baslik="Gereken filo (talep)" ms={metrikler} al={(m) => m.gerekenFilo} renk={CK.orange} />
           </div>
-
-          <div className="mt-6 rounded-md border-l-4 px-3 py-2 text-xs" style={{ borderColor: brand.ink, background: "#F7F9FA", color: brand.inkSoft }}>
-            📄 <b>PDF Karşılaştırma Raporu</b> bir sonraki adımda eklenecek — bu tabloyu, çubukları ve öneri özetini baskıya hazır kurumsal bir belgeye dökecek.
-          </div>
         </>
       )}
     </div>
@@ -357,7 +339,6 @@ function CubukKart({ baslik, ms, al, renk }: { baslik: string; ms: Metrik[]; al:
   const maks = Math.max(1, ...gecerli.map(al));
   const min = gecerli.length ? Math.min(...gecerli.map(al)) : 0;
   const baz = gecerli.length ? al(gecerli[0]) : 0; // ilk senaryo = referans
-  // Yakın değerlerde de kontrast görünsün: en kısa bar %30, en uzun %100 (aralığa göre).
   const span = maks - min;
   const w = (v: number) => (span <= 0 ? 100 : 30 + ((v - min) / span) * 70);
   return (
