@@ -19,8 +19,8 @@ import { type SimConfig, VARSAYILAN_DOLULUK_TAVANI } from "./config";
 import { simulate } from "./sim";
 import { makeBlocks } from "./signalling";
 import { loopToHat, type HatModel } from "./hatsim";
-import { sinyalKonumlari } from "./network";
-import { sinyalCevrimi, type DurakArasiRing } from "./ring";
+import { hemzeminDuruslari, duruslariEkle } from "./network";
+import { type DurakArasiRing } from "./ring";
 
 const T_SIGHTING = 4; // s — sürücü görme/reaksiyon (görerek sürüş kabulü)
 
@@ -155,11 +155,24 @@ export function blockingTimeHesap(
   };
 }
 
-/** Kısayol: ring dizisinden doğrudan blocking-time analizi. */
-export function blockingTimeRing(rings: DurakArasiRing[], stock: RollingStock, cfg: SimConfig): BlockingSonuc {
-  const sinyalTaban = rings.reduce((mx, r) => {
-    for (const s of r.sinyaller ?? []) if (s.yon === "giden" && !s.tersIsletme) mx = Math.max(mx, sinyalCevrimi(s));
-    return mx;
-  }, 0);
-  return blockingTimeHesap(loopToHat(rings, true, cfg), stock, cfg, 0, sinyalTaban, sinyalKonumlari(rings, cfg));
+/** Kısayol: ring dizisinden blocking-time analizi. maksimumTren (sim/Ringler) ile BİREBİR
+ *  aynı kurulum: NOMİNAL model + geçit koruma duruşları + blok başındaki durakların
+ *  kalkış ölü zamanı / geçit beklemesi "ekstra" olarak blocking-time'a eklenir. Böylece
+ *  rapor, Sistem Merkezi ve Ringler kapasite/min-headway değerleri tutarlıdır.
+ *  `kalkisOluGlobal` = hat geneli kalkış ölü zamanı (isletme.kalkisOluZamaniSn). */
+export function blockingTimeRing(rings: DurakArasiRing[], stock: RollingStock, cfg: SimConfig, kalkisOluGlobal = 5): BlockingSonuc {
+  const ringSu = (r: DurakArasiRing) => Math.max(0, r.kalkisOlu ?? Math.max(0, kalkisOluGlobal));
+  const model = loopToHat(rings, false, cfg); // NOMİNAL (h_min ile aynı zaman tabanı; sim ile aynı)
+  const gecitler = hemzeminDuruslari(rings, cfg);
+  const modelBt = { ...model, line: duruslariEkle(model.line, gecitler, false) };
+  // Ekstra işgal: yolcu durağı → kalkış ölü zamanı; geçit → koruma beklemesi.
+  const ekstraByPos = [
+    ...model.line.stations.map((s, i) => ({ pos: s.position, ek: i < rings.length ? ringSu(rings[i]) : 0 })),
+    ...modelBt.line.stations.filter((s) => s.tip === "gecit").map((s) => ({ pos: s.position, ek: Math.max(0, s.dwell) })),
+  ];
+  const ekstraResolver = (pos: number) => ekstraByPos.find((x) => Math.abs(x.pos - pos) < 1)?.ek ?? 0;
+  // maksimumTren'in blok kısıt hesabıyla BİREBİR: auto-bloklar + ekstra (sinyaller ayrı
+  // hSinyal kısıtıdır, blok tanımına girmez) → rapor/Sistem Merkezi min-headway'i Ringler
+  // kapasitesiyle tutarlı.
+  return blockingTimeHesap(modelBt, stock, cfg, ekstraResolver);
 }

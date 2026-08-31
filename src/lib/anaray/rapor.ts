@@ -251,7 +251,7 @@ function rDil(lang: RaporDil) {
     kunye: { proje: "Proje", hat: "Hat", dok: "Doküman No", rev: "Revizyon", tarih: "Tarih", idare: "İdare", yuk: "Yüklenici", mus: "Müşavir", firma: "Sinyalizasyon Firması" },
     kpi: { hucre: "Durak arası hücre", hedef: "Hedef headway", sigan: "Headway'de sığan tren", kapasite: "Teorik kapasite", pratik: "İşletme kapasitesi", uic: "UIC 406 doluluk", ch: "Challenge / kritik" },
     altMakas: (n: number) => `${n} makas`, altTumu: "tümü uygun", altIhlal: "ihlal var", altTur: (s: string) => `tur ${s}`, altTph: "tren/saat", altUygun: "uygun", altIhlalK: "ihlal", altRisk: "risk kaydı",
-    s1: "Tasarım Kriterleri", s1i: "Sistem, sabit blok mimarisi üzerine kurulmuştur. Aşağıdaki göstergeler ve parametreler tüm işletim senaryolarının temelini oluşturur.",
+    s1: "Kapasite Sonucu ve Parametreler", s1i: "Bu hatta aynı anda çalışabilecek azami tramvay sayısı, aşağıdaki tüm parametrelerden (sinyalizasyon, makas tip ve sayıları, istasyon duruş süreleri, terminal dönüşü, hemzemin geçitler ve araç) doğrudan HESAPLANIR — raporun birincil sonucu budur. Alttaki göstergeler bu hesabın çıktısı, parametre tablosu ise girdisidir.",
     thParam: ["Parametre", "Değer", "Etkisi"],
     s2: "Durak Arası İşletim Hücreleri", s2i: (n: number, h: number) => `Hat, ${n} durak-arası hücreye (ring) bölünmüştür. Her hücre kendi mesafe, makas, hemzemin ve tehlike (acil frenleme) şartlarını taşır; worst-case senaryo en uzun mesafe + tüm kısıtlarla, hedef headway ${h} s ile değerlendirilir.`,
     fig1: "Şekil 1 — Hat şeması: istasyon zinciri, makas (⑂) ve hemzemin geçit dağılımı.",
@@ -282,7 +282,7 @@ function rDil(lang: RaporDil) {
     kunye: { proje: "Project", hat: "Line", dok: "Document No", rev: "Revision", tarih: "Date", idare: "Authority", yuk: "Contractor", mus: "Consultant", firma: "Signalling Firm" },
     kpi: { hucre: "Inter-station cells", hedef: "Target headway", sigan: "Trains within headway", kapasite: "Theoretical capacity", pratik: "Operating capacity", uic: "UIC 406 occupancy", ch: "Challenges / critical" },
     altMakas: (n) => `${n} switches`, altTumu: "all compliant", altIhlal: "violations", altTur: (s) => `cycle ${s}`, altTph: "trains/hour", altUygun: "compliant", altIhlalK: "violation", altRisk: "risk records",
-    s1: "Design Criteria", s1i: "The system is built on a fixed-block architecture. The indicators and parameters below form the basis of all operating scenarios.",
+    s1: "Capacity Result and Parameters", s1i: "The maximum number of trams the line can run at once is computed directly from all the parameters below (signalling, switch types and counts, station dwell, terminal turnback, level crossings and the vehicle) — this is the report's primary result. The indicators below are the output of that computation; the parameter table is its input.",
     thParam: ["Parameter", "Value", "Effect"],
     s2: "Inter-station Operating Cells", s2i: (n, h) => `The line is divided into ${n} inter-station cells (rings). Each cell carries its own distance, switch, level-crossing and hazard (emergency braking) conditions; the worst case is evaluated at the longest distance with all constraints against the ${h}s target headway.`,
     fig1: "Figure 1 — Line schematic: station chain, switch (⑂) and level-crossing distribution.",
@@ -322,7 +322,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
       worstToplam: Math.round(sen.worstToplam), headwayOk: sen.headwayUygun, pay: Math.round(sen.headwayPayi) };
   });
   const denge = loopDenge(rings, stock, cfg);
-  const bt = blockingTimeRing(rings, stock, cfg);
+  const bt = blockingTimeRing(rings, stock, cfg, isletme.kalkisOluZamaniSn);
   // KAPASİTE OTORİTESİ — sim/Ringler ile BİREBİR aynı fonksiyon (maksimumTren): terminal
   // dönüş, sinyaller, blok/tek-hat/kavşak kısıtlarını birlikte değerlendirir. Rapordaki
   // kapasite değerleri (teorik maks · sürdürülebilir · min headway · darboğaz) bundan gelir

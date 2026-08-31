@@ -78,7 +78,7 @@ export function SistemMerkezi() {
   // Hat boşken (yeni hesap / yeni proje) çözülecek bir şey yoktur: canlı durum ve
   // blocking-time panelleri gizlenir, parametre girişi açık kalır.
   const bosHat = rings.length === 0;
-  const bt = useMemo(() => (rings.length ? blockingTimeRing(rings, stock, cfg) : null), [rings, stock, cfg]);
+  const bt = useMemo(() => (rings.length ? blockingTimeRing(rings, stock, cfg, isletme.kalkisOluZamaniSn) : null), [rings, stock, cfg, isletme.kalkisOluZamaniSn]);
   // Blok analizi ağır alt-bölümleri çekmecede (drawer) — tıklayınca açılır/kapanır.
   const [blokAcik, setBlokAcik] = useState({ merdiven: false, bilesen: false, teshis: false });
   const blokTopla = (k: "merdiven" | "bilesen" | "teshis") => setBlokAcik((a) => ({ ...a, [k]: !a[k] }));
