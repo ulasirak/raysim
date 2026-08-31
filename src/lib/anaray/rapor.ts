@@ -637,7 +637,17 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   .cover { text-align: center; padding: 12px 0 10px; page-break-after: avoid; }
   .cover .emblem { display: inline-block; }
   .cover .emblem svg { width: 66px; height: 66px; }
-  .cover .rule { width: 56px; height: 3px; background: ${RED}; margin: 10px auto 14px; }
+  /* Kapak marka hiyerarşisi (opt.3): ANA MARKA = firma (büyük); RaySim = küçük alt rozet. */
+  .cover-brand { margin: 6px 0 2px; line-height: 0; }
+  .cover-brand svg { height: 17mm; width: auto; display: inline-block; }
+  .cover-brand-name { font-size: 20pt; font-weight: 700; letter-spacing: .04em; color: ${INK}; }
+  .poweredby { margin-top: 16px; display: flex; align-items: center; justify-content: center; gap: 7px; }
+  .poweredby .pb-emblem { line-height: 0; }
+  .poweredby .pb-emblem svg { height: 7mm; width: auto; }
+  .poweredby .pb-txt { font-size: 8.5pt; color: #8A97A4; letter-spacing: .02em; }
+  .poweredby .pb-txt b { font-family: "Spectral", Georgia, serif; font-weight: 700; letter-spacing: .06em; color: #6B7A8A; }
+  .poweredby .pb-txt .r { color: ${RED}; }
+  .cover .rule { width: 56px; height: 3px; background: ${RED}; margin: 12px auto 14px; }
   .cover .sys { font-size: 14pt; letter-spacing: .28em; color: ${INK}; font-weight: 600; }
   .cover .kit { font-size: 22pt; letter-spacing: .05em; color: ${INK}; font-weight: 700; margin: 3px 0 14px; }
   .cover .proje { font-size: 16pt; color: ${INK}; font-weight: 600; }
@@ -759,10 +769,10 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <div class="antet-alt"><span>${esc(meta.sinyalizasyonFirmasi || "RaySim")} · ${esc(meta.projeAdi)}</span><span>${bugun ? esc(bugun) + " · " : ""}${esc(meta.dokumanNo)}</span></div>
 </td></tr></tfoot><tbody><tr><td>
 
-  <!-- KAPAK -->
+  <!-- KAPAK — ANA MARKA = sinyalizasyon firması (büyük). RaySim, altta küçük
+       "Powered by" rozetine indirgenir (araç/motor kimliği). -->
   <section class="cover">
-    <div class="emblem">${emblemSvg}</div>
-    <div class="brandmark" style="margin-top:8px">Ray<span class="r">Sim</span></div>
+    <div class="cover-brand">${firmaAsls ? aslsLogoSvg : `<span class="cover-brand-name">${esc(meta.sinyalizasyonFirmasi || "")}</span>`}</div>
     <div class="rule"></div>
     <div class="sys">${L.sys}</div>
     <div class="kit">${L.kit}</div>
@@ -771,6 +781,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     <div class="dockontrol-lbl">${L.dockontrol}</div>
     <table class="kunye"><tbody>${kunye.map(([a, b]) => `<tr><td class="l k">${esc(a)}</td><td class="l">${esc(b)}</td></tr>`).join("")}</tbody></table>
     <div class="qr">${qrSvg(siteUrl, 92)}<div class="qr-cap">${L.qrCap}<br>${esc(siteUrl.replace(/^https?:\/\//, ""))}</div></div>
+    <div class="poweredby"><span class="pb-emblem">${emblemSvg}</span><span class="pb-txt">Powered by <b>Ray<span class="r">Sim</span></b></span></div>
     <div class="foot">${esc(L.foot)}${bugun ? " · " + esc(bugun) : ""}</div>
   </section>
 
