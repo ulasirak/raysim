@@ -15,9 +15,10 @@ import { CK, RAMP_BLUE, num, lab, areaGrad } from "./chartkit";
 import type { SimConfig, ProjeMeta, Isletme } from "./config";
 import { PARAM_META, paramGoster, birim, varsayilanIsletme } from "./config";
 import { tersIsletmeAnaliz } from "./tersisletme";
+import { maksimumTren } from "./kapasite";
 import type { RollingStock } from "./types";
 import {
-  ringSenaryo, ringChallenge, ringKisitDizisi, loopDenge, olceklenme,
+  ringSenaryo, ringChallenge, ringKisitDizisi, loopDenge,
   type DurakArasiRing,
 } from "./ring";
 import { blockingTimeRing } from "./blockingtime";
@@ -289,7 +290,7 @@ function rDil(lang: RaporDil) {
   return lang === "en" ? en : tr;
 }
 
-export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, lang: RaporDil = "tr", turnaroundSn = 0, filo = 0, isletme: Isletme = varsayilanIsletme): string {
+export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, lang: RaporDil = "tr", filo = 0, isletme: Isletme = varsayilanIsletme): string {
   const L = rDil(lang);
   // Sunum modu: hat kesinleşmiş/onaylı bir tasarım olarak sunulur — challenge (risk/
   // uyarı) bayrakları, denge sapması ve "ihlal" işaretleri gösterilmez; göstergeler
@@ -304,10 +305,17 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
       worstToplam: Math.round(sen.worstToplam), headwayOk: sen.headwayUygun, pay: Math.round(sen.headwayPayi) };
   });
   const denge = loopDenge(rings, stock, cfg);
-  const olcek = olceklenme(rings, stock, true, cfg, turnaroundSn);
   const bt = blockingTimeRing(rings, stock, cfg);
-  const chSayi = rings.reduce((n, r) => n + ringChallenge(r, stock, cfg).length, 0);
-  const kritik = rings.reduce((n, r) => n + ringChallenge(r, stock, cfg).filter((c) => c.seviye === "kritik").length, 0);
+  // KAPASİTE OTORİTESİ — sim/Ringler ile BİREBİR aynı fonksiyon (maksimumTren): terminal
+  // dönüş, sinyaller, blok/tek-hat/kavşak kısıtlarını birlikte değerlendirir. Rapordaki
+  // kapasite değerleri (teorik maks · sürdürülebilir · min headway · darboğaz) bundan gelir
+  // → simülasyonla farklı yazma sorunu giderilir. (bt yalnız blok-başı Sperrzeit detayı için.)
+  const maks = maksimumTren(rings, stock, cfg, isletme);
+  const siganTren = maks.gecerli ? Math.ceil(maks.cevrimSuresi / Math.max(1, cfg.headway)) : 0; // hedef headway'de gereken filo
+  const teorikTph = maks.hMin > 0 ? 3600 / maks.hMin : 0;              // saatlik geçirgenlik (tavan)
+  const pratikTph = teorikTph * (maks.dolulukTavani || 1);            // UIC 406 tamponlu işletme kapasitesi
+  const uicDoluluk = (maks.hMin > 0 && cfg.headway > 0) ? (maks.hMin / cfg.headway) * 100 : 0; // UIC 406 doluluk %
+  const headwayUygun = maks.hMin <= cfg.headway + 1e-6;               // hedef headway fiziksel min'in üstünde mi
 
   // GERÇEK sinyalizasyon + filo — rapor simülasyonu canlı sistemle birebir olsun diye:
   //   sinyaller (giden, ters-değil) blok sınırıdır; filo = kullanıcının onayladığı gerçek
@@ -317,7 +325,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const sinyalSayisi = sinyalListe.length;
   const tersSinyalSayisi = sinyalListe.filter((f) => f.tersIsletme).length;
   const sinyaller = sinyalKonumlari(rings, cfg); // giden non-ters = blok sınırları (canlı sim ile aynı)
-  const filoGercek = filo > 0 ? Math.round(filo) : (olcek.maxTrenHedefHeadway || 4);
+  const filoGercek = filo > 0 ? Math.round(filo) : (siganTren || maks.nSurdurulebilir || 4);
 
   // Birleşik hat (loop → tek Line) → hız profili + Bildfahrplan grafikleri
   const line: Line | null = rings.length ? loopToHat(rings, true, cfg).line : null;
@@ -339,15 +347,19 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   // ---- KPI kartları ----
   const kpi = (etiket: string, deger: string, alt: string, renk = INK) =>
     `<div class="kpi"><div class="kpi-l">${esc(etiket)}</div><div class="kpi-v" style="color:${renk}">${esc(deger)}</div><div class="kpi-a">${esc(alt)}</div></div>`;
+  // Kapasite KPI'ları sim/Ringler ile BİREBİR (maksimumTren): teorik maks · sürdürülebilir ·
+  // planlanan filo · min headway (darboğaz) · işletme kapasitesi (tren/saat) · UIC 406 doluluk.
+  const teorikMaksEt = lang === "en" ? "Theoretical max trams" : "Teorik maks tramvay";
+  const surdurEt = lang === "en" ? "Sustainable trams" : "Sürdürülebilir tramvay";
+  const minHwEt = lang === "en" ? "Min headway" : "Min headway";
   const kpiRow = `<div class="kpi-row">
     ${kpi(L.kpi.hucre, `${rings.length}`, L.altMakas(rings.reduce((n, r) => n + r.makaslar.length, 0)))}
-    ${kpi(L.kpi.hedef, `${cfg.headway} s`, (olcek.headwayUygun || sunum) ? L.altTumu : L.altIhlal, (olcek.headwayUygun || sunum) ? "#0E7C57" : RED)}
-    ${kpi(L.kpi.sigan, `${olcek.maxTrenHedefHeadway}`, L.altTur(s0(olcek.cevrimSuresi)))}
+    ${kpi(teorikMaksEt, `${maks.nTeorik}`, lang === "en" ? "on the line (fit)" : "hatta sığan", INK)}
+    ${kpi(surdurEt, `${maks.nSurdurulebilir}`, lang === "en" ? "UIC 406 buffered" : "UIC 406 tamponlu", "#0E7C57")}
     ${kpi(lang === "en" ? "Planned fleet" : "Planlanan filo", `${filoGercek}`, lang === "en" ? `trams in service` : `serviste tramvay`, "#0E7C57")}
-    ${kpi(L.kpi.kapasite, `${bt.teorikKapasite.toFixed(0)}`, L.altTph)}
-    ${kpi(L.kpi.pratik, `${bt.pratikKapasite.toFixed(0)}`, `%${(bt.dolulukTavani * 100).toFixed(0)} · ${L.altTph}`, "#0E7C57")}
-    ${kpi(L.kpi.uic, `%${bt.dolulukHedef.toFixed(0)}`, (bt.hedefUygun || sunum) ? L.altUygun : L.altIhlalK, (bt.hedefUygun || sunum) ? "#0E7C57" : RED)}
-    ${sunum ? "" : kpi(L.kpi.ch, `${chSayi} / ${kritik}`, L.altRisk, kritik > 0 ? RED : INK)}
+    ${kpi(minHwEt, `${s0(maks.hMin)}`, (maks.baglayanAd || "").slice(0, 22) || (headwayUygun ? L.altUygun : L.altIhlalK), (headwayUygun || sunum) ? INK : RED)}
+    ${kpi(L.kpi.pratik, `${pratikTph.toFixed(0)}`, `%${((maks.dolulukTavani || 1) * 100).toFixed(0)} · ${L.altTph}`, "#0E7C57")}
+    ${kpi(L.kpi.uic, `%${uicDoluluk.toFixed(0)}`, (uicDoluluk <= 100 || sunum) ? L.altUygun : L.altIhlalK, (uicDoluluk <= 100 || sunum) ? "#0E7C57" : RED)}
   </div>`;
 
   // ---- Parametre tablosu ----
@@ -380,19 +392,20 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     return `<div class="ring-detay"><h4>${esc(r.fromAd)} → ${esc(r.toAd)}</h4>${kisitTbl}${chList}</div>`;
   }).join("");
 
-  // ---- Kapasite ----
+  // ---- Kapasite (maksimumTren — sim/Ringler ile birebir) ----
+  const minHwLbl = lang === "en" ? "Minimum headway (determining constraint)" : "Minimum headway (belirleyici kısıt)";
   const kapasiteTbl = tbl(L.thGost, [
-    [L.kapTur, s0(olcek.turSuresi)],
-    [L.kapDonus, s0(olcek.turnaroundToplam)],
-    [L.kapCevrim, s0(olcek.cevrimSuresi)],
+    [L.kapCevrim, s0(maks.cevrimSuresi)],
     [L.kapHedef, s0(cfg.headway)],
-    [L.kapSigan, `${olcek.maxTrenHedefHeadway}`],
-    [sunum ? (lang === "en" ? "Determining cell" : "Belirleyici hücre") : L.kapDarbogaz, olcek.darbogazRing ? `${olcek.darbogazRing.ad} (${s0(olcek.darbogazRing.worstToplam)})` : "—"],
+    [lang === "en" ? "Theoretical max trams (fit)" : "Teorik maks tramvay (sığan)", `${maks.nTeorik}`],
+    [lang === "en" ? "Sustainable trams (UIC 406)" : "Sürdürülebilir tramvay (UIC 406)", `${maks.nSurdurulebilir}`],
+    [L.kapSigan, `${siganTren}`],
+    [sunum ? (lang === "en" ? "Determining constraint" : "Belirleyici kısıt") : L.kapDarbogaz, maks.baglayanAd || "—"],
     [L.kapDenge, (denge.dengeli || sunum) ? L.kapDengeli : L.kapSapma(denge.sapmaYuzde.toFixed(0))],
-    [sunum ? (lang === "en" ? "Minimum headway (determining block)" : "Minimum headway (belirleyici blok)") : L.kapMin, `${s0(bt.minHeadway)} (#${bt.kritikBlok})`],
-    [L.kapTeorik, `${bt.teorikKapasite.toFixed(0)} ${L.tphSuffix}`],
-    [L.kapPratik, `${bt.pratikKapasite.toFixed(0)} ${L.tphSuffix} (%${(bt.dolulukTavani * 100).toFixed(0)})`],
-    [L.kapUIC, `%${bt.dolulukHedef.toFixed(0)}`],
+    [minHwLbl, `${s0(maks.hMin)}`],
+    [L.kapTeorik, `${teorikTph.toFixed(0)} ${L.tphSuffix}`],
+    [L.kapPratik, `${pratikTph.toFixed(0)} ${L.tphSuffix} (%${((maks.dolulukTavani || 1) * 100).toFixed(0)})`],
+    [L.kapUIC, `%${uicDoluluk.toFixed(0)}`],
   ], { first: true });
 
   const btTbl = tbl(L.thBt,
@@ -401,11 +414,11 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   // Kapasite okuması yorumu — "sığan tren" (filo) ile "işletme kapasitesi" (tavan)
   // farkını gerçek değerlerden açıklar; hattın yedek kapasitesini okur.
   const servisFrekansi = cfg.headway > 0 ? Math.round(3600 / cfg.headway) : 0;
-  const yedekYuzde = Math.max(0, Math.round(100 - bt.dolulukHedef));
-  const kapBol = bt.dolulukHedef <= 100 || sunum;
+  const yedekYuzde = Math.max(0, Math.round(100 - uicDoluluk));
+  const kapBol = uicDoluluk <= 100 || sunum;
   const kapYorum = lang === "en"
-    ? `<b>Interpretation — reading capacity.</b> “Trains within headway” (${olcek.maxTrenHedefHeadway}) is the <b>fleet</b> needed to run the service (cycle ${s0(olcek.cevrimSuresi)} ÷ target headway ${cfg.headway} s). “Operating capacity” (${bt.pratikKapasite.toFixed(0)} trains/h) is the line’s <b>hourly throughput ceiling</b> (3600 ÷ min headway ${Math.round(bt.minHeadway)} s × ${(bt.dolulukTavani * 100).toFixed(0)}%). At ${cfg.headway} s headway the service runs ${servisFrekansi} departures/h and UIC 406 occupancy is <b>${bt.dolulukHedef.toFixed(0)}%</b>${kapBol ? ` — about <b>${yedekYuzde}% spare capacity</b>. The line is not capacity-constrained: if demand grows, the headway can be tightened toward ${Math.round(bt.minHeadway)} s for up to ${bt.teorikKapasite.toFixed(0)} trains/h without new infrastructure.` : ` — the target headway runs the line near its capacity ceiling.`}`
-    : `<b>Yorum — kapasite okuması.</b> “Headway’de sığan tren” (${olcek.maxTrenHedefHeadway}) hattı işletmek için gereken <b>araç sayısıdır</b> (çevrim ${s0(olcek.cevrimSuresi)} ÷ hedef headway ${cfg.headway} s). “İşletme kapasitesi” (${bt.pratikKapasite.toFixed(0)} tren/saat) ise hattın <b>saatlik geçirgenlik tavanıdır</b> (3600 ÷ min headway ${Math.round(bt.minHeadway)} s × %${(bt.dolulukTavani * 100).toFixed(0)}). ${cfg.headway} s headway’de servis ${servisFrekansi} sefer/saat; UIC 406 doluluğu <b>%${bt.dolulukHedef.toFixed(0)}</b>${kapBol ? ` — yani yaklaşık <b>%${yedekYuzde} yedek kapasite</b>. Hat kapasite-kısıtlı değildir: talep artarsa headway ${Math.round(bt.minHeadway)} s’ye kadar sıkıştırılıp yeni altyapı olmadan ${bt.teorikKapasite.toFixed(0)} tren/saate çıkılabilir.` : ` — hedef headway hattı kapasite tavanına yakın çalıştırır.`}`;
+    ? `<b>Interpretation — reading capacity.</b> The line physically fits at most <b>${maks.nTeorik} trams</b> (theoretical) and <b>${maks.nSurdurulebilir} trams</b> sustainably (UIC 406 buffered) — these match the live simulation exactly. To run the service at ${cfg.headway} s headway the required fleet is <b>${siganTren} trams</b> (cycle ${s0(maks.cevrimSuresi)} ÷ headway). Operating capacity is <b>${pratikTph.toFixed(0)} trains/h</b> (3600 ÷ min headway ${Math.round(maks.hMin)} s × ${((maks.dolulukTavani || 1) * 100).toFixed(0)}%). At ${cfg.headway} s the service runs ${servisFrekansi} departures/h and UIC 406 occupancy is <b>${uicDoluluk.toFixed(0)}%</b>${kapBol ? ` — about <b>${yedekYuzde}% spare</b>. The binding constraint is <b>${esc(maks.baglayanAd || "—")}</b>; if demand grows, the headway can be tightened toward ${Math.round(maks.hMin)} s for up to ${teorikTph.toFixed(0)} trains/h without new infrastructure.` : ` — the target headway runs the line near its capacity ceiling (binding: ${esc(maks.baglayanAd || "—")}).`}`
+    : `<b>Yorum — kapasite okuması.</b> Hatta fiziksel olarak en fazla <b>${maks.nTeorik} tramvay</b> (teorik) ve sürdürülebilir olarak <b>${maks.nSurdurulebilir} tramvay</b> (UIC 406 tamponlu) sığar — bu değerler canlı simülasyonla birebir aynıdır. ${cfg.headway} s headway’de servisi işletmek için gereken filo <b>${siganTren} tramvaydır</b> (çevrim ${s0(maks.cevrimSuresi)} ÷ headway). İşletme kapasitesi <b>${pratikTph.toFixed(0)} tren/saat</b> (3600 ÷ min headway ${Math.round(maks.hMin)} s × %${((maks.dolulukTavani || 1) * 100).toFixed(0)}). ${cfg.headway} s’de servis ${servisFrekansi} sefer/saat; UIC 406 doluluğu <b>%${uicDoluluk.toFixed(0)}</b>${kapBol ? ` — yani yaklaşık <b>%${yedekYuzde} yedek</b>. Bağlayan kısıt: <b>${esc(maks.baglayanAd || "—")}</b>; talep artarsa headway ${Math.round(maks.hMin)} s’ye kadar sıkıştırılıp yeni altyapı olmadan ${teorikTph.toFixed(0)} tren/saate çıkılabilir.` : ` — hedef headway hattı kapasite tavanına yakın çalıştırır (bağlayan: ${esc(maks.baglayanAd || "—")}).`}`;
 
   const bugun = meta.tarih || "";
   const siteUrl = (typeof window !== "undefined" && window.location?.origin) ? window.location.origin : "https://raysim.vercel.app";
@@ -507,8 +520,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const kapGirdiNot = `<div class="gs"><span class="gs-i">▸ ${en ? "Measurement basis" : "Ölçüm esasları"}:</span> ${en
     ? `the maximum trams on the line (“trains within headway”) is measured not from a single assumption but from the joint evaluation of terminal throat occupation times, switch types and counts (S single / X scissors crossover), signal-lamp positions, directions and aspect states, block-occupation states, station dwell times, level-crossing types, and the tram’s physical states (mass, tractive effort and power, braking, running resistance, length, maximum speed) — on a UIC 406 blocking-time (Sperrzeitentreppe) basis`
     : `hattın azami tramvay sayısı (“headway’de sığan tren”) tek bir kabulle değil; terminal boğaz işgal süreleri, makas tip ve sayıları (S tek / X scissors crossover), sinyal lambası konum, yön ve aspect durumları, blok işgal durumları, istasyon duruş (dwell) süreleri, hemzemin geçit tipleri ve tramvayın fiziksel durumlarının (kütle, çekiş kuvveti ve gücü, frenleme, seyir direnci, uzunluk, azami hız) birlikte değerlendirilmesiyle — UIC 406 blocking-time (Sperrzeitentreppe) esasıyla — ölçülür`} <span class="gs-o">→ ${en ? "Result" : "Çıktı"}:</span> ${en
-    ? `maximum <b>${olcek.maxTrenHedefHeadway} trams</b> and, at the determining block #${bt.kritikBlok}, minimum headway <b>${Math.round(bt.minHeadway)} s</b>.`
-    : `en fazla <b>${olcek.maxTrenHedefHeadway} tramvay</b> ve belirleyici blok #${bt.kritikBlok}'te minimum headway <b>${Math.round(bt.minHeadway)} s</b>.`}</div>`;
+    ? `theoretical maximum <b>${maks.nTeorik} trams</b> (sustainable ${maks.nSurdurulebilir}) and minimum headway <b>${Math.round(maks.hMin)} s</b> at the determining constraint (${esc(maks.baglayanAd || "—")}) — identical to the live simulation.`
+    : `teorik en fazla <b>${maks.nTeorik} tramvay</b> (sürdürülebilir ${maks.nSurdurulebilir}) ve belirleyici kısıtta (${esc(maks.baglayanAd || "—")}) minimum headway <b>${Math.round(maks.hMin)} s</b> — canlı simülasyonla birebir aynı.`}</div>`;
 
   // Onayın hemen üstündeki bağımsız çekirdek doğrulama satırı (kurumsal, tek satır).
   const cekirdekNot = `<div class="cekirdek">${en

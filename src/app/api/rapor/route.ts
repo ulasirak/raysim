@@ -66,8 +66,6 @@ export async function POST(req: Request) {
   const arac: RollingStock = saglamArac(govde.veri?.arac);
   const dil: RaporDil = govde.dil === "en" ? "en" : "tr";
   // Dönüş bekleme (s) → çevrim/filo hesabı. Geçersiz/negatif/aşırı değerler nötrlenir.
-  const ts = Number(govde.veri?.turnaroundSn);
-  const turnaroundSn = Number.isFinite(ts) ? Math.min(3600, Math.max(0, ts)) : 0;
   // Planlanan filo (kullanıcının onayladığı gerçek araç sayısı) — geçersizse 0 (rapor öneriye düşer).
   const fl = Number(govde.veri?.filo);
   const filo = Number.isFinite(fl) ? Math.min(999, Math.max(0, Math.round(fl))) : 0;
@@ -90,7 +88,7 @@ export async function POST(req: Request) {
   // 1) Raporu ÜRET (başarısızsa kredi düşülmez).
   let html: string;
   try {
-    html = raporHTML(meta, cfg, rings, arac, dil, turnaroundSn, filo, isletme);
+    html = raporHTML(meta, cfg, rings, arac, dil, filo, isletme);
   } catch (e) {
     return NextResponse.json({ hata: `Rapor üretilemedi: ${e instanceof Error ? e.message : String(e)}` }, { status: 500 });
   }
