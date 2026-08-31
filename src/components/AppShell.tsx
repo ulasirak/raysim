@@ -262,7 +262,7 @@ function Govde({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* ── DAR/ORTA EKRAN (<1024px): kompakt istasyon ızgarası ─────────── */}
-        <div className="mx-auto max-w-6xl grid-cols-2 gap-1.5 px-3 pb-2.5 pt-3.5 sm:grid-cols-4" style={{ display: genisEkran ? "none" : "grid" }}>
+        <div className="mx-auto max-w-6xl grid-cols-2 gap-1.5 px-3 pb-2.5 pt-3.5 sm:grid-cols-3" style={{ display: genisEkran ? "none" : "grid" }}>
           {MODULLER.map((m, i) => {
             const on = m.slug === aktif.slug;
             const gecildi = i < aktifIndex;
