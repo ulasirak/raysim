@@ -164,7 +164,13 @@ export function karsilastirmaHTML(senaryolar: KarsSenaryo[], meta: ProjeMeta, al
   .antet-ust .firma { font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:${INK}; }
   .antet-ust .firma-logo svg { height:8mm; width:auto; display:block; }
   .antet-ust .dok { color:#6B7A8A; }
-  .antet-alt { display:flex; justify-content:space-between; border-top:.75pt solid #DCE1E7; padding-top:1.4mm; margin-top:8mm; font-size:7.5pt; color:#6B7A8A; }
+  .antet-alt { display:flex; justify-content:space-between; border-top:.75pt solid #DCE1E7; padding-top:1.4mm; margin-top:2.5mm; font-size:7.5pt; color:#6B7A8A; }
+  /* Onay şeridi — her sayfa altbilgisinde imza kutuları (ayrı Onay bölümü yerine); kompakt. */
+  .onay-serit { display:flex; gap:5mm; margin-top:3.5mm; }
+  .onay-kutu { flex:1; border:.75pt solid #C9D2DA; border-radius:2px; padding:1.2mm 2.4mm; min-height:8mm; display:flex; flex-direction:column; justify-content:space-between; }
+  .onay-kutu .ok-et { font-size:6.5pt; letter-spacing:.12em; text-transform:uppercase; color:${GOLD}; font-weight:700; }
+  .onay-kutu .ok-ad { font-size:8pt; color:${INK}; font-weight:600; margin-top:.4mm; }
+  .onay-kutu .ok-imza { font-size:6.5pt; color:#9AA7B4; border-top:.5pt dotted #C9D2DA; padding-top:.8mm; margin-top:1.4mm; }
   .cover { text-align:center; padding:14px 0 8px; page-break-after:always; }
   .cover-brand svg { height:17mm; width:auto; } .cover-brand-name { font-size:20pt; font-weight:700; color:${INK}; }
   .cover .rule { width:56px; height:3px; background:${RED}; margin:12px auto 14px; }
@@ -212,6 +218,10 @@ export function karsilastirmaHTML(senaryolar: KarsSenaryo[], meta: ProjeMeta, al
 <table class="pageframe"><thead class="antet-head"><tr><td style="padding:0;border:0">
   <div class="antet-ust">${antetSol}<span class="dok">${esc(meta.dokumanNo || "")}${meta.revizyon ? " · " + esc(meta.revizyon.split("—")[0].trim()) : ""}</span></div>
 </td></tr></thead><tfoot class="antet-foot"><tr><td style="padding:0;border:0">
+  <div class="onay-serit">
+    <div class="onay-kutu"><div><span class="ok-et">Hazırlayan</span><div class="ok-ad">${esc(meta.hazirlayan) || "&nbsp;"}</div></div><div class="ok-imza">İmza / Tarih</div></div>
+    <div class="onay-kutu"><div><span class="ok-et">Onaylayan</span><div class="ok-ad">${esc(meta.onaylayan) || "&nbsp;"}</div></div><div class="ok-imza">İmza / Tarih</div></div>
+  </div>
   <div class="antet-alt"><span>${esc(meta.sinyalizasyonFirmasi || "RaySim")} · Senaryo Karşılaştırma</span><span>${bugun ? esc(bugun) + " · " : ""}${esc(meta.dokumanNo || "")}</span></div>
 </td></tr></tfoot><tbody><tr><td style="padding:0;border:0">
 
@@ -241,11 +251,6 @@ export function karsilastirmaHTML(senaryolar: KarsSenaryo[], meta: ProjeMeta, al
   <div class="banner"><span class="no">02</span>Objektif Öneri Özeti</div>
   ${oneri || `<p class="muted">Karşılaştırma için en az 2 geçerli senaryo gerekir.</p>`}
   <div class="cekirdek">OpenTrack ile işbirliğiyle doğrulanmış; UIC 406 metodolojisine dayanan bağımsız çekirdek. Rapordaki her değer canlı simülasyonda birebir yeniden üretilebilir.</div>
-
-  <div class="banner"><span class="no">03</span>Onay</div>
-  <table class="imza"><thead><tr><th>Hazırlayan</th><th>Onaylayan</th></tr></thead>
-  <tbody><tr><td>${esc(meta.hazirlayan || "")}</td><td>${esc(meta.onaylayan || "")}</td></tr>
-  <tr><td>İmza / Tarih</td><td>İmza / Tarih</td></tr></tbody></table>
 
 </td></tr></tbody></table>
 </div>

@@ -537,15 +537,15 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     const yukRows = tia.duraklar.map((d) => [esc(d.ad), `${d.binen}`, `${d.inen}`, `${d.yukGidis}`, `${d.yukDonus}`, `${d.tepeYuk}`, `%${Math.round(d.doluluk * 100)}`]);
     const b51 = `<h3 class="sub">5.1 ${en ? "Passenger Load Profiles" : "Yolcu Yük Profilleri"}</h3>
       ${gsNot(en
-        ? `The table shows each stop's directional load and the busiest point on the line — the peak is <b>${tia.tepeYuk} pax/h</b> at <b>${esc(tia.tepeDurak)}</b>. ${tia.gercekVeri ? `This profile comes straight from the boarding/alighting counts you entered for each stop.` : `It looks the way it does because we took the ${P} pax/h total demand you entered and spread it across the stops by their role — hospital, interchange, stadium and centre carrying more — so the load builds up along the line like this.`}`
-        : `Tabloda her durağın yönlü yükünü ve hattın en yoğun noktasını görüyorsun — en yüksek yük <b>${esc(tia.tepeDurak)}</b> durağında, <b>${tia.tepeYuk} yolcu/saat</b>. ${tia.gercekVeri ? `Bu profil, her durak için ayrı ayrı girdiğin iniş-biniş sayımlarından doğrudan geliyor.` : `Böyle çıkmasının nedeni şu: girdiğin ${P} yolcu/saatlik toplam talebi, durakların rolüne göre (hastane, aktarma, stadyum ve merkez daha yoğun) hat üzerine dağıttık; talep hat boyunca bu şekilde birikiyor.`}`)}
+        ? `The table presents each stop's directional load together with the busiest point on the line; the peak load is <b>${tia.tepeYuk} pax/h</b> at <b>${esc(tia.tepeDurak)}</b>. ${tia.gercekVeri ? `The profile is derived directly from the boarding/alighting counts entered for each stop.` : `It arises from distributing the defined total demand of ${P} pax/h across the stops according to their role — hospital, interchange, stadium and centre carrying more — so that the load accumulates along the line in this manner.`}`
+        : `Tabloda her durağın yönlü yükü ve hattın en yoğun noktası yer almaktadır; en yüksek yük <b>${tia.tepeYuk} yolcu/saat</b> ile <b>${esc(tia.tepeDurak)}</b> durağındadır. ${tia.gercekVeri ? `Profil, her durak için ayrı girilen iniş-biniş sayımlarından doğrudan elde edilmiştir.` : `Bu profil, tanımlanan ${P} yolcu/saatlik toplam talebin durakların rolüne göre (hastane, aktarma, stadyum ve merkez daha yoğun) hat boyunca dağıtılmasıyla oluşmaktadır.`}`)}
       ${tbl(yukThead, yukRows, { first: true })}`;
 
     // 5.2 Depo Çıkışı
     const b52 = `<h3 class="sub">5.2 ${en ? "Depot Dispatch — One Depot, Two Directions" : "Depo Çıkışı — Tek Depodan İki Yön"}</h3>
       ${gsNot(en
-        ? `${esc(tia.depoDagilim.aciklama)} This split happens because the ${pikFiloN}-tram peak fleet leaves from a single depot and is fed to both directions over the depot crossover.`
-        : `${esc(tia.depoDagilim.aciklama)} Bu paylaşım, ${pikFiloN} araçlık pik filonun tek depodan çıkıp depo makası (crossover) üzerinden iki yöne verilmesinden doğuyor.`)}`;
+        ? `${esc(tia.depoDagilim.aciklama)} This split results from the ${pikFiloN}-tram peak fleet leaving a single depot and being directed to both directions over the depot crossover.`
+        : `${esc(tia.depoDagilim.aciklama)} Bu paylaşım, ${pikFiloN} araçlık pik filonun tek depodan çıkarak depo makası (crossover) üzerinden iki yöne yönlendirilmesinden kaynaklanmaktadır.`)}`;
 
     // 5.3 Dönüşe İhtiyaç Duyan Duraklar
     const dThead = en ? ["Stop", "Occ.", "Segment", "Suggested switch", "Severity"] : ["Durak", "Doluluk", "Segman", "Önerilen makas", "Şiddet"];
@@ -553,16 +553,16 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     const b53 = `<h3 class="sub">5.3 ${en ? "Stops Needing Turnback" : "Dönüşe İhtiyaç Duyan Duraklar"}</h3>
       ${tia.donusIhtiyaclari.length
         ? gsNot(en
-            ? `${tia.donusIhtiyaclari.length} stop(s) run over the ${Math.round((isletme.dolulukHedefi || 0.85) * 100)}% occupancy target you set, so a short-turn (turnback) is needed there. This comes out when we take the load carried by ${pikFiloN} trams of ${C} passengers each and hold it against your ${Math.round((isletme.dolulukHedefi || 0.85) * 100)}% target — the stops where demand runs past that line are the ones in the table.`
-            : `${tia.donusIhtiyaclari.length} durak, belirlediğin %${Math.round((isletme.dolulukHedefi || 0.85) * 100)} doluluk hedefini aşıyor; bu duraklarda kısa dönüş (turnback) gerekiyor. Bu sonuç şöyle çıkıyor: ${C} kişilik araçlarla çalışan ${pikFiloN} tramvayın taşıdığı yükü, hedeflediğin %${Math.round((isletme.dolulukHedefi || 0.85) * 100)} doluluğa oranlıyoruz — talebin bu çizgiyi aştığı duraklar tabloda.`) + tbl(dThead, dRows, { first: true })
+            ? `${tia.donusIhtiyaclari.length} stop(s) exceed the defined ${Math.round((isletme.dolulukHedefi || 0.85) * 100)}% occupancy target, and a short-turn (turnback) is required at these stops. This result is obtained by comparing the load carried by ${pikFiloN} trams of ${C} passengers each against the ${Math.round((isletme.dolulukHedefi || 0.85) * 100)}% target; the stops where demand exceeds this limit are listed in the table.`
+            : `${tia.donusIhtiyaclari.length} durak, tanımlanan %${Math.round((isletme.dolulukHedefi || 0.85) * 100)} doluluk hedefini aşmakta olup bu duraklarda kısa dönüş (turnback) gerekmektedir. Bu sonuç, ${C} kişilik araçlarla çalışan ${pikFiloN} tramvayın taşıdığı yükün %${Math.round((isletme.dolulukHedefi || 0.85) * 100)} doluluk hedefine oranlanmasından elde edilmiştir; talebin bu sınırı aştığı duraklar tabloda listelenmiştir.`) + tbl(dThead, dRows, { first: true })
         : `<p class="muted">${en ? "All stops within the occupancy target — no turnback needed." : "Tüm duraklar doluluk hedefinde — dönüşe ihtiyaç yok."}</p>`}`;
 
     // 5.4 Makas Bölgesi Başına Ters İşletme Varyasyonları
     const b54ic = tia.makaslar.length
       ? tia.makaslar.map((m) => `<div class="ring-detay"><h4>${esc(m.ad)} (${m.crossover.toUpperCase()} · ${m.makasSayisi} PM)</h4>
           ${gsNot(en
-            ? `${esc(m.yorum)} The reason is the imbalance between the two arms of this ${m.crossover.toUpperCase()} switch (${m.makasSayisi} PM) — one carries ${m.yuksekYuk} pax/h against the other's ${m.dusukYuk} — and the wider that gap, the more a reverse-running move here pays off.`
-            : `${esc(m.yorum)} Bunun nedeni, bu bölgedeki ${m.crossover.toUpperCase()} makasın (${m.makasSayisi} PM) iki kolu arasındaki yük farkı — bir kol ${m.yuksekYuk} yolcu/saat taşırken diğeri ${m.dusukYuk}; fark açıldıkça buradaki ters işletme daha çok işe yarıyor.`)}
+            ? `${esc(m.yorum)} The reason is the load imbalance between the two arms of this ${m.crossover.toUpperCase()} switch (${m.makasSayisi} PM): one arm carries ${m.yuksekYuk} pax/h while the other carries ${m.dusukYuk}, and as this gap widens the benefit of reverse running at this location increases.`
+            : `${esc(m.yorum)} Bunun nedeni, bu bölgedeki ${m.crossover.toUpperCase()} makasın (${m.makasSayisi} PM) iki kolu arasındaki yük farkıdır; bir kol ${m.yuksekYuk} yolcu/saat taşırken diğeri ${m.dusukYuk} taşımakta, fark büyüdükçe buradaki ters işletmenin sağladığı kazanç artmaktadır.`)}
           <ul class="ch">${m.varyasyonlar.map((v) => `<li><b>${esc(v.ad)}:</b> ${esc(v.aciklama)}</li>`).join("")}</ul>
           <p class="muted" style="font-size:9.5pt">${esc(m.sureNotu)}</p></div>`).join("")
       : `<p class="muted">${en ? "No mid-line switch zones — reverse-running variations apply only at terminals." : "Ara-hat makas bölgesi yok — ters işletme varyasyonları yalnız terminallerde geçerli."}</p>`;
@@ -581,8 +581,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     // öneri notu (navy, renksiz vurgu). Belirleyici sayı Fark satırında.
     const b55 = `<h3 class="sub">5.5 ${en ? "Fleet & Recommendation" : "Filo & Öneri"}</h3>
       ${gsNot(en
-        ? `<b>${esc(tia.filo.aciklama)}</b> We reach this figure by working out how many trams it takes to serve the peak demand at your ${hedefY}% occupancy target, given that one round trip takes ${cevrimDk} min and each ${C}-passenger tram can only come round again once per cycle.`
-        : `<b>${esc(tia.filo.aciklama)}</b> Bu sayıya, pik talebi hedeflediğin %${hedefY} doluluğa göre karşılamak için kaç tramvay gerektiğini; bir tam turun ${cevrimDk} dakika sürdüğünü ve ${C} kişilik her aracın bir turda ancak bir kez dönebildiğini birlikte değerlendirerek ulaşıyoruz.`)}
+        ? `<b>${esc(tia.filo.aciklama)}</b> This figure is obtained by determining the number of trams required to serve the peak demand at the ${hedefY}% occupancy target, evaluated together with the ${cevrimDk}-min round-trip time and the ${C}-passenger vehicle capacity.`
+        : `<b>${esc(tia.filo.aciklama)}</b> Bu değer, pik talebin %${hedefY} doluluk hedefine göre karşılanması için gereken araç sayısının; ${cevrimDk} dakikalık tam tur süresi ve ${C} kişilik araç kapasitesiyle birlikte değerlendirilmesinden elde edilmiştir.`)}
       ${tbl(en ? ["Metric", "Value"] : ["Gösterge", "Değer"], [
         [en ? `Required fleet (${hedefY}% occupancy)` : `Gereken filo (%${hedefY} doluluk)`, `${tia.filo.gerekenArac}`],
         [en ? "Current peak fleet" : "Mevcut pik filo", `${tia.filo.mevcutPik}`],
@@ -595,11 +595,11 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     isletmeBolum = `
   <div class="banner"><span class="no">05</span>${en ? "OPERATIONS & DEMAND ANALYSIS (REVERSE RUNNING)" : "İŞLETME & TALEP ANALİZİ (TERS İŞLETME)"}</div>
   <p>${en
-    ? `This section brings together how the demand, fleet and switch inputs you gave play out in operation. It follows the passengers as they build up along the line, then looks at how trains leave a single depot in both directions, which stops fill up enough to need a short-turn, what reverse running buys you at each switch zone, and finally how large a fleet the line actually calls for.`
-    : `Bu bölüm, girdiğin talep, filo ve makas bilgilerinin işletmeye nasıl yansıdığını bir araya getiriyor. Önce yolcunun hat boyunca nasıl biriktiğini izliyor; ardından tek depodan iki yöne nasıl çıkıldığına, hangi durakların dolup kısa dönüş gerektirdiğine, makas bölgelerinde ters işletmenin ne kazandırdığına ve son olarak hattın gerçekte kaç araç istediğine bakıyor.`}</p>
+    ? `This section addresses, as a whole, how the defined demand, fleet and switch inputs are reflected in operation. It first examines the load that passengers generate along the line, then evaluates in turn the single-depot two-direction dispatch, the stops that fill up enough to require a short-turn, the benefit of reverse running at the switch zones, and finally the fleet size the line calls for.`
+    : `Bu bölüm, tanımlanan talep, filo ve makas girdilerinin işletmeye yansımasını bir bütün olarak ele alır. Önce yolcunun hat boyunca oluşturduğu yük incelenmekte; ardından tek depodan iki yöne çıkış, dolup kısa dönüş gerektiren duraklar, makas bölgelerinde ters işletmenin sağladığı kazanç ve son olarak hattın gerektirdiği filo büyüklüğü sırasıyla değerlendirilmektedir.`}</p>
   <div class="gs">${en
-    ? `Everything in this section grows out of the operating inputs you gave. We start from either the boarding/alighting counts you entered stop by stop, or — if you gave a single total — that demand spread across the stops by their role; we combine it with the vehicle's passenger capacity and the service frequency, and out of that comes the directional load profile along the line and each stop's <b>occupancy ratio</b>. The stops that run over your occupancy target, and where a short-turn is needed, fall out of the same picture. The tram's own capacity and physical make-up (door count and width, floor area, mass, tractive effort, braking) are folded in along the way.`
-    : `Bu bölümdeki her şey senin işletme girdilerinden büyüyor. Ya durak durak girdiğin iniş-biniş sayımlarından, ya da tek bir toplam verdiysen o talebi durakların rolüne göre hatta yaymamızdan başlıyoruz; bunu aracın yolcu kapasitesi ve sefer sıklığıyla birleştirdiğimizde hat boyunca yönlü yük profili ve her durağın <b>doluluk oranı</b> ortaya çıkıyor. Doluluk hedefini aşan duraklar ve kısa dönüş ihtiyacı da aynı tablodan çıkıyor. Tramvayın kendi kapasitesi ve fiziksel özellikleri (kapı sayısı ve genişliği, taban alanı, kütle, çekiş, frenleme) de hesaba bu yolda katılıyor.`}</div>
+    ? `All values in this section are derived from the operating inputs. The starting point is either the boarding/alighting counts entered stop by stop, or — where a single total is provided — the distribution of that demand across the stops by their role; combined with the vehicle's passenger capacity and the service frequency, this yields the directional load profile along the line and each stop's <b>occupancy ratio</b>. The stops exceeding the occupancy target, and those requiring a short-turn, follow from the same analysis. The tram's capacity and physical characteristics (door count and width, floor area, mass, tractive effort, braking) are included in the assessment.`
+    : `Bu bölümdeki değerlerin tamamı işletme girdilerinden türetilmektedir. Başlangıç noktası, durak durak girilen iniş-biniş sayımları ya da tek bir toplam verildiğinde bu talebin durakların rolüne göre hatta dağıtılmasıdır; bu veri, aracın yolcu kapasitesi ve sefer sıklığıyla birleştirildiğinde hat boyunca yönlü yük profili ve her durağın <b>doluluk oranı</b> elde edilir. Doluluk hedefini aşan duraklar ve kısa dönüş gerektiren duraklar da aynı çözümden çıkmaktadır. Değerlendirmeye tramvayın kapasitesi ve fiziksel özellikleri (kapı sayısı ve genişliği, taban alanı, kütle, çekiş, frenleme) dahil edilmektedir.`}</div>
   ${b51}${b52}${b53}${b54}${b55}
 `;
   }
@@ -607,8 +607,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   // Kapasite ÖLÇÜM ESASLARI — hangi saha girdilerinin birlikte değerlendirildiği (iç
   // formül/algoritma açığa çıkmadan; yöntem UIC 406 blocking-time esaslı).
   const kapGirdiNot = `<div class="gs">${en
-    ? `This figure isn't read off a single number — it comes from laying every constraint on the ground over one another: the terminal throat occupation times, the switch types and counts (S single / X scissors crossover), the signal lamps' positions, directions and aspect states, the block occupations, the station dwell times, the level crossings, and the tram's own physical make-up (mass, tractive effort and power, braking, running resistance, length, top speed) — all stacked up using the UIC 406 blocking-time (Sperrzeitentreppe) method. Working them out together, the line carries a theoretical maximum of <b>${maks.nTeorik} trams</b> (sustainable ${maks.nSurdurulebilir}), and at its tightest point (${esc(maks.baglayanAd || "—")}) the smallest gap between trams comes to <b>${Math.round(maks.hMin)} s</b>.`
-    : `Bu sayı tek bir değerden okunmuyor — sahadaki bütün kısıtları üst üste koymamızdan çıkıyor: terminal boğazının işgal süreleri, makasların tip ve sayısı (S tek / X scissors crossover), sinyal lambalarının konumu, yönü ve aspect durumları, blok işgalleri, istasyon duruş (dwell) süreleri, hemzemin geçitler ve tramvayın kendi fiziksel özellikleri (kütle, çekiş kuvveti ve gücü, frenleme, seyir direnci, uzunluk, azami hız) — hepsi UIC 406 blocking-time (Sperrzeitentreppe) yöntemiyle üst üste biniyor. Bunları birlikte çözünce hat teorik olarak en fazla <b>${maks.nTeorik} tramvay</b> (sürdürülebilir ${maks.nSurdurulebilir}) taşıyor; en dar noktasında (${esc(maks.baglayanAd || "—")}) tramvaylar arasındaki en küçük aralık <b>${Math.round(maks.hMin)} s</b> oluyor.`}</div>`;
+    ? `This figure does not rest on a single measurement; it results from evaluating all field constraints together: the terminal throat occupation times, the switch types and counts (S single / X scissors crossover), the signal lamps' positions, directions and aspect states, the block occupations, the station dwell times, the level crossings, and the tram's physical characteristics (mass, tractive effort and power, braking, running resistance, length, top speed) — all assessed jointly under the UIC 406 blocking-time (Sperrzeitentreppe) method. As a result of this assessment, the line carries a theoretical maximum of <b>${maks.nTeorik} trams</b> (sustainable ${maks.nSurdurulebilir}), and at the tightest constraint (${esc(maks.baglayanAd || "—")}) the minimum interval between trams is determined as <b>${Math.round(maks.hMin)} s</b>.`
+    : `Bu değer tek bir ölçüme dayanmaz; sahadaki bütün kısıtların birlikte değerlendirilmesinden elde edilir: terminal boğazının işgal süreleri, makasların tip ve sayısı (S tek / X scissors crossover), sinyal lambalarının konumu, yönü ve aspect durumları, blok işgalleri, istasyon duruş (dwell) süreleri, hemzemin geçitler ve tramvayın fiziksel özellikleri (kütle, çekiş kuvveti ve gücü, frenleme, seyir direnci, uzunluk, azami hız) — tümü UIC 406 blocking-time (Sperrzeitentreppe) yöntemiyle birlikte ele alınır. Bu değerlendirme sonucunda hat teorik olarak en fazla <b>${maks.nTeorik} tramvay</b> (sürdürülebilir ${maks.nSurdurulebilir}) taşımakta; en dar kısıtta (${esc(maks.baglayanAd || "—")}) tramvaylar arasındaki en küçük aralık <b>${Math.round(maks.hMin)} s</b> olarak belirlenmektedir.`}</div>`;
 
   // Onayın hemen üstündeki bağımsız çekirdek doğrulama satırı (kurumsal, tek satır).
   const cekirdekNot = `<div class="cekirdek">${en
@@ -801,8 +801,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; font-size: 9pt; page-break-inside: auto; }
   thead { display: table-header-group; }
   tr { page-break-inside: avoid; }
-  th { background: ${INK}; color: #fff; font-weight: 600; text-align: center; padding: 6px 8px; border: 1px solid ${INK}; }
-  td { padding: 5px 8px; border: 1px solid #DCE1E7; text-align: center; }
+  th { background: ${INK}; color: #fff; font-weight: 600; text-align: center; padding: 5px 8px; border: 1px solid ${INK}; }
+  td { padding: 3.5px 8px; border: 1px solid #DCE1E7; text-align: center; }
   th.l, td.l { text-align: left; }
   tbody tr:nth-child(even) td { background: #F5F7F9; }
   /* Durum etiketi — köşeli (2px) teknik rozet; nötr zemin, dolu renk yalnız ihlalde. */
@@ -878,7 +878,15 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   .antet-ust .firma-logo svg { height: 8mm; width: auto; display: block; }
   .antet-ust .dok { flex: 0 0 auto; white-space: nowrap; font-variant-numeric: tabular-nums; color: #6B7A8A; }
   .antet-alt { display: flex; justify-content: space-between; align-items: baseline; gap: 6mm;
-    border-top: .75pt solid #DCE1E7; padding-top: 1.4mm; margin-top: 8mm; font-size: 7.5pt; color: #6B7A8A; }
+    border-top: .75pt solid #DCE1E7; padding-top: 1.4mm; margin-top: 2.5mm; font-size: 7.5pt; color: #6B7A8A; }
+  /* Onay şeridi — HER sayfa altbilgisinde (title-block): imza kutuları. Ayrı "Onay" bölümü
+     yerine geçer; kompakt tutulur ki içerik alanını daraltıp taşma/sıkışma yapmasın. */
+  .onay-serit { display: flex; gap: 5mm; margin-top: 3.5mm; }
+  .onay-kutu { flex: 1; border: .75pt solid #C9D2DA; border-radius: 2px; padding: 1.2mm 2.4mm; min-height: 8mm;
+    display: flex; flex-direction: column; justify-content: space-between; }
+  .onay-kutu .ok-et { font-size: 6.5pt; letter-spacing: .12em; text-transform: uppercase; color: ${GOLD}; font-weight: 700; }
+  .onay-kutu .ok-ad { font-size: 8pt; color: ${INK}; font-weight: 600; margin-top: .4mm; }
+  .onay-kutu .ok-imza { font-size: 6.5pt; color: #9AA7B4; border-top: .5pt dotted #C9D2DA; padding-top: .8mm; margin-top: 1.4mm; }
   .antet-alt span:first-child { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .antet-alt span:last-child { flex: 0 0 auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
   /* Ekranda antet üst/alt görünür (önizleme). Araç çubuğu zaten .bar. */
@@ -895,6 +903,10 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
 <table class="pageframe"><thead class="antet-head"><tr><td>
   <div class="antet-ust">${antetSol}<span class="dok">${esc(meta.dokumanNo)}${meta.revizyon ? " · " + esc(meta.revizyon.split("—")[0].trim()) : ""}</span></div>
 </td></tr></thead><tfoot class="antet-foot"><tr><td>
+  <div class="onay-serit">
+    <div class="onay-kutu"><div><span class="ok-et">${esc(L.thImza[0])}</span><div class="ok-ad">${esc(meta.hazirlayan) || "&nbsp;"}</div></div><div class="ok-imza">${esc(L.imzaTarih)}</div></div>
+    <div class="onay-kutu"><div><span class="ok-et">${esc(L.thImza[1])}</span><div class="ok-ad">${esc(meta.onaylayan) || "&nbsp;"}</div></div><div class="ok-imza">${esc(L.imzaTarih)}</div></div>
+  </div>
   <div class="antet-alt"><span>${esc(meta.sinyalizasyonFirmasi || "RaySim")} · ${esc(meta.projeAdi)}</span><span>${bugun ? esc(bugun) + " · " : ""}${esc(meta.dokumanNo)}</span></div>
 </td></tr></tfoot><tbody><tr><td>
 
@@ -929,7 +941,6 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
         <li>5.5 ${en ? "Fleet & Recommendation" : "Filo & Öneri"}</li></ul></li>
       <li><b>06</b>${en ? "Timetable (Service Schedule)" : "Tarife (Zaman Çizelgesi)"}<ul><li>6.1 ${en ? "First Departures" : "İlk Kalkışlar"}</li></ul></li>
       <li><b>07</b>${en ? "Sensitivity (Tornado)" : "Duyarlılık (Tornado)"}</li>
-      <li><b>08</b>${L.s5}</li>
     </ol>
     <div class="toc-fig">${en ? "Figures" : "Şekiller"}<ul>
       <li>${en ? "Fig. 1 — Line schematic" : "Şekil 1 — Hat şeması"}</li>
@@ -979,12 +990,6 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   ${duyarlilikBolum}
 
   ${cekirdekNot}
-
-  <!-- 8 -->
-  <div class="banner"><span class="no">08</span>${L.s5}</div>
-  <table class="imza"><thead><tr><th>${esc(L.thImza[0])}</th><th>${esc(L.thImza[1])}</th></tr></thead>
-  <tbody><tr><td class="l">${esc(meta.hazirlayan)}</td><td class="l">${esc(meta.onaylayan)}</td></tr>
-  <tr><td class="l">${esc(L.imzaTarih)}</td><td class="l">${esc(L.imzaTarih)}</td></tr></tbody></table>
 
 </td></tr></tbody></table>
 </div>
