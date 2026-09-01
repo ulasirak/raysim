@@ -859,8 +859,31 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
       ${gsNot(en
         ? `At a representative service interval of <b>${stHw(stHeadway)}</b> the line runs <b>${ste.filo} trams</b>; the diagram below places each tram at its real position along the line (${(ste.L / 1000).toFixed(1)} km) — obtained from the same trajectory the live simulation uses, so signal lamps, switch-transit speeds, road/pedestrian crossings, gradient and station dwells are all accounted for. Where the entered demand leaves a switch zone with a busy inner leg and a quiet outer end, the short-turn decision is bound to the outbound tram approaching that switch, and its real time-to-switch is read off the trajectory.`
         : `Temsili <b>${stHw(stHeadway)}</b> sefer aralığında hat <b>${ste.filo} tramvay</b> ile işlemekte; aşağıdaki diyagram her aracı hat boyunca (${(ste.L / 1000).toFixed(1)} km) gerçek konumuna yerleştirir — bu konumlar canlı simülasyonun kullandığı yörüngeden gelir, dolayısıyla sinyal lambaları, makas geçiş hızları, karayolu/yaya geçitleri, eğim ve istasyon duruşları hesaba katılıdır. Girilen talep, bir makas bölgesinin iç kolunu yoğun, dış ucunu sessiz bıraktığında kısa dönüş kararı o makasa yaklaşan gidiş aracına bağlanır ve makasa gerçek ulaşım süresi yörüngeden okunur.`)}
-      <div class="fig">${seferTersSvg(ste)}<div class="cap">${en ? `Figure 5c — Vehicle positions at the representative interval: outbound (▲) / inbound (▼) trams, short-turn switches (🔄, red) and the tram→switch binding for each recommendation.` : `Şekil 5c — Temsili aralıkta araç konumları: gidiş (▲) / dönüş (▼) tramvaylar, kısa dönüş makasları (🔄, kırmızı) ve her öneri için araç→makas bağlantısı.`}</div></div>
+      <div class="fig">${seferTersSvg(ste)}<div class="cap">${en ? `Figure 5c — Vehicle positions at the representative interval: outbound (▲) / inbound (▼) trams, all reverse-running switches (◆, km-labelled) with short-turn candidates (🔄, red) and the tram→switch binding for each recommendation.` : `Şekil 5c — Temsili aralıkta araç konumları: gidiş (▲) / dönüş (▼) tramvaylar, ters işletme yapılabilen tüm makaslar (◆, km etiketli), kısa dönüş adayları (🔄, kırmızı) ve her öneri için araç→makas bağlantısı.`}</div></div>
       ${oneriBlok}
+      ${(() => {
+        const f = ste.filoIhtiyac; if (!f) return "";
+        const py = (r: number) => `%${Math.round(r * 100)}`;
+        const rows = f.eklenecek > 0 ? [
+          [en ? "In service" : "Serviste", `${f.serviste}`],
+          [en ? "Recommended addition" : "Önerilen ekleme", `+${f.eklenecek} → ${f.yeniServiste}`],
+          [en ? "New interval" : "Yeni aralık", stHw(f.yeniHeadwaySn)],
+          [en ? "Peak occupancy" : "En yoğun kesim doluluğu", `${py(f.tepeDoluluk)} → ${py(f.yeniDoluluk)}`],
+          ...(f.durum === "altyapi" ? [[en ? "Unmet (beyond ceiling)" : "Karşılanamayan (tavan üstü)", `${f.acikAdet} ${en ? "trams" : "araç"}`]] : []),
+        ] : [];
+        if (f.problem) {
+          // PROBLEM VAR → rapora belirgin TRAMVAY EKLEME İSTEĞİ düşür.
+          return `<div style="margin-top:8px;border:1px solid ${CK.red};border-left:4px solid ${CK.red};background:${CK.badBgSoft};border-radius:6px;padding:9px 11px">
+            <div style="font-weight:800;color:#8E1224;font-size:10pt;letter-spacing:.02em">⚠ ${en ? "TRAM ADDITION REQUIRED" : "TRAMVAY EKLEME İHTİYACI"}</div>
+            <p style="margin:4px 0 0;font-size:9.5pt;color:#3a2226">${esc(f.mesaj)}</p>
+            ${rows.length ? tbl(en ? ["Metric", "Value"] : ["Gösterge", "Değer"], rows, { first: true }) : ""}
+          </div>`;
+        }
+        // Sorun yok → tek satır durum notu.
+        return gsNot(en
+          ? `Fleet adequacy: in service ${f.serviste} trams; ${f.durum === "tersYeter" ? `the busiest section reaches ${py(f.tepeDoluluk)} but a short-turn at the ${esc(f.tepeDurak)} core brings it within the ${py(f.hedefDoluluk)} target with the current fleet — no tram addition needed.` : `the busiest section stays at ${py(f.tepeDoluluk)}, within the ${py(f.hedefDoluluk)} target — no tram addition needed.`}`
+          : `Filo yeterliliği: serviste ${f.serviste} tramvay; ${f.durum === "tersYeter" ? `en yoğun kesim ${py(f.tepeDoluluk)} doluluğa çıksa da ${esc(f.tepeDurak)} çekirdeğinde kısa dönüş uygulanınca mevcut filoyla ${py(f.hedefDoluluk)} hedefine iner — tramvay eklemeye gerek yok.` : `en yoğun kesim ${py(f.tepeDoluluk)} doluluktadır, ${py(f.hedefDoluluk)} hedefinin içinde — tramvay eklemeye gerek yok.`}`);
+      })()}
       <ul class="muted" style="margin:6px 0 0 16px;padding:0;font-size:9pt">${ste.bilgi.map((b) => `<li style="margin-bottom:2px">${esc(b)}</li>`).join("")}</ul>`;
     }
 

@@ -106,6 +106,37 @@ export function SeferTersEntegre({ rings, stock, cfg, isletme }: { rings: DurakA
         <span><span style={{ color: brand.inkSoft }}>◆</span> ters işletme yapılabilen makas (tümü km ile işaretli)</span>
       </div>
 
+      {/* Tramvay ekleme ihtiyacı modülü */}
+      {s.filoIhtiyac && (() => {
+        const f = s.filoIhtiyac!;
+        const stil: Record<string, { bg: string; bd: string; ik: string; et: string }> = {
+          dengeli: { bg: "#EEF7F1", bd: "#2E7D57", ik: "#1E5C40", et: "Filo dengeli" },
+          tersYeter: { bg: "#EEF4FC", bd: CK.blue, ik: "#1B4E86", et: "Ters işletme yeterli" },
+          ekle: { bg: "#FDF3F4", bd: CK.red, ik: "#8E1224", et: "Tramvay ekle" },
+          altyapi: { bg: "#FBECEC", bd: "#8E1224", ik: "#6E0E1C", et: "Altyapı sınırı" },
+        };
+        const c = stil[f.durum];
+        const py = (r: number) => `%${Math.round(r * 100)}`;
+        return (
+          <div className="mt-3 rounded-lg border-l-4 px-3 py-2.5" style={{ borderColor: c.bd, background: c.bg }}>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded px-1.5 py-0.5 text-xs font-bold text-white" style={{ background: c.bd }}>{f.problem ? "⚠ " : "✓ "}{c.et}</span>
+              <span className="text-sm font-semibold" style={{ color: c.ik }}>Pik {Math.round(f.tepeYuk)} yolcu/sa · {f.tepeDurak} · en yoğun kesim {py(f.tepeDoluluk)} (hedef {py(f.hedefDoluluk)})</span>
+            </div>
+            <p className="mt-1 text-sm" style={{ color: brand.inkSoft }}>{f.mesaj}</p>
+            {f.eklenecek > 0 && (
+              <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs" style={{ color: brand.ink }}>
+                <span>Serviste: <b>{f.serviste}</b></span>
+                <span>Önerilen: <b style={{ color: c.bd }}>+{f.eklenecek} tramvay</b> → <b>{f.yeniServiste}</b></span>
+                <span>Yeni aralık: <b>{sure(f.yeniHeadwaySn)}</b></span>
+                <span>Doluluk: {py(f.tepeDoluluk)} → <b>{py(f.yeniDoluluk)}</b></span>
+                {f.durum === "altyapi" && <span style={{ color: c.bd }}>Karşılanamayan: <b>{f.acikAdet} araç</b></span>}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Öneriler */}
       {s.oneriler.length > 0 ? (
         <div className="mt-3 space-y-2">

@@ -27,6 +27,26 @@ describe("Sefer ↔ Ters İşletme entegre algoritma", () => {
     expect(cok.filo).toBeGreaterThan(az.filo);
   });
 
+  it("tramvay ekleme ihtiyacı modülü: durum + doluluk mantıklı", () => {
+    // Büyük headway → az araç serviste → yoğunlukta ekleme/altyapı beklenir.
+    const seyrek = seferTersEntegre(rings, stock, cfg, isletme, 15 * 60, 0);
+    const f = seyrek.filoIhtiyac!;
+    expect(f).not.toBeNull();
+    expect(["dengeli", "tersYeter", "ekle", "altyapi"]).toContain(f.durum);
+    expect(f.tepeDoluluk).toBeGreaterThan(0);
+    // problem varsa ya araç eklenir ya da açık (tavan üstü) raporlanır
+    if (f.problem) expect(f.eklenecek + f.acikAdet).toBeGreaterThan(0);
+    // ekleme önerilirse yeni doluluk mevcut serviste doluluğundan düşük olmalı
+    if (f.eklenecek > 0) expect(f.yeniDoluluk).toBeLessThanOrEqual(f.tepeDoluluk + 1e-9);
+  });
+
+  it("sık sefer (küçük headway) filo ihtiyacını dengeler", () => {
+    const sik = seferTersEntegre(rings, stock, cfg, isletme, 2 * 60, 0);
+    const seyrek = seferTersEntegre(rings, stock, cfg, isletme, 15 * 60, 0);
+    // Daha sık sefer → serviste daha çok araç → daha az/eşit ekleme ihtiyacı
+    expect(sik.filoIhtiyac!.eklenecek).toBeLessThanOrEqual(seyrek.filoIhtiyac!.eklenecek);
+  });
+
   it("öneri üretirse dönüş kararı bir araca bağlanır + gerçek ulaşım süresi taşır", () => {
     const s = seferTersEntegre(rings, stock, cfg, isletme, 4 * 60, 300);
     for (const o of s.oneriler) {
