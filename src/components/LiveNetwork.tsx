@@ -453,6 +453,9 @@ export function LiveNetwork({
     const r = sampleLoop(loop.ornekler, phase);
     const gidis = r.s <= loop.L + 1e-6;
     const fp = gidis ? Math.min(loop.L, r.s) : Math.max(0, loop.loopLen - r.s);
+    // Arıza kuyruğunda TUTULAN tren fiilen DURUYOR: hızı yörüngeden değil 0 göster (faz
+    // dondurulduğu için r.v o konumun yörünge hızını verirdi = yanıltıcı "40 km/h").
+    if (arizaTutRef.current.has(k)) return { tr: trBase, fp, up: gidis, v: 0, durum: "dwell" as LoopDurum, ad: "arızalı blok arkasında güvenle bekliyor" };
     return { tr: trBase, fp, up: gidis, v: r.v, durum: r.durum, ad: r.ad };
   }) : [];
   // Ters işletmeye geçmiş trenler normal döngüden çıkarılır (kendi overlay'iyle çizilir).
@@ -917,10 +920,19 @@ export function LiveNetwork({
         );
       })()}
 
-      {/* Arıza aktif → bildirim: döngü İÇİNDE kuyruk (motor değişmez, sahne sıfırlanmaz) */}
+      {/* Arıza aktif → FAIL-SAFE bilgi kartı: döngü İÇİNDE kuyruk (motor değişmez, sahne
+          sıfırlanmaz). Kuyruktaki tren sayısı canlı sayılır (arizaTutRef her kare güncel). */}
       {loop && faultBlocks.length > 0 && (
-        <div className="mb-2 rounded-md border-l-4 px-3 py-2 text-xs" style={{ background: CK.badBgSoft, borderColor: brand.red, color: brand.inkSoft }}>
-          <b style={{ color: brand.red }}>⚠ Blok arızası:</b> {faultBlocks.length} blok arızalı → trenler arızalı bloğun gerisinde <b>olduğu yerde kuyruklanır</b> (tren boyu aralığıyla), bloğu geçmiş trenler akmaya devam eder. Sahne sıfırlanmaz, tren ışınlanmaz; arıza kalkınca herkes kaldığı yerden sürer. Kaldırmak için ✕ işaretli bloğa tekrar tıkla. (Arıza sürerken ters işletme etkileşimi duraklar.)
+        <div className="mb-2 overflow-hidden rounded-md border-l-4 text-xs" style={{ background: CK.badBgSoft, borderColor: brand.red, color: brand.inkSoft }}>
+          <div className="px-3 py-2">
+            <b style={{ color: brand.red }}>⚠ Blok arızası ({faultBlocks.length} blok)</b> — arızalı bloğa tekrar dokununca kalkar.
+          </div>
+          <div className="px-3 py-2" style={{ background: DURUM_STIL.dwell.renk + "18", borderTop: `1px solid ${brand.border}` }}>
+            <b style={{ color: brand.ink }}>🛡️ Fail-safe:</b> {arizaTutRef.current.size > 0 ? (<><b>{arizaTutRef.current.size} tramvay</b> arızalı bloğun gerisinde <b>güvenle kuyrukta</b> — arkadan gelen önündekine <b>çarpmadı</b> (tren boyu aralığıyla durdu).</>) : (<>arızaya yaklaşan tramvay bloğun gerisinde <b>güvenle durur</b>, arkadan gelenler kuyruklanır.</>)} Bloğu <b>geçmiş</b> tramvaylar akmaya devam eder.
+          </div>
+          <div className="px-3 py-2" style={{ color: brand.muted, borderTop: `1px solid ${brand.border}` }}>
+            Sahne sıfırlanmaz, tramvay ışınlanmaz; arıza kalkınca herkes <b>kaldığı yerden</b> sürer — gerçek sinyalizasyonun tek-nokta arızasına dayanıklılığı. (Arıza sürerken ters işletme etkileşimi duraklar.)
+          </div>
         </div>
       )}
 
