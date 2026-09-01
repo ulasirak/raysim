@@ -318,26 +318,31 @@ function yukDwellSvg(duraklar: DurakTalep[], rings: DurakArasiRing[], en = false
   // DEĞİŞKEN çubuk genişliği: komşu boşluğa göre → yakın duraklarda incelir, üst üste binmez.
   const barGen = (kk: number[]) => { const xs = kk.map(X); return xs.map((x, i) => { const sol = i > 0 ? x - xs[i - 1] : Infinity, sag = i < xs.length - 1 ? xs[i + 1] - x : Infinity; const g = Math.min(sol, sag); return Math.max(1.2, Math.min(14, (Number.isFinite(g) ? g : 14) * 0.85)); }); };
   const bwY = barGen(duraklar.map((d) => d.konum)), bwD = barGen(dw.map((d) => d.konum));
+  // Bar üstü değer etiketi (döndürülmüş, dik) — her barın tam sayı değeri, çakışmasız.
+  const dikNum = (x: number, topY: number, val: number, col: string, kalin = false): string =>
+    `<text x="${x.toFixed(1)}" y="${(topY - 2).toFixed(1)}" transform="rotate(-90 ${x.toFixed(1)} ${(topY - 2).toFixed(1)})" text-anchor="start" font-family="${CK.sans}" font-size="6" font-weight="${kalin ? 700 : 500}" fill="${col}">${val}</text>`;
   // Üst: yük
-  const H1 = 150, pt1 = 20, pb1 = 8, ph1 = H1 - pt1 - pb1;
+  const H1 = 162, pt1 = 34, pb1 = 8, ph1 = H1 - pt1 - pb1;
   const Y1 = (v: number) => pt1 + (1 - v / yukTop) * ph1;
   const yukBar = duraklar.map((d, i) => `<rect x="${(X(d.konum) - bwY[i] / 2).toFixed(1)}" y="${Y1(d.tepeYuk).toFixed(1)}" width="${bwY[i].toFixed(1)}" height="${Math.max(0, pt1 + ph1 - Y1(d.tepeYuk)).toFixed(1)}" rx="1" fill="${dRenk(d.doluluk)}" fill-opacity="0.9"/>`).join("");
+  const yukDeger = duraklar.map((d) => dikNum(X(d.konum), Y1(d.tepeYuk), Math.round(d.tepeYuk), dRenk(d.doluluk), d.ad === tepe.ad)).join("");
   const y1t = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(yukTop * f)).map((v) => num(padL - 5, Y1(v) + 2.5, `${v}`, { anchor: "end", size: 8 })).join("");
-  // Alt: dwell (üstün altına kaydır)
-  const gap = 22, H2 = 118, pt2 = H1 + gap, pb2 = 26, ph2 = H2 - 4 - pb2;
+  // Alt: dwell (üstün altına kaydır) — bar üstü değer + eksiksiz km ekseni
+  const gap = 30, H2 = 132, pt2 = H1 + gap, pb2 = 42, ph2 = H2 - 4 - pb2;
   const base2 = pt2 + ph2;
   const Y2 = (v: number) => pt2 + (1 - v / dwTop) * ph2;
   const s2 = (x: number, w: number, yT: number, yB: number, c: string) => `<rect x="${(x - w / 2).toFixed(1)}" y="${yT.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(0, yB - yT).toFixed(1)}" fill="${c}"/>`;
   const dwBar = dw.map((d, i) => s2(X(d.konum), bwD[i], Y2(d.a), base2, "#9AA7B2") + s2(X(d.konum), bwD[i], Y2(d.a + d.y), Y2(d.a), CK.blue) + s2(X(d.konum), bwD[i], Y2(d.a + d.y + d.k), Y2(d.a + d.y), "#C9D2DA")).join("");
+  const dwDeger = dw.map((d) => dikNum(X(d.konum), Y2(d.t), Math.round(d.t), CK.ink)).join("");
   const y2t = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(dwTop * f)).map((v) => num(padL - 5, Y2(v) + 2.5, `${v}`, { anchor: "end", size: 8 })).join("");
-  const kmSay = Math.max(2, Math.round(L / 1000));
-  const xt = Array.from({ length: kmSay + 1 }, (_, i) => num(X((L * i) / kmSay), base2 + 12, `${((L * i) / kmSay / 1000).toFixed(1)}`, { anchor: "middle", size: 7.5 })).join("");
+  // X ekseni EKSİKSİZ: her durağın km'si (çakışmasız satırlara dağıtılmış).
+  const kmSatir = satirYerlesim(dw.map((d) => X(d.konum)), 22, 3);
+  const xt = dw.map((d, i) => num(X(d.konum), base2 + 11 + kmSatir[i] * 9, `${(d.konum / 1000).toFixed(2)}`, { anchor: "middle", size: 6.6 })).join("");
   const H = pt2 + H2 - 4;
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%">`
-    + `${y1t}<line x1="${padL}" y1="${pt1 + ph1}" x2="${W - padR}" y2="${pt1 + ph1}" stroke="${CK.ink2}" stroke-width="0.7"/>${yukBar}`
-    + lab(X(tepe.konum), Y1(tepe.tepeYuk) - 4, `↑ ${en ? "peak" : "tepe"}: ${esc(tepe.ad)} · ${Math.round(tepe.tepeYuk)} ${en ? "pax/h" : "yolcu/sa"} · ${(tepe.konum / 1000).toFixed(2)} km`, { anchor: "middle", size: 8, weight: 700, color: CK.red })
-    + lab(padL, pt1 - 8, en ? "load (pax/h)" : "yük (yolcu/sa)", { size: 8, weight: 600, color: CK.ink2 })
-    + `${y2t}<line x1="${padL}" y1="${base2}" x2="${W - padR}" y2="${base2}" stroke="${CK.ink2}" stroke-width="0.7"/>${dwBar}${xt}`
+    + `${y1t}<line x1="${padL}" y1="${pt1 + ph1}" x2="${W - padR}" y2="${pt1 + ph1}" stroke="${CK.ink2}" stroke-width="0.7"/>${yukBar}${yukDeger}`
+    + lab(padL, pt1 - 22, `${en ? "load (pax/h)" : "yük (yolcu/sa)"} — ${en ? "peak" : "tepe"}: ${esc(tepe.ad)} · ${Math.round(tepe.tepeYuk)} ${en ? "pax/h" : "yolcu/sa"} @ ${(tepe.konum / 1000).toFixed(2)} km`, { size: 8, weight: 600, color: CK.ink2 })
+    + `${y2t}<line x1="${padL}" y1="${base2}" x2="${W - padR}" y2="${base2}" stroke="${CK.ink2}" stroke-width="0.7"/>${dwBar}${dwDeger}${xt}`
     + lab(padL, pt2 - 6, en ? "dwell (s): open / passenger / close" : "duruş (s): açma / yolcu / kapama", { size: 8, weight: 600, color: CK.ink2 })
     + lab(padL + (W - padL - padR) / 2, H - 3, en ? "distance (km) →" : "mesafe (km) →", { anchor: "middle", size: 8, color: CK.ink2 })
     + `</svg>`;

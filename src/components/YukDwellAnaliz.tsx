@@ -10,6 +10,7 @@
 import { useMemo } from "react";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
+import { satirYerlesim } from "@/lib/anaray/grafikNoktalar";
 import type { DurakArasiRing } from "@/lib/anaray/ring";
 
 interface DurakYuk { ad: string; konum: number; tepeYuk: number; doluluk: number; terminal: boolean }
@@ -53,18 +54,24 @@ export function YukDwellAnaliz({ duraklar, rings }: { duraklar: DurakYuk[]; ring
   const bwY = barGenislikleri(duraklar.map((d) => d.konum));
   const bwD = barGenislikleri(dwell.map((d) => d.konum));
 
+  // Bar üstü değer etiketi (döndürülmüş, dik) — her barın tam sayı değeri, çakışmasız.
+  const dikDeger = (x: number, topY: number, val: number, col: string, kalin = false): string =>
+    `<text x="${x.toFixed(1)}" y="${(topY - 2).toFixed(1)}" transform="rotate(-90 ${x.toFixed(1)} ${(topY - 2).toFixed(1)})" text-anchor="start" font-family="${CK.sans}" font-size="6.3" font-weight="${kalin ? 700 : 500}" fill="${col}">${val}</text>`;
+
   // ——— 1) Yük profili ———
-  const Hy = 190, padTy = 26, padBy = 22, phy = Hy - padTy - padBy;
+  const Hy = 202, padTy = 38, padBy = 22, phy = Hy - padTy - padBy;
   const Yy = (v: number) => padTy + (1 - v / yukTop) * phy;
   const yukBar = duraklar.map((d, i) => {
     const x = X(d.konum), y = Yy(d.tepeYuk), w = bwY[i];
     return `<rect x="${(x - w / 2).toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(0, padTy + phy - y).toFixed(1)}" rx="1" fill="${dolulukRenk(d.doluluk)}" fill-opacity="0.9"><title>${esc(d.ad)} (${(d.konum / 1000).toFixed(2)} km): ${Math.round(d.tepeYuk)} yolcu/sa · %${Math.round(d.doluluk * 100)} doluluk</title></rect>`;
   }).join("");
+  // Her barın tepe yükü (tam sayı) bar üstünde.
+  const yukDeger = duraklar.map((d) => dikDeger(X(d.konum), Yy(d.tepeYuk), Math.round(d.tepeYuk), dolulukRenk(d.doluluk), d.ad === tepe.ad)).join("");
   const yukTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(yukTop * f)).map((v) =>
     `<text x="${padL - 5}" y="${(Yy(v) + 2.5).toFixed(1)}" text-anchor="end" font-size="7.5" fill="${brand.muted}">${v}</text>`).join("");
 
   // ——— 2) Dwell dökümü ———
-  const Hd = 170, padTd = 16, padBd = 30, phd = Hd - padTd - padBd;
+  const Hd = 188, padTd = 24, padBd = 48, phd = Hd - padTd - padBd;
   const Yd = (v: number) => padTd + (1 - v / dwTop) * phd;
   const seg = (x: number, w: number, yTop: number, yBot: number, col: string, t: string) =>
     `<rect x="${(x - w / 2).toFixed(1)}" y="${yTop.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(0, yBot - yTop).toFixed(1)}" fill="${col}"><title>${t}</title></rect>`;
@@ -76,28 +83,29 @@ export function YukDwellAnaliz({ duraklar, rings }: { duraklar: DurakYuk[]; ring
       + seg(x, w, yY, yA, CK.blue, `${esc(d.ad)} · yolcu değişimi ${Math.round(d.yolcu)} s · toplam ${Math.round(d.toplam)} s`)
       + seg(x, w, yK, yY, "#C9D2DA", `${esc(d.ad)} · kapı kapama ${d.kapama} s`);
   }).join("");
+  // Her barın toplam duruşu (tam sayı, s) bar üstünde.
+  const dwDeger = dwell.map((d) => dikDeger(X(d.konum), Yd(d.toplam), Math.round(d.toplam), brand.ink)).join("");
   const dwTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(dwTop * f)).map((v) =>
     `<text x="${padL - 5}" y="${(Yd(v) + 2.5).toFixed(1)}" text-anchor="end" font-size="7.5" fill="${brand.muted}">${v}</text>`).join("");
-  const kmSay = Math.max(2, Math.round(L / 1000));
-  const xTicks = Array.from({ length: kmSay + 1 }, (_, i) => {
-    const k = (L * i) / kmSay;
-    return `<text x="${X(k).toFixed(1)}" y="${(padTd + phd + 12).toFixed(1)}" text-anchor="middle" font-size="7.5" fill="${brand.muted}">${(k / 1000).toFixed(1)}</text>`;
-  }).join("");
+  // X ekseni EKSİKSİZ: her durağın km'si (çakışmasız satırlara dağıtılmış).
+  const dwKmSatir = satirYerlesim(dwell.map((d) => X(d.konum)), 24, 3);
+  const xTicks = dwell.map((d, i) =>
+    `<text x="${X(d.konum).toFixed(1)}" y="${(padTd + phd + 11 + dwKmSatir[i] * 9).toFixed(1)}" text-anchor="middle" font-size="6.8" fill="${brand.muted}">${(d.konum / 1000).toFixed(2)}</text>`).join("");
 
   return (
     <div className="-mx-1 overflow-x-auto px-1 sm:mx-0" style={{ WebkitOverflowScrolling: "touch" }}>
       <div className="min-w-[680px] sm:min-w-0 space-y-2">
         {/* Yük profili */}
         <div>
-          <div className="mb-0.5 px-1 text-xs font-semibold" style={{ color: brand.ink }}>Yük profili — durak başına tepe araç yükü (yolcu/saat), doluluğa göre renkli</div>
+          <div className="mb-0.5 px-1 text-xs font-semibold" style={{ color: brand.ink }}>Yük profili — durak başına tepe araç yükü (yolcu/saat), doluluğa göre renkli · <span style={{ color: CK.red }}>tepe: {tepe.ad} · {Math.round(tepe.tepeYuk)} yolcu/sa @ {(tepe.konum / 1000).toFixed(2)} km</span></div>
           <svg viewBox={`0 0 ${W} ${Hy}`} className="w-full h-auto" role="img" aria-label="Yük profili"
-            dangerouslySetInnerHTML={{ __html: `${yukTicks}<line x1="${padL}" y1="${padTy + phy}" x2="${W - padR}" y2="${padTy + phy}" stroke="${brand.border}"/>${yukBar}<text x="${X(tepe.konum).toFixed(1)}" y="${(Yy(tepe.tepeYuk) - 4).toFixed(1)}" text-anchor="middle" font-size="8" font-weight="700" fill="${CK.red}">↑ tepe: ${esc(tepe.ad)} · ${Math.round(tepe.tepeYuk)} yolcu/sa · ${(tepe.konum / 1000).toFixed(2)} km</text><text x="10" y="${padTy + phy / 2}" text-anchor="middle" font-size="8" font-weight="600" fill="${brand.inkSoft}" transform="rotate(-90 10 ${padTy + phy / 2})">yolcu/sa ↑</text>` }} />
+            dangerouslySetInnerHTML={{ __html: `${yukTicks}<line x1="${padL}" y1="${padTy + phy}" x2="${W - padR}" y2="${padTy + phy}" stroke="${brand.border}"/>${yukBar}${yukDeger}<text x="10" y="${padTy + phy / 2}" text-anchor="middle" font-size="8" font-weight="600" fill="${brand.inkSoft}" transform="rotate(-90 10 ${padTy + phy / 2})">yolcu/sa ↑</text>` }} />
         </div>
         {/* Dwell dökümü */}
         <div>
           <div className="mb-0.5 px-1 text-xs font-semibold" style={{ color: brand.ink }}>Duruş (dwell) dökümü — kapı açma / yolcu değişimi / kapı kapama (saniye)</div>
           <svg viewBox={`0 0 ${W} ${Hd}`} className="w-full h-auto" role="img" aria-label="Dwell dökümü"
-            dangerouslySetInnerHTML={{ __html: `${dwTicks}<line x1="${padL}" y1="${padTd + phd}" x2="${W - padR}" y2="${padTd + phd}" stroke="${brand.border}"/>${dwBar}${xTicks}<text x="10" y="${padTd + phd / 2}" text-anchor="middle" font-size="8" font-weight="600" fill="${brand.inkSoft}" transform="rotate(-90 10 ${padTd + phd / 2})">saniye ↑</text><text x="${((W) / 2).toFixed(1)}" y="${Hd - 2}" text-anchor="middle" font-size="8" font-weight="600" fill="${brand.inkSoft}">Mesafe (km) →</text>` }} />
+            dangerouslySetInnerHTML={{ __html: `${dwTicks}<line x1="${padL}" y1="${padTd + phd}" x2="${W - padR}" y2="${padTd + phd}" stroke="${brand.border}"/>${dwBar}${dwDeger}${xTicks}<text x="10" y="${padTd + phd / 2}" text-anchor="middle" font-size="8" font-weight="600" fill="${brand.inkSoft}" transform="rotate(-90 10 ${padTd + phd / 2})">saniye ↑</text><text x="${((W) / 2).toFixed(1)}" y="${Hd - 2}" text-anchor="middle" font-size="8" font-weight="600" fill="${brand.inkSoft}">Mesafe (km) →</text>` }} />
         </div>
         <div className="flex flex-wrap gap-x-4 gap-y-1 px-1 text-xs" style={{ color: brand.muted }}>
           <span><span style={{ color: YESIL }}>■</span> &lt;%50 · <span style={{ color: CK.amber }}>■</span> %50–85 · <span style={{ color: CK.red }}>■</span> &gt;%85 doluluk</span>
