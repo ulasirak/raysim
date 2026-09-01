@@ -140,6 +140,10 @@ export function LiveNetwork({
   const blocksRef = useRef(blocks);                     // blok sınırları (arıza kuyruğu için)
   const faultBlocksRef = useRef(faultBlocks);           // arızalı blok indeksleri (canlı)
   const trainLenRef = useRef(trainLen);                 // tren boyu (kuyruk aralığı)
+  // Arıza KUYRUĞU (kalıcı): bir tren arızalı bloğun gerisinde yakalanınca arıza kalkana
+  // dek burada kalır (k → {kuyruk konumu, leg}); her kare aynı konuma yeniden kilitlenir.
+  // Kalıcılık şart: aksi halde faz-state gecikmesinde tren "hareket etti" sanılıp bloktan geçer.
+  const arizaTutRef = useRef<Map<number, { sHedef: number; gidisMi: boolean }>>(new Map());
   // DÖNGÜ motoru arıza olsa da AÇIK kalır (motor DEĞİŞMEZ → donma/ışınlanma yok).
   // Kalıcı blok arızası döngü İÇİNDE ele alınır: trenler arızalı bloğun gerisinde
   // tren boyu aralığıyla KUYRUKLANIR (faz sabitlenir), arızayı geçmiş trenler akmaya
@@ -253,49 +257,51 @@ export function LiveNetwork({
       // herkes kaldığı yerden sürer. Gidiş legi soldan (fp artan), dönüş legi sağdan yaklaşır.
       const fb = faultBlocksRef.current;
       const bl = blocksRef.current;
-      if (lp && fb.length && bl.length > 1) {
+      const tutMap = arizaTutRef.current;
+      const arizali = lp ? [...fb].filter((i) => i >= 0 && i < bl.length - 1).sort((a, b2) => a - b2) : [];
+      if (!lp || arizali.length === 0) {
+        // Arıza yok → tutulan varsa SERBEST bırak (faz kaydırması korunur → kaldığı yerden sürer).
+        if (tutMap.size) tutMap.clear();
+      } else {
         const fkNow = fazKaydirmaRef.current;
         const margin = 6;                                  // arızanın kaç m gerisinde dursun
         const araGap = (trainLenRef.current || 40) + 12;   // kuyruk aralığı (tren boyu + pay)
-        const arizali = [...fb].filter((i) => i >= 0 && i < bl.length - 1).sort((a, b2) => a - b2);
-        if (arizali.length) {
-          const gStop = Math.max(0, bl[arizali[0]] - margin);                       // gidiş durak çizgisi (sol kenar)
-          const gFar = bl[arizali[0] + 1];                                          // gidiş: arıza bloğunun UZAK (sağ) kenarı — bunu geçen serbest
-          const dStop = Math.min(lp.L, bl[arizali[arizali.length - 1] + 1] + margin); // dönüş durak çizgisi (sağ kenar)
-          const dNear = bl[arizali[arizali.length - 1]];                            // dönüş: arıza bloğunun UZAK (sol) kenarı — bunu geçen serbest
-          type TP = { k: number; fp: number; gidis: boolean; taban: number };
-          const tps: TP[] = [];
-          for (let k = 0; k < lp.count; k++) {
-            const dg = lp.dagitim?.[k];
-            if (dg && nx < dg.dispatchT - 1e-6) continue;  // henüz depoda
-            const taban = dg ? dg.startPhase + (nx - dg.dispatchT) : nx + k * lp.offset;
-            const ph = (((taban + (fkNow[k] ?? 0)) % lp.periyot) + lp.periyot) % lp.periyot;
-            const r = sampleLoop(lp.ornekler, ph);
-            const gidis = r.s <= lp.L + 1e-6;
-            const fp = gidis ? Math.min(lp.L, r.s) : Math.max(0, lp.loopLen - r.s);
-            tps.push({ k, fp, gidis, taban });
-          }
-          const tut: { k: number; sHedef: number; gidisMi: boolean; taban: number }[] = [];
-          // GİDİŞ: arıza bloğunu HENÜZ GEÇMEMİŞ olanlar (fp ≤ uzak kenar; blok İÇİNE sıçrayan
-          // da dahil → yüksek hızda pencere atlanmaz), öndeki (fp büyük) durak çizgisine kilitlenir.
-          let cizgiG = gStop;
-          for (const x of tps.filter((y) => y.gidis && y.fp <= gFar + 1e-6).sort((a, b2) => b2.fp - a.fp)) {
-            if (x.fp >= cizgiG - 1e-6) { tut.push({ k: x.k, sHedef: cizgiG, gidisMi: true, taban: x.taban }); cizgiG -= araGap; }
-            else break;                                    // bu tren çizginin gerisinde → serbest, arkası da serbest
-          }
-          // DÖNÜŞ: arıza bloğunu HENÜZ GEÇMEMİŞ olanlar (fp ≥ uzak/sol kenar), öndeki (fp küçük) durak çizgisinde
-          let cizgiD = dStop;
-          for (const x of tps.filter((y) => !y.gidis && y.fp >= dNear - 1e-6).sort((a, b2) => a.fp - b2.fp)) {
-            if (x.fp <= cizgiD + 1e-6) { tut.push({ k: x.k, sHedef: lp.loopLen - cizgiD, gidisMi: false, taban: x.taban }); cizgiD += araGap; }
-            else break;
-          }
-          if (tut.length) {
-            setFazKaydirma((prev) => {
-              const nf = { ...prev };
-              for (const h of tut) nf[h.k] = fazAtS(lp.ornekler, h.sHedef, lp.L, h.gidisMi) - h.taban;
-              return nf;
-            });
-          }
+        const gStop = Math.max(0, bl[arizali[0]] - margin);                          // gidiş durak çizgisi (sol kenar)
+        const gFar = bl[arizali[0] + 1];                                             // gidiş: arıza bloğunun UZAK (sağ) kenarı
+        const dStop = Math.min(lp.L, bl[arizali[arizali.length - 1] + 1] + margin);  // dönüş durak çizgisi (sağ kenar)
+        const dNear = bl[arizali[arizali.length - 1]];                               // dönüş: arıza bloğunun UZAK (sol) kenarı
+        const tabanOf = (k: number) => { const dg = lp.dagitim?.[k]; return dg ? dg.startPhase + (nx - dg.dispatchT) : nx + k * lp.offset; };
+        // Anlık (render) konumları: tutulanlar zaten kuyruk konumunda görünür, serbestler doğal.
+        type TP = { k: number; fp: number; gidis: boolean };
+        const tps: TP[] = [];
+        for (let k = 0; k < lp.count; k++) {
+          const dg = lp.dagitim?.[k];
+          if (dg && nx < dg.dispatchT - 1e-6) continue;    // henüz depoda
+          const ph = (((tabanOf(k) + (fkNow[k] ?? 0)) % lp.periyot) + lp.periyot) % lp.periyot;
+          const r = sampleLoop(lp.ornekler, ph);
+          const gidis = r.s <= lp.L + 1e-6;
+          const fp = gidis ? Math.min(lp.L, r.s) : Math.max(0, lp.loopLen - r.s);
+          tps.push({ k, fp, gidis });
+        }
+        // Kuyruğa YENİ katılım: tutulmayan bir tren, kuyruğun kuyruk-ucu boş yuvasına ulaşınca
+        // eklenir (öndeki fp büyük gidiş / fp küçük dönüş → ön yuvayı alır). Kalıcı → bir daha çıkmaz.
+        let nG = [...tutMap.values()].filter((v) => v.gidisMi).length;
+        let nD = [...tutMap.values()].filter((v) => !v.gidisMi).length;
+        for (const x of tps.filter((y) => y.gidis && !tutMap.has(y.k)).sort((a, b2) => b2.fp - a.fp)) {
+          const yuva = gStop - nG * araGap;                // sıradaki boş yuva (kuyruk ucu)
+          if (x.fp >= yuva - 1e-6 && x.fp <= gFar + 1e-6) { tutMap.set(x.k, { sHedef: yuva, gidisMi: true }); nG++; }
+        }
+        for (const x of tps.filter((y) => !y.gidis && !tutMap.has(y.k)).sort((a, b2) => a.fp - b2.fp)) {
+          const yuva = dStop + nD * araGap;
+          if (x.fp <= yuva + 1e-6 && x.fp >= dNear - 1e-6) { tutMap.set(x.k, { sHedef: lp.loopLen - yuva, gidisMi: false }); nD++; }
+        }
+        // Tutulan HER trenin fazını kuyruk konumuna kilitle (her kare → gecikmeye rağmen sabit).
+        if (tutMap.size) {
+          setFazKaydirma((prev) => {
+            const nf = { ...prev };
+            for (const [k, v] of tutMap) nf[k] = fazAtS(lp.ornekler, v.sHedef, lp.L, v.gidisMi) - tabanOf(k);
+            return nf;
+          });
         }
       }
     };
