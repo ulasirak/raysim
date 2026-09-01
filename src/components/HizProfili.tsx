@@ -9,6 +9,7 @@
 import { useMemo } from "react";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
+import { hizDegisimNoktalari, satirYerlesim } from "@/lib/anaray/grafikNoktalar";
 import type { LoopYorunge } from "@/lib/anaray/signalling";
 import type { Line } from "@/lib/anaray/types";
 
@@ -33,10 +34,17 @@ export function HizProfili({ loop, line }: { loop: LoopYorunge; line: Line }) {
   const { L, hiz, vTop } = veri;
   const duraklar = line.stations.filter((s) => s.tip !== "gecit").map((s) => ({ ad: s.name, pos: s.position }));
 
-  const W = 860, H = 250, padL = 44, padR = 14, padT = 20, padB = 40;
+  const W = 860, H = 264, padL = 44, padR = 14, padT = 20, padB = 54;
   const pw = W - padL - padR, ph = H - padT - padB;
   const X = (s: number) => padL + (s / L) * pw;
   const Y = (vkmh: number) => padT + (1 - vkmh / vTop) * ph;
+
+  // Değişim noktaları (durak / limit değişimi / uçlar) → km etiketi tam o noktada, çakışmasız.
+  const noktalar = hizDegisimNoktalari(loop, line);
+  const nokRenk = (tip: string) => (tip === "durak" ? CK.red : tip === "limit" ? CK.amber : brand.muted);
+  const nokX = noktalar.map((n) => X(n.s));
+  const nokSatir = satirYerlesim(nokX, 30, 3);
+  const eksenY = padT + ph;
 
   // Hız-limiti zarfı (segment vmax basamakları).
   const limitYol = line.segments.map((sg, i) => {
@@ -47,9 +55,6 @@ export function HizProfili({ loop, line }: { loop: LoopYorunge; line: Line }) {
   const hizYol = hiz.map((p, i) => `${i === 0 ? "M" : "L"}${X(p.s).toFixed(1)},${Y(p.v * 3.6).toFixed(1)}`).join(" ");
   // Y ekseni km/h işaretleri — her 5 km/h (kısıt hızları 15/25/35 dâhil okunsun).
   const yIsaret = Array.from({ length: Math.floor(vTop / 5) + 1 }, (_, i) => i * 5);
-  // X ekseni km işaretleri — her ~1 km (sık, en çok 26 etiket).
-  const kmSay = Math.max(2, Math.min(26, Math.round(L / 1000)));
-  const xIsaret = Array.from({ length: kmSay + 1 }, (_, i) => (L * i) / kmSay);
 
   return (
     <div className="-mx-1 overflow-x-auto px-1 sm:mx-0" style={{ WebkitOverflowScrolling: "touch" }}>
@@ -66,14 +71,23 @@ export function HizProfili({ loop, line }: { loop: LoopYorunge; line: Line }) {
           {duraklar.map((d, i) => (
             <line key={i} x1={X(d.pos)} y1={padT} x2={X(d.pos)} y2={padT + ph} stroke={CK.track} strokeWidth={0.6} strokeOpacity={0.8} />
           ))}
-          {/* X ekseni + km */}
-          <line x1={padL} y1={padT + ph} x2={padL + pw} y2={padT + ph} stroke={brand.border} strokeWidth={1} />
-          {xIsaret.map((s, i) => (
-            <text key={i} x={X(s)} y={padT + ph + 12} textAnchor="middle" fontSize={7.5} fill={brand.muted}>{(s / 1000).toFixed(1)}</text>
-          ))}
+          {/* X ekseni */}
+          <line x1={padL} y1={eksenY} x2={padL + pw} y2={eksenY} stroke={brand.border} strokeWidth={1} />
           {/* Hız-limiti zarfı (gri kesikli) + gerçek hız (mavi) */}
           <path d={limitYol} fill="none" stroke={brand.muted} strokeWidth={1} strokeDasharray="4 3" strokeOpacity={0.8} />
           <path d={hizYol} fill="none" stroke={CK.blue} strokeWidth={1.4} strokeLinejoin="round" />
+          {/* Değişim noktaları: eğri üstünde nokta + km etiketi (çakışmasız, satırlara dağıtılmış) */}
+          {noktalar.map((n, i) => {
+            const x = X(n.s), y = Y(n.v * 3.6), ly = eksenY + 11 + nokSatir[i] * 9, renk = nokRenk(n.tip);
+            return (
+              <g key={i}>
+                <line x1={x} y1={y} x2={x} y2={eksenY} stroke={renk} strokeWidth={0.5} strokeOpacity={0.5} />
+                <circle cx={x} cy={y} r={1.9} fill={renk} />
+                <line x1={x} y1={eksenY} x2={x} y2={ly - 6} stroke={renk} strokeWidth={0.4} strokeOpacity={0.4} />
+                <text x={x} y={ly} textAnchor="middle" fontSize={7} fontWeight={n.tip === "durak" ? 600 : 400} fill={renk}>{(n.s / 1000).toFixed(2)}</text>
+              </g>
+            );
+          })}
           {/* Eksen başlıkları */}
           <text x={padL + pw / 2} y={H - 3} textAnchor="middle" fontSize={8} fontWeight={600} fill={brand.inkSoft}>Mesafe (km) →</text>
           <text x={11} y={padT + ph / 2} textAnchor="middle" fontSize={8} fontWeight={600} fill={brand.inkSoft} transform={`rotate(-90 11 ${padT + ph / 2})`}>Hız (km/h) ↑</text>
@@ -81,7 +95,8 @@ export function HizProfili({ loop, line }: { loop: LoopYorunge; line: Line }) {
         <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 px-1 text-xs" style={{ color: brand.muted }}>
           <span><span style={{ color: CK.blue }}>▬</span> Gerçek hız (gidiş)</span>
           <span><span style={{ color: brand.muted }}>╌</span> Hız limiti (segment vmax)</span>
-          <span>Dip noktaları = istasyon duruşları · limitin altındaki kısım = hızlanma/frenleme</span>
+          <span>Dip = istasyon duruşu · limitin altı = hızlanma/frenleme</span>
+          <span>km etiketleri değişim noktalarında: <span style={{ color: CK.red }}>●</span> durak · <span style={{ color: CK.amber }}>●</span> limit değişimi · <span style={{ color: brand.muted }}>●</span> hat ucu</span>
         </div>
       </div>
     </div>

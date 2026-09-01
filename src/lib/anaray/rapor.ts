@@ -17,6 +17,7 @@ import { PARAM_META, paramGoster, birim, varsayilanIsletme } from "./config";
 import { terminalMakasSayilari, etkinPeronSayisi, etkinBogazIsgali, terminalDonusParalel, terminalSeriDonus, type TerminalConfig } from "./config";
 import { tersIsletmeAnaliz, type DurakTalep } from "./tersisletme";
 import { seferTersEntegre, type SeferTersSonuc } from "./seferters";
+import { hizDegisimNoktalari, bildIstasyonZamanlari, bildKesisimZamanlari, satirYerlesim } from "./grafikNoktalar";
 import { maksimumTren, terminalHeadway } from "./kapasite";
 import { tarifeUret } from "./tarife";
 import { duyarlilikAnaliz } from "./duyarlilik";
@@ -174,11 +175,13 @@ function bildfahrplanSvg(loopY: LoopYorunge, line: Line, filo: number, en = fals
   if (L <= 0 || periyot <= 0 || filo < 1) return "";
   const offset = periyot / filo;
   const nist = line.stations.length;
-  const W = 820, H = Math.max(262, nist * 13 + 80), padL = 108, padR = 14, padT = 32, padB = 28;
+  const W = 820, H = Math.max(280, nist * 13 + 100), padL = 108, padR = 14, padT = 32, padB = 46;
   const lblFont = nist > 22 ? 7 : (nist > 14 ? 7.5 : 8.5);
   const pw = W - padL - padR, ph = H - padT - padB;
   const xOf = (t: number) => padL + (t / periyot) * pw;
   const yOf = (fp: number) => padT + (fp / L) * ph; // fp=0 üstte (başlangıç), fp=L altta (bitiş)
+  const eksenY = padT + ph;
+  const mss = (t: number) => { const s = Math.round(t); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
   // Durak çizgileri + DECLUTTER'lı etiketler (çok yakın adlar asgari boşluğa itilir + leader).
   const gridLines = line.stations.map((s) =>
     `<line x1="${padL}" y1="${yOf(s.position).toFixed(1)}" x2="${W - padR}" y2="${yOf(s.position).toFixed(1)}" stroke="${CK.grid}"/>`).join("");
@@ -194,29 +197,45 @@ function bildfahrplanSvg(loopY: LoopYorunge, line: Line, filo: number, en = fals
     return leader + lab(padL - 6, ey + 2.5, esc(s.name), { anchor: "end", size: lblFont, color: CK.ink2 });
   }).join("");
   const st = gridLines + etiketler;
+  // Arka plan: seyrek soluk dikey ızgara (etiketsiz — okunabilirlik için).
   const tg = Array.from({ length: 13 }).map((_, i) => {
-    const t = (periyot * i) / 12, x = xOf(t);
-    return `<line x1="${x.toFixed(1)}" y1="${padT}" x2="${x.toFixed(1)}" y2="${padT + ph}" stroke="${CK.grid}" opacity="0.6"/>${num(x, H - 8, `${Math.round(t / 60)}′`, { anchor: "middle", size: 8 })}`;
-  }).join("");
+    const x = xOf((periyot * i) / 12);
+    return `<line x1="${x.toFixed(1)}" y1="${padT}" x2="${x.toFixed(1)}" y2="${eksenY}" stroke="${CK.grid}" opacity="0.5"/>`;
+  }).join("") + `<line x1="${padL}" y1="${eksenY.toFixed(1)}" x2="${W - padR}" y2="${eksenY.toFixed(1)}" stroke="${CK.ink2}" stroke-width="0.8"/>`;
   // Her tramvay: fp(t)'yi örnekle, yön değişiminde böl → gidiş (mavi) / dönüş (turuncu).
+  // Referans tren (k=0) kalın çizilir — zaman etiketleri bu trenindir.
   const adim = periyot / 260;
-  const poly = (pts: string[], col: string) => pts.length > 1 ? `<polyline points="${pts.join(" ")}" fill="none" stroke="${col}" stroke-width="0.9" stroke-linejoin="round" opacity="0.9"/>` : "";
+  const poly = (pts: string[], col: string, ref: boolean) => pts.length > 1 ? `<polyline points="${pts.join(" ")}" fill="none" stroke="${col}" stroke-width="${ref ? 1.8 : 0.9}" stroke-linejoin="round" opacity="${ref ? 1 : 0.72}"/>` : "";
   let gLines = "", dLines = "";
   for (let k = 0; k < filo; k++) {
+    const ref = k === 0;
     let gseg: string[] = [], dseg: string[] = [], prev: boolean | null = null;
     for (let t = 0; t <= periyot + 1e-6; t += adim) {
       const faz = (((t + k * offset) % periyot) + periyot) % periyot;
       const s = bfSampleS(ornekler, faz);
       const g = s <= L + 1e-6;
       const fp = g ? Math.min(L, s) : Math.max(0, loopLen - s);
-      if (prev !== null && g !== prev) { gLines += poly(gseg, CK.blue); dLines += poly(dseg, CK.orange); gseg = []; dseg = []; }
+      if (prev !== null && g !== prev) { gLines += poly(gseg, CK.blue, ref); dLines += poly(dseg, CK.orange, ref); gseg = []; dseg = []; }
       (g ? gseg : dseg).push(`${xOf(t).toFixed(1)},${yOf(fp).toFixed(1)}`);
       prev = g;
     }
-    gLines += poly(gseg, CK.blue); dLines += poly(dseg, CK.orange);
+    gLines += poly(gseg, CK.blue, ref); dLines += poly(dseg, CK.orange, ref);
   }
-  const leg = `<text x="${W - padR}" y="13" text-anchor="end" font-family="${CK.sans}" font-size="8.5"><tspan fill="${CK.blue}">▬ ${en ? "outbound" : "gidiş"}</tspan>  <tspan fill="${CK.orange}">▬ ${en ? "return" : "dönüş"}</tspan></text>`;
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%">${tg}${st}${gLines}${dLines}${leg}</svg>`;
+  // Gerekli zaman noktaları: referans trenin istasyon geçişleri (iniş/çıkış) + kesişimler.
+  const istOlay = bildIstasyonZamanlari(loopY, line);
+  const kesisim = bildKesisimZamanlari(loopY, filo, offset);
+  const olaylar = [...istOlay.map((o) => ({ t: o.t, fp: o.fp, tip: "durak" as const, yon: o.yon })), ...kesisim.map((c) => ({ t: c.t, fp: c.fp, tip: "kesisim" as const, yon: undefined }))].sort((a, b) => a.t - b.t);
+  const eksenOlay: typeof olaylar = [];
+  const zEsik = periyot / 120;
+  for (const o of olaylar) { const s = eksenOlay[eksenOlay.length - 1]; if (s && o.t - s.t < zEsik) { if (o.tip === "durak" && s.tip === "kesisim") eksenOlay[eksenOlay.length - 1] = o; continue; } eksenOlay.push(o); }
+  const satir = satirYerlesim(eksenOlay.map((o) => xOf(o.t)), 26, 3);
+  const olayRenk = (tip: string) => (tip === "durak" ? CK.ink2 : CK.amber);
+  const guides = eksenOlay.map((o) => `<line x1="${xOf(o.t).toFixed(1)}" y1="${padT}" x2="${xOf(o.t).toFixed(1)}" y2="${eksenY.toFixed(1)}" stroke="${olayRenk(o.tip)}" stroke-width="0.5" opacity="${o.tip === "durak" ? 0.28 : 0.5}"${o.tip === "kesisim" ? ' stroke-dasharray="2 2"' : ""}/>`).join("");
+  const kesDots = kesisim.map((c) => `<rect x="${(xOf(c.t) - 2.2).toFixed(1)}" y="${(yOf(c.fp) - 2.2).toFixed(1)}" width="4.4" height="4.4" transform="rotate(45 ${xOf(c.t).toFixed(1)} ${yOf(c.fp).toFixed(1)})" fill="${CK.amber}" stroke="#fff" stroke-width="0.5"/>`).join("");
+  const istDots = istOlay.map((o) => `<circle cx="${xOf(o.t).toFixed(1)}" cy="${yOf(o.fp).toFixed(1)}" r="1.7" fill="${o.yon === "g" ? CK.blue : CK.orange}"/>`).join("");
+  const zEtiket = eksenOlay.map((o, i) => num(xOf(o.t), eksenY + 11 + satir[i] * 9, mss(o.t), { anchor: "middle", size: 6.8, weight: o.tip === "durak" ? 600 : 400, color: olayRenk(o.tip) })).join("");
+  const leg = `<text x="${W - padR}" y="13" text-anchor="end" font-family="${CK.sans}" font-size="8.5"><tspan fill="${CK.blue}">▬ ${en ? "outbound" : "gidiş"}</tspan>  <tspan fill="${CK.orange}">▬ ${en ? "return" : "dönüş"}</tspan>  <tspan fill="${CK.amber}">◆ ${en ? "meeting" : "karşılaşma"}</tspan></text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%">${tg}${guides}${st}${gLines}${dLines}${kesDots}${istDots}${zEtiket}${leg}</svg>`;
 }
 
 // Belirleyici kısıt karşılaştırması (gömülü SVG): hMin'i oluşturan rakip headway kısıtları
@@ -257,22 +276,30 @@ function hizProfilSvg(loopY: LoopYorunge, line: Line, en = false): string {
   if (hiz.length < 2) return "";
   const vTopRaw = Math.max(...line.segments.map((sg) => sg.vmax), ...hiz.map((p) => p.v), 1) * 3.6;
   const vTop = Math.ceil((vTopRaw + 3) / 10) * 10;
-  const W = 820, H = 240, padL = 40, padR = 14, padT = 18, padB = 34;
+  const W = 820, H = 256, padL = 40, padR = 14, padT = 18, padB = 50;
   const pw = W - padL - padR, ph = H - padT - padB;
   const X = (s: number) => padL + (s / L) * pw;
   const Y = (vkmh: number) => padT + (1 - vkmh / vTop) * ph;
+  const eksenY = padT + ph;
   const yIsaret = Array.from({ length: Math.floor(vTop / 5) + 1 }, (_, i) => i * 5).map((v) =>
     `<line x1="${padL}" y1="${Y(v).toFixed(1)}" x2="${padL + pw}" y2="${Y(v).toFixed(1)}" stroke="${CK.grid}"/>${num(padL - 5, Y(v) + 2.5, `${v}`, { anchor: "end", size: 9 })}`).join("");
   const istIsaret = line.stations.filter((s) => s.tip !== "gecit").map((s) =>
-    `<line x1="${X(s.position).toFixed(1)}" y1="${padT}" x2="${X(s.position).toFixed(1)}" y2="${padT + ph}" stroke="${CK.grid}" opacity="0.7"/>`).join("");
-  const kmSay = Math.max(2, Math.round(L / 1000));
-  const xIsaret = Array.from({ length: kmSay + 1 }, (_, i) =>
-    num(X((L * i) / kmSay), padT + ph + 12, `${((L * i) / kmSay / 1000).toFixed(1)}`, { anchor: "middle", size: 7.5 })).join("");
+    `<line x1="${X(s.position).toFixed(1)}" y1="${padT}" x2="${X(s.position).toFixed(1)}" y2="${eksenY.toFixed(1)}" stroke="${CK.grid}" opacity="0.7"/>`).join("");
   const limitYol = line.segments.map((sg, i) => `${i === 0 ? "M" : "L"}${X(sg.start).toFixed(1)},${Y(sg.vmax * 3.6).toFixed(1)} L${X(sg.end).toFixed(1)},${Y(sg.vmax * 3.6).toFixed(1)}`).join(" ");
   const hizYol = hiz.map((p, i) => `${i === 0 ? "M" : "L"}${X(p.s).toFixed(1)},${Y(p.v * 3.6).toFixed(1)}`).join(" ");
-  const eksen = `<line x1="${padL}" y1="${(padT + ph).toFixed(1)}" x2="${padL + pw}" y2="${(padT + ph).toFixed(1)}" stroke="${CK.ink2}" stroke-width="0.8"/>`;
+  const eksen = `<line x1="${padL}" y1="${eksenY.toFixed(1)}" x2="${padL + pw}" y2="${eksenY.toFixed(1)}" stroke="${CK.ink2}" stroke-width="0.8"/>`;
+  // Değişim noktaları: km etiketi tam o noktada (durak/limit değişimi/uçlar), çakışmasız satırlarda.
+  const nok = hizDegisimNoktalari(loopY, line);
+  const nokRenk = (tip: string) => (tip === "durak" ? CK.red : tip === "limit" ? CK.amber : CK.muted);
+  const satir = satirYerlesim(nok.map((n) => X(n.s)), 28, 3);
+  const nokIsaret = nok.map((n, i) => {
+    const x = X(n.s), y = Y(n.v * 3.6), ly = eksenY + 11 + satir[i] * 9, renk = nokRenk(n.tip);
+    return `<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${x.toFixed(1)}" y2="${eksenY.toFixed(1)}" stroke="${renk}" stroke-width="0.5" opacity="0.5"/>`
+      + `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.8" fill="${renk}"/>`
+      + num(x, ly, `${(n.s / 1000).toFixed(2)}`, { anchor: "middle", size: 6.8, weight: n.tip === "durak" ? 600 : 400, color: renk });
+  }).join("");
   const leg = `<text x="${W - padR}" y="12" text-anchor="end" font-family="${CK.sans}" font-size="8.5"><tspan fill="${CK.blue}">▬ ${en ? "actual speed" : "gerçek hız"}</tspan>  <tspan fill="${CK.muted}">╌ ${en ? "speed limit" : "hız limiti"}</tspan></text>`;
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%">${yIsaret}${istIsaret}${eksen}${xIsaret}<path d="${limitYol}" fill="none" stroke="${CK.muted}" stroke-width="1" stroke-dasharray="4 3" opacity="0.85"/><path d="${hizYol}" fill="none" stroke="${CK.blue}" stroke-width="1.4" stroke-linejoin="round"/>${leg}${lab(padL + pw / 2, H - 4, en ? "distance (km) →" : "mesafe (km) →", { anchor: "middle", size: 8 })}${lab(8, padT + 4, "km/h", { size: 8 })}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%">${yIsaret}${istIsaret}${eksen}<path d="${limitYol}" fill="none" stroke="${CK.muted}" stroke-width="1" stroke-dasharray="4 3" opacity="0.85"/><path d="${hizYol}" fill="none" stroke="${CK.blue}" stroke-width="1.4" stroke-linejoin="round"/>${nokIsaret}${leg}${lab(padL + pw / 2, H - 4, en ? "distance (km) →" : "mesafe (km) →", { anchor: "middle", size: 8 })}${lab(8, padT + 4, "km/h", { size: 8 })}</svg>`;
 }
 
 // Yük profili + dwell dökümü (gömülü SVG, ortak x=mesafe): üstte durak başına tepe araç

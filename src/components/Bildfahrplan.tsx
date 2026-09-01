@@ -10,6 +10,7 @@
 import { useMemo } from "react";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
+import { bildIstasyonZamanlari, bildKesisimZamanlari, satirYerlesim, type BildOlay } from "@/lib/anaray/grafikNoktalar";
 import type { LoopYorunge } from "@/lib/anaray/signalling";
 import type { Line } from "@/lib/anaray/types";
 import { saat } from "@/lib/anaray/format";
@@ -53,11 +54,15 @@ export function Bildfahrplan({ loop, line }: { loop: LoopVeri; line: Line }) {
       }
       trenler.push({ k, gidis: gidis.filter((s) => s.length > 1), donus: donus.filter((s) => s.length > 1) });
     }
-    return { trenler, pencere, L };
+    // Gerekli ZAMAN noktaları: referans trenin istasyon geçişleri (iniş/çıkış, gidiş+dönüş)
+    // + gidiş↔dönüş kesişimleri (karşılaşma/bağlantı). Eksende çakışmasız yazılacak.
+    const istOlay = bildIstasyonZamanlari(loop, line);
+    const kesisim = bildKesisimZamanlari(loop, count, offset).map((c) => ({ t: c.t, fp: c.fp, tip: "kesisim" as const }));
+    return { trenler, pencere, L, istOlay, kesisim };
   }, [loop, line]);
 
   if (!veri) return null;
-  const { trenler, pencere, L } = veri;
+  const { trenler, pencere, L, istOlay, kesisim } = veri;
 
   // Y-ekseni: istasyonlar (0..L). Çakışmayı azaltmak için ada göre benzersiz konumlar.
   const duraklar = line.stations
@@ -66,16 +71,24 @@ export function Bildfahrplan({ loop, line }: { loop: LoopVeri; line: Line }) {
     .sort((a, b) => a.pos - b.pos);
 
   // Çizim alanı (SVG kullanıcı koordinatı). Yükseklik istasyon sayısına göre.
-  const solPad = 118, sagPad = 14, ustPad = 26, altPad = 30;
+  const solPad = 118, sagPad = 14, ustPad = 26, altPad = 52;
   const cizW = 900, cizH = Math.max(240, duraklar.length * 15);
   const W = solPad + cizW + sagPad, H = ustPad + cizH + altPad;
   const X = (t: number) => solPad + (t / pencere) * cizW;
   const Y = (fp: number) => ustPad + (1 - fp / L) * cizH; // 0 alt, L üst
+  const eksenY = ustPad + cizH;
 
   const yol = (seg: { t: number; fp: number }[]) => seg.map((p, i) => `${i === 0 ? "M" : "L"}${X(p.t).toFixed(1)},${Y(p.fp).toFixed(1)}`).join(" ");
 
-  // Zaman ekseni işaretleri: ~6 bölüm.
-  const zBol = 12; const zIsaret = Array.from({ length: zBol + 1 }, (_, i) => (pencere * i) / zBol);
+  // Gerekli zaman noktaları: istasyon geçişleri + kesişimler → t'ye göre birleştir, yakınları
+  // (≤ pencere/120) tekilleştir (durak önceliklidir), çakışmasız satırlara dağıt.
+  const olaylar: BildOlay[] = [...istOlay, ...kesisim].sort((a, b) => a.t - b.t);
+  const eksenOlay: BildOlay[] = [];
+  const zEsik = pencere / 120;
+  for (const o of olaylar) { const s = eksenOlay[eksenOlay.length - 1]; if (s && o.t - s.t < zEsik) { if (o.tip === "durak" && s.tip === "kesisim") eksenOlay[eksenOlay.length - 1] = o; continue; } eksenOlay.push(o); }
+  const olayX = eksenOlay.map((o) => X(o.t));
+  const olaySatir = satirYerlesim(olayX, 30, 3);
+  const olayRenk = (tip: string) => (tip === "durak" ? brand.inkSoft : CK.amber);
 
   return (
     <div className="-mx-1 overflow-x-auto px-1 sm:mx-0" style={{ WebkitOverflowScrolling: "touch" }}>
@@ -92,19 +105,29 @@ export function Bildfahrplan({ loop, line }: { loop: LoopVeri; line: Line }) {
             );
           })}
           {/* Zaman ekseni */}
-          <line x1={solPad} y1={ustPad + cizH} x2={solPad + cizW} y2={ustPad + cizH} stroke={brand.border} strokeWidth={1} />
-          {zIsaret.map((t, i) => (
-            <g key={i}>
-              <line x1={X(t)} y1={ustPad} x2={X(t)} y2={ustPad + cizH} stroke={CK.track} strokeWidth={0.6} />
-              <text x={X(t)} y={ustPad + cizH + 12} textAnchor="middle" fontSize={7.5} fill={brand.muted}>{saat(t)}</text>
-            </g>
+          <line x1={solPad} y1={eksenY} x2={solPad + cizW} y2={eksenY} stroke={brand.border} strokeWidth={1} />
+          {/* Gerekli zaman noktalarının dikey kılavuzları (istasyon/kesişim) */}
+          {eksenOlay.map((o, i) => (
+            <line key={`gv${i}`} x1={X(o.t)} y1={ustPad} x2={X(o.t)} y2={eksenY} stroke={olayRenk(o.tip)} strokeWidth={0.5} strokeOpacity={o.tip === "durak" ? 0.28 : 0.5} strokeDasharray={o.tip === "kesisim" ? "2 2" : undefined} />
           ))}
-          {/* Tren çizgileri — gidiş mavi, dönüş kırmızı */}
+          {/* Tren çizgileri — gidiş mavi, dönüş kırmızı; referans tren (k=0) vurgulu */}
           {trenler.map((tr) => (
             <g key={tr.k}>
-              {tr.gidis.map((seg, i) => <path key={`g${i}`} d={yol(seg)} fill="none" stroke={CK.blue} strokeWidth={0.9} strokeOpacity={0.9} />)}
-              {tr.donus.map((seg, i) => <path key={`d${i}`} d={yol(seg)} fill="none" stroke={CK.red} strokeWidth={0.9} strokeOpacity={0.9} />)}
+              {tr.gidis.map((seg, i) => <path key={`g${i}`} d={yol(seg)} fill="none" stroke={CK.blue} strokeWidth={tr.k === 0 ? 1.8 : 0.9} strokeOpacity={tr.k === 0 ? 1 : 0.75} />)}
+              {tr.donus.map((seg, i) => <path key={`d${i}`} d={yol(seg)} fill="none" stroke={CK.red} strokeWidth={tr.k === 0 ? 1.8 : 0.9} strokeOpacity={tr.k === 0 ? 1 : 0.75} />)}
             </g>
+          ))}
+          {/* Kesişim (karşılaşma) noktaları — ◇ */}
+          {kesisim.map((c, i) => (
+            <rect key={`k${i}`} x={X(c.t) - 2.4} y={Y(c.fp) - 2.4} width={4.8} height={4.8} transform={`rotate(45 ${X(c.t).toFixed(1)} ${Y(c.fp).toFixed(1)})`} fill={CK.amber} stroke="#fff" strokeWidth={0.5} />
+          ))}
+          {/* Referans trenin istasyon geçiş noktaları — dolu daire */}
+          {istOlay.map((o, i) => (
+            <circle key={`i${i}`} cx={X(o.t)} cy={Y(o.fp)} r={1.8} fill={o.yon === "g" ? CK.blue : CK.red} />
+          ))}
+          {/* Zaman etiketleri — çakışmasız satırlara dağıtılmış (saat) */}
+          {eksenOlay.map((o, i) => (
+            <text key={`zt${i}`} x={X(o.t)} y={eksenY + 11 + olaySatir[i] * 9} textAnchor="middle" fontSize={7} fontWeight={o.tip === "durak" ? 600 : 400} fill={olayRenk(o.tip)}>{saat(o.t)}</text>
           ))}
           {/* Eksen başlıkları */}
           <text x={solPad + cizW / 2} y={H - 3} textAnchor="middle" fontSize={8} fontWeight={600} fill={brand.inkSoft}>Zaman (çevrim boyu) →</text>
@@ -113,7 +136,9 @@ export function Bildfahrplan({ loop, line }: { loop: LoopVeri; line: Line }) {
         <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 px-1 text-xs" style={{ color: brand.muted }}>
           <span><span style={{ color: CK.blue }}>▬</span> Gidiş yönü</span>
           <span><span style={{ color: CK.red }}>▬</span> Dönüş yönü</span>
-          <span>Eğim = hız · yatay = duruş · gidiş↔dönüş kesişimi = karşılaşma · çizgi aralığı = headway ({saat(loop.offset || 0)})</span>
+          <span>Kalın çizgi = referans tren (zaman etiketleri bu trenindir)</span>
+          <span><span style={{ color: CK.amber }}>◆</span> karşılaşma (kesişim) noktası</span>
+          <span>Eğim = hız · yatay = duruş · çizgi aralığı = headway ({saat(loop.offset || 0)})</span>
         </div>
       </div>
     </div>
