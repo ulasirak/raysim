@@ -194,28 +194,20 @@ function StudioIc() {
     () => loopYorunge(line, reverseLine, stock, { peronIsgaliBas: peronBas, peronIsgaliSon: peronSon }),
     [line, reverseLine, stock, peronBas, peronSon]
   );
-  // Depo dağıtımı: her tren parklanma alanından çıkar; depoDagilim'e göre bir kısmı DÜZ
-  // (gidiş) bir kısmı MAKASTAN karşı şeride geçip TERS (dönüş) yönde başlar. Trenler
-  // dispatchT'ye (headway aralıklı) kadar parkta bekler, sonra döngüye girer.
+  // Depo dağıtımı — SADE ve TEK TİP: bütün tramvaylar AYNI başlangıç noktasından
+  // (depo/başlangıç terminali), AYNI yönde (gidiş, alt şerit), SIRAYLA (headway aralığı)
+  // yola çıkar; her biri tam turu (gidiş→dönüş) yapıp sırayla çıktığı yere döner. Karşı-şerit
+  // başlangıcı YOK → 2,4,6.. trenler 1,3,5.. ile aynı hareket eder; iki şerit, trenler
+  // turnback'e ulaştıkça DOĞAL olarak dolar (gerçek işletmede depodan öyle çıkarlar).
   const dagitim = useMemo(() => {
     const origins = gidisOrigins ?? [];
-    let gKalan = tersRapor ? tersRapor.depoDagilim.gidis : Math.ceil(filo / 2);
-    let tKalan = filo - gKalan;
     const orn = loopY.ornekler;
     const sToT = (hedefS: number) => { let en = 0, bd = Infinity; for (const o of orn) { const dd = Math.abs(o.s - hedefS); if (dd < bd) { bd = dd; en = o.t; } } return en; };
     return Array.from({ length: filo }, (_, k) => {
       const parkPos = origins.length > 0 ? origins[k % origins.length] : 0;
-      // Gidiş/ters HARMANLA (iki şerit birlikte dolsun): çift k→gidiş, tek k→ters (sayı bitince öbürü).
-      const wantG = k % 2 === 0;
-      let gidis: boolean;
-      if (wantG && gKalan > 0) { gKalan--; gidis = true; }
-      else if (!wantG && tKalan > 0) { tKalan--; gidis = false; }
-      else if (gKalan > 0) { gKalan--; gidis = true; }
-      else { tKalan--; gidis = false; }
-      const startS = gidis ? Math.min(loopY.L, parkPos) : Math.max(0, loopY.loopLen - parkPos); // ters → karşı şerit (makastan geçmiş)
-      return { parkPos, gidis, dispatchT: k * ulasilanHeadwaySn, startPhase: sToT(startS) };
+      return { parkPos, gidis: true, dispatchT: k * ulasilanHeadwaySn, startPhase: sToT(Math.min(loopY.L, parkPos)) };
     });
-  }, [gidisOrigins, tersRapor, filo, loopY, ulasilanHeadwaySn]);
+  }, [gidisOrigins, filo, loopY, ulasilanHeadwaySn]);
   const loopVeri = useMemo(
     () => ({ ...loopY, count: filo, offset: loopY.periyot / Math.max(1, filo), dagitim }),
     [loopY, filo, dagitim]
