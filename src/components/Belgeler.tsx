@@ -30,8 +30,15 @@ export function Belgeler() {
   // &oynat=1#canli ile o bölüme kaydırıp simülasyonu otomatik başlatır. Kapalıysa
   // boş bırakılır → rapor QR'ı ana sayfaya düşer.
   const { aktifId, paylasimAcik, paylasimDegistir } = useHesap();
-  const qrUrl = aktifId && paylasimAcik && typeof window !== "undefined"
-    ? `${window.location.origin}/canli?proje=${aktifId}` : "";
+  // 4 hazır Konya hattının aktif ID'si `hazir_<key>_<uid>` biçimindedir. Bu hatlar için
+  // QR'ı paylaşıma bağımlı `?proje=<id>` yerine `?hat=<key>`'e bağlarız: hat verisi
+  // istemcide (hazirHatlar) yüklenir, paylaşım açık/kapalı fark etmez → QR ASLA ana
+  // sayfaya düşmez, daima o hattın canlı sim sayfasını açar. Diğer (kullanıcı) projeleri
+  // için paylaşım açıkken `?proje=<id>` kullanılır.
+  const hazirKey = aktifId?.match(/^hazir_(mevcut|etap1|etap2|birlesik)_/)?.[1];
+  const qrUrl = typeof window === "undefined" ? ""
+    : hazirKey ? `${window.location.origin}/canli?hat=${hazirKey}`
+    : (aktifId && paylasimAcik ? `${window.location.origin}/canli?proje=${aktifId}` : "");
   const turnaroundSn = Math.max(0, isletme.turnaroundDk) * 60; // dönüş bekleme → çevrim/filo hesabı
   // Yolcu dinamiği: dwell OTO ringlerin dwell'i hesaplanır → RAPOR da hesaplı dwell'i
   // kullanır (kapasite/canlı sim ile tutarlı). Ham ring yerine hesaplı ring geçilir.

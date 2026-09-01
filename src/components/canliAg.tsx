@@ -185,8 +185,13 @@ export function CanliAgSayfa() {
         </div>
       )}
 
-      {/* Tam genişlik canlı sim — ters işletme KAPALI gelir; mod/hız/oynat LiveNetwork içinde */}
+      {/* Tam genişlik canlı sim — ters işletme KAPALI gelir; mod/hız/oynat LiveNetwork içinde.
+          Mobil okunurluk (SVG'yi yatay kaydırma) LiveNetwork'ün KENDİ içinde çözülür —
+          böylece yalnız şema kayar, oynat/hız/zaman çubuğu tam genişlik kalır. */}
       <div className="px-2 py-3 sm:px-4">
+        <div className="mb-1 text-center text-[11px] sm:hidden" style={{ color: brand.muted }}>
+          şemayı yana kaydırabilirsin →
+        </div>
         {/* Vitrinde blok tıklaması KAPALI (onBlockClick verilmez): blok "arıza"sı döngü
             modunu kapatıp tek-tren sinyal simine düşürüyordu. Ziyaretçi trenlere tıklar. */}
         <LiveNetwork

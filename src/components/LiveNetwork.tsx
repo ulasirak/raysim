@@ -619,6 +619,11 @@ export function LiveNetwork({
 
   return (
     <div className="relative flex flex-col gap-3">
+      {/* Mobil okunurluk: şema 860px iç genişlikte; dar ekrana sığdırılınca minik kalıyordu.
+          Yalnız ŞEMAYI yatay kaydırılabilir min-genişlikli kutuya alıyoruz (kontroller/efsane
+          etkilenmez). sm ve üstünde min-genişlik + kaydırma kalkar — geniş ekranda zaten sığar. */}
+      <div className="-mx-1 overflow-x-auto px-1 sm:mx-0 sm:overflow-x-visible sm:px-0" style={{ WebkitOverflowScrolling: "touch" }}>
+      <div className="min-w-[760px] sm:min-w-0">
       <svg viewBox={`0 ${-ustPay} ${VBW} ${VBH + ustPay}`} className="w-full h-auto" role="img" aria-label="Canlı ağ simülasyonu (çift hat)">
         {/* Depo hattı (statik) */}
         {spur.map((e, i) => (
@@ -811,6 +816,8 @@ export function LiveNetwork({
         <text x={10} y={VBH - 30} fill={DOWN} fontSize={10} fontWeight={600}>◀ Dönüş (üst şerit)</text>
         <text x={10} y={VBH - 12} fill={UP_COL} fontSize={10} fontWeight={600}>Gidiş (alt şerit) ▶</text>
       </svg>
+      </div>
+      </div>
 
       {/* DÖNGÜ — seçili tren detay kutusu: bir turda hangi nedene ne kadar süre */}
       {loopAktif && secili !== null && (() => {
