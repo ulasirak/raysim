@@ -45,8 +45,8 @@ export function HizProfili({ loop, line }: { loop: LoopYorunge; line: Line }) {
   }).join(" ");
   // Gerçek hız eğrisi.
   const hizYol = hiz.map((p, i) => `${i === 0 ? "M" : "L"}${X(p.s).toFixed(1)},${Y(p.v * 3.6).toFixed(1)}`).join(" ");
-  // Y ekseni km/h işaretleri — her 10 km/h (sık).
-  const yIsaret = Array.from({ length: Math.floor(vTop / 10) + 1 }, (_, i) => i * 10);
+  // Y ekseni km/h işaretleri — her 5 km/h (kısıt hızları 15/25/35 dâhil okunsun).
+  const yIsaret = Array.from({ length: Math.floor(vTop / 5) + 1 }, (_, i) => i * 5);
   // X ekseni km işaretleri — her ~1 km (sık, en çok 26 etiket).
   const kmSay = Math.max(2, Math.min(26, Math.round(L / 1000)));
   const xIsaret = Array.from({ length: kmSay + 1 }, (_, i) => (L * i) / kmSay);

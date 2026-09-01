@@ -260,7 +260,7 @@ function hizProfilSvg(loopY: LoopYorunge, line: Line, en = false): string {
   const pw = W - padL - padR, ph = H - padT - padB;
   const X = (s: number) => padL + (s / L) * pw;
   const Y = (vkmh: number) => padT + (1 - vkmh / vTop) * ph;
-  const yIsaret = Array.from({ length: Math.floor(vTop / 10) + 1 }, (_, i) => i * 10).map((v) =>
+  const yIsaret = Array.from({ length: Math.floor(vTop / 5) + 1 }, (_, i) => i * 5).map((v) =>
     `<line x1="${padL}" y1="${Y(v).toFixed(1)}" x2="${padL + pw}" y2="${Y(v).toFixed(1)}" stroke="${CK.grid}"/>${num(padL - 5, Y(v) + 2.5, `${v}`, { anchor: "end", size: 9 })}`).join("");
   const istIsaret = line.stations.filter((s) => s.tip !== "gecit").map((s) =>
     `<line x1="${X(s.position).toFixed(1)}" y1="${padT}" x2="${X(s.position).toFixed(1)}" y2="${padT + ph}" stroke="${CK.grid}" opacity="0.7"/>`).join("");
