@@ -27,7 +27,7 @@ import { blockingTimeRing } from "./blockingtime";
 import { loopToHat } from "./hatsim";
 import { simulate } from "./sim";
 import { computeEnergy } from "./energy";
-import { simulateSignalled } from "./signalling";
+import { simulateSignalled, loopYorunge, type LoopYorunge } from "./signalling";
 import { sinyalKonumlari, hatOzellikleri } from "./network";
 import type { Line } from "./types";
 
@@ -152,28 +152,32 @@ function reverseLineOf(line: Line): Line {
   };
 }
 
-// Zaman-mesafe diyagramı / Bildfahrplan (gömülü SVG): ÇİFT YÖN — gidiş + dönüş.
-// Ters eğimli çizgiler kesişince = kruvasman / karşılaşma noktası.
-function bildfahrplanSvg(line: Line, stock: RollingStock, cfg: SimConfig, count: number, sinyaller: number[] = [], en = false): string {
-  if (line.length <= 0) return "";
-  const rev = reverseLineOf(line);
-  // GERÇEK sinyaller blok sınırıdır (canlı sim ile birebir); ters yönde konum aynalanır.
-  const up = simulateSignalled(line, stock, { headway: cfg.headway, count, maxBlockLen: cfg.blokMaxUzunluk, sinyaller });
-  const dn = simulateSignalled(rev, stock, { headway: cfg.headway, count, maxBlockLen: cfg.blokMaxUzunluk, sinyaller: sinyaller.map((p) => line.length - p) });
-  const L = line.length, tMax = Math.max(1, up.tMax, dn.tMax);
-  // Yükseklik durak sayısına göre BÜYÜR → 29 durakta bile adlar üst üste binmez;
-  // uzun adlar için sol boşluk (padL) geniş, etiket fontu duraklaşınca küçülür.
+// ornekler (t artan, 0..periyot) → faz anındaki kümülatif s (doğrusal ara değer).
+function bfSampleS(orn: LoopYorunge["ornekler"], faz: number): number {
+  const n = orn.length; if (n === 0) return 0;
+  if (faz <= orn[0].t) return orn[0].s;
+  if (faz >= orn[n - 1].t) return orn[n - 1].s;
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (orn[m].t <= faz) lo = m; else hi = m; }
+  const a = orn[lo], b = orn[hi], dt = b.t - a.t || 1;
+  return a.s + (b.s - a.s) * ((faz - a.t) / dt);
+}
+
+// Zaman-mesafe diyagramı / Bildfahrplan (gömülü SVG) — GİT-GEL LOOP (canlı sim ile birebir):
+// her tramvay gidiş şeridinde 0→L tırmanır, terminalde döner, dönüş şeridinde L→0 iner
+// (üçgen dalga); filo headway aralığıyla ötelenir → paralel zigzaglar. Gidiş (mavi) ile
+// dönüş (turuncu) çizgilerinin kesişimi = karşılaşma; çizgi aralığı = headway.
+function bildfahrplanSvg(loopY: LoopYorunge, line: Line, filo: number, en = false): string {
+  const { periyot, L, loopLen, ornekler } = loopY;
+  if (L <= 0 || periyot <= 0 || filo < 1) return "";
+  const offset = periyot / filo;
   const nist = line.stations.length;
-  // padT geniş → renk göstergesi (legend) PLOT'un ÜSTÜNDE, ayrı bir bantta durur;
-  // üstteki durak çizgileriyle/adlarıyla ÇAKIŞMAZ (her çok-duraklı hatta güvenli).
   const W = 820, H = Math.max(262, nist * 13 + 80), padL = 108, padR = 14, padT = 32, padB = 28;
   const lblFont = nist > 22 ? 7 : (nist > 14 ? 7.5 : 8.5);
   const pw = W - padL - padR, ph = H - padT - padB;
-  const xOf = (t: number) => padL + (t / tMax) * pw;
-  const yOf = (s: number) => padT + (s / L) * ph; // s=0 üstte, s=L altta
-  // Durak çizgileri gerçek konumda; ETİKETLER dikeyde DECLUTTER edilir: çok yakın iki
-  // ad (ör. hattın başındaki iki durak) asgari boşluğa itilir ve gerçek konuma ince bir
-  // leader ile bağlanır → hiçbir çok-duraklı hatta üst üste binme olmaz.
+  const xOf = (t: number) => padL + (t / periyot) * pw;
+  const yOf = (fp: number) => padT + (fp / L) * ph; // fp=0 üstte (başlangıç), fp=L altta (bitiş)
+  // Durak çizgileri + DECLUTTER'lı etiketler (çok yakın adlar asgari boşluğa itilir + leader).
   const gridLines = line.stations.map((s) =>
     `<line x1="${padL}" y1="${yOf(s.position).toFixed(1)}" x2="${W - padR}" y2="${yOf(s.position).toFixed(1)}" stroke="${CK.grid}"/>`).join("");
   const minGap = lblFont + 2.5;
@@ -189,16 +193,28 @@ function bildfahrplanSvg(line: Line, stock: RollingStock, cfg: SimConfig, count:
   }).join("");
   const st = gridLines + etiketler;
   const tg = Array.from({ length: 7 }).map((_, i) => {
-    const t = (tMax * i) / 6, x = xOf(t);
+    const t = (periyot * i) / 6, x = xOf(t);
     return `<line x1="${x.toFixed(1)}" y1="${padT}" x2="${x.toFixed(1)}" y2="${padT + ph}" stroke="${CK.grid}" opacity="0.6"/>${num(x, H - 8, `${Math.round(t / 60)}′`, { anchor: "middle", size: 8 })}`;
   }).join("");
-  const trainLine = (pts: string, col: string, delayed: boolean) =>
-    `<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" opacity="0.92"${delayed ? ' stroke-dasharray="4 3"' : ""}/>`;
-  const upLines = up.trains.map((tr) => trainLine(tr.points.map((p) => `${xOf(p.t).toFixed(1)},${yOf(p.s).toFixed(1)}`).join(" "), CK.blue, tr.delay > 2)).join("");
-  const dnLines = dn.trains.map((tr) => trainLine(tr.points.map((p) => `${xOf(p.t).toFixed(1)},${yOf(L - p.s).toFixed(1)}`).join(" "), CK.orange, tr.delay > 2)).join("");
-  // Legend ÜST BANTTA (y=13 < padT=32) → plot ve durak çizgilerinin üstünde, çakışmasız.
-  const leg = `<text x="${W - padR}" y="13" text-anchor="end" font-family="${CK.sans}" font-size="8.5"><tspan fill="${CK.blue}">▬ ${en ? "outbound" : "gidiş"}</tspan>  <tspan fill="${CK.orange}">▬ ${en ? "return" : "dönüş"}</tspan>  <tspan fill="${CK.muted}">╌ ${en ? "delayed" : "gecikmeli"}</tspan></text>`;
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${tg}${st}${upLines}${dnLines}${leg}</svg>`;
+  // Her tramvay: fp(t)'yi örnekle, yön değişiminde böl → gidiş (mavi) / dönüş (turuncu).
+  const adim = periyot / 260;
+  const poly = (pts: string[], col: string) => pts.length > 1 ? `<polyline points="${pts.join(" ")}" fill="none" stroke="${col}" stroke-width="0.9" stroke-linejoin="round" opacity="0.9"/>` : "";
+  let gLines = "", dLines = "";
+  for (let k = 0; k < filo; k++) {
+    let gseg: string[] = [], dseg: string[] = [], prev: boolean | null = null;
+    for (let t = 0; t <= periyot + 1e-6; t += adim) {
+      const faz = (((t + k * offset) % periyot) + periyot) % periyot;
+      const s = bfSampleS(ornekler, faz);
+      const g = s <= L + 1e-6;
+      const fp = g ? Math.min(L, s) : Math.max(0, loopLen - s);
+      if (prev !== null && g !== prev) { gLines += poly(gseg, CK.blue); dLines += poly(dseg, CK.orange); gseg = []; dseg = []; }
+      (g ? gseg : dseg).push(`${xOf(t).toFixed(1)},${yOf(fp).toFixed(1)}`);
+      prev = g;
+    }
+    gLines += poly(gseg, CK.blue); dLines += poly(dseg, CK.orange);
+  }
+  const leg = `<text x="${W - padR}" y="13" text-anchor="end" font-family="${CK.sans}" font-size="8.5"><tspan fill="${CK.blue}">▬ ${en ? "outbound" : "gidiş"}</tspan>  <tspan fill="${CK.orange}">▬ ${en ? "return" : "dönüş"}</tspan></text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${tg}${st}${gLines}${dLines}${leg}</svg>`;
 }
 
 // Gerçek Sperrzeitentreppe (gömülü SVG): iki ardışık tramvay + her bloğun blocking-time
@@ -382,13 +398,14 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
 
   // Birleşik hat (loop → tek Line) → hız profili + Bildfahrplan grafikleri
   const line: Line | null = rings.length ? loopToHat(rings, true, cfg).line : null;
-  // Bildfahrplan gerçek filoyla çizilir (okunabilirlik için görselde en çok 8 iz; gerçek
-  // sayı altyazıda). Bloklar GERÇEK sinyallerden gelir → grafik canlı sistemle tutarlı.
-  const bfCount = Math.max(3, Math.min(8, filoGercek));
+  // Bildfahrplan GİT-GEL LOOP yörüngesinden (canlı sim ile birebir): tam filo çizilir.
+  const peronBasBf = isletme.terminalBas.tip === "dongu" ? 0 : (isletme.terminalBas.peronIsgali || 0);
+  const peronSonBf = isletme.terminalSon.tip === "dongu" ? 0 : (isletme.terminalSon.peronIsgali || 0);
+  const loopYbf: LoopYorunge | null = line ? loopYorunge(line, reverseLineOf(line), stock, { peronIsgaliBas: peronBasBf, peronIsgaliSon: peronSonBf }) : null;
+  const bfHeadway = loopYbf && filoGercek > 0 ? Math.round(loopYbf.periyot / filoGercek) : cfg.headway;
   const eg = line ? energyGradeSvg(line, stock, en) : null;
   const energyFig = eg && eg.svg ? `<div class="fig">${eg.svg}<div class="cap">${L.figEnergy(eg.net, eg.perKm)}</div></div>` : "";
-  const bfFazla = filoGercek > bfCount ? (lang === "en" ? ` (showing ${bfCount} of ${filoGercek} trains)` : ` (${filoGercek} tramvayın ${bfCount} tanesi çiziliyor)`) : "";
-  const bfFig = line ? `<div class="fig">${bildfahrplanSvg(line, stock, cfg, bfCount, sinyaller, en)}<div class="cap">${L.fig3(bfCount, cfg.headway)}${bfFazla}</div></div>` : "";
+  const bfFig = (line && loopYbf) ? `<div class="fig">${bildfahrplanSvg(loopYbf, line, filoGercek, en)}<div class="cap">${en ? `Figure 3 — Time-distance diagram (Bildfahrplan): ${filoGercek} trams (round-trip loop), ${bfHeadway}s headway.` : `Şekil 3 — Zaman-mesafe diyagramı (Bildfahrplan): ${filoGercek} tramvay (git-gel döngü), ${bfHeadway} s aralık.`}</div></div>` : "";
 
   // ---- Kapak künye ----
   const kunye = [
