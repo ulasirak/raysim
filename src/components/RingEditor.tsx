@@ -8,8 +8,8 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { RollingStock } from "@/lib/anaray/types";
-import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
-import { GtfsImport } from "@/components/GtfsImport";
+import { useSimConfig, useProje, useArac, useIsletme, useHesap } from "@/components/SimConfigProvider";
+import { HatIceAktar, type IceAktarMod } from "@/components/HatIceAktar";
 import { etkinBogazIsgali, terminalDonusParalel, etkinPeronSayisi, terminalMakasSayilari, terminalSeriDonus, type SimConfig, type DonusTip, type TerminalConfig, type Isletme } from "@/lib/anaray/config";
 import { maksimumTren } from "@/lib/anaray/kapasite";
 import { yolcuAkisSuresi } from "@/lib/anaray/yolcu";
@@ -70,6 +70,8 @@ const DONUS_TIP_ACIKLAMA: Record<DonusTip, string> = {
 export function RingEditor() {
   const { cfg } = useSimConfig();
   const { rings, setRings, sifirlaRings, meta, patchMeta, yukleniyor, yazilabilir } = useProje();
+  const { projeYeni } = useHesap();
+  const [iceMesgul, setIceMesgul] = useState(false);
   // Araç ve işletme parametreleri KALICI (projeye kayıtlı) — tek kaynak.
   const { arac: stock } = useArac();
   const { isletme, patchIsletme } = useIsletme();
@@ -111,6 +113,18 @@ export function RingEditor() {
     if (geriAlZaman.current) clearTimeout(geriAlZaman.current);
   };
   useEffect(() => () => { if (geriAlZaman.current) clearTimeout(geriAlZaman.current); }, []);
+
+  // İçe aktarma — 3 mod. "yeniHat" mevcut hatta HİÇ dokunmaz (yeni proje açar, ona doldurur).
+  const iceAktarUygula = async (yeni: DurakArasiRing[], ad: string, mod: IceAktarMod) => {
+    if (mod === "degistir") { silHatirla(() => yeni); patchMeta({ hatAdi: ad }); }
+    else if (mod === "ekle") { silHatirla((rs) => [...rs, ...yeni]); }
+    else if (mod === "yeniHat") {
+      setIceMesgul(true);
+      try { await projeYeni(ad); setRings(() => yeni); patchMeta({ hatAdi: ad }); }
+      catch (e) { alert(e instanceof Error ? e.message : "Yeni hat oluşturulamadı."); }
+      finally { setIceMesgul(false); }
+    }
+  };
 
   const oneriler = useMemo(() => dengeOnerisi(rings, stock, cfg), [rings, stock, cfg]);
   const tumEksik = useMemo(() => rings.flatMap((r) => ringDogrula(r, cfg)), [rings, cfg]);
@@ -253,7 +267,7 @@ export function RingEditor() {
       {/* GTFS içe aktarma — bir toplu taşıma ağının .zip'inden hattı otomatik kurar
           (mevcut hattın üzerine yazar; "Silmeyi geri al" ile dönülebilir). */}
       {!yukleniyor && (
-        <GtfsImport onIceAktar={(yeni, ad) => { silHatirla(() => yeni); patchMeta({ hatAdi: ad }); }} disabled={!yazilabilir} />
+        <HatIceAktar onIceAktar={iceAktarUygula} disabled={!yazilabilir} mesgulDis={iceMesgul} />
       )}
 
       {/* DURAKLAR & MESAFELER — hattın GİRİŞ NOKTASI. Boş hatta da görünür: müşteri
@@ -470,8 +484,8 @@ export function RingEditor() {
             {/* Bilgilendirme: neden makaslı turnback hesabı */}
             <div className="mb-2 rounded border-l-4 px-3 py-2 text-xs leading-relaxed" style={{ background: CK.goodBgSoft, borderColor: brand.ink, color: brand.inkSoft }}>
               ℹ️ <b>Neden makaslı hesap?</b> Tramvay uçta dönmek için karşı hatta <b>makasla (crossover)</b> geçmek zorundadır — yoksa gelen hatla <b>kafa kafaya çarpışır</b>. Terminalin en fazla kaç tramvay çevirebileceğini asıl bu makasın tipi belirler:
-              <br />• <b>S-makas (tek crossover):</b> dönüşler <b>seri, tek tek</b> — bir tramvay dönüp boğazı boşaltmadan öbürü giremez → terminal aralığı = <b>tam peron işgali</b> (peron çok olsa da hızlanmaz).
-              <br />• <b>X-makas (scissors/çift):</b> iki bağımsız hareket → 2 tramvay <b>eş-zamanlı olmadan ardışık</b> hızlıca dönebilir → her X = <b>2 dönüş yolu</b>.
+              <br />• <b>S-makas:</b> dönüşler <b>seri, tek tek</b> — bir tramvay dönüp boğazı boşaltmadan öbürü giremez → terminal aralığı = <b>tam peron işgali</b> (peron çok olsa da hızlanmaz).
+              <br />• <b>X-makas:</b> iki bağımsız hareket → 2 tramvay <b>eş-zamanlı olmadan ardışık</b> hızlıca dönebilir → her X-makas = <b>2 dönüş yolu</b>.
               <br /><b>Dönüş yolu = (S sayısı × 1) + (X sayısı × 2).</b> Ör. Şehir Hastanesi <b>2 S + 1 X</b> → 2+2 = 4 yol; Adliye <b>2 S</b> → 2 yol.
               <br /><b>Peron sayısı</b> = terminaldeki dönüş rayı adedi (çift hatta genelde 2). <b>Tek yön</b> modunda yön başına girersin, sistem ×2 yapar. Etkin dönüş = <b>min(peron, dönüş yolu)</b> → terminal aralığı = peron işgali ÷ etkin dönüş. (n ardışık dönüş için hem n peron hem yeterli makas yolu gerekir.)
             </div>
@@ -564,9 +578,9 @@ export function RingEditor() {
                     <div className="mt-2 rounded border p-2" style={{ borderColor: brand.ink, background: CK.goodBgSoft }}>
                       <span className="field-label">Dönüş makası (crossover) sayıları — turnback belirleyici</span>
                       <div className="mt-1 grid grid-cols-2 gap-2">
-                        <div><Num label="S-makas (tek)" suffix="ad" step={1} max={8} value={terminalMakasSayilari(t).s}
+                        <div><Num label="S-makas" suffix="ad" step={1} max={8} value={terminalMakasSayilari(t).s}
                           onChange={(v) => patchTerminal(uc, { sMakas: Math.max(0, Math.round(v)), makasTipi: undefined })} /><Kucuk>her biri 1 dönüş yolu (seri)</Kucuk></div>
-                        <div><Num label="X-makas (scissors)" suffix="ad" step={1} max={8} value={terminalMakasSayilari(t).x}
+                        <div><Num label="X-makas" suffix="ad" step={1} max={8} value={terminalMakasSayilari(t).x}
                           onChange={(v) => patchTerminal(uc, { xMakas: Math.max(0, Math.round(v)), makasTipi: undefined })} /><Kucuk>her biri 2 dönüş yolu (ardışık)</Kucuk></div>
                       </div>
                       <Kucuk>{(() => { const { s, x } = terminalMakasSayilari(t); const yol = s + x * 2; const etk = terminalDonusParalel(t);

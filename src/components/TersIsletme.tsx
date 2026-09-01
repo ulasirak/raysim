@@ -203,7 +203,7 @@ export function TersIsletme() {
                 <div className="flex items-center justify-between">
                   <b style={{ color: brand.ink }}>{m.ad}</b>
                   <span className="rounded px-1.5 py-0.5 text-[0.65rem] font-semibold" style={{ background: m.crossover === "x" ? CK.goodBgSoft : "#F1F5F9", color: brand.inkSoft }}>
-                    {m.crossover === "x" ? "X scissors" : "S tek"} · {m.makasSayisi} makas · {m.kisaDonusOnerilir ? `KISA DÖNÜŞ ADAYI (%${m.kisaDonusYuzde})` : "dengeli"}
+                    {m.makasSayisi} {m.crossover === "x" ? "X" : "S"}-makas · {m.kisaDonusOnerilir ? `KISA DÖNÜŞ ADAYI (%${m.kisaDonusYuzde})` : "dengeli"}
                   </span>
                 </div>
                 <div className="mt-1 text-xs" style={{ color: brand.muted }}>{m.yorum} {m.sureNotu}</div>

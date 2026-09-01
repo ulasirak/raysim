@@ -192,11 +192,11 @@ export function EkleFormu({ tur, konum: konum0, uzunluk, konumSuresi, sureKonumu
               </select>
             </label>
             <Num label="Geçiş hızı" suffix="km/h" step={1} value={gecisHizi} onChange={setGecisHizi} />
-            <Num label="Makas sayısı (PM)" suffix="ad" step={1} value={makasSayisi} onChange={(v) => setMakasSayisi(Math.max(1, Math.round(v)))} />
+            <Num label="Makas sayısı" suffix="ad" step={1} value={makasSayisi} onChange={(v) => setMakasSayisi(Math.max(1, Math.round(v)))} />
             <label className="block">
-              <span className="field-label">Crossover geometrisi</span>
+              <span className="field-label">Makas tipi</span>
               <div className="mt-1 flex gap-1">
-                {([["s", "S (tek)"], ["x", "X (scissors)"]] as const).map(([cv, ad]) => (
+                {([["s", "S-makas"], ["x", "X-makas"]] as const).map(([cv, ad]) => (
                   <button key={cv} type="button" onClick={() => setCrossover(cv)}
                     className="flex-1 rounded border px-1.5 py-1 text-xs font-medium"
                     style={crossover === cv ? { background: brand.ink, color: "#fff", borderColor: brand.ink } : { borderColor: brand.border, color: brand.inkSoft }}>
