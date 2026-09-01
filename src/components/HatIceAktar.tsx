@@ -17,6 +17,7 @@ import { CK } from "@/lib/anaray/chartkit";
 import { parseGtfsZip, gtfsRotalar, gtfsYonler, gtfsHatKur, type GtfsFeed } from "@/lib/anaray/gtfs";
 import { railmlHatKur } from "@/lib/anaray/railml";
 import { dxfAyristir } from "@/lib/anaray/dxf";
+import { shapefileGeometri } from "@/lib/anaray/shapefile";
 import { cadHatKur, katmanTahmini, type CadGeometri, type CadEsleme, type CadHatSonuc } from "@/lib/anaray/cadHat";
 import type { DurakArasiRing } from "@/lib/anaray/ring";
 
@@ -31,7 +32,11 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis }: {
   const [kaynak, setKaynak] = useState<"gtfs" | "railml" | "cad" | null>(null);
   const [feed, setFeed] = useState<GtfsFeed | null>(null);
   const [railmlSonuc, setRailmlSonuc] = useState<HatSonuc | null>(null);
-  const [geo, setGeo] = useState<CadGeometri | null>(null);
+  const [dxfGeo, setDxfGeo] = useState<CadGeometri | null>(null);
+  const [shpBuf, setShpBuf] = useState<Uint8Array | null>(null);   // shapefile ham zip (ad alanı değişince yeniden ayrıştırılır)
+  const [adAlani, setAdAlani] = useState("");                       // shapefile durak-adı özniteliği ("" = otomatik)
+  const [adAlanlari, setAdAlanlari] = useState<string[]>([]);
+  const [shpUyari, setShpUyari] = useState<string[]>([]);
   const [esle, setEsle] = useState<CadEsleme>({ guzergahKatman: [], durakKatman: [] });
   const [dosyaAd, setDosyaAd] = useState("");
   const [routeId, setRouteId] = useState("");
@@ -43,7 +48,14 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis }: {
   const rotalar = useMemo(() => (feed ? gtfsRotalar(feed) : []), [feed]);
   const yonler = useMemo(() => (feed && routeId ? gtfsYonler(feed, routeId) : []), [feed, routeId]);
 
-  const sifirla = () => { setKaynak(null); setFeed(null); setRailmlSonuc(null); setGeo(null); setEsle({ guzergahKatman: [], durakKatman: [] }); setRouteId(""); setDir(""); setHata(null); };
+  const sifirla = () => { setKaynak(null); setFeed(null); setRailmlSonuc(null); setDxfGeo(null); setShpBuf(null); setAdAlani(""); setAdAlanlari([]); setShpUyari([]); setEsle({ guzergahKatman: [], durakKatman: [] }); setRouteId(""); setDir(""); setHata(null); };
+
+  // CAD geometrisi: DXF doğrudan; shapefile ham zip'ten (ad alanı seçimiyle) türetilir.
+  const geo = useMemo<CadGeometri | null>(() => {
+    if (dxfGeo) return dxfGeo;
+    if (shpBuf) { try { return shapefileGeometri(shpBuf, adAlani || undefined); } catch { return null; } }
+    return null;
+  }, [dxfGeo, shpBuf, adAlani]);
 
   const dosyaSec = async (f: File | undefined) => {
     if (!f) return;
@@ -53,18 +65,25 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis }: {
       if (ad.endsWith(".dxf")) {
         const g = dxfAyristir(await f.text());
         if (g.uyarilar.length && g.polylines.length === 0) throw new Error(g.uyarilar[0]);
-        setGeo(g); setEsle(katmanTahmini(g)); setKaynak("cad");
+        setDxfGeo(g); setEsle(katmanTahmini(g)); setShpUyari(g.uyarilar); setKaynak("cad");
       } else if (ad.endsWith(".dwg")) {
         throw new Error("DWG (ikili CAD) doğrudan desteklenmez. Lütfen AutoCAD'de DXF'e çevir (SAVEAS → DXF) ve onu yükle.");
       } else if (ad.endsWith(".xml") || ad.endsWith(".railml")) {
         setRailmlSonuc(railmlHatKur(await f.text())); setKaynak("railml");
       } else {
-        // .zip → GTFS (ileride: shapefile .shp barındıran zip ayrımı).
-        const parsed = parseGtfsZip(new Uint8Array(await f.arrayBuffer()));
-        setFeed(parsed); setKaynak("gtfs");
-        const r = gtfsRotalar(parsed);
-        const ilk = r.find((x) => x.tip === "0") ?? r[0];
-        if (ilk) setRouteId(ilk.id);
+        // .zip → shapefile (.shp içeriyorsa) yoksa GTFS.
+        const buf = new Uint8Array(await f.arrayBuffer());
+        let shp: (CadGeometri & { adAlanlari: string[]; uyarilar: string[] }) | null = null;
+        try { shp = shapefileGeometri(buf) as CadGeometri & { adAlanlari: string[]; uyarilar: string[] }; } catch { shp = null; }
+        if (shp) {
+          setShpBuf(buf); setEsle(katmanTahmini(shp)); setAdAlanlari(shp.adAlanlari); setShpUyari(shp.uyarilar); setAdAlani(""); setKaynak("cad");
+        } else {
+          const parsed = parseGtfsZip(buf);
+          setFeed(parsed); setKaynak("gtfs");
+          const r = gtfsRotalar(parsed);
+          const ilk = r.find((x) => x.tip === "0") ?? r[0];
+          if (ilk) setRouteId(ilk.id);
+        }
       }
       setDosyaAd(f.name);
     } catch (e) {
@@ -84,9 +103,11 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis }: {
 
   const cadSonuc = useMemo<{ sonuc: CadHatSonuc | null; hata: string | null }>(() => {
     if (!geo || esle.guzergahKatman.length === 0 || esle.durakKatman.length === 0) return { sonuc: null, hata: null };
-    try { return { sonuc: cadHatKur(geo, esle, dosyaAd.replace(/\.[^.]+$/, "")), hata: null }; }
-    catch (e) { return { sonuc: null, hata: e instanceof Error ? e.message : "Hat kurulamadı." }; }
-  }, [geo, esle, dosyaAd]);
+    try {
+      const s = cadHatKur(geo, esle, dosyaAd.replace(/\.[^.]+$/, ""));
+      return { sonuc: { ...s, uyarilar: [...shpUyari, ...s.uyarilar] }, hata: null };
+    } catch (e) { return { sonuc: null, hata: e instanceof Error ? e.message : "Hat kurulamadı." }; }
+  }, [geo, esle, dosyaAd, shpUyari]);
 
   const sonuc: HatSonuc | null = kaynak === "gtfs" ? gtfsSonuc : kaynak === "railml" ? railmlSonuc : cadSonuc.sonuc;
   const kurHata = kaynak === "cad" ? cadSonuc.hata : null;
@@ -107,11 +128,11 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis }: {
       <summary className="flex cursor-pointer select-none items-center gap-2 p-4">
         <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
         <span className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>Dosyadan İçe Aktar</span>
-        <span className="ml-2 text-xs" style={{ color: brand.muted }}>GTFS · railML · CAD (DXF) → hattı otomatik kur</span>
+        <span className="ml-2 text-xs" style={{ color: brand.muted }}>GTFS · railML · CAD (DXF) · Shapefile → hattı otomatik kur</span>
       </summary>
       <div className="border-t px-4 pb-4 pt-3" style={{ borderColor: brand.border }}>
         <p className="mb-3 text-xs" style={{ color: brand.muted }}>
-          <b>GTFS .zip</b>, <b>railML .xml</b> veya <b>CAD .dxf</b> yükle. Sıralı duraklar + gerçek mesafelerle hat kurulur.
+          <b>GTFS .zip</b>, <b>railML .xml</b>, <b>CAD .dxf</b> veya <b>Shapefile .zip</b> (.shp/.dbf/.prj) yükle. Sıralı duraklar + gerçek mesafelerle hat kurulur.
           {" "}Makas/sinyal içe aktarılmaz; Ringler'de eklenir. <b>DWG</b> için önce DXF'e çevir.
         </p>
 
@@ -169,6 +190,15 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis }: {
                 </div>
               </div>
             </div>
+            {shpBuf && adAlanlari.length > 0 && (
+              <label className="mt-3 block">
+                <span className="field-label">🏷 Durak adı özelliği (.dbf)</span>
+                <select value={adAlani} onChange={(e) => setAdAlani(e.target.value)} className="mt-1 w-full max-w-xs rounded border px-2 py-1.5 text-sm" style={{ borderColor: brand.border, color: brand.ink }}>
+                  <option value="">otomatik seç</option>
+                  {adAlanlari.map((a) => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </label>
+            )}
             {kurHata && <p className="mt-2" style={{ color: brand.red }}>⚠ {kurHata}</p>}
           </div>
         )}
