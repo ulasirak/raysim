@@ -74,8 +74,9 @@ export function useCanliAgProps() {
   const yolcuVeriVar = !!isletme.istasyonYolcu && Object.keys(isletme.istasyonYolcu).length > 0;
   const tersRapor = useMemo(() => tersIsletmeAnaliz(rings, stock, isletme, cfg, yolcuVeriVar ? "istasyon" : "toplam"), [rings, stock, isletme, cfg, yolcuVeriVar]);
   const depotPlan = useMemo(() => planDepotDispatch(line, ulasilanHeadwaySn), [line, ulasilanHeadwaySn]);
-  const depoVar = depotPlan.depots.length > 0;
-  const simHazir = depoVar && !!isletme.filoOnaylandi;
+  // Bu VİTRİN sayfasında depo/parklanma ŞART DEĞİL: depo yoksa trenler hat başından
+  // (origin) dağıtılır → 2. Etap gibi deposuz hatlar da "hazırlanıyor"da takılmaz.
+  const simHazir = !!isletme.filoOnaylandi && filo > 0 && line.stations.length > 1;
 
   const gidisOrigins = useMemo(() => {
     const depolar = depotPlan.depots;
