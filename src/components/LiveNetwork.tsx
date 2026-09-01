@@ -762,7 +762,7 @@ export function LiveNetwork({
                 <circle cx={gA.x} cy={gA.y} r={1.1} fill={col} /><circle cx={dB.x} cy={dB.y} r={1.1} fill={col} />
                 {scissors && <><circle cx={dA.x} cy={dA.y} r={1.1} fill={col} /><circle cx={gB.x} cy={gB.y} r={1.1} fill={col} /></>}
                 <text x={etk.x} y={etk.y} textAnchor="middle" fontSize={4.6} fontWeight={700} fill={brand.inkSoft}>{scissors ? "X" : "S"}</text>
-                <title>{`Makas: ${f.ad} — ${scissors ? "X (scissors) — 2 çapraz, gidiş↔dönüş" : "S (tek crossover) — gidiş↔dönüş"}${f.makasSayisi ? ` · ${f.makasSayisi} PM` : ""} — ${dolu ? "kırmızı (dolu)" : "yeşil (serbest)"}`}</title>
+                <title>{`Makas: ${f.ad} — ${scissors ? "X-makas — 2 çapraz, gidiş↔dönüş" : "S-makas — gidiş↔dönüş"}${f.makasSayisi ? ` · ${f.makasSayisi} makas` : ""} — ${dolu ? "kırmızı (dolu)" : "yeşil (serbest)"}`}</title>
               </g>
             );
           }
@@ -889,10 +889,10 @@ export function LiveNetwork({
       </div>
       <p className="text-xs" style={{ color: brand.muted }}>
         <span style={{ color: DOWN }}>▬</span> Üst şerit: Dönüş (sağ→sol) · <span style={{ color: UP_COL }}>▬</span> Alt şerit: Gidiş (sol→sağ) · <span style={{ color: CK.red }}>▬</span> işgal edilen blok.
-        {" "}<span style={{ color: ASPEKT.yesil }}>●</span> otomatik blok sınırı (boş kesim bölme — sinyal değil, sadece blok işareti). GERÇEK sinyaller elle metrajla konur: 3-aspect direk sinyali <b>▶</b> giden / <b>◀</b> gelen yön, <span style={{ color: CK.amber }}>amber ↺</span> = ters işletme (turnback) sinyali (kırmızı/sarı/yeşil = önündeki blok işgaline göre yanar). Hat özellikleri: <span style={{ color: CK.blue }}>◉</span> yaya geçidi · <span style={{ color: CK.amber }}>⊞</span> karayolu geçidi · <span style={{ color: brand.ink }}>◆</span> makas — <b>S</b> tek / <b>X</b> scissors (✕). İşgal edilen blok kırmızı segmentle görünür.
+        {" "}<span style={{ color: ASPEKT.yesil }}>●</span> otomatik blok sınırı (boş kesim bölme — sinyal değil, sadece blok işareti). GERÇEK sinyaller elle metrajla konur: 3-aspect direk sinyali <b>▶</b> giden / <b>◀</b> gelen yön, <span style={{ color: CK.amber }}>amber ↺</span> = ters işletme (turnback) sinyali (kırmızı/sarı/yeşil = önündeki blok işgaline göre yanar). Hat özellikleri: <span style={{ color: CK.blue }}>◉</span> yaya geçidi · <span style={{ color: CK.amber }}>⊞</span> karayolu geçidi · <span style={{ color: brand.ink }}>◆</span> makas — <b>S-makas</b> / <b>X-makas</b> (✕). İşgal edilen blok kırmızı segmentle görünür.
         {depoToplam > 0 && <> · 🅿 <b>Depo (parklanma):</b> bekleyen trenler sırayla headway aralığıyla servise çıkar; kutudaki dolu kareler çıkışa hazır, soluk kareler çıkmış trenlerdir.</>}
         {tersMakaslar.length > 0 && tersMod !== "kapali" && <> · <span style={{ color: CK.amber }}>↺</span> <b>Ters işletme (istasyon makası):</b> {tersMod === "ciftYonlu" ? "giden ya da gelen" : "giden"} bir tren <b>istasyon</b> makasına ulaşınca süre durur ve onay istenir; onaylarsanız karşı hatta geçer ({tersMod === "ciftYonlu" ? "giden→başa döner, gelen→ileri gider" : "başa, sıranın en arkasına döner"}). Yalnız istasyon makasları için geçerlidir.</>}
-        {(terminalBas || terminalSon) && <> · <b>Terminal dönüş biçimi:</b> hattın uçlarında dönüş tipine göre çizilir — <b>kör terminal</b> (tampon barı = çıkmaz, perondan ters döner) · <b>çift peron</b> (iki kol + X makas, biri dönerken diğeri girer) · <b>balon loop</b> (durmadan döner, dönüş beklemesi ≈ 0) · <b>makaslı geçiş</b> (uçta X crossover). Ringler → Dönüş tipi değişince şekil değişir.</>}
+        {(terminalBas || terminalSon) && <> · <b>Terminal dönüş biçimi:</b> hattın uçlarında dönüş tipine göre çizilir — <b>kör terminal</b> (tampon barı = çıkmaz, perondan ters döner) · <b>çift peron</b> (iki kol + X makas, biri dönerken diğeri girer) · <b>balon loop</b> (durmadan döner, dönüş beklemesi ≈ 0) · <b>makaslı geçiş</b> (uçta X-makas). Ringler → Dönüş tipi değişince şekil değişir.</>}
       </p>
 
       {/* ETKİLEŞİMLİ TERS İŞLETME — onay pop-up (süre durdurulmuşken) */}
@@ -903,7 +903,7 @@ export function LiveNetwork({
               <span style={{ color: CK.amber, fontSize: 18 }}>↺</span> Ters işletme onayı
             </div>
             <p className="mt-2 text-xs leading-relaxed" style={{ color: brand.inkSoft }}>
-              <b>Tren {karar.no}</b>, <b>{karar.makasAd}</b> istasyon makasına ({karar.crossover === "x" ? "X · scissors" : "S · tek crossover"}) ulaştı — <b>süre durduruldu</b>.
+              <b>Tren {karar.no}</b>, <b>{karar.makasAd}</b> istasyon makasına ({karar.crossover === "x" ? "X-makas" : "S-makas"}) ulaştı — <b>süre durduruldu</b>.
               {karar.yon === "gelen"
                 ? " Bu DÖNÜŞ trenini karşı (gidiş) hatta geçirip ileri, bitiş terminaline doğru göndermek istiyor musunuz?"
                 : " Bu GİDEN treni karşı (dönüş) şeride geçirip başa (sıranın en arkasına) geri döndürmek istiyor musunuz?"}

@@ -11,7 +11,6 @@ import { flattenRoute, ringlerdenSebeke, hemzeminDuruslari, duruslariEkle, kalki
 import { simulate } from "@/lib/anaray/sim";
 import { simulateSignalled, reverseRoute, planDepotDispatch, loopYorunge } from "@/lib/anaray/signalling";
 import { maksimumTren } from "@/lib/anaray/kapasite";
-import { tersIsletmeAnaliz } from "@/lib/anaray/tersisletme";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import type { TersMod } from "@/lib/anaray/config";
 import { brand } from "@/lib/anaray/brand";
@@ -71,8 +70,6 @@ export function useCanliAgProps() {
   const filo = Math.min(nMax, parkToplam > 0 ? parkToplam : filoTek);
   const hedefHeadwaySn = Math.max(1, isletme.seferHeadwayDk * 60);
   const ulasilanHeadwaySn = maks.gecerli ? maks.cevrimSuresi / Math.max(1, filo) : hedefHeadwaySn;
-  const yolcuVeriVar = !!isletme.istasyonYolcu && Object.keys(isletme.istasyonYolcu).length > 0;
-  const tersRapor = useMemo(() => tersIsletmeAnaliz(rings, stock, isletme, cfg, yolcuVeriVar ? "istasyon" : "toplam"), [rings, stock, isletme, cfg, yolcuVeriVar]);
   const depotPlan = useMemo(() => planDepotDispatch(line, ulasilanHeadwaySn), [line, ulasilanHeadwaySn]);
   // Bu VİTRİN sayfasında depo/parklanma ŞART DEĞİL: depo yoksa trenler hat başından
   // (origin) dağıtılır → 2. Etap gibi deposuz hatlar da "hazırlanıyor"da takılmaz.
@@ -103,28 +100,16 @@ export function useCanliAgProps() {
   const dagitim = useMemo(() => {
     const orn = loopY.ornekler;
     const sToT = (hedefS: number) => { let en = 0, bd = Infinity; for (const o of orn) { const dd = Math.abs(o.s - hedefS); if (dd < bd) { bd = dd; en = o.t; } } return en; };
-    // Depo/parklanma YOK → depo dağıtımı (gidiş/ters + turnback başlangıcı) uygulanamaz;
-    // trenler loop üzerine EŞİT yayılır, hepsi gidiş yönünde, hemen dolaşır. Aksi halde ters
-    // yön trenleri loop sonundan (turnback) doğar → "çıkar çıkmaz kendi etrafında döner+bekler".
-    if (depotPlan.depots.length === 0) {
-      const arali = loopY.periyot / Math.max(1, filo);
-      return Array.from({ length: filo }, (_, k) => ({ parkPos: 0, gidis: true, dispatchT: 0, startPhase: arali * k }));
-    }
+    // VİTRİN dağıtımı — SADE ve TEK TİP: bütün tramvaylar AYNI başlangıç noktasından
+    // (depo/başlangıç terminali), AYNI yönde (gidiş, alt şerit), SIRAYLA (headway aralığıyla)
+    // yola çıkar; her biri tam turu (gidiş→dönüş) yapıp sırayla çıktığı yere geri döner.
+    // Ters/karşı-şerit başlangıcı YOK → "ikinci tren karşı hatta geçip çıkıyor" davranışı biter.
     const origins = gidisOrigins ?? [];
-    let gKalan = tersRapor ? tersRapor.depoDagilim.gidis : Math.ceil(filo / 2);
-    let tKalan = filo - gKalan;
     return Array.from({ length: filo }, (_, k) => {
       const parkPos = origins.length > 0 ? origins[k % origins.length] : 0;
-      const wantG = k % 2 === 0;
-      let gidis: boolean;
-      if (wantG && gKalan > 0) { gKalan--; gidis = true; }
-      else if (!wantG && tKalan > 0) { tKalan--; gidis = false; }
-      else if (gKalan > 0) { gKalan--; gidis = true; }
-      else { tKalan--; gidis = false; }
-      const startS = gidis ? Math.min(loopY.L, parkPos) : Math.max(0, loopY.loopLen - parkPos);
-      return { parkPos, gidis, dispatchT: k * ulasilanHeadwaySn, startPhase: sToT(startS) };
+      return { parkPos, gidis: true, dispatchT: k * ulasilanHeadwaySn, startPhase: sToT(Math.min(loopY.L, parkPos)) };
     });
-  }, [gidisOrigins, tersRapor, filo, loopY, ulasilanHeadwaySn, depotPlan]);
+  }, [gidisOrigins, filo, loopY, ulasilanHeadwaySn]);
   const loopVeri = useMemo(() => ({ ...loopY, count: filo, offset: loopY.periyot / Math.max(1, filo), dagitim }), [loopY, filo, dagitim]);
 
   return {
