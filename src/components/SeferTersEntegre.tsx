@@ -43,7 +43,7 @@ export function SeferTersEntegre({ rings, stock, cfg, isletme, headwayDk, onHead
           <input type="range" min={0.5} max={20} step={0.5} value={headwayDk} onChange={(e) => onHeadwayChange(parseFloat(e.target.value))} className="w-40" />
           <input type="number" min={0.5} step={0.5} value={headwayDk} onChange={(e) => onHeadwayChange(Math.max(0.5, parseFloat(e.target.value) || headwayDk))} className="w-16 rounded border px-1.5 py-0.5 text-sm tabular-nums" style={{ borderColor: brand.border }} />
           <span className="tabular-nums font-bold" style={{ color: brand.red }}>dk</span>
-          <span className="text-xs" style={{ color: brand.muted }}>→ {s.filo} araç serviste</span>
+          <span className="text-xs" style={{ color: s.aracKirpildi ? brand.red : brand.muted }}>{s.aracKirpildi ? `→ istenen ${s.filo} · sığan ${s.cizilenArac} araç` : `→ ${s.filo} araç serviste`}</span>
         </label>
         <label className="flex items-center gap-2">
           <span className="font-semibold" style={{ color: brand.ink }}>Zaman</span>
@@ -52,6 +52,13 @@ export function SeferTersEntegre({ rings, stock, cfg, isletme, headwayDk, onHead
         </label>
       </div>
       <div className="mb-2 px-1 text-xs" style={{ color: brand.muted }}>Sefer aralığı <b>Filo Paneli</b> ve <b>Tarife</b> ile ortaktır — burada değiştirince hepsi birlikte güncellenir.</div>
+
+      {/* Kırpma uyarısı — istenen sıklık fiziksel tavanı aşıyorsa diyagram tavanla çizilir */}
+      {s.aracKirpildi && (
+        <div className="mb-1 rounded-md px-2.5 py-1 text-xs font-medium" style={{ background: "#FBECEC", color: "#8E1224" }}>
+          ⚠ İstenen {s.filo} araç hatta sığmıyor — diyagram, taşınabilen {s.cizilenArac} araçla (en küçük uygulanabilir aralık {sure(s.cevrimSn / Math.max(1, s.cizilenArac))}) çizildi.
+        </div>
+      )}
 
       {/* Konum diyagramı */}
       <div className="-mx-1 overflow-x-auto px-1 sm:mx-0" style={{ WebkitOverflowScrolling: "touch" }}>

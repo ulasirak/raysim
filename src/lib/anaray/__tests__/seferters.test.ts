@@ -55,6 +55,10 @@ describe("Sefer ↔ Ters İşletme entegre algoritma", () => {
     expect(asiri.filo).toBeGreaterThan(f.teorikTavan);   // istenen serviste tavanı aşar
     expect(f.acikAdet).toBe(asiri.filo - f.teorikTavan); // fazla araç
     expect(f.minAralikSn).toBeGreaterThan(0);            // en küçük uygulanabilir aralık verilir
+    // DİYAGRAM fiziksel tavana kırpılır (canlı sim gibi) — istenen kadar araç çizilmez
+    expect(asiri.aracKirpildi).toBe(true);
+    expect(asiri.cizilenArac).toBe(f.teorikTavan);
+    expect(asiri.araclar.length).toBe(f.teorikTavan);
     // makul aralıkta bu durum oluşmaz
     expect(seferTersEntegre(rings, stock, cfg, isletme, 8 * 60, 0).filoIhtiyac!.durum).not.toBe("aracYetersiz");
   });

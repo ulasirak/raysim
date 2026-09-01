@@ -74,7 +74,9 @@ export interface SeferTersSonuc {
   cevrimSn: number;
   L: number;              // gidiş uzunluğu (m)
   anSn: number;           // snapshot zamanı
-  araclar: AracKonum[];
+  araclar: AracKonum[];   // DİYAGRAMDA çizilen araçlar (fiziksel tavana kırpılmış olabilir)
+  cizilenArac: number;    // araclar.length (kırpılmışsa fiziksel tavan)
+  aracKirpildi: boolean;  // istenen serviste fiziksel tavanı aştı → diyagram kırpıldı
   oneriler: DonusOneri[];
   makaslar: { ad: string; km: number; crossover: "s" | "x"; onerilir: boolean }[]; // diyagram için tüm makas bölgeleri
   filoIhtiyac: FiloIhtiyac | null; // tramvay ekleme ihtiyacı modülü
@@ -115,7 +117,7 @@ export function seferTersEntegre(
   rings: DurakArasiRing[], stock: RollingStock, cfg: SimConfig, isletme: Isletme,
   headwaySn: number, anSn = 0,
 ): SeferTersSonuc {
-  const bos: SeferTersSonuc = { gecerli: false, headwaySn, filo: 0, cevrimSn: 0, L: 0, anSn, araclar: [], oneriler: [], makaslar: [], filoIhtiyac: null, bilgi: [] };
+  const bos: SeferTersSonuc = { gecerli: false, headwaySn, filo: 0, cevrimSn: 0, L: 0, anSn, araclar: [], cizilenArac: 0, aracKirpildi: false, oneriler: [], makaslar: [], filoIhtiyac: null, bilgi: [] };
   if (rings.length < 2 || headwaySn <= 0) return bos;
 
   const line: Line = loopToHat(rings, true, cfg).line;
@@ -130,14 +132,23 @@ export function seferTersEntegre(
   const { periyot, L, loopLen, ornekler } = loopY;
   if (periyot <= 0 || L <= 0) return bos;
 
-  const filo = Math.max(1, Math.ceil(periyot / headwaySn));
+  const filo = Math.max(1, Math.ceil(periyot / headwaySn)); // istenen serviste (talep edilen sıklık)
   const offset = periyot / filo; // ulaşılan gerçek aralık (filo tam sayı olduğundan headway'e yakın)
   const an = ((anSn % periyot) + periyot) % periyot;
 
-  // 1) O anda araç konumları (gerçek yörünge → tüm yavaşlamalar dâhil)
+  // FİZİKSEL TAVAN: hat blocking-time (min güvenli aralık hMin) gereği en fazla ⌊çevrim÷hMin⌋
+  // tramvay taşır. İstenen serviste bunu aşarsa DİYAGRAM bu tavana kırpılır (canlı sim gibi).
+  const maks = maksimumTren(rings, stock, cfg, isletme);
+  const teorikTavan = maks.hMin > 0 ? Math.max(1, Math.floor(periyot / maks.hMin)) : Math.max(1, maks.nTeorik || filo);
+  const minAralikSn = Math.max(1, Math.round(maks.hMin > 0 ? maks.hMin : periyot / Math.max(1, teorikTavan)));
+  const aracKirpildi = filo > teorikTavan;
+  const cizFilo = Math.min(filo, teorikTavan);  // diyagramda gerçekten çizilen (sığan) araç
+  const cizOffset = periyot / cizFilo;
+
+  // 1) O anda araç konumları (gerçek yörünge → tüm yavaşlamalar dâhil); tavana kırpılmış filoyla.
   const araclar: AracKonum[] = [];
-  for (let k = 0; k < filo; k++) {
-    const faz = ((an + k * offset) % periyot + periyot) % periyot;
+  for (let k = 0; k < cizFilo; k++) {
+    const faz = ((an + k * cizOffset) % periyot + periyot) % periyot;
     const { s, durum } = ornekle(ornekler, faz);
     const gidis = s <= L + 1e-6;
     const fp = gidis ? Math.min(L, s) : Math.max(0, loopLen - s);
@@ -147,7 +158,7 @@ export function seferTersEntegre(
   // 2) Talep analizi → makas yük dengesizlikleri (kısa dönüş adayları)
   const yolcuVar = !!isletme.istasyonYolcu && Object.keys(isletme.istasyonYolcu).length > 0;
   const tia = tersIsletmeAnaliz(rings, stock, isletme, cfg, yolcuVar ? "istasyon" : "toplam");
-  if (!tia) return { gecerli: true, headwaySn, filo, cevrimSn: periyot, L, anSn: an, araclar, oneriler: [], makaslar: [], filoIhtiyac: null, bilgi: ["Talep analizi üretilemedi (yetersiz veri)."] };
+  if (!tia) return { gecerli: true, headwaySn, filo, cevrimSn: periyot, L, anSn: an, araclar, cizilenArac: cizFilo, aracKirpildi, oneriler: [], makaslar: [], filoIhtiyac: null, bilgi: ["Talep analizi üretilemedi (yetersiz veri)."] };
 
   // 3) Her kısa-dönüş adayı makas için: makasa GİDİŞ yönünde en yakın (arkadaki) aracı bul,
   //    dönüş kararını ona bağla; makasa gerçek ulaşma süresini yörüngeden hesapla.
@@ -191,11 +202,7 @@ export function seferTersEntegre(
   const frekansServiste = (filo * 3600) / periyot;         // tramvay/saat
   const arzServiste = Math.max(1, frekansServiste * C);    // kişi/saat kapasite
   const tepeDoluluk = tia.tepeYuk / arzServiste;
-  // FİZİKSEL TAVAN: hat, blocking-time (min güvenli aralık hMin) gereği en fazla ⌊çevrim÷hMin⌋
-  // tramvay taşır. Seçilen aralık bundan çok araç ister → o sefer sıklığı SAĞLANAMAZ.
-  const maks = maksimumTren(rings, stock, cfg, isletme);
-  const teorikTavan = maks.hMin > 0 ? Math.max(1, Math.floor(periyot / maks.hMin)) : Math.max(1, maks.nTeorik || filo);
-  const minAralikSn = Math.max(1, Math.round(maks.hMin > 0 ? maks.hMin : periyot / Math.max(1, teorikTavan)));
+  // (teorikTavan/minAralikSn yukarıda hesaplandı — diyagram kırpma ile ortak.)
   // Üniform servis hedefe iner: yeniServiste = gereken (aynı formül garanti eder). Kısa dönüş
   // yoğun çekirdeğe yönlendirerek eklenecek sayısını azaltır (gerekenKD). Tavan = altyapı sınırı.
   const eklenecekUniform = Math.max(0, Math.min(tavan, gereken) - filo);
@@ -234,7 +241,8 @@ export function seferTersEntegre(
   };
 
   const bilgi: string[] = [];
-  bilgi.push(`Sefer aralığı ${saatKisa(headwaySn)} → ${filo} araç serviste; ulaşılan gerçek aralık ${saatKisa(offset)} (çevrim ${saatKisa(periyot)} ÷ ${filo}).`);
+  if (aracKirpildi) bilgi.push(`Diyagram, istenen ${filo} araç yerine hattın taşıyabildiği ${teorikTavan} araçla (en küçük uygulanabilir aralık ${saatKisa(minAralikSn)}) çizildi — fazlası hatta sığmaz.`);
+  bilgi.push(`Sefer aralığı ${saatKisa(headwaySn)} → ${filo} araç serviste${aracKirpildi ? ` (yalnız ${teorikTavan} sığar)` : ""}; ulaşılan gerçek aralık ${saatKisa(aracKirpildi ? cizOffset : offset)} (çevrim ${saatKisa(periyot)} ÷ ${aracKirpildi ? teorikTavan : filo}).`);
   bilgi.push("Araç konumları canlı sim/kapasite ile AYNI yörüngeden gelir: hız kısıtları, makas geçiş hızı, sinyal lambaları, karayolu/yaya geçitleri, eğim ve istasyon duruşları hesaba katılıdır.");
   if (!yolcuVar) bilgi.push("Yolcu sayıları rolden tahmin edildi (istasyon başına iniş-biniş girilmedi). Gerçek sayımlar girilirse öneriler doğrudan ölçüme dayanır.");
   if (oneriler.length === 0) bilgi.push(tia.makaslar.some((m) => m.kisaDonusOnerilir) ? "Kısa dönüş adayı makas(lar) var ancak şu anlık-görüntüde makasa gidiş yönünde yaklaşan araç yok; zaman çubuğunu oynatınca bağlanır." : "Talep dengeli — hiçbir makasta kısa dönüş gerekmiyor (tüm kollar hedef dolulukta).");
@@ -247,7 +255,7 @@ export function seferTersEntegre(
         : `Filo yeterliliği: yoğunluk için ${filoIhtiyac.eklenecek} tramvay eklenmesi öneriliyor (aşağıdaki modüle bakınız).`);
 
   const makaslar = tia.makaslar.map((m) => ({ ad: m.ad, km: Math.max(0, Math.min(L, m.konum)) / 1000, crossover: m.crossover, onerilir: m.kisaDonusOnerilir }));
-  return { gecerli: true, headwaySn, filo, cevrimSn: periyot, L, anSn: an, araclar, oneriler, makaslar, filoIhtiyac, bilgi };
+  return { gecerli: true, headwaySn, filo, cevrimSn: periyot, L, anSn: an, araclar, cizilenArac: cizFilo, aracKirpildi, oneriler, makaslar, filoIhtiyac, bilgi };
 }
 
 function saatKisa(sn: number): string {
