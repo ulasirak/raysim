@@ -260,9 +260,9 @@ export function LiveNetwork({
         const arizali = [...fb].filter((i) => i >= 0 && i < bl.length - 1).sort((a, b2) => a - b2);
         if (arizali.length) {
           const gStop = Math.max(0, bl[arizali[0]] - margin);                       // gidiş durak çizgisi (sol kenar)
-          const gEdge = bl[arizali[0]];                                             // gidiş: bu kenarı geçen serbest
+          const gFar = bl[arizali[0] + 1];                                          // gidiş: arıza bloğunun UZAK (sağ) kenarı — bunu geçen serbest
           const dStop = Math.min(lp.L, bl[arizali[arizali.length - 1] + 1] + margin); // dönüş durak çizgisi (sağ kenar)
-          const dEdge = bl[arizali[arizali.length - 1] + 1];                        // dönüş: bu kenarı geçen serbest
+          const dNear = bl[arizali[arizali.length - 1]];                            // dönüş: arıza bloğunun UZAK (sol) kenarı — bunu geçen serbest
           type TP = { k: number; fp: number; gidis: boolean; taban: number };
           const tps: TP[] = [];
           for (let k = 0; k < lp.count; k++) {
@@ -276,15 +276,16 @@ export function LiveNetwork({
             tps.push({ k, fp, gidis, taban });
           }
           const tut: { k: number; sHedef: number; gidisMi: boolean; taban: number }[] = [];
-          // GİDİŞ: arızaya SOLDAN yaklaşanlar (fp ≤ kenar), öndeki (fp büyük) durak çizgisinde
+          // GİDİŞ: arıza bloğunu HENÜZ GEÇMEMİŞ olanlar (fp ≤ uzak kenar; blok İÇİNE sıçrayan
+          // da dahil → yüksek hızda pencere atlanmaz), öndeki (fp büyük) durak çizgisine kilitlenir.
           let cizgiG = gStop;
-          for (const x of tps.filter((y) => y.gidis && y.fp <= gEdge + 1e-6).sort((a, b2) => b2.fp - a.fp)) {
+          for (const x of tps.filter((y) => y.gidis && y.fp <= gFar + 1e-6).sort((a, b2) => b2.fp - a.fp)) {
             if (x.fp >= cizgiG - 1e-6) { tut.push({ k: x.k, sHedef: cizgiG, gidisMi: true, taban: x.taban }); cizgiG -= araGap; }
             else break;                                    // bu tren çizginin gerisinde → serbest, arkası da serbest
           }
-          // DÖNÜŞ: arızaya SAĞDAN yaklaşanlar (fp ≥ kenar), öndeki (fp küçük) durak çizgisinde
+          // DÖNÜŞ: arıza bloğunu HENÜZ GEÇMEMİŞ olanlar (fp ≥ uzak/sol kenar), öndeki (fp küçük) durak çizgisinde
           let cizgiD = dStop;
-          for (const x of tps.filter((y) => !y.gidis && y.fp >= dEdge - 1e-6).sort((a, b2) => a.fp - b2.fp)) {
+          for (const x of tps.filter((y) => !y.gidis && y.fp >= dNear - 1e-6).sort((a, b2) => a.fp - b2.fp)) {
             if (x.fp <= cizgiD + 1e-6) { tut.push({ k: x.k, sHedef: lp.loopLen - cizgiD, gidisMi: false, taban: x.taban }); cizgiD += araGap; }
             else break;
           }
