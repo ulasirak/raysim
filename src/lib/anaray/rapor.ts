@@ -387,21 +387,34 @@ function hemzeminSvg(rings: DurakArasiRing[], cfg: SimConfig): { svg: string; ad
 function seferTersSvg(ste: SeferTersSonuc): string {
   if (!ste.gecerli) return "";
   const Lkm = ste.L / 1000; if (Lkm <= 0) return "";
-  const W = 720, padL = 10, padR = 10, midY = 58, H = 104;
+  const W = 720, padL = 12, padR = 14, midY = 50, H = 132, axisY = H - 24;
   const X = (km: number) => padL + (km / Math.max(0.001, Lkm)) * (W - padL - padR);
   const oneriAracSet = new Set(ste.oneriler.map((o) => o.aracNo));
+  // x-ekseni km ızgarası — HER ZAMAN girili: ~8 bölmeye yakın "güzel" adım + uçlar.
+  const hedef = Lkm / 8, p10 = Math.pow(10, Math.floor(Math.log10(hedef || 1)));
+  const kmStep = [1, 2, 2.5, 5, 10].map((c) => c * p10).find((c) => c >= hedef) ?? 10 * p10;
+  const kmTicks: number[] = [];
+  for (let k = 0; k <= Lkm + 1e-6; k += kmStep) kmTicks.push(Math.round(k * 100) / 100);
+  if (kmTicks[kmTicks.length - 1] < Lkm - 1e-6) kmTicks.push(Math.round(Lkm * 100) / 100);
+  const izgara = kmTicks.map((k) => `<line x1="${X(k).toFixed(1)}" y1="${midY - 20}" x2="${X(k).toFixed(1)}" y2="${axisY}" stroke="${CK.grid}" stroke-width="0.6" stroke-dasharray="2 3"/>`
+    + num(X(k), axisY + 11, k.toFixed(k % 1 === 0 ? 0 : 1), { anchor: "middle", size: 7.5 })).join("")
+    + num(W - padR, axisY + 11, "km →", { anchor: "end", size: 7.5, weight: 600, color: CK.ink2 });
   const hat = `<line x1="${padL}" y1="${midY}" x2="${W - padR}" y2="${midY}" stroke="${CK.track}" stroke-width="4" stroke-linecap="round"/>`;
-  const uc = num(padL, H - 4, "0 km", { size: 8 }) + num(W - padR, H - 4, `${Lkm.toFixed(1)} km`, { anchor: "end", size: 8 });
-  const makas = ste.makaslar.map((m) => `<line x1="${X(m.km).toFixed(1)}" y1="${midY - 8}" x2="${X(m.km).toFixed(1)}" y2="${midY + 8}" stroke="${m.onerilir ? CK.red : CK.grid}" stroke-width="${m.onerilir ? 2 : 1}"/>`
-    + (m.onerilir ? num(X(m.km), midY + 22, `🔄 ${m.km.toFixed(2)}`, { anchor: "middle", size: 8, weight: 700, color: CK.red }) : "")).join("");
-  const oklar = ste.oneriler.map((o) => `<line x1="${X(o.aracKm).toFixed(1)}" y1="${midY - 16}" x2="${X(o.makasKm).toFixed(1)}" y2="${midY - 16}" stroke="${CK.red}" stroke-width="0.8" stroke-dasharray="3 2"/>`).join("");
+  // TERS İŞLETME YAPILABİLEN TÜM MAKASLAR: işaret (◆) + km etiketi (iki satıra dağıtılmış).
+  const makas = ste.makaslar.map((m, i) => {
+    const x = X(m.km), renk = m.onerilir ? CK.red : CK.ink2, ly = i % 2 === 1 ? midY + 33 : midY + 22;
+    return `<line x1="${x.toFixed(1)}" y1="${midY - 8}" x2="${x.toFixed(1)}" y2="${midY + 8}" stroke="${renk}" stroke-width="${m.onerilir ? 2 : 1.2}"/>`
+      + `<rect x="${(x - 3).toFixed(1)}" y="${(midY - 3).toFixed(1)}" width="6" height="6" transform="rotate(45 ${x.toFixed(1)} ${midY})" fill="${renk}"/>`
+      + num(x, ly, `${m.onerilir ? "🔄 " : ""}${m.km.toFixed(2)}`, { anchor: "middle", size: 7, weight: m.onerilir ? 700 : 500, color: renk });
+  }).join("");
+  const oklar = ste.oneriler.map((o) => `<line x1="${X(o.aracKm).toFixed(1)}" y1="${midY - 15}" x2="${X(o.makasKm).toFixed(1)}" y2="${midY - 15}" stroke="${CK.red}" stroke-width="0.8" stroke-dasharray="3 2"/>`).join("");
   const arac = ste.araclar.map((a) => {
     const x = X(a.km), oner = oneriAracSet.has(a.no), y = a.gidis ? midY - 6 : midY + 6;
     const renk = oner ? CK.red : a.gidis ? CK.blue : CK.orange;
     const p = a.gidis ? `${(x - 4).toFixed(1)},${y - 4} ${(x + 4).toFixed(1)},${y} ${(x - 4).toFixed(1)},${y + 4}` : `${(x + 4).toFixed(1)},${y - 4} ${(x - 4).toFixed(1)},${y} ${(x + 4).toFixed(1)},${y + 4}`;
     return `<polygon points="${p}" fill="${renk}"/>` + num(x, a.gidis ? y - 6 : y + 12, `${a.no}`, { anchor: "middle", size: 6.5, weight: oner ? 700 : 500, color: renk });
   }).join("");
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%">${hat}${uc}${makas}${oklar}${arac}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%">${izgara}${hat}${makas}${oklar}${arac}</svg>`;
 }
 
 // Gerçek Sperrzeitentreppe (gömülü SVG): iki ardışık tramvay + her bloğun blocking-time

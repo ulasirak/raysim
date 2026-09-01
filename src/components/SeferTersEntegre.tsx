@@ -22,9 +22,18 @@ export function SeferTersEntegre({ rings, stock, cfg, isletme }: { rings: DurakA
   if (!s.gecerli) return <div className="text-sm" style={{ color: brand.muted }}>Hat yeterli değil (en az 2 durak gerekli).</div>;
 
   const Lkm = s.L / 1000;
-  const W = 900, padL = 12, padR = 12, midY = 66, H = 120;
+  const W = 900, padL = 12, padR = 14, midY = 54, H = 132;
+  const axisY = H - 26;
   const X = (km: number) => padL + (km / Math.max(0.001, Lkm)) * (W - padL - padR);
   const oneriAracSet = new Set(s.oneriler.map((o) => o.aracNo));
+  // x-ekseni km ızgarası — HER ZAMAN girili: ~8 bölmeye yakın "güzel" adım + uçlar.
+  const kmStep = (() => {
+    const hedef = Lkm / 8, p = Math.pow(10, Math.floor(Math.log10(hedef || 1)));
+    return [1, 2, 2.5, 5, 10].map((c) => c * p).find((c) => c >= hedef) ?? 10 * p;
+  })();
+  const kmTicks: number[] = [];
+  for (let k = 0; k <= Lkm + 1e-6; k += kmStep) kmTicks.push(Math.round(k * 100) / 100);
+  if (kmTicks[kmTicks.length - 1] < Lkm - 1e-6) kmTicks.push(Math.round(Lkm * 100) / 100);
 
   return (
     <div>
@@ -47,19 +56,29 @@ export function SeferTersEntegre({ rings, stock, cfg, isletme }: { rings: DurakA
       <div className="-mx-1 overflow-x-auto px-1 sm:mx-0" style={{ WebkitOverflowScrolling: "touch" }}>
         <div className="min-w-[680px] sm:min-w-0">
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Sefer & ters işletme konum diyagramı">
-            {/* hat */}
-            <line x1={padL} y1={midY} x2={W - padR} y2={midY} stroke={CK.track} strokeWidth={4} strokeLinecap="round" />
-            {/* km ekseni uçları */}
-            <text x={padL} y={H - 4} fontSize={8} fill={brand.muted}>0 km</text>
-            <text x={W - padR} y={H - 4} textAnchor="end" fontSize={8} fill={brand.muted}>{Lkm.toFixed(1)} km</text>
-            {/* makaslar */}
-            {s.makaslar.map((m, i) => (
-              <g key={i}>
-                <line x1={X(m.km)} y1={midY - 8} x2={X(m.km)} y2={midY + 8} stroke={m.onerilir ? CK.red : brand.border} strokeWidth={m.onerilir ? 2 : 1} />
-                {m.onerilir && <text x={X(m.km)} y={midY + 22} textAnchor="middle" fontSize={8} fontWeight={700} fill={CK.red}>🔄 {m.km.toFixed(2)}</text>}
-                <title>{`${m.ad} (${m.crossover === "x" ? "X" : "S"}-makas) · ${m.km.toFixed(2)} km${m.onerilir ? " · kısa dönüş adayı" : ""}`}</title>
+            {/* x-ekseni km ızgarası — dikey ince çizgiler + km değerleri (her zaman girili) */}
+            {kmTicks.map((k, i) => (
+              <g key={`km${i}`}>
+                <line x1={X(k)} y1={midY - 22} x2={X(k)} y2={axisY} stroke={brand.border} strokeWidth={0.6} strokeDasharray="2 3" />
+                <text x={X(k)} y={axisY + 12} textAnchor="middle" fontSize={8} fill={brand.muted}>{k.toFixed(k % 1 === 0 ? 0 : 1)}</text>
               </g>
             ))}
+            <text x={W - padR} y={axisY + 12} textAnchor="end" fontSize={8} fontWeight={600} fill={brand.inkSoft}>km →</text>
+            {/* hat */}
+            <line x1={padL} y1={midY} x2={W - padR} y2={midY} stroke={CK.track} strokeWidth={4} strokeLinecap="round" />
+            {/* makaslar — TERS İŞLETME YAPILABİLEN TÜM MAKASLAR: işaret (◆) + km etiketi */}
+            {s.makaslar.map((m, i) => {
+              const x = X(m.km), renk = m.onerilir ? CK.red : brand.inkSoft;
+              const ly = i % 2 === 1 ? midY + 35 : midY + 24; // km etiketlerini iki satıra dağıt → üst üste binmesin
+              return (
+                <g key={i}>
+                  <line x1={x} y1={midY - 9} x2={x} y2={midY + 9} stroke={renk} strokeWidth={m.onerilir ? 2 : 1.2} />
+                  <rect x={x - 3} y={midY - 3} width={6} height={6} transform={`rotate(45 ${x} ${midY})`} fill={renk} />
+                  <text x={x} y={ly} textAnchor="middle" fontSize={7.5} fontWeight={m.onerilir ? 700 : 500} fill={renk}>{m.onerilir ? "🔄 " : ""}{m.km.toFixed(2)}</text>
+                  <title>{`${m.ad} (${m.crossover === "x" ? "X" : "S"}-makas) · ${m.km.toFixed(2)} km${m.onerilir ? " · kısa dönüş adayı" : " · ters işletme mümkün"}`}</title>
+                </g>
+              );
+            })}
             {/* öneri okları: araç → makas */}
             {s.oneriler.map((o, i) => (
               <line key={`ok${i}`} x1={X(o.aracKm)} y1={midY - 16} x2={X(o.makasKm)} y2={midY - 16} stroke={CK.red} strokeWidth={0.8} strokeDasharray="3 2" markerEnd="url(#ok)" />
@@ -83,7 +102,8 @@ export function SeferTersEntegre({ rings, stock, cfg, isletme }: { rings: DurakA
         </div>
       </div>
       <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 px-1 text-xs" style={{ color: brand.muted }}>
-        <span><span style={{ color: CK.blue }}>▲</span> gidiş · <span style={{ color: CK.orange }}>▼</span> dönüş · <span style={{ color: CK.red }}>🔄</span> kısa dönüş makası / bağlanan araç</span>
+        <span><span style={{ color: CK.blue }}>▲</span> gidiş · <span style={{ color: CK.orange }}>▼</span> dönüş · <span style={{ color: CK.red }}>🔄</span> kısa dönüş adayı / bağlanan araç</span>
+        <span><span style={{ color: brand.inkSoft }}>◆</span> ters işletme yapılabilen makas (tümü km ile işaretli)</span>
       </div>
 
       {/* Öneriler */}
