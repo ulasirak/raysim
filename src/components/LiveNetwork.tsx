@@ -137,11 +137,16 @@ export function LiveNetwork({
   const tersModRef = useRef<TersMod>(tersMod);
   const fazKaydirmaRef = useRef(fazKaydirma);
   const vTersRef = useRef(10);                          // ters dönüş ort. hız (m/s sim)
-  // DÖNGÜ motoru periyodik tek-yörüngedir → KALICI blok arızasını temsil edemez
-  // (arızalı blok = sonsuz durma, periyot bozulur). Bir blok arızalıyken bu yüzden
-  // SİNYAL/KUYRUK motoruna (up/down = simulateSignalled, blocked:ariza) düşeriz:
-  // trenler arızalı bloğun 1 m gerisinde durup kuyruklanır. Arıza kalkınca loop döner.
-  const loopAktif = !!loop && faultBlocks.length === 0;
+  const blocksRef = useRef(blocks);                     // blok sınırları (arıza kuyruğu için)
+  const faultBlocksRef = useRef(faultBlocks);           // arızalı blok indeksleri (canlı)
+  const trainLenRef = useRef(trainLen);                 // tren boyu (kuyruk aralığı)
+  // DÖNGÜ motoru arıza olsa da AÇIK kalır (motor DEĞİŞMEZ → donma/ışınlanma yok).
+  // Kalıcı blok arızası döngü İÇİNDE ele alınır: trenler arızalı bloğun gerisinde
+  // tren boyu aralığıyla KUYRUKLANIR (faz sabitlenir), arızayı geçmiş trenler akmaya
+  // devam eder, arıza kalkınca herkes kaldığı yerden sürer (bkz. zamanlayıcıdaki
+  // arıza-tutma geçişi). Eski davranış (sinyal/kuyruk motoruna düşüp sahneyi sıfırlama)
+  // doğal akışı bozuyordu; kaldırıldı.
+  const loopAktif = !!loop;
   // Rapor QR akışı: yüklenince bir kez otomatik başlat (kısa gecikme → sahne hazır olsun).
   const otoBaslatildi = useRef(false);
   useEffect(() => {
@@ -179,7 +184,7 @@ export function LiveNetwork({
       // Mod: "kapali" → hiç sorma; "gidenHat" → yalnız GİDEN trenler; "ciftYonlu" → giden + GELEN.
       const lp = loopRef.current;
       const mod = tersModRef.current;
-      if (lp && mod !== "kapali" && !kararRef.current) {
+      if (lp && mod !== "kapali" && !kararRef.current && faultBlocksRef.current.length === 0) {
         const tm = tersMakasRef.current;
         if (tm.length) {
           const w = Math.max(50, Math.min(lp.loopLen * 0.015, 140)); // tespit penceresi (m)
@@ -238,6 +243,58 @@ export function LiveNetwork({
             return nf;
           });
           setTersHareket((prev) => prev.filter((rr) => !biten.some((b) => b.idx === rr.idx)));
+        }
+      }
+
+      // — KALICI BLOK ARIZASI (döngü içinde, motor DEĞİŞMEDEN) —
+      // Arızalı bloğun gerisinde trenleri tren-boyu aralığıyla KUYRUKLA sabitle: her tutulan
+      // trenin fazı durak konumuna kilitlenir → yerinde durur (ışınlanma/donma yok). Arızayı
+      // GEÇMİŞ trenlere dokunulmaz (akmaya devam). Arıza kalkınca faz kaydırması korunur →
+      // herkes kaldığı yerden sürer. Gidiş legi soldan (fp artan), dönüş legi sağdan yaklaşır.
+      const fb = faultBlocksRef.current;
+      const bl = blocksRef.current;
+      if (lp && fb.length && bl.length > 1) {
+        const fkNow = fazKaydirmaRef.current;
+        const margin = 6;                                  // arızanın kaç m gerisinde dursun
+        const araGap = (trainLenRef.current || 40) + 12;   // kuyruk aralığı (tren boyu + pay)
+        const arizali = [...fb].filter((i) => i >= 0 && i < bl.length - 1).sort((a, b2) => a - b2);
+        if (arizali.length) {
+          const gStop = Math.max(0, bl[arizali[0]] - margin);                       // gidiş durak çizgisi (sol kenar)
+          const gEdge = bl[arizali[0]];                                             // gidiş: bu kenarı geçen serbest
+          const dStop = Math.min(lp.L, bl[arizali[arizali.length - 1] + 1] + margin); // dönüş durak çizgisi (sağ kenar)
+          const dEdge = bl[arizali[arizali.length - 1] + 1];                        // dönüş: bu kenarı geçen serbest
+          type TP = { k: number; fp: number; gidis: boolean; taban: number };
+          const tps: TP[] = [];
+          for (let k = 0; k < lp.count; k++) {
+            const dg = lp.dagitim?.[k];
+            if (dg && nx < dg.dispatchT - 1e-6) continue;  // henüz depoda
+            const taban = dg ? dg.startPhase + (nx - dg.dispatchT) : nx + k * lp.offset;
+            const ph = (((taban + (fkNow[k] ?? 0)) % lp.periyot) + lp.periyot) % lp.periyot;
+            const r = sampleLoop(lp.ornekler, ph);
+            const gidis = r.s <= lp.L + 1e-6;
+            const fp = gidis ? Math.min(lp.L, r.s) : Math.max(0, lp.loopLen - r.s);
+            tps.push({ k, fp, gidis, taban });
+          }
+          const tut: { k: number; sHedef: number; gidisMi: boolean; taban: number }[] = [];
+          // GİDİŞ: arızaya SOLDAN yaklaşanlar (fp ≤ kenar), öndeki (fp büyük) durak çizgisinde
+          let cizgiG = gStop;
+          for (const x of tps.filter((y) => y.gidis && y.fp <= gEdge + 1e-6).sort((a, b2) => b2.fp - a.fp)) {
+            if (x.fp >= cizgiG - 1e-6) { tut.push({ k: x.k, sHedef: cizgiG, gidisMi: true, taban: x.taban }); cizgiG -= araGap; }
+            else break;                                    // bu tren çizginin gerisinde → serbest, arkası da serbest
+          }
+          // DÖNÜŞ: arızaya SAĞDAN yaklaşanlar (fp ≥ kenar), öndeki (fp küçük) durak çizgisinde
+          let cizgiD = dStop;
+          for (const x of tps.filter((y) => !y.gidis && y.fp >= dEdge - 1e-6).sort((a, b2) => a.fp - b2.fp)) {
+            if (x.fp <= cizgiD + 1e-6) { tut.push({ k: x.k, sHedef: lp.loopLen - cizgiD, gidisMi: false, taban: x.taban }); cizgiD += araGap; }
+            else break;
+          }
+          if (tut.length) {
+            setFazKaydirma((prev) => {
+              const nf = { ...prev };
+              for (const h of tut) nf[h.k] = fazAtS(lp.ornekler, h.sHedef, lp.L, h.gidisMi) - h.taban;
+              return nf;
+            });
+          }
         }
       }
     };
@@ -317,7 +374,10 @@ export function LiveNetwork({
   // Zamanlayıcının okuduğu ref'leri render SONRASI (effect'te) senkronla — render
   // sırasında ref yazmak/okumak React kuralına aykırı; effect doğru yer.
   useEffect(() => {
-    loopRef.current = loopAktif ? loop : undefined; // arıza aktifken turnback tespiti kapalı
+    loopRef.current = loopAktif ? loop : undefined;
+    blocksRef.current = blocks;
+    faultBlocksRef.current = faultBlocks;
+    trainLenRef.current = trainLen;
     tersMakasRef.current = tersMakaslar;
     kararRef.current = karar;
     tersModRef.current = tersMod;
@@ -849,10 +909,10 @@ export function LiveNetwork({
         );
       })()}
 
-      {/* Arıza aktif → mod bildirimi: döngü yerine sinyal/kuyruk motoru çiziliyor */}
+      {/* Arıza aktif → bildirim: döngü İÇİNDE kuyruk (motor değişmez, sahne sıfırlanmaz) */}
       {loop && faultBlocks.length > 0 && (
         <div className="mb-2 rounded-md border-l-4 px-3 py-2 text-xs" style={{ background: CK.badBgSoft, borderColor: brand.red, color: brand.inkSoft }}>
-          <b style={{ color: brand.red }}>⚠ Arıza modu:</b> {faultBlocks.length} blok arızalı → trenler <b>sinyal/kuyruk</b> motoruyla çiziliyor: arızalı bloğun 1 m gerisinde durup arkadan kuyruklanırlar. (Döngü rozetleri & terminal dönüşü etkileşimi bu modda kapalı.) Arızayı kaldırınca ✕ işaretli bloğa tekrar tıkla → döngü görünümüne dönülür.
+          <b style={{ color: brand.red }}>⚠ Blok arızası:</b> {faultBlocks.length} blok arızalı → trenler arızalı bloğun gerisinde <b>olduğu yerde kuyruklanır</b> (tren boyu aralığıyla), bloğu geçmiş trenler akmaya devam eder. Sahne sıfırlanmaz, tren ışınlanmaz; arıza kalkınca herkes kaldığı yerden sürer. Kaldırmak için ✕ işaretli bloğa tekrar tıkla. (Arıza sürerken ters işletme etkileşimi duraklar.)
         </div>
       )}
 
