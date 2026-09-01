@@ -14,8 +14,10 @@ import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimCon
 import { Duyarlilik } from "@/components/Duyarlilik";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import { blockingTimeRing, type BlokSperr } from "@/lib/anaray/blockingtime";
+import { maksimumTren } from "@/lib/anaray/kapasite";
 import { loopToHat } from "@/lib/anaray/hatsim";
 import { BlockingStairChart } from "@/components/BlockingStairChart";
+import { KisitKarsilastirma } from "@/components/KisitKarsilastirma";
 import { CK, RAMP_BLUE, SERI } from "@/lib/anaray/chartkit";
 
 const OK = CK.good;
@@ -68,6 +70,7 @@ export function SistemMerkezi() {
   // Yolcu dinamiği: dwell OTO ringlerin dwell'i hesaplanır → blocking-time / teşhis
   // panelleri de hesaplı dwell'i kullanır (kapasite ile tutarlı).
   const rings = useMemo(() => dwellUygulanmisRings(ringsHam, stock, isletme), [ringsHam, stock, isletme]);
+  const maks = useMemo(() => (rings.length ? maksimumTren(rings, stock, cfg, isletme) : null), [rings, stock, cfg, isletme]);
   // Sunum modu: "İHLAL / hedefi aşıyor" ihlal işaretleri gösterilmez. Ayrıca min
   // headway'i belirleyen blok "KRİTİK" (kırmızı) yerine "belirleyici" (nötr altın)
   // olarak sunulur — analiz aynı, yalnız dil/renk yumuşar. Bkz. rapor.ts.
@@ -222,6 +225,13 @@ export function SistemMerkezi() {
           )}
         </BlokCekmece>
       </Panel>
+      )}
+
+      {/* BELİRLEYİCİ KISIT — hMin'i oluşturan rakip headway kısıtları yan yana (hangisi bağlar) */}
+      {maks && maks.gecerli && maks.kisitlar.length > 0 && (
+        <Panel baslik="Belirleyici Kısıt — Rakip Headway Kısıtları" aciklama="Min headway (hMin) beş rakip kısıdın EN YÜKSEĞİdir: blok (Sperrzeit) · terminal turnback (makas geometrisi) · tek hat · kavşak · sinyal. En uzun çubuk hattı bağlar. Diğerlerinin ne kadar geride olduğu, o kısıtta ne kadar pay (headway marjı) olduğunu gösterir — bir kısıt iyileştirilirse sıradaki bağlar. Tramvay hatlarında çoğu kez terminal turnback bağlar.">
+          <KisitKarsilastirma kisitlar={maks.kisitlar} kritikRenk={kritikRenk} />
+        </Panel>
       )}
 
       {/* Duyarlılık (tornado) — hangi parametre kapasiteyi en çok oynatıyor. */}

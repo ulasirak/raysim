@@ -217,6 +217,30 @@ function bildfahrplanSvg(loopY: LoopYorunge, line: Line, filo: number, en = fals
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${tg}${st}${gLines}${dLines}${leg}</svg>`;
 }
 
+// Belirleyici kısıt karşılaştırması (gömülü SVG): hMin'i oluşturan rakip headway kısıtları
+// yatay çubukla; en yüksek (bağlayan) vurgulu. Hangi kısıtın kapasiteyi sınırladığını gösterir.
+function kisitBarSvg(kisitlar: { anahtar: string; ad: string; headway: number; aktif: boolean }[], kritikRenk: string, en = false): string {
+  const v = kisitlar.filter((k) => k.headway > 0).sort((a, b) => b.headway - a.headway);
+  if (!v.length) return "";
+  const kisaAd: Record<string, string> = en
+    ? { blok: "Block (Sperrzeit)", terminal: "Terminal (turnback)", tekhat: "Single track", kavsak: "Junction", sinyal: "Signal" }
+    : { blok: "Blok (Sperrzeit)", terminal: "Terminal (turnback)", tekhat: "Tek hat", kavsak: "Kavşak", sinyal: "Sinyal" };
+  const maxH = v[0].headway;
+  const W = 620, padL = 118, padR = 40, rowH = 20, gap = 6, padT = 8;
+  const H = padT + v.length * (rowH + gap);
+  const bw = W - padL - padR;
+  const rows = v.map((k, i) => {
+    const y = padT + i * (rowH + gap);
+    const w = Math.max(1, (k.headway / maxH) * bw);
+    const col = k.aktif ? kritikRenk : CK.blue;
+    return `<text x="${padL - 6}" y="${(y + rowH / 2 + 3).toFixed(1)}" text-anchor="end" font-family="${CK.sans}" font-size="9" font-weight="${k.aktif ? 700 : 400}" fill="${k.aktif ? kritikRenk : CK.ink2}">${esc(kisaAd[k.anahtar] || k.ad)}</text>`
+      + `<rect x="${padL}" y="${y}" width="${bw}" height="${rowH}" rx="2" fill="${CK.track}"/>`
+      + `<rect x="${padL}" y="${y}" width="${w.toFixed(1)}" height="${rowH}" rx="2" fill="${col}" fill-opacity="${k.aktif ? 1 : 0.55}"/>`
+      + `<text x="${(padL + w + 4).toFixed(1)}" y="${(y + rowH / 2 + 3).toFixed(1)}" font-family="${CK.sans}" font-size="9" font-weight="${k.aktif ? 700 : 500}" fill="${CK.ink2}">${Math.round(k.headway)} s</text>`;
+  }).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${rows}</svg>`;
+}
+
 // Hız profili v(x) (gömülü SVG): gidiş legi gerçek hız (loop yörüngesi ds/dt) + hız-limiti
 // zarfı (segment vmax). Dip = istasyon duruşu; limitin altı = hızlanma/frenleme. (Eğim/enerji YOK.)
 function hizProfilSvg(loopY: LoopYorunge, line: Line, en = false): string {
@@ -477,6 +501,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const eg = line ? energyGradeSvg(line, stock, en) : null;
   const energyFig = eg && eg.svg ? `<div class="fig">${eg.svg}<div class="cap">${L.figEnergy(eg.net, eg.perKm)}</div></div>` : "";
   const bfFig = (line && loopYbf) ? `<div class="fig">${bildfahrplanSvg(loopYbf, line, filoGercek, en)}<div class="cap">${en ? `Figure 3 — Time-distance diagram (Bildfahrplan): ${filoGercek} trams (round-trip loop), ${bfHeadway}s headway.` : `Şekil 3 — Zaman-mesafe diyagramı (Bildfahrplan): ${filoGercek} tramvay (git-gel döngü), ${bfHeadway} s aralık.`}</div></div>` : "";
+  const kisitFig = (maks.gecerli && maks.kisitlar.length) ? `<div class="fig">${kisitBarSvg(maks.kisitlar, kritikRenk, en)}<div class="cap">${en ? "Figure 2c — Determining constraint: competing headway limits (block / terminal turnback / single track / junction / signal); the longest binds (hMin)." : "Şekil 2c — Belirleyici kısıt: rakip headway limitleri (blok / terminal turnback / tek hat / kavşak / sinyal); en uzunu bağlar (hMin)."}</div></div>` : "";
   const hizFig = (line && loopYbf) ? `<div class="fig">${hizProfilSvg(loopYbf, line, en)}<div class="cap">${en ? "Figure 3b — Speed profile v(x): actual speed (blue) vs. segment speed limit (dashed), outbound leg. Dips = station stops; below-limit = acceleration/braking." : "Şekil 3b — Hız profili v(x): gerçek hız (mavi) ile segment hız limiti (kesikli), gidiş legi. Dipler = istasyon duruşları; limit altı = hızlanma/frenleme."}</div></div>` : "";
 
   // ---- Kapak künye ----
@@ -1099,6 +1124,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   ${sunum ? `<div class="gs ok"><b style="color:#2E7D57">✓</b> ${lang === "en" ? `Capacity analysis confirms that all blocks remain within the target headway (${cfg.headway} s); no limit is exceeded. The design is compliant in terms of capacity.` : `Kapasite analizi, tüm blokların hedef headway (${cfg.headway} s) sınırı içinde kaldığını göstermektedir; sınır aşımı bulunmamaktadır. Tasarım, kapasite açısından uygundur.`}</div>` : ""}
   <p class="muted" style="font-size:11px;margin-top:6px">${L.kapNot}</p>
   <div class="gs" style="font-size:10pt">${kapYorum}</div>
+  ${kisitFig}
   ${bfFig}
   ${hizFig}
   <h3 class="sub">${L.s41}</h3>
