@@ -844,7 +844,10 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
 
     // 5.6 Sefer ↔ Ters İşletme (entegre): temsili sefer aralığında araç konumları +
     // makasa yaklaşan araca bağlanan kısa dönüş önerileri (canlı sim ile aynı yörünge).
-    const stHeadway = maks.cevrimSuresi > 0 && filoGercek > 0 ? Math.round(maks.cevrimSuresi / filoGercek) : cfg.headway;
+    // Kullanıcının girdiği sefer sıklığı (seferHeadwayDk) esas alınır — panel/Tarife ile paralel.
+    const stHeadway = isletme.seferHeadwayDk && isletme.seferHeadwayDk > 0
+      ? Math.round(isletme.seferHeadwayDk * 60)
+      : (maks.cevrimSuresi > 0 && filoGercek > 0 ? Math.round(maks.cevrimSuresi / filoGercek) : cfg.headway);
     const ste = seferTersEntegre(rings, stock, cfg, isletme, stHeadway, 0);
     let b56 = "";
     if (ste.gecerli) {

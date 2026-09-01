@@ -635,7 +635,7 @@ function StudioIc() {
       {/* SEFER ↔ TERS İŞLETME ENTEGRE — manuel headway + zaman → araç konumları → araca bağlı kısa dönüş önerileri */}
       {maks.gecerli && rings.length >= 2 && (
         <Panel baslik="Sefer & Ters İşletme — Entegre Analiz" aciklama="Sefer aralığını (headway) elle ayarla; o an seferdeki araçların GERÇEK konumları (yörüngeden — sinyal lambaları, karayolu/yaya geçitleri, makas geçiş hızı, eğim ve duruşlar dâhil) diyagramda görünür. Zaman çubuğuyla ilerlet. Girilen yolcu talebine göre yük dengesizliği olan makaslara yaklaşan araç bulunur ve KISA DÖNÜŞ (ters işletme) kararı O ARACA bağlanır — kazanç ve gerekçesiyle önerilir. Tarife ile ters işletme burada ortaklaşır.">
-          <SeferTersEntegre rings={rings} stock={stock} cfg={cfg} isletme={isletme} />
+          <SeferTersEntegre rings={rings} stock={stock} cfg={cfg} isletme={isletme} headwayDk={headwayDk} onHeadwayChange={setHeadwayDk} />
         </Panel>
       )}
 

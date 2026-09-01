@@ -14,8 +14,7 @@ import type { DurakArasiRing } from "@/lib/anaray/ring";
 import type { SimConfig, Isletme } from "@/lib/anaray/config";
 import type { RollingStock } from "@/lib/anaray/types";
 
-export function SeferTersEntegre({ rings, stock, cfg, isletme }: { rings: DurakArasiRing[]; stock: RollingStock; cfg: SimConfig; isletme: Isletme }) {
-  const [headwayDk, setHeadwayDk] = useState(5);
+export function SeferTersEntegre({ rings, stock, cfg, isletme, headwayDk, onHeadwayChange }: { rings: DurakArasiRing[]; stock: RollingStock; cfg: SimConfig; isletme: Isletme; headwayDk: number; onHeadwayChange: (v: number) => void }) {
   const [anSn, setAnSn] = useState(0);
   const s = useMemo(() => seferTersEntegre(rings, stock, cfg, isletme, headwayDk * 60, anSn), [rings, stock, cfg, isletme, headwayDk, anSn]);
 
@@ -41,8 +40,9 @@ export function SeferTersEntegre({ rings, stock, cfg, isletme }: { rings: DurakA
       <div className="mb-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
         <label className="flex items-center gap-2">
           <span className="font-semibold" style={{ color: brand.ink }}>Sefer aralığı</span>
-          <input type="range" min={1} max={15} step={0.5} value={headwayDk} onChange={(e) => setHeadwayDk(parseFloat(e.target.value))} className="w-40" />
-          <span className="tabular-nums font-bold" style={{ color: brand.red }}>{headwayDk.toFixed(1)} dk</span>
+          <input type="range" min={0.5} max={20} step={0.5} value={headwayDk} onChange={(e) => onHeadwayChange(parseFloat(e.target.value))} className="w-40" />
+          <input type="number" min={0.5} step={0.5} value={headwayDk} onChange={(e) => onHeadwayChange(Math.max(0.5, parseFloat(e.target.value) || headwayDk))} className="w-16 rounded border px-1.5 py-0.5 text-sm tabular-nums" style={{ borderColor: brand.border }} />
+          <span className="tabular-nums font-bold" style={{ color: brand.red }}>dk</span>
           <span className="text-xs" style={{ color: brand.muted }}>→ {s.filo} araç serviste</span>
         </label>
         <label className="flex items-center gap-2">
@@ -51,6 +51,7 @@ export function SeferTersEntegre({ rings, stock, cfg, isletme }: { rings: DurakA
           <span className="tabular-nums" style={{ color: brand.inkSoft }}>{sure(s.anSn)} / {sure(s.cevrimSn)}</span>
         </label>
       </div>
+      <div className="mb-2 px-1 text-xs" style={{ color: brand.muted }}>Sefer aralığı <b>Filo Paneli</b> ve <b>Tarife</b> ile ortaktır — burada değiştirince hepsi birlikte güncellenir.</div>
 
       {/* Konum diyagramı */}
       <div className="-mx-1 overflow-x-auto px-1 sm:mx-0" style={{ WebkitOverflowScrolling: "touch" }}>
