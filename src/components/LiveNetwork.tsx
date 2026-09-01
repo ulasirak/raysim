@@ -265,7 +265,8 @@ export function LiveNetwork({
       } else {
         const fkNow = fazKaydirmaRef.current;
         const margin = 6;                                  // arızanın kaç m gerisinde dursun
-        const araGap = (trainLenRef.current || 40) + 12;   // kuyruk aralığı (tren boyu + pay)
+        const araGap = (trainLenRef.current || 40) + 160;  // kuyruk aralığı: tren boyu + pay
+                                                           // (uzun hatta kuyruğun trenleri ayırt edilebilsin diye görünür pay)
         const gStop = Math.max(0, bl[arizali[0]] - margin);                          // gidiş durak çizgisi (sol kenar)
         const gFar = bl[arizali[0] + 1];                                             // gidiş: arıza bloğunun UZAK (sağ) kenarı
         const dStop = Math.min(lp.L, bl[arizali[arizali.length - 1] + 1] + margin);  // dönüş durak çizgisi (sağ kenar)
