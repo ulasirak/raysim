@@ -22,6 +22,7 @@ import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimCon
 import { BosHat } from "@/components/BosHat";
 import { LiveNetwork } from "@/components/LiveNetwork";
 import { Bildfahrplan } from "@/components/Bildfahrplan";
+import { HizProfili } from "@/components/HizProfili";
 import { Tarife } from "@/components/Tarife";
 
 const KMH = 1 / 3.6;
@@ -552,6 +553,13 @@ function StudioIc() {
       {simHazir && (
         <Panel baslik="Bildfahrplan — Zaman–Mesafe Grafiği" aciklama="Demiryolu mühendisliğinin klasik grafiği (Marey diyagramı): yatay = zaman (bir tam çevrim), dikey = mesafe (istasyonlar ızgara). Her tren bir çizgidir — eğim hızı, yatay kısım duruşu, gidiş↔dönüş çizgilerinin kesişimi karşılaşma noktasını gösterir. Çizgiler arası eşit dikey aralık düzenli headway'i, bozulması öbekleşmeyi (bunching) ortaya koyar. Veri canlı sim ile birebir aynıdır.">
           <Bildfahrplan loop={loopVeri} line={line} />
+        </Panel>
+      )}
+
+      {/* HIZ PROFİLİ — hat boyunca gerçek hız + limit zarfı (canlı sim yörüngesinden) */}
+      {simHazir && (
+        <Panel baslik="Hız Profili — v(x)" aciklama="Hat boyunca (gidiş yönünde) tramvayın gerçek hızı ile hız-limiti zarfı. Mavi eğri gerçek hız (canlı sim ile aynı yörüngeden, ds/dt), gri kesikli çizgi segment hız limiti. Dip noktaları istasyon duruşlarıdır; limitin altındaki kısımlar hızlanma/frenleme bölgeleridir. Nerede hangi kısıtın (istasyon, makas, viraj) hızı bağladığı görünür.">
+          <HizProfili loop={loopVeri} line={line} />
         </Panel>
       )}
 

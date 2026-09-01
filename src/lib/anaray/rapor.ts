@@ -217,6 +217,38 @@ function bildfahrplanSvg(loopY: LoopYorunge, line: Line, filo: number, en = fals
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${tg}${st}${gLines}${dLines}${leg}</svg>`;
 }
 
+// Hız profili v(x) (gömülü SVG): gidiş legi gerçek hız (loop yörüngesi ds/dt) + hız-limiti
+// zarfı (segment vmax). Dip = istasyon duruşu; limitin altı = hızlanma/frenleme. (Eğim/enerji YOK.)
+function hizProfilSvg(loopY: LoopYorunge, line: Line, en = false): string {
+  const L = loopY.L, orn = loopY.ornekler;
+  if (L <= 0 || orn.length < 2) return "";
+  const hiz: { s: number; v: number }[] = [];
+  for (let i = 1; i < orn.length; i++) {
+    if (orn[i].s > L + 1e-6) break;
+    const dt = orn[i].t - orn[i - 1].t;
+    hiz.push({ s: orn[i].s, v: dt > 1e-6 ? Math.max(0, (orn[i].s - orn[i - 1].s) / dt) : 0 });
+  }
+  if (hiz.length < 2) return "";
+  const vTopRaw = Math.max(...line.segments.map((sg) => sg.vmax), ...hiz.map((p) => p.v), 1) * 3.6;
+  const vTop = Math.ceil((vTopRaw + 3) / 10) * 10;
+  const W = 820, H = 240, padL = 40, padR = 14, padT = 18, padB = 34;
+  const pw = W - padL - padR, ph = H - padT - padB;
+  const X = (s: number) => padL + (s / L) * pw;
+  const Y = (vkmh: number) => padT + (1 - vkmh / vTop) * ph;
+  const yIsaret = [0, 20, 40, 60].filter((v) => v <= vTop).map((v) =>
+    `<line x1="${padL}" y1="${Y(v).toFixed(1)}" x2="${padL + pw}" y2="${Y(v).toFixed(1)}" stroke="${CK.grid}"/>${num(padL - 5, Y(v) + 2.5, `${v}`, { anchor: "end", size: 7.5 })}`).join("");
+  const istIsaret = line.stations.filter((s) => s.tip !== "gecit").map((s) =>
+    `<line x1="${X(s.position).toFixed(1)}" y1="${padT}" x2="${X(s.position).toFixed(1)}" y2="${padT + ph}" stroke="${CK.grid}" opacity="0.7"/>`).join("");
+  const kmSay = Math.max(2, Math.round(L / 1000));
+  const xIsaret = Array.from({ length: kmSay + 1 }, (_, i) =>
+    num(X((L * i) / kmSay), padT + ph + 12, `${((L * i) / kmSay / 1000).toFixed(1)}`, { anchor: "middle", size: 7.5 })).join("");
+  const limitYol = line.segments.map((sg, i) => `${i === 0 ? "M" : "L"}${X(sg.start).toFixed(1)},${Y(sg.vmax * 3.6).toFixed(1)} L${X(sg.end).toFixed(1)},${Y(sg.vmax * 3.6).toFixed(1)}`).join(" ");
+  const hizYol = hiz.map((p, i) => `${i === 0 ? "M" : "L"}${X(p.s).toFixed(1)},${Y(p.v * 3.6).toFixed(1)}`).join(" ");
+  const eksen = `<line x1="${padL}" y1="${(padT + ph).toFixed(1)}" x2="${padL + pw}" y2="${(padT + ph).toFixed(1)}" stroke="${CK.ink2}" stroke-width="0.8"/>`;
+  const leg = `<text x="${W - padR}" y="12" text-anchor="end" font-family="${CK.sans}" font-size="8.5"><tspan fill="${CK.blue}">▬ ${en ? "actual speed" : "gerçek hız"}</tspan>  <tspan fill="${CK.muted}">╌ ${en ? "speed limit" : "hız limiti"}</tspan></text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${yIsaret}${istIsaret}${eksen}${xIsaret}<path d="${limitYol}" fill="none" stroke="${CK.muted}" stroke-width="1" stroke-dasharray="4 3" opacity="0.85"/><path d="${hizYol}" fill="none" stroke="${CK.blue}" stroke-width="1.4" stroke-linejoin="round"/>${leg}${lab(padL + pw / 2, H - 4, en ? "distance (km) →" : "mesafe (km) →", { anchor: "middle", size: 8 })}${lab(8, padT + 4, "km/h", { size: 8 })}</svg>`;
+}
+
 // Gerçek Sperrzeitentreppe (gömülü SVG): iki ardışık tramvay + her bloğun blocking-time
 // dikdörtgeni. Kritik blokta ikinci tramvayın başlangıcı birincinin bitişine DEĞER = min headway.
 function sperrzeitSvg(bt: ReturnType<typeof blockingTimeRing>, L: number, kritikRenk: string = CK.red, en = false): string {
@@ -406,6 +438,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const eg = line ? energyGradeSvg(line, stock, en) : null;
   const energyFig = eg && eg.svg ? `<div class="fig">${eg.svg}<div class="cap">${L.figEnergy(eg.net, eg.perKm)}</div></div>` : "";
   const bfFig = (line && loopYbf) ? `<div class="fig">${bildfahrplanSvg(loopYbf, line, filoGercek, en)}<div class="cap">${en ? `Figure 3 — Time-distance diagram (Bildfahrplan): ${filoGercek} trams (round-trip loop), ${bfHeadway}s headway.` : `Şekil 3 — Zaman-mesafe diyagramı (Bildfahrplan): ${filoGercek} tramvay (git-gel döngü), ${bfHeadway} s aralık.`}</div></div>` : "";
+  const hizFig = (line && loopYbf) ? `<div class="fig">${hizProfilSvg(loopYbf, line, en)}<div class="cap">${en ? "Figure 3b — Speed profile v(x): actual speed (blue) vs. segment speed limit (dashed), outbound leg. Dips = station stops; below-limit = acceleration/braking." : "Şekil 3b — Hız profili v(x): gerçek hız (mavi) ile segment hız limiti (kesikli), gidiş legi. Dipler = istasyon duruşları; limit altı = hızlanma/frenleme."}</div></div>` : "";
 
   // ---- Kapak künye ----
   const kunye = [
@@ -1027,6 +1060,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <p class="muted" style="font-size:11px;margin-top:6px">${L.kapNot}</p>
   <div class="gs" style="font-size:10pt">${kapYorum}</div>
   ${bfFig}
+  ${hizFig}
   <h3 class="sub">${L.s41}</h3>
   <div class="fig">${line ? sperrzeitSvg(bt, line.length, kritikRenk, en) : ""}<div class="cap">${sunum ? (lang === "en" ? `Figure 4 — Sperrzeitentreppe: block occupation (blocking-time) windows; min headway ${Math.round(bt.minHeadway)}s.` : `Şekil 4 — Sperrzeitentreppe: blok işgal (blocking-time) pencereleri; min headway ${Math.round(bt.minHeadway)} s.`) : L.fig4(Math.round(bt.minHeadway))}</div></div>
   <div class="fig">${blockingBarSvg(bt.bloklar, bt.kritikBlok, kritikRenk, en)}<div class="cap">${sunum ? (lang === "en" ? "Figure 5 — Per-block blocking-time component distribution (determining block highlighted)." : "Şekil 5 — Blok başına blocking-time bileşen dağılımı (belirleyici blok vurgulu).") : L.fig5}${bt.bloklar.length > 16 ? (lang === "en" ? ` (highest 16 of ${bt.bloklar.length} blocks; full list in the table below)` : ` (${bt.bloklar.length} bloktan en yüksek 16'sı; tümü aşağıdaki tabloda)`) : ""}</div></div>
