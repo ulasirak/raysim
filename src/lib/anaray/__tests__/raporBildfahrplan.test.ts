@@ -30,5 +30,7 @@ describe("rapor Bildfahrplan (git-gel loop)", () => {
     expect(html).toContain("Terminal Turnback Kapasitesi"); // tablo
     expect(html).toContain("geçit");                        // hemzemin/TSP (Şekil 2e ya da not)
     expect(html).toContain("Talep → Gereken Filo → Doluluk"); // talep zinciri
+    expect(html).toContain("Sefer ↔ Ters İşletme (Entegre)"); // 5.6 entegre bölüm
+    expect(html).toContain("Şekil 5c");                        // entegre konum diyagramı
   });
 });

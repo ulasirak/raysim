@@ -16,6 +16,7 @@ import type { SimConfig, ProjeMeta, Isletme } from "./config";
 import { PARAM_META, paramGoster, birim, varsayilanIsletme } from "./config";
 import { terminalMakasSayilari, etkinPeronSayisi, etkinBogazIsgali, terminalDonusParalel, terminalSeriDonus, type TerminalConfig } from "./config";
 import { tersIsletmeAnaliz, type DurakTalep } from "./tersisletme";
+import { seferTersEntegre, type SeferTersSonuc } from "./seferters";
 import { maksimumTren, terminalHeadway } from "./kapasite";
 import { tarifeUret } from "./tarife";
 import { duyarlilikAnaliz } from "./duyarlilik";
@@ -379,6 +380,28 @@ function hemzeminSvg(rings: DurakArasiRing[], cfg: SimConfig): { svg: string; ad
   const xt = num(X(0), base + 10, "0", { anchor: "middle", size: 7.5 }) + num(X(L), base + 10, `${(L / 1000).toFixed(1)}`, { anchor: "middle", size: 7.5 });
   const svg = `<svg viewBox="0 0 ${Wd} ${H}" width="100%" style="max-width:100%">${yt}<line x1="${padL}" y1="${padT + ph}" x2="${padL + pw}" y2="${padT + ph}" stroke="${CK.ink2}" stroke-width="0.7"/>${bars}${xt}${lab(padL, padT - 3, "s", { size: 8 })}${lab(padL + pw / 2, H - 2, "km →", { anchor: "middle", size: 8 })}</svg>`;
   return { svg, adet: g.length, karayolu, toplamTur };
+}
+
+// Sefer↔Ters entegre KONUM DİYAGRAMI (gömülü SVG): hat boyunca araçlar (gidiş/dönüş),
+// kısa dönüş makasları (🔄, kırmızı) ve bağlanan araç→makas öneri okları.
+function seferTersSvg(ste: SeferTersSonuc): string {
+  if (!ste.gecerli) return "";
+  const Lkm = ste.L / 1000; if (Lkm <= 0) return "";
+  const W = 720, padL = 10, padR = 10, midY = 58, H = 104;
+  const X = (km: number) => padL + (km / Math.max(0.001, Lkm)) * (W - padL - padR);
+  const oneriAracSet = new Set(ste.oneriler.map((o) => o.aracNo));
+  const hat = `<line x1="${padL}" y1="${midY}" x2="${W - padR}" y2="${midY}" stroke="${CK.track}" stroke-width="4" stroke-linecap="round"/>`;
+  const uc = num(padL, H - 4, "0 km", { size: 8 }) + num(W - padR, H - 4, `${Lkm.toFixed(1)} km`, { anchor: "end", size: 8 });
+  const makas = ste.makaslar.map((m) => `<line x1="${X(m.km).toFixed(1)}" y1="${midY - 8}" x2="${X(m.km).toFixed(1)}" y2="${midY + 8}" stroke="${m.onerilir ? CK.red : CK.grid}" stroke-width="${m.onerilir ? 2 : 1}"/>`
+    + (m.onerilir ? num(X(m.km), midY + 22, `🔄 ${m.km.toFixed(2)}`, { anchor: "middle", size: 8, weight: 700, color: CK.red }) : "")).join("");
+  const oklar = ste.oneriler.map((o) => `<line x1="${X(o.aracKm).toFixed(1)}" y1="${midY - 16}" x2="${X(o.makasKm).toFixed(1)}" y2="${midY - 16}" stroke="${CK.red}" stroke-width="0.8" stroke-dasharray="3 2"/>`).join("");
+  const arac = ste.araclar.map((a) => {
+    const x = X(a.km), oner = oneriAracSet.has(a.no), y = a.gidis ? midY - 6 : midY + 6;
+    const renk = oner ? CK.red : a.gidis ? CK.blue : CK.orange;
+    const p = a.gidis ? `${(x - 4).toFixed(1)},${y - 4} ${(x + 4).toFixed(1)},${y} ${(x - 4).toFixed(1)},${y + 4}` : `${(x + 4).toFixed(1)},${y - 4} ${(x - 4).toFixed(1)},${y} ${(x + 4).toFixed(1)},${y + 4}`;
+    return `<polygon points="${p}" fill="${renk}"/>` + num(x, a.gidis ? y - 6 : y + 12, `${a.no}`, { anchor: "middle", size: 6.5, weight: oner ? 700 : 500, color: renk });
+  }).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%">${hat}${uc}${makas}${oklar}${arac}</svg>`;
 }
 
 // Gerçek Sperrzeitentreppe (gömülü SVG): iki ardışık tramvay + her bloğun blocking-time
@@ -806,6 +829,28 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
       ], { first: true })}
       <p class="muted" style="font-size:9.5pt;margin-top:4px">${ozetSatir}</p>`;
 
+    // 5.6 Sefer ↔ Ters İşletme (entegre): temsili sefer aralığında araç konumları +
+    // makasa yaklaşan araca bağlanan kısa dönüş önerileri (canlı sim ile aynı yörünge).
+    const stHeadway = maks.cevrimSuresi > 0 && filoGercek > 0 ? Math.round(maks.cevrimSuresi / filoGercek) : cfg.headway;
+    const ste = seferTersEntegre(rings, stock, cfg, isletme, stHeadway, 0);
+    let b56 = "";
+    if (ste.gecerli) {
+      const stHw = (s: number) => { const x = Math.max(0, Math.round(s)); const d = Math.floor(x / 60), k = x % 60; return d > 0 ? `${d}:${String(k).padStart(2, "0")}` : `${k} s`; };
+      const oThead = en ? ["Tram", "Position", "Switch", "km", "Time to switch", "Busy/Quiet"] : ["Araç", "Konum", "Makas", "km", "Makasa ulaşım", "Yoğun/Sessiz"];
+      const oRows = ste.oneriler.map((o) => [`${o.aracNo}`, `${o.aracKm.toFixed(2)} km`, `${esc(o.makasAd)} (${o.crossover === "x" ? "X" : "S"})`, `${o.makasKm.toFixed(2)}`, stHw(o.ulasimSn), `${o.oran.toFixed(1)}×`]);
+      const oneriBlok = ste.oneriler.length
+        ? `${tbl(oThead, oRows, { first: true })}
+           <ul style="margin:6px 0 0 16px;padding:0;font-size:9pt;color:#334">${ste.oneriler.map((o) => `<li style="margin-bottom:2px">${esc(o.gerekce)}</li>`).join("")}</ul>`
+        : `<p class="muted" style="font-size:9.5pt">${en ? "At this representative snapshot no tram is approaching a load-imbalanced switch in the outbound direction; the binding shifts as trams advance through the cycle." : "Bu temsili anlık-görüntüde yük dengesizliği olan bir makasa gidiş yönünde yaklaşan araç yok; araçlar çevrimde ilerledikçe bağlanan araç değişir."}</p>`;
+      b56 = `<h3 class="sub">5.6 ${en ? "Service ↔ Reverse-Running (Integrated)" : "Sefer ↔ Ters İşletme (Entegre)"}</h3>
+      ${gsNot(en
+        ? `At a representative service interval of <b>${stHw(stHeadway)}</b> the line runs <b>${ste.filo} trams</b>; the diagram below places each tram at its real position along the line (${(ste.L / 1000).toFixed(1)} km) — obtained from the same trajectory the live simulation uses, so signal lamps, switch-transit speeds, road/pedestrian crossings, gradient and station dwells are all accounted for. Where the entered demand leaves a switch zone with a busy inner leg and a quiet outer end, the short-turn decision is bound to the outbound tram approaching that switch, and its real time-to-switch is read off the trajectory.`
+        : `Temsili <b>${stHw(stHeadway)}</b> sefer aralığında hat <b>${ste.filo} tramvay</b> ile işlemekte; aşağıdaki diyagram her aracı hat boyunca (${(ste.L / 1000).toFixed(1)} km) gerçek konumuna yerleştirir — bu konumlar canlı simülasyonun kullandığı yörüngeden gelir, dolayısıyla sinyal lambaları, makas geçiş hızları, karayolu/yaya geçitleri, eğim ve istasyon duruşları hesaba katılıdır. Girilen talep, bir makas bölgesinin iç kolunu yoğun, dış ucunu sessiz bıraktığında kısa dönüş kararı o makasa yaklaşan gidiş aracına bağlanır ve makasa gerçek ulaşım süresi yörüngeden okunur.`)}
+      <div class="fig">${seferTersSvg(ste)}<div class="cap">${en ? `Figure 5c — Vehicle positions at the representative interval: outbound (▲) / inbound (▼) trams, short-turn switches (🔄, red) and the tram→switch binding for each recommendation.` : `Şekil 5c — Temsili aralıkta araç konumları: gidiş (▲) / dönüş (▼) tramvaylar, kısa dönüş makasları (🔄, kırmızı) ve her öneri için araç→makas bağlantısı.`}</div></div>
+      ${oneriBlok}
+      <ul class="muted" style="margin:6px 0 0 16px;padding:0;font-size:9pt">${ste.bilgi.map((b) => `<li style="margin-bottom:2px">${esc(b)}</li>`).join("")}</ul>`;
+    }
+
     isletmeBolum = `
   <div class="banner"><span class="no">05</span>${en ? "OPERATIONS & DEMAND ANALYSIS (REVERSE RUNNING)" : "İŞLETME & TALEP ANALİZİ (TERS İŞLETME)"}</div>
   <p>${en
@@ -814,7 +859,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <div class="gs">${en
     ? `All values in this section are derived from the operating inputs. The starting point is either the boarding/alighting counts entered stop by stop, or — where a single total is provided — the distribution of that demand across the stops by their role; combined with the vehicle's passenger capacity and the service frequency, this yields the directional load profile along the line and each stop's <b>occupancy ratio</b>. The stops exceeding the occupancy target, and those requiring a short-turn, follow from the same analysis. The tram's capacity and physical characteristics (door count and width, floor area, mass, tractive effort, braking) are included in the assessment.`
     : `Bu bölümdeki değerlerin tamamı işletme girdilerinden türetilmektedir. Başlangıç noktası, durak durak girilen iniş-biniş sayımları ya da tek bir toplam verildiğinde bu talebin durakların rolüne göre hatta dağıtılmasıdır; bu veri, aracın yolcu kapasitesi ve sefer sıklığıyla birleştirildiğinde hat boyunca yönlü yük profili ve her durağın <b>doluluk oranı</b> elde edilir. Doluluk hedefini aşan duraklar ve kısa dönüş gerektiren duraklar da aynı çözümden çıkmaktadır. Değerlendirmeye tramvayın kapasitesi ve fiziksel özellikleri (kapı sayısı ve genişliği, taban alanı, kütle, çekiş, frenleme) dahil edilmektedir.`}</div>
-  ${b51}${b52}${b53}${b54}${b55}
+  ${b51}${b52}${b53}${b54}${b55}${b56}
 `;
   }
 
