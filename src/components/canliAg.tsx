@@ -101,11 +101,18 @@ export function useCanliAgProps() {
   const peronSon = isletme.terminalSon.tip === "dongu" ? 0 : (isletme.terminalSon.peronIsgali || 0);
   const loopY = useMemo(() => loopYorunge(line, reverseLine, stock, { peronIsgaliBas: peronBas, peronIsgaliSon: peronSon }), [line, reverseLine, stock, peronBas, peronSon]);
   const dagitim = useMemo(() => {
+    const orn = loopY.ornekler;
+    const sToT = (hedefS: number) => { let en = 0, bd = Infinity; for (const o of orn) { const dd = Math.abs(o.s - hedefS); if (dd < bd) { bd = dd; en = o.t; } } return en; };
+    // Depo/parklanma YOK → depo dağıtımı (gidiş/ters + turnback başlangıcı) uygulanamaz;
+    // trenler loop üzerine EŞİT yayılır, hepsi gidiş yönünde, hemen dolaşır. Aksi halde ters
+    // yön trenleri loop sonundan (turnback) doğar → "çıkar çıkmaz kendi etrafında döner+bekler".
+    if (depotPlan.depots.length === 0) {
+      const arali = loopY.periyot / Math.max(1, filo);
+      return Array.from({ length: filo }, (_, k) => ({ parkPos: 0, gidis: true, dispatchT: 0, startPhase: arali * k }));
+    }
     const origins = gidisOrigins ?? [];
     let gKalan = tersRapor ? tersRapor.depoDagilim.gidis : Math.ceil(filo / 2);
     let tKalan = filo - gKalan;
-    const orn = loopY.ornekler;
-    const sToT = (hedefS: number) => { let en = 0, bd = Infinity; for (const o of orn) { const dd = Math.abs(o.s - hedefS); if (dd < bd) { bd = dd; en = o.t; } } return en; };
     return Array.from({ length: filo }, (_, k) => {
       const parkPos = origins.length > 0 ? origins[k % origins.length] : 0;
       const wantG = k % 2 === 0;
@@ -117,7 +124,7 @@ export function useCanliAgProps() {
       const startS = gidis ? Math.min(loopY.L, parkPos) : Math.max(0, loopY.loopLen - parkPos);
       return { parkPos, gidis, dispatchT: k * ulasilanHeadwaySn, startPhase: sToT(startS) };
     });
-  }, [gidisOrigins, tersRapor, filo, loopY, ulasilanHeadwaySn]);
+  }, [gidisOrigins, tersRapor, filo, loopY, ulasilanHeadwaySn, depotPlan]);
   const loopVeri = useMemo(() => ({ ...loopY, count: filo, offset: loopY.periyot / Math.max(1, filo), dagitim }), [loopY, filo, dagitim]);
 
   return {
