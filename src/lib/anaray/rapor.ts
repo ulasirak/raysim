@@ -14,8 +14,9 @@ import { aslsLogoSvg, firmaAslsMi } from "./aslsLogo";
 import { CK, RAMP_BLUE, num, lab, areaGrad } from "./chartkit";
 import type { SimConfig, ProjeMeta, Isletme } from "./config";
 import { PARAM_META, paramGoster, birim, varsayilanIsletme } from "./config";
+import { terminalMakasSayilari, etkinPeronSayisi, etkinBogazIsgali, terminalDonusParalel, terminalSeriDonus, type TerminalConfig } from "./config";
 import { tersIsletmeAnaliz, type DurakTalep } from "./tersisletme";
-import { maksimumTren } from "./kapasite";
+import { maksimumTren, terminalHeadway } from "./kapasite";
 import { tarifeUret } from "./tarife";
 import { duyarlilikAnaliz } from "./duyarlilik";
 import type { RollingStock } from "./types";
@@ -312,6 +313,68 @@ function yukDwellSvg(duraklar: DurakTalep[], rings: DurakArasiRing[], en = false
     + `</svg>`;
 }
 
+// Terminal turnback kapasitesi (tablo + not): her ucun makas/peron/boğaz → dönüş kapasitesi.
+function turnbackTbl(bas: TerminalConfig, son: TerminalConfig, cfg: SimConfig, en = false): string {
+  const olc = (t: TerminalConfig) => {
+    const mk = terminalMakasSayilari(t), peron = etkinPeronSayisi(t), hw = terminalHeadway(t, cfg);
+    const bogaz = t.tip === "dongu" ? 0 : (terminalSeriDonus(t) ? 2 : 1) * etkinBogazIsgali(t, cfg);
+    const peronBasi = t.tip === "dongu" ? 0 : (t.peronIsgali || 0) / Math.max(1, terminalDonusParalel(t));
+    const kap = hw > 0 ? Math.round(3600 / hw) : Infinity;
+    const makasMetin = [mk.s > 0 ? `${mk.s} S` : "", mk.x > 0 ? `${mk.x} X` : ""].filter(Boolean).join("+") || "—";
+    return { mk, peron, hw, bogaz, peronBasi, kap, makasMetin, bagAlt: peronBasi >= bogaz };
+  };
+  const b = olc(bas), s = olc(son);
+  const bagBas = b.hw >= s.hw && b.hw > 0;
+  const kapStr = (k: number) => (k === Infinity ? "∞" : `${k}`);
+  const head = en ? ["Terminal", "Switches", "Platforms", "Turnback headway", "Capacity (trams/h)", "Binding sub-factor"]
+    : ["Terminal", "Makas", "Peron", "Dönüş headway", "Kapasite (tramvay/sa)", "Baskın alt-etken"];
+  const alt = (o: typeof b) => (o.hw <= 0 ? "—" : o.bagAlt ? (en ? "platform" : "peron") : (en ? "throat (switch)" : "boğaz (makas)"));
+  const rows = [
+    [en ? "Start" : "Başlangıç", `${b.makasMetin}-makas`, `${b.peron}`, b.hw > 0 ? `${Math.round(b.hw)} s${bagBas ? " ◀" : ""}` : "—", kapStr(b.kap), alt(b)],
+    [en ? "End" : "Bitiş", `${s.makasMetin}-makas`, `${s.peron}`, s.hw > 0 ? `${Math.round(s.hw)} s${!bagBas && s.hw > 0 ? " ◀" : ""}` : "—", kapStr(s.kap), alt(s)],
+  ];
+  const bagAd = bagBas ? (en ? "start terminal" : "başlangıç terminali") : (en ? "end terminal" : "bitiş terminali");
+  const not = en
+    ? `Turnback capacity = 3600 ÷ turnback headway; headway = max(platform occupation, throat/switch traversal). S-switch uses one throat in series for arrival+departure (2×); X-switch/twin-platform uses separate legs (1×) → higher capacity. The binding end (◀, ${bagAd}) sets the line's terminal capacity — add an X-switch if the throat binds, a platform if occupation binds.`
+    : `Turnback kapasitesi = 3600 ÷ dönüş headway; headway = max(peron işgali, boğaz/makas geçişi). S-makasta varış+kalkış aynı boğazı seri kullanır (2×); X-makas/çift peronda ayrı bacak (1×) → daha yüksek kapasite. Bağlayan uç (◀, ${bagAd}) hattın terminal kapasitesini belirler — boğaz baskınsa X-makas, peron baskınsa peron ekle.`;
+  return tbl(head, rows, { first: true }) + `<div class="gs" style="font-size:9.5pt">${not}</div>`;
+}
+
+// Hemzemin geçit & TSP gecikme (gömülü SVG): geçit başına yavaşlama + karayolu bekleme.
+function hemzeminSvg(rings: DurakArasiRing[], cfg: SimConfig): { svg: string; adet: number; karayolu: number; toplamTur: number } {
+  const W = cfg.kisitGenisligi || 40;
+  let acc = 0; const g: { konum: number; tip: string; yavas: number; bekle: number }[] = [];
+  for (const r of rings) {
+    const vmax = Math.max(0.1, r.vmax);
+    for (const h of r.hemzeminler) {
+      const hiz = Math.max(0.1, h.hiz);
+      const yavas = hiz < vmax ? W * (1 / hiz - 1 / vmax) : 0;
+      g.push({ konum: acc + Math.max(0, Math.min(r.uzunluk, h.konum)), tip: h.tip, yavas, bekle: h.tip === "karayolu" ? (h.bekleme ?? 0) : 0 });
+    }
+    acc += r.uzunluk;
+  }
+  if (!g.length) return { svg: "", adet: 0, karayolu: 0, toplamTur: 0 };
+  g.sort((a, b) => a.konum - b.konum);
+  const L = Math.max(acc, 1), top = Math.max(...g.map((x) => x.yavas + x.bekle), 1);
+  const karayolu = g.filter((x) => x.tip === "karayolu").length;
+  const toplamTur = g.reduce((s, x) => s + x.yavas + x.bekle, 0) * 2;
+  const Wd = 720, padL = 36, padR = 12, padT = 12, padB = 26, pw = Wd - padL - padR, ph = 150 - padT - padB, H = 150;
+  const X = (k: number) => padL + (k / L) * pw, Y = (v: number) => padT + (1 - v / top) * ph;
+  const bw = Math.max(3, Math.min(16, pw / g.length * 0.6));
+  const bars = g.map((x) => {
+    const cx = X(x.konum), base = padT + ph, yBek = Y(x.bekle), yTop = Y(x.bekle + x.yavas);
+    const bekRenk = x.bekle > 20 ? CK.red : x.bekle > 8 ? CK.amber : CK.blue;
+    return (x.yavas > 0 ? `<rect x="${(cx - bw / 2).toFixed(1)}" y="${yTop.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0, yBek - yTop).toFixed(1)}" fill="#9AA7B2"/>` : "")
+      + (x.bekle > 0 ? `<rect x="${(cx - bw / 2).toFixed(1)}" y="${yBek.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0, base - yBek).toFixed(1)}" fill="${bekRenk}"/>` : "")
+      + (x.yavas === 0 && x.bekle === 0 ? `<rect x="${(cx - bw / 2).toFixed(1)}" y="${(base - 2).toFixed(1)}" width="${bw.toFixed(1)}" height="2" fill="#9AA7B2"/>` : "");
+  }).join("");
+  const yt = [0, Math.round(top / 2), Math.round(top)].map((v) => num(padL - 4, Y(v) + 2.5, `${v}`, { anchor: "end", size: 7.5 })).join("");
+  const kmSay = Math.max(2, Math.round(L / 1000));
+  const xt = Array.from({ length: kmSay + 1 }, (_, i) => num(X((L * i) / kmSay), padT + ph + 12, `${((L * i) / kmSay / 1000).toFixed(1)}`, { anchor: "middle", size: 7.5 })).join("");
+  const svg = `<svg viewBox="0 0 ${Wd} ${H}" width="100%" style="max-width:${Wd}px">${yt}<line x1="${padL}" y1="${padT + ph}" x2="${padL + pw}" y2="${padT + ph}" stroke="${CK.ink2}" stroke-width="0.7"/>${bars}${xt}${lab(padL, padT - 3, "s", { size: 8 })}${lab(padL + pw / 2, H - 2, "km →", { anchor: "middle", size: 8 })}</svg>`;
+  return { svg, adet: g.length, karayolu, toplamTur };
+}
+
 // Gerçek Sperrzeitentreppe (gömülü SVG): iki ardışık tramvay + her bloğun blocking-time
 // dikdörtgeni. Kritik blokta ikinci tramvayın başlangıcı birincinin bitişine DEĞER = min headway.
 function sperrzeitSvg(bt: ReturnType<typeof blockingTimeRing>, L: number, kritikRenk: string = CK.red, en = false): string {
@@ -501,6 +564,11 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const eg = line ? energyGradeSvg(line, stock, en) : null;
   const energyFig = eg && eg.svg ? `<div class="fig">${eg.svg}<div class="cap">${L.figEnergy(eg.net, eg.perKm)}</div></div>` : "";
   const bfFig = (line && loopYbf) ? `<div class="fig">${bildfahrplanSvg(loopYbf, line, filoGercek, en)}<div class="cap">${en ? `Figure 3 — Time-distance diagram (Bildfahrplan): ${filoGercek} trams (round-trip loop), ${bfHeadway}s headway.` : `Şekil 3 — Zaman-mesafe diyagramı (Bildfahrplan): ${filoGercek} tramvay (git-gel döngü), ${bfHeadway} s aralık.`}</div></div>` : "";
+  const turnbackTblStr = turnbackTbl(isletme.terminalBas, isletme.terminalSon, cfg, en);
+  const hz = rings.length ? hemzeminSvg(rings, cfg) : { svg: "", adet: 0, karayolu: 0, toplamTur: 0 };
+  const hemCevrim = maks.gecerli ? maks.cevrimSuresi : 0;
+  const hemYuzde = hemCevrim > 0 ? (hz.toplamTur / hemCevrim) * 100 : 0;
+  const hemzeminFig = hz.svg ? `<div class="fig">${hz.svg}<div class="cap">${en ? `Figure 2e — Level-crossing & TSP delay: per-crossing slowdown (grey) + road-crossing wait (priority). ${hz.adet} crossings (${hz.karayolu} road); ${Math.round(hz.toplamTur)} s/round-trip (${hemYuzde.toFixed(1)}% of cycle).` : `Şekil 2e — Hemzemin geçit & TSP gecikmesi: geçit başına yavaşlama (gri) + karayolu bekleme (öncelik). ${hz.adet} geçit (${hz.karayolu} karayolu); ${Math.round(hz.toplamTur)} s/tur (çevrimin %${hemYuzde.toFixed(1)}'i).`}</div></div>` : "";
   const kisitFig = (maks.gecerli && maks.kisitlar.length) ? `<div class="fig">${kisitBarSvg(maks.kisitlar, kritikRenk, en)}<div class="cap">${en ? "Figure 2c — Determining constraint: competing headway limits (block / terminal turnback / single track / junction / signal); the longest binds (hMin)." : "Şekil 2c — Belirleyici kısıt: rakip headway limitleri (blok / terminal turnback / tek hat / kavşak / sinyal); en uzunu bağlar (hMin)."}</div></div>` : "";
   const hizFig = (line && loopYbf) ? `<div class="fig">${hizProfilSvg(loopYbf, line, en)}<div class="cap">${en ? "Figure 3b — Speed profile v(x): actual speed (blue) vs. segment speed limit (dashed), outbound leg. Dips = station stops; below-limit = acceleration/braking." : "Şekil 3b — Hız profili v(x): gerçek hız (mavi) ile segment hız limiti (kesikli), gidiş legi. Dipler = istasyon duruşları; limit altı = hızlanma/frenleme."}</div></div>` : "";
 
@@ -657,7 +725,21 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
         ? `The table presents each stop's directional load together with the busiest point on the line; the peak load is <b>${tia.tepeYuk} pax/h</b> at <b>${esc(tia.tepeDurak)}</b>. ${tia.gercekVeri ? `The profile is derived directly from the boarding/alighting counts entered for each stop.` : `It arises from distributing the defined total demand of ${P} pax/h across the stops according to their role — hospital, interchange, stadium and centre carrying more — so that the load accumulates along the line in this manner.`}`
         : `Tabloda her durağın yönlü yükü ve hattın en yoğun noktası yer almaktadır; en yüksek yük <b>${tia.tepeYuk} yolcu/saat</b> ile <b>${esc(tia.tepeDurak)}</b> durağındadır. ${tia.gercekVeri ? `Profil, her durak için ayrı girilen iniş-biniş sayımlarından doğrudan elde edilmiştir.` : `Bu profil, tanımlanan ${P} yolcu/saatlik toplam talebin durakların rolüne göre (hastane, aktarma, stadyum ve merkez daha yoğun) hat boyunca dağıtılmasıyla oluşmaktadır.`}`)}
       ${tbl(yukThead, yukRows, { first: true })}
-      <div class="fig">${yukDwellSvg(tia.duraklar, rings, en)}<div class="cap">${en ? "Figure 5b — Load profile (per-stop peak load, coloured by occupancy; peak marked) and dwell breakdown (door-open / passenger exchange / door-close), along the line." : "Şekil 5b — Yük profili (durak başına tepe yük, doluluğa göre renkli; tepe işaretli) ve duruş dökümü (kapı açma / yolcu değişimi / kapı kapama), hat boyunca."}</div></div>`;
+      <div class="fig">${yukDwellSvg(tia.duraklar, rings, en)}<div class="cap">${en ? "Figure 5b — Load profile (per-stop peak load, coloured by occupancy; peak marked) and dwell breakdown (door-open / passenger exchange / door-close), along the line." : "Şekil 5b — Yük profili (durak başına tepe yük, doluluğa göre renkli; tepe işaretli) ve duruş dökümü (kapı açma / yolcu değişimi / kapı kapama), hat boyunca."}</div></div>
+      ${(() => {
+        const pikDol = Math.round(Math.max(...tia.duraklar.map((d) => d.doluluk), 0) * 100);
+        const gA = tia.filo.gerekenArac, mP = tia.filo.mevcutPik, fk = gA - mP;
+        const zt = en ? ["Stage", "Value", "Basis"] : ["Aşama", "Değer", "Dayanak"];
+        const zr = [
+          [en ? "Peak demand" : "Tepe talep", `${tia.tepeYuk} ${en ? "pax/h" : "yolcu/sa"}`, esc(tia.tepeDurak)],
+          [en ? "Required fleet" : "Gereken filo", `${gA} ${en ? "trams" : "tramvay"}`, `${en ? "at" : ""} %${Math.round((isletme.dolulukHedefi || 0.85) * 100)} ${en ? "occ. target" : "doluluk hedefi"}`],
+          [en ? "Achieved occupancy" : "Ulaşılan doluluk", `%${pikDol}`, `${en ? "current fleet" : "mevcut filo"} ${mP}`],
+        ];
+        const zn = en
+          ? `Peak demand requires <b>${gA} trams</b> at the target occupancy${fk > 0 ? ` (${fk} more than current)` : fk < 0 ? ` (${-fk} fewer suffice)` : " (current suffices)"}; with the current fleet the busiest section reaches <b>%${pikDol}</b> occupancy.`
+          : `Tepe talep, hedef dolulukta <b>${gA} tramvay</b> gerektirir${fk > 0 ? ` (mevcuttan ${fk} fazla)` : fk < 0 ? ` (mevcuttan ${-fk} az yeterli)` : " (mevcut yeterli)"}; mevcut filoda en yoğun kesim <b>%${pikDol}</b> doluluğa ulaşır.`;
+        return `<h3 class="sub">${en ? "Demand → Required Fleet → Occupancy" : "Talep → Gereken Filo → Doluluk"}</h3>${tbl(zt, zr, { first: true })}<div class="gs" style="font-size:9.5pt">${zn}</div>`;
+      })()}`;
 
     // 5.2 Depo Çıkışı
     const b52 = `<h3 class="sub">5.2 ${en ? "Depot Dispatch — One Depot, Two Directions" : "Depo Çıkışı — Tek Depodan İki Yön"}</h3>
@@ -1125,6 +1207,9 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <p class="muted" style="font-size:11px;margin-top:6px">${L.kapNot}</p>
   <div class="gs" style="font-size:10pt">${kapYorum}</div>
   ${kisitFig}
+  <h3 class="sub">${lang === "en" ? "Terminal Turnback Capacity" : "Terminal Turnback Kapasitesi"}</h3>
+  ${turnbackTblStr}
+  ${hemzeminFig}
   ${bfFig}
   ${hizFig}
   <h3 class="sub">${L.s41}</h3>

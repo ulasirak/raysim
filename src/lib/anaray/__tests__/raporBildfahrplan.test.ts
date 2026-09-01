@@ -17,4 +17,18 @@ describe("rapor Bildfahrplan (git-gel loop)", () => {
     // gidiş (mavi) + dönüş (turuncu) her ikisi de var
     expect(html).toContain("#2A78D6");             // CK.blue
   });
+
+  it("yeni grafik/analiz figürleri raporda var", () => {
+    const h = hazirHatlar().find((x) => x.key === "birlesik")!;
+    const cfg = { ...varsayilanConfig, ...(h.veri.cfg ?? {}) };
+    const isletme = { ...varsayilanIsletme, ...(h.veri.isletme ?? {}) };
+    const stock = h.veri.arac ?? varsayilanArac;
+    const html = raporHTML(h.veri.meta ?? { projeAdi: "T", hatAdi: h.ad } as any, cfg, h.veri.rings ?? [], stock, "tr", 15, isletme, "");
+    expect(html).toContain("Hız profili");                  // Şekil 3b
+    expect(html).toContain("Yük profili");                  // Şekil 5b
+    expect(html).toContain("Belirleyici kısıt");            // Şekil 2c
+    expect(html).toContain("Terminal Turnback Kapasitesi"); // tablo
+    expect(html).toContain("geçit");                        // hemzemin/TSP (Şekil 2e ya da not)
+    expect(html).toContain("Talep → Gereken Filo → Doluluk"); // talep zinciri
+  });
 });
