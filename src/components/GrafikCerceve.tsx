@@ -1,14 +1,21 @@
 "use client";
 
 // raysim — GRAFİK ÇERÇEVESİ: herhangi bir grafiği sarar, sağ üste "⛶ Tam ekran" düğmesi
-// koyar. Tıklanınca grafik tam-ekran örtüde (fixed inset-0) BÜYÜK render olur → okunurluk
-// artar (w-full SVG'ler tüm genişliğe yayılır). ESC ya da ✕ ile kapanır.
+// koyar. Tıklanınca grafik tam-ekran örtüde BÜYÜK render olur → okunurluk artar (w-full
+// SVG'ler tüm genişliğe yayılır). ESC ya da ✕ ile kapanır.
+//
+// KRİTİK: örtü PORTAL ile document.body'ye taşınır. Aksi halde bir üst-öğede transform
+// varsa `position:fixed` viewport yerine o öğeye göre konumlanır ve örtü panel içinde
+// sıkışır (fixed'in bilinen tuzağı).
 
 import { useState, useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { brand } from "@/lib/anaray/brand";
 
 export function GrafikCerceve({ baslik, children }: { baslik: string; children: ReactNode }) {
   const [tam, setTam] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!tam) return;
@@ -19,34 +26,31 @@ export function GrafikCerceve({ baslik, children }: { baslik: string; children: 
     return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
   }, [tam]);
 
-  const dugme = (koyu: boolean) => (
-    <button type="button" onClick={() => setTam((v) => !v)}
+  const dugme = (kapat: boolean) => (
+    <button type="button" onClick={() => setTam(!kapat)}
       className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition hover:bg-slate-50"
-      style={{ borderColor: brand.border, color: brand.ink, background: koyu ? "#fff" : "rgba(255,255,255,0.85)" }}
-      title={tam ? "Kapat (ESC)" : "Tam ekran"}>
-      {tam ? "✕ Kapat" : "⛶ Tam ekran"}
+      style={{ borderColor: brand.border, color: brand.ink, background: "rgba(255,255,255,0.9)" }}
+      title={kapat ? "Kapat (ESC)" : "Tam ekran"}>
+      {kapat ? "✕ Kapat" : "⛶ Tam ekran"}
     </button>
   );
-
-  if (tam) {
-    return (
-      <div className="fixed inset-0 z-[60] flex flex-col" style={{ background: brand.surface ?? "#fff" }}>
-        <div className="flex items-center justify-between border-b px-4 py-2" style={{ borderColor: brand.border }}>
-          <span className="font-brand text-base font-semibold" style={{ color: brand.ink }}>{baslik}</span>
-          {dugme(true)}
-        </div>
-        {/* Tam-ekran gövde: grafik genişliğe yayılır, gerekirse dikey/yatay kaydırılır */}
-        <div className="flex-1 overflow-auto p-4">
-          <div className="mx-auto max-w-[1600px]">{children}</div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="relative">
       <div className="absolute right-0 top-0 z-10">{dugme(false)}</div>
       {children}
+      {tam && mounted && createPortal(
+        <div className="fixed inset-0 z-[60] flex flex-col" style={{ background: "#fff" }} role="dialog" aria-modal="true">
+          <div className="flex items-center justify-between border-b px-4 py-2" style={{ borderColor: brand.border }}>
+            <span className="font-brand text-base font-semibold" style={{ color: brand.ink }}>{baslik}</span>
+            {dugme(true)}
+          </div>
+          <div className="flex-1 overflow-auto p-4">
+            <div className="mx-auto max-w-[1600px]">{children}</div>
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }
