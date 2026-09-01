@@ -20,6 +20,7 @@ import { BlockingStairChart } from "@/components/BlockingStairChart";
 import { KisitKarsilastirma } from "@/components/KisitKarsilastirma";
 import { TurnbackKapasite } from "@/components/TurnbackKapasite";
 import { HemzeminAnaliz } from "@/components/HemzeminAnaliz";
+import { GrafikCerceve } from "@/components/GrafikCerceve";
 import { CK, RAMP_BLUE, SERI } from "@/lib/anaray/chartkit";
 
 const OK = CK.good;
@@ -244,7 +245,7 @@ export function SistemMerkezi() {
 
       {/* HEMZEMİN GEÇİT & TSP GECİKME — sokak geçitlerinin tur süresine katkısı */}
       <Panel baslik="Hemzemin Geçit & Sinyal Önceliği (TSP) Gecikmesi" aciklama="Tramvay sokakta çok geçitli çalışır. Her geçit iki gecikme üretir: yavaşlama (geçit hızına düşme) ve karayolu geçidinde bekleme (trafik/sinyal önceliği). Bekleme, TSP'nin doğrudan ölçüsüdür — iyi öncelik düşük bekleme demektir. Grafik geçitlerin tur süresine katkısını hat boyunca gösterir.">
-        <HemzeminAnaliz rings={rings} cfg={cfg} cevrimSn={maks?.gecerli ? maks.cevrimSuresi : 0} />
+        <GrafikCerceve baslik="Hemzemin Geçit & TSP Gecikmesi"><HemzeminAnaliz rings={rings} cfg={cfg} cevrimSn={maks?.gecerli ? maks.cevrimSuresi : 0} /></GrafikCerceve>
       </Panel>
       </>)}
 

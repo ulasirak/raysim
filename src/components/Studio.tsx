@@ -25,6 +25,7 @@ import { Bildfahrplan } from "@/components/Bildfahrplan";
 import { HizProfili } from "@/components/HizProfili";
 import { YukDwellAnaliz } from "@/components/YukDwellAnaliz";
 import { TalepZinciri } from "@/components/TalepZinciri";
+import { GrafikCerceve } from "@/components/GrafikCerceve";
 import { Tarife } from "@/components/Tarife";
 
 const KMH = 1 / 3.6;
@@ -554,21 +555,21 @@ function StudioIc() {
       {/* BİLDFAHRPLAN — canlı sim ile aynı loop yörüngesinden zaman-mesafe tren grafiği */}
       {simHazir && (
         <Panel baslik="Bildfahrplan — Zaman–Mesafe Grafiği" aciklama="Demiryolu mühendisliğinin klasik grafiği (Marey diyagramı): yatay = zaman (bir tam çevrim), dikey = mesafe (istasyonlar ızgara). Her tren bir çizgidir — eğim hızı, yatay kısım duruşu, gidiş↔dönüş çizgilerinin kesişimi karşılaşma noktasını gösterir. Çizgiler arası eşit dikey aralık düzenli headway'i, bozulması öbekleşmeyi (bunching) ortaya koyar. Veri canlı sim ile birebir aynıdır.">
-          <Bildfahrplan loop={loopVeri} line={line} />
+          <GrafikCerceve baslik="Bildfahrplan — Zaman–Mesafe Grafiği"><Bildfahrplan loop={loopVeri} line={line} /></GrafikCerceve>
         </Panel>
       )}
 
       {/* HIZ PROFİLİ — hat boyunca gerçek hız + limit zarfı (canlı sim yörüngesinden) */}
       {simHazir && (
         <Panel baslik="Hız Profili — v(x)" aciklama="Hat boyunca (gidiş yönünde) tramvayın gerçek hızı ile hız-limiti zarfı. Mavi eğri gerçek hız (canlı sim ile aynı yörüngeden, ds/dt), gri kesikli çizgi segment hız limiti. Dip noktaları istasyon duruşlarıdır; limitin altındaki kısımlar hızlanma/frenleme bölgeleridir. Nerede hangi kısıtın (istasyon, makas, viraj) hızı bağladığı görünür.">
-          <HizProfili loop={loopVeri} line={line} />
+          <GrafikCerceve baslik="Hız Profili — v(x)"><HizProfili loop={loopVeri} line={line} /></GrafikCerceve>
         </Panel>
       )}
 
       {/* YÜK & DURUŞ ANALİZİ — hat boyu yük profili (doluluk-renkli) + dwell dökümü */}
       {tersRapor && tersRapor.duraklar.length > 1 && (
         <Panel baslik="Yük & Duruş Analizi" aciklama="Hat boyunca (ortak mesafe ekseninde) iki grafik: üstte YÜK PROFİLİ — her durakta tepe araç yükü (yolcu/saat), doluluğa göre renkli (yeşil<%50 · sarı %50–85 · kırmızı>%85), tepe durak işaretli; altta DURUŞ (dwell) DÖKÜMÜ — her durakta sürenin kapı-açma / yolcu-değişimi / kapı-kapama kırılımı. Tramvay dwell-baskın olduğundan zamanın nereye gittiğini ve hattın en kalabalık kesimini bir bakışta gösterir.">
-          <YukDwellAnaliz duraklar={tersRapor.duraklar} rings={rings} />
+          <GrafikCerceve baslik="Yük & Duruş Analizi"><YukDwellAnaliz duraklar={tersRapor.duraklar} rings={rings} /></GrafikCerceve>
         </Panel>
       )}
 

@@ -45,10 +45,10 @@ export function HizProfili({ loop, line }: { loop: LoopYorunge; line: Line }) {
   }).join(" ");
   // Gerçek hız eğrisi.
   const hizYol = hiz.map((p, i) => `${i === 0 ? "M" : "L"}${X(p.s).toFixed(1)},${Y(p.v * 3.6).toFixed(1)}`).join(" ");
-  // Y ekseni km/h işaretleri.
-  const yIsaret = [0, 20, 40, 60].filter((v) => v <= vTop);
-  // X ekseni km işaretleri.
-  const kmSay = Math.max(2, Math.round(L / 1000));
+  // Y ekseni km/h işaretleri — her 10 km/h (sık).
+  const yIsaret = Array.from({ length: Math.floor(vTop / 10) + 1 }, (_, i) => i * 10);
+  // X ekseni km işaretleri — her ~1 km (sık, en çok 26 etiket).
+  const kmSay = Math.max(2, Math.min(26, Math.round(L / 1000)));
   const xIsaret = Array.from({ length: kmSay + 1 }, (_, i) => (L * i) / kmSay);
 
   return (

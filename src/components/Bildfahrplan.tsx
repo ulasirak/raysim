@@ -75,7 +75,7 @@ export function Bildfahrplan({ loop, line }: { loop: LoopVeri; line: Line }) {
   const yol = (seg: { t: number; fp: number }[]) => seg.map((p, i) => `${i === 0 ? "M" : "L"}${X(p.t).toFixed(1)},${Y(p.fp).toFixed(1)}`).join(" ");
 
   // Zaman ekseni işaretleri: ~6 bölüm.
-  const zBol = 6; const zIsaret = Array.from({ length: zBol + 1 }, (_, i) => (pencere * i) / zBol);
+  const zBol = 12; const zIsaret = Array.from({ length: zBol + 1 }, (_, i) => (pencere * i) / zBol);
 
   return (
     <div className="-mx-1 overflow-x-auto px-1 sm:mx-0" style={{ WebkitOverflowScrolling: "touch" }}>

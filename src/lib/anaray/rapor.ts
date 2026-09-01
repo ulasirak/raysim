@@ -101,7 +101,7 @@ function ringSemaSvg(rings: DurakArasiRing[]): string {
     if (r.hemzeminler.length) s += lab(xm, y + (cok ? 28 : 35), `⊟ ${r.hemzeminler.length}`, { anchor: "middle", size: cok ? 7 : 9, color: CK.gold });
     return s;
   }).join("");
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${line}${marks}${dots}${labels}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%">${line}${marks}${dots}${labels}</svg>`;
 }
 
 // Blocking-time bileşen barları (gömülü SVG): her blok için yığılı süre (ordinal mavi rampa).
@@ -140,7 +140,7 @@ function blockingBarSvg(bloklarTum: { i: number; makasBlok?: boolean; tSetup: nu
   }).join("");
   const legend = parts.map((p, i) => `<rect x="${labelW + i * 118}" y="${bloklar.length * rowH + 12}" width="10" height="10" rx="1.5" fill="${p.c}"/>${lab(labelW + i * 118 + 14, bloklar.length * rowH + 21, p.ad, { size: 8.5, color: CK.ink2 })}`).join("");
   const H = bloklar.length * rowH + 38;
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${rows}${legend}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%">${rows}${legend}</svg>`;
 }
 
 // Bir Line'ı ters çevir (dönüş yönü): konum aynala + eğim işaretini çevir.
@@ -193,8 +193,8 @@ function bildfahrplanSvg(loopY: LoopYorunge, line: Line, filo: number, en = fals
     return leader + lab(padL - 6, ey + 2.5, esc(s.name), { anchor: "end", size: lblFont, color: CK.ink2 });
   }).join("");
   const st = gridLines + etiketler;
-  const tg = Array.from({ length: 7 }).map((_, i) => {
-    const t = (periyot * i) / 6, x = xOf(t);
+  const tg = Array.from({ length: 13 }).map((_, i) => {
+    const t = (periyot * i) / 12, x = xOf(t);
     return `<line x1="${x.toFixed(1)}" y1="${padT}" x2="${x.toFixed(1)}" y2="${padT + ph}" stroke="${CK.grid}" opacity="0.6"/>${num(x, H - 8, `${Math.round(t / 60)}′`, { anchor: "middle", size: 8 })}`;
   }).join("");
   // Her tramvay: fp(t)'yi örnekle, yön değişiminde böl → gidiş (mavi) / dönüş (turuncu).
@@ -215,7 +215,7 @@ function bildfahrplanSvg(loopY: LoopYorunge, line: Line, filo: number, en = fals
     gLines += poly(gseg, CK.blue); dLines += poly(dseg, CK.orange);
   }
   const leg = `<text x="${W - padR}" y="13" text-anchor="end" font-family="${CK.sans}" font-size="8.5"><tspan fill="${CK.blue}">▬ ${en ? "outbound" : "gidiş"}</tspan>  <tspan fill="${CK.orange}">▬ ${en ? "return" : "dönüş"}</tspan></text>`;
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${tg}${st}${gLines}${dLines}${leg}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%">${tg}${st}${gLines}${dLines}${leg}</svg>`;
 }
 
 // Belirleyici kısıt karşılaştırması (gömülü SVG): hMin'i oluşturan rakip headway kısıtları
@@ -239,7 +239,7 @@ function kisitBarSvg(kisitlar: { anahtar: string; ad: string; headway: number; a
       + `<rect x="${padL}" y="${y}" width="${w.toFixed(1)}" height="${rowH}" rx="2" fill="${col}" fill-opacity="${k.aktif ? 1 : 0.55}"/>`
       + `<text x="${(padL + w + 4).toFixed(1)}" y="${(y + rowH / 2 + 3).toFixed(1)}" font-family="${CK.sans}" font-size="9" font-weight="${k.aktif ? 700 : 500}" fill="${CK.ink2}">${Math.round(k.headway)} s</text>`;
   }).join("");
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${rows}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%">${rows}</svg>`;
 }
 
 // Hız profili v(x) (gömülü SVG): gidiş legi gerçek hız (loop yörüngesi ds/dt) + hız-limiti
@@ -260,8 +260,8 @@ function hizProfilSvg(loopY: LoopYorunge, line: Line, en = false): string {
   const pw = W - padL - padR, ph = H - padT - padB;
   const X = (s: number) => padL + (s / L) * pw;
   const Y = (vkmh: number) => padT + (1 - vkmh / vTop) * ph;
-  const yIsaret = [0, 20, 40, 60].filter((v) => v <= vTop).map((v) =>
-    `<line x1="${padL}" y1="${Y(v).toFixed(1)}" x2="${padL + pw}" y2="${Y(v).toFixed(1)}" stroke="${CK.grid}"/>${num(padL - 5, Y(v) + 2.5, `${v}`, { anchor: "end", size: 7.5 })}`).join("");
+  const yIsaret = Array.from({ length: Math.floor(vTop / 10) + 1 }, (_, i) => i * 10).map((v) =>
+    `<line x1="${padL}" y1="${Y(v).toFixed(1)}" x2="${padL + pw}" y2="${Y(v).toFixed(1)}" stroke="${CK.grid}"/>${num(padL - 5, Y(v) + 2.5, `${v}`, { anchor: "end", size: 9 })}`).join("");
   const istIsaret = line.stations.filter((s) => s.tip !== "gecit").map((s) =>
     `<line x1="${X(s.position).toFixed(1)}" y1="${padT}" x2="${X(s.position).toFixed(1)}" y2="${padT + ph}" stroke="${CK.grid}" opacity="0.7"/>`).join("");
   const kmSay = Math.max(2, Math.round(L / 1000));
@@ -271,7 +271,7 @@ function hizProfilSvg(loopY: LoopYorunge, line: Line, en = false): string {
   const hizYol = hiz.map((p, i) => `${i === 0 ? "M" : "L"}${X(p.s).toFixed(1)},${Y(p.v * 3.6).toFixed(1)}`).join(" ");
   const eksen = `<line x1="${padL}" y1="${(padT + ph).toFixed(1)}" x2="${padL + pw}" y2="${(padT + ph).toFixed(1)}" stroke="${CK.ink2}" stroke-width="0.8"/>`;
   const leg = `<text x="${W - padR}" y="12" text-anchor="end" font-family="${CK.sans}" font-size="8.5"><tspan fill="${CK.blue}">▬ ${en ? "actual speed" : "gerçek hız"}</tspan>  <tspan fill="${CK.muted}">╌ ${en ? "speed limit" : "hız limiti"}</tspan></text>`;
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${yIsaret}${istIsaret}${eksen}${xIsaret}<path d="${limitYol}" fill="none" stroke="${CK.muted}" stroke-width="1" stroke-dasharray="4 3" opacity="0.85"/><path d="${hizYol}" fill="none" stroke="${CK.blue}" stroke-width="1.4" stroke-linejoin="round"/>${leg}${lab(padL + pw / 2, H - 4, en ? "distance (km) →" : "mesafe (km) →", { anchor: "middle", size: 8 })}${lab(8, padT + 4, "km/h", { size: 8 })}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%">${yIsaret}${istIsaret}${eksen}${xIsaret}<path d="${limitYol}" fill="none" stroke="${CK.muted}" stroke-width="1" stroke-dasharray="4 3" opacity="0.85"/><path d="${hizYol}" fill="none" stroke="${CK.blue}" stroke-width="1.4" stroke-linejoin="round"/>${leg}${lab(padL + pw / 2, H - 4, en ? "distance (km) →" : "mesafe (km) →", { anchor: "middle", size: 8 })}${lab(8, padT + 4, "km/h", { size: 8 })}</svg>`;
 }
 
 // Yük profili + dwell dökümü (gömülü SVG, ortak x=mesafe): üstte durak başına tepe araç
@@ -303,7 +303,7 @@ function yukDwellSvg(duraklar: DurakTalep[], rings: DurakArasiRing[], en = false
   const kmSay = Math.max(2, Math.round(L / 1000));
   const xt = Array.from({ length: kmSay + 1 }, (_, i) => num(X((L * i) / kmSay), base2 + 12, `${((L * i) / kmSay / 1000).toFixed(1)}`, { anchor: "middle", size: 7.5 })).join("");
   const H = pt2 + H2 - 4;
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">`
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%">`
     + `${y1t}<line x1="${padL}" y1="${pt1 + ph1}" x2="${W - padR}" y2="${pt1 + ph1}" stroke="${CK.ink2}" stroke-width="0.7"/>${yukBar}`
     + lab(X(tepe.konum), Y1(tepe.tepeYuk) - 4, `↑ ${en ? "peak" : "tepe"}: ${esc(tepe.ad)}`, { anchor: "middle", size: 8, weight: 700, color: CK.red })
     + lab(padL, pt1 - 8, en ? "load (pax/h)" : "yük (yolcu/sa)", { size: 8, weight: 600, color: CK.ink2 })
@@ -335,8 +335,8 @@ function turnbackTbl(bas: TerminalConfig, son: TerminalConfig, cfg: SimConfig, e
   ];
   const bagAd = bagBas ? (en ? "start terminal" : "başlangıç terminali") : (en ? "end terminal" : "bitiş terminali");
   const not = en
-    ? `Turnback capacity = 3600 ÷ turnback headway; headway = max(platform occupation, throat/switch traversal). S-switch uses one throat in series for arrival+departure (2×); X-switch/twin-platform uses separate legs (1×) → higher capacity. The binding end (◀, ${bagAd}) sets the line's terminal capacity — add an X-switch if the throat binds, a platform if occupation binds.`
-    : `Turnback kapasitesi = 3600 ÷ dönüş headway; headway = max(peron işgali, boğaz/makas geçişi). S-makasta varış+kalkış aynı boğazı seri kullanır (2×); X-makas/çift peronda ayrı bacak (1×) → daha yüksek kapasite. Bağlayan uç (◀, ${bagAd}) hattın terminal kapasitesini belirler — boğaz baskınsa X-makas, peron baskınsa peron ekle.`;
+    ? `Turnback capacity = 3600 ÷ turnback headway; the headway is the greater of platform occupation and throat (switch) traversal. In an S-switch the arrival and departure movements use a single throat in series (2×), whereas an X-switch or twin-platform layout provides separate legs (1×), yielding a higher capacity. The binding end (◀, ${bagAd}) governs the line's terminal capacity; where the throat is dominant an additional X-switch, and where platform occupation is dominant an additional (twin) platform, raises the terminal capacity.`
+    : `Turnback kapasitesi = 3600 ÷ dönüş headway; headway, peron işgali ile boğaz (makas) geçişinin büyüğüdür. S-makasta varış ve kalkış hareketleri tek boğazı seri kullanır (2×); X-makas ya da çift peron düzeninde ayrı bacaklar bulunur (1×) ve daha yüksek kapasite verir. Bağlayan uç (◀, ${bagAd}) hattın terminal kapasitesini belirler; boğazın baskın olduğu durumda ilave bir X-makas, peron işgalinin baskın olduğu durumda ilave (çift) peron, terminal kapasitesini artırır.`;
   return tbl(head, rows, { first: true }) + `<div class="gs" style="font-size:9.5pt">${not}</div>`;
 }
 
@@ -371,7 +371,7 @@ function hemzeminSvg(rings: DurakArasiRing[], cfg: SimConfig): { svg: string; ad
   const yt = [0, Math.round(top / 2), Math.round(top)].map((v) => num(padL - 4, Y(v) + 2.5, `${v}`, { anchor: "end", size: 7.5 })).join("");
   const kmSay = Math.max(2, Math.round(L / 1000));
   const xt = Array.from({ length: kmSay + 1 }, (_, i) => num(X((L * i) / kmSay), padT + ph + 12, `${((L * i) / kmSay / 1000).toFixed(1)}`, { anchor: "middle", size: 7.5 })).join("");
-  const svg = `<svg viewBox="0 0 ${Wd} ${H}" width="100%" style="max-width:${Wd}px">${yt}<line x1="${padL}" y1="${padT + ph}" x2="${padL + pw}" y2="${padT + ph}" stroke="${CK.ink2}" stroke-width="0.7"/>${bars}${xt}${lab(padL, padT - 3, "s", { size: 8 })}${lab(padL + pw / 2, H - 2, "km →", { anchor: "middle", size: 8 })}</svg>`;
+  const svg = `<svg viewBox="0 0 ${Wd} ${H}" width="100%" style="max-width:100%">${yt}<line x1="${padL}" y1="${padT + ph}" x2="${padL + pw}" y2="${padT + ph}" stroke="${CK.ink2}" stroke-width="0.7"/>${bars}${xt}${lab(padL, padT - 3, "s", { size: 8 })}${lab(padL + pw / 2, H - 2, "km →", { anchor: "middle", size: 8 })}</svg>`;
   return { svg, adet: g.length, karayolu, toplamTur };
 }
 
@@ -404,7 +404,7 @@ function sperrzeitSvg(bt: ReturnType<typeof blockingTimeRing>, L: number, kritik
     `<polyline points="${bt.yorunge.map((p) => `${xOf(p.t + off).toFixed(1)},${yOf(p.s).toFixed(1)}`).join(" ")}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
   const yTicks = [0, L / 2, L].map((s) => num(padL - 7, yOf(s) + 3, `${Math.round(s)}`, { anchor: "end", size: 8 })).join("");
   const hMark = `<line x1="${xOf(0).toFixed(1)}" y1="${padT - 6}" x2="${xOf(h).toFixed(1)}" y2="${padT - 6}" stroke="${kritikRenk}" stroke-width="1.4"/>${lab(xOf(h) + 6, padT - 3, `min headway ${Math.round(h)} s`, { size: 8.5, color: kritikRenk, weight: 600 })}`;
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${yTicks}${rects.join("")}${traj(0, CK.blue)}${traj(h, CK.orange)}${hMark}${lab(padL, H - 8, en ? "time (s) →" : "zaman (s) →", { size: 8.5 })}${lab(8, padT + 4, "m", { size: 8.5 })}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%">${yTicks}${rects.join("")}${traj(0, CK.blue)}${traj(h, CK.orange)}${hMark}${lab(padL, H - 8, en ? "time (s) →" : "zaman (s) →", { size: 8.5 })}${lab(8, padT + 4, "m", { size: 8.5 })}</svg>`;
 }
 
 // Enerji-mesafe (gömülü SVG): kümülatif çekiş enerjisi (kWh) vs mesafe.
@@ -442,7 +442,7 @@ function energyGradeSvg(line: Line, stock: RollingStock, ing = false): { svg: st
   const yTicks = [0, Emax / 2, Emax].map((v) => `<line x1="${padL}" y1="${yE(v).toFixed(1)}" x2="${W - padR}" y2="${yE(v).toFixed(1)}" stroke="${CK.grid}"/>${num(padL - 7, yE(v) + 3, v.toFixed(1), { anchor: "end", size: 8 })}`).join("");
   const base = `<line x1="${padL}" y1="${(topTop + topH).toFixed(1)}" x2="${W - padR}" y2="${(topTop + topH).toFixed(1)}" stroke="${CK.baseline}"/>`;
   const lblSvg = `${lab(8, topTop + 8, "kWh", { size: 8 })}${lab(W - padR, topTop + topH + 16, ing ? "distance (m) →" : "mesafe (m) →", { anchor: "end", size: 8 })}`;
-  const svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px"><defs>${areaGrad("g-en", CK.orange, 0.2)}</defs>${st}${yTicks}${base}${eArea}${ePoly}${lblSvg}</svg>`;
+  const svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%"><defs>${areaGrad("g-en", CK.orange, 0.2)}</defs>${st}${yTicks}${base}${eArea}${ePoly}${lblSvg}</svg>`;
   return { svg, net: en.netKWh, perKm: en.perKm };
 }
 

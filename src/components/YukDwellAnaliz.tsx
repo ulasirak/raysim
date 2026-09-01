@@ -48,7 +48,7 @@ export function YukDwellAnaliz({ duraklar, rings }: { duraklar: DurakYuk[]; ring
     const x = X(d.konum), y = Yy(d.tepeYuk);
     return `<rect x="${(x - barW / 2).toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(0, padTy + phy - y).toFixed(1)}" rx="1" fill="${dolulukRenk(d.doluluk)}" fill-opacity="0.9"><title>${esc(d.ad)}: ${Math.round(d.tepeYuk)} yolcu/sa · %${Math.round(d.doluluk * 100)} doluluk</title></rect>`;
   }).join("");
-  const yukTicks = [0, Math.round(yukTop / 2), Math.round(yukTop)].map((v) =>
+  const yukTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(yukTop * f)).map((v) =>
     `<text x="${padL - 5}" y="${(Yy(v) + 2.5).toFixed(1)}" text-anchor="end" font-size="7.5" fill="${brand.muted}">${v}</text>`).join("");
 
   // ——— 2) Dwell dökümü ———
@@ -64,7 +64,7 @@ export function YukDwellAnaliz({ duraklar, rings }: { duraklar: DurakYuk[]; ring
       + seg(x, yY, yA, CK.blue, `${esc(d.ad)} · yolcu değişimi ${Math.round(d.yolcu)} s`)
       + seg(x, yK, yY, "#C9D2DA", `${esc(d.ad)} · kapı kapama ${d.kapama} s`);
   }).join("");
-  const dwTicks = [0, Math.round(dwTop / 2), Math.round(dwTop)].map((v) =>
+  const dwTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(dwTop * f)).map((v) =>
     `<text x="${padL - 5}" y="${(Yd(v) + 2.5).toFixed(1)}" text-anchor="end" font-size="7.5" fill="${brand.muted}">${v}</text>`).join("");
   const kmSay = Math.max(2, Math.round(L / 1000));
   const xTicks = Array.from({ length: kmSay + 1 }, (_, i) => {

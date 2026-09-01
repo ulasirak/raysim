@@ -57,8 +57,11 @@ export function HemzeminAnaliz({ rings, cfg, cevrimSn }: { rings: DurakArasiRing
         <div className="min-w-[680px] sm:min-w-0">
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Hemzemin geçit gecikme">
             <line x1={padL} y1={padT + ph} x2={padL + pw} y2={padT + ph} stroke={brand.border} strokeWidth={1} />
-            {[0, Math.round(top / 2), Math.round(top)].map((v) => (
-              <text key={v} x={padL - 4} y={Y(v) + 2.5} textAnchor="end" fontSize={7.5} fill={brand.muted}>{v}</text>
+            {[0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(top * f)).map((v, i) => (
+              <g key={i}>
+                <line x1={padL} y1={Y(v)} x2={padL + pw} y2={Y(v)} stroke={CK.track} strokeWidth={0.6} strokeOpacity={0.7} />
+                <text x={padL - 4} y={Y(v) + 2.5} textAnchor="end" fontSize={7.5} fill={brand.muted}>{v}</text>
+              </g>
             ))}
             {g.map((x, i) => {
               const cx = X(x.konum), base = padT + ph;
