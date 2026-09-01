@@ -21,6 +21,7 @@ import { CK } from "@/lib/anaray/chartkit";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { BosHat } from "@/components/BosHat";
 import { LiveNetwork } from "@/components/LiveNetwork";
+import { Bildfahrplan } from "@/components/Bildfahrplan";
 import { Tarife } from "@/components/Tarife";
 
 const KMH = 1 / 3.6;
@@ -546,6 +547,13 @@ function StudioIc() {
       </Panel>
       </div>
       </div>
+
+      {/* BİLDFAHRPLAN — canlı sim ile aynı loop yörüngesinden zaman-mesafe tren grafiği */}
+      {simHazir && (
+        <Panel baslik="Bildfahrplan — Zaman–Mesafe Grafiği" aciklama="Demiryolu mühendisliğinin klasik grafiği (Marey diyagramı): yatay = zaman (bir tam çevrim), dikey = mesafe (istasyonlar ızgara). Her tren bir çizgidir — eğim hızı, yatay kısım duruşu, gidiş↔dönüş çizgilerinin kesişimi karşılaşma noktasını gösterir. Çizgiler arası eşit dikey aralık düzenli headway'i, bozulması öbekleşmeyi (bunching) ortaya koyar. Veri canlı sim ile birebir aynıdır.">
+          <Bildfahrplan loop={loopVeri} line={line} />
+        </Panel>
+      )}
 
       {/* ⑤ CANLI ETKİLER — filo oynadıkça bağlı olduğu her durum canlı güncellenir */}
       {maks.gecerli && (
