@@ -14,7 +14,7 @@ import { aslsLogoSvg, firmaAslsMi } from "./aslsLogo";
 import { CK, RAMP_BLUE, num, lab, areaGrad } from "./chartkit";
 import type { SimConfig, ProjeMeta, Isletme } from "./config";
 import { PARAM_META, paramGoster, birim, varsayilanIsletme } from "./config";
-import { tersIsletmeAnaliz } from "./tersisletme";
+import { tersIsletmeAnaliz, type DurakTalep } from "./tersisletme";
 import { maksimumTren } from "./kapasite";
 import { tarifeUret } from "./tarife";
 import { duyarlilikAnaliz } from "./duyarlilik";
@@ -247,6 +247,45 @@ function hizProfilSvg(loopY: LoopYorunge, line: Line, en = false): string {
   const eksen = `<line x1="${padL}" y1="${(padT + ph).toFixed(1)}" x2="${padL + pw}" y2="${(padT + ph).toFixed(1)}" stroke="${CK.ink2}" stroke-width="0.8"/>`;
   const leg = `<text x="${W - padR}" y="12" text-anchor="end" font-family="${CK.sans}" font-size="8.5"><tspan fill="${CK.blue}">▬ ${en ? "actual speed" : "gerçek hız"}</tspan>  <tspan fill="${CK.muted}">╌ ${en ? "speed limit" : "hız limiti"}</tspan></text>`;
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">${yIsaret}${istIsaret}${eksen}${xIsaret}<path d="${limitYol}" fill="none" stroke="${CK.muted}" stroke-width="1" stroke-dasharray="4 3" opacity="0.85"/><path d="${hizYol}" fill="none" stroke="${CK.blue}" stroke-width="1.4" stroke-linejoin="round"/>${leg}${lab(padL + pw / 2, H - 4, en ? "distance (km) →" : "mesafe (km) →", { anchor: "middle", size: 8 })}${lab(8, padT + 4, "km/h", { size: 8 })}</svg>`;
+}
+
+// Yük profili + dwell dökümü (gömülü SVG, ortak x=mesafe): üstte durak başına tepe araç
+// yükü (doluluğa göre renkli), altta duruş süresinin kapı-açma/yolcu/kapı-kapama kırılımı.
+function yukDwellSvg(duraklar: DurakTalep[], rings: DurakArasiRing[], en = false): string {
+  if (duraklar.length < 2 || rings.length < 1) return "";
+  const YESIL = "#2E7D57";
+  const dRenk = (d: number) => (d > 0.85 ? CK.red : d > 0.5 ? CK.amber : YESIL);
+  const L = Math.max(...duraklar.map((d) => d.konum), 1);
+  let acc = 0;
+  const dw = rings.map((r) => { acc += r.uzunluk; const a = r.kapiAcma ?? 2, k = r.kapiKapama ?? 2; return { konum: acc, a, y: Math.max(0, r.dwell - a - k), k, t: r.dwell, ad: r.toAd }; });
+  const yukTop = Math.max(...duraklar.map((d) => d.tepeYuk), 1), dwTop = Math.max(...dw.map((d) => d.t), 1);
+  const tepe = duraklar.reduce((p, c) => (c.tepeYuk > p.tepeYuk ? c : p), duraklar[0]);
+  const W = 760, padL = 40, padR = 12;
+  const X = (kk: number) => padL + (kk / L) * (W - padL - padR);
+  const bw = Math.max(2, Math.min(14, (W - padL - padR) / Math.max(duraklar.length, dw.length) * 0.6));
+  // Üst: yük
+  const H1 = 150, pt1 = 20, pb1 = 8, ph1 = H1 - pt1 - pb1;
+  const Y1 = (v: number) => pt1 + (1 - v / yukTop) * ph1;
+  const yukBar = duraklar.map((d) => `<rect x="${(X(d.konum) - bw / 2).toFixed(1)}" y="${Y1(d.tepeYuk).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0, pt1 + ph1 - Y1(d.tepeYuk)).toFixed(1)}" rx="1" fill="${dRenk(d.doluluk)}" fill-opacity="0.9"/>`).join("");
+  const y1t = [0, Math.round(yukTop / 2), Math.round(yukTop)].map((v) => num(padL - 5, Y1(v) + 2.5, `${v}`, { anchor: "end", size: 7.5 })).join("");
+  // Alt: dwell (üstün altına kaydır)
+  const gap = 22, H2 = 118, pt2 = H1 + gap, pb2 = 26, ph2 = H2 - 4 - pb2;
+  const base2 = pt2 + ph2;
+  const Y2 = (v: number) => pt2 + (1 - v / dwTop) * ph2;
+  const s2 = (x: number, yT: number, yB: number, c: string) => `<rect x="${(x - bw / 2).toFixed(1)}" y="${yT.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0, yB - yT).toFixed(1)}" fill="${c}"/>`;
+  const dwBar = dw.map((d) => s2(X(d.konum), Y2(d.a), base2, "#9AA7B2") + s2(X(d.konum), Y2(d.a + d.y), Y2(d.a), CK.blue) + s2(X(d.konum), Y2(d.a + d.y + d.k), Y2(d.a + d.y), "#C9D2DA")).join("");
+  const y2t = [0, Math.round(dwTop / 2), Math.round(dwTop)].map((v) => num(padL - 5, Y2(v) + 2.5, `${v}`, { anchor: "end", size: 7.5 })).join("");
+  const kmSay = Math.max(2, Math.round(L / 1000));
+  const xt = Array.from({ length: kmSay + 1 }, (_, i) => num(X((L * i) / kmSay), base2 + 12, `${((L * i) / kmSay / 1000).toFixed(1)}`, { anchor: "middle", size: 7.5 })).join("");
+  const H = pt2 + H2 - 4;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">`
+    + `${y1t}<line x1="${padL}" y1="${pt1 + ph1}" x2="${W - padR}" y2="${pt1 + ph1}" stroke="${CK.ink2}" stroke-width="0.7"/>${yukBar}`
+    + lab(X(tepe.konum), Y1(tepe.tepeYuk) - 4, `↑ ${en ? "peak" : "tepe"}: ${esc(tepe.ad)}`, { anchor: "middle", size: 8, weight: 700, color: CK.red })
+    + lab(padL, pt1 - 8, en ? "load (pax/h)" : "yük (yolcu/sa)", { size: 8, weight: 600, color: CK.ink2 })
+    + `${y2t}<line x1="${padL}" y1="${base2}" x2="${W - padR}" y2="${base2}" stroke="${CK.ink2}" stroke-width="0.7"/>${dwBar}${xt}`
+    + lab(padL, pt2 - 6, en ? "dwell (s): open / passenger / close" : "duruş (s): açma / yolcu / kapama", { size: 8, weight: 600, color: CK.ink2 })
+    + lab(padL + (W - padL - padR) / 2, H - 3, en ? "distance (km) →" : "mesafe (km) →", { anchor: "middle", size: 8, color: CK.ink2 })
+    + `</svg>`;
 }
 
 // Gerçek Sperrzeitentreppe (gömülü SVG): iki ardışık tramvay + her bloğun blocking-time
@@ -592,7 +631,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
       ${gsNot(en
         ? `The table presents each stop's directional load together with the busiest point on the line; the peak load is <b>${tia.tepeYuk} pax/h</b> at <b>${esc(tia.tepeDurak)}</b>. ${tia.gercekVeri ? `The profile is derived directly from the boarding/alighting counts entered for each stop.` : `It arises from distributing the defined total demand of ${P} pax/h across the stops according to their role — hospital, interchange, stadium and centre carrying more — so that the load accumulates along the line in this manner.`}`
         : `Tabloda her durağın yönlü yükü ve hattın en yoğun noktası yer almaktadır; en yüksek yük <b>${tia.tepeYuk} yolcu/saat</b> ile <b>${esc(tia.tepeDurak)}</b> durağındadır. ${tia.gercekVeri ? `Profil, her durak için ayrı girilen iniş-biniş sayımlarından doğrudan elde edilmiştir.` : `Bu profil, tanımlanan ${P} yolcu/saatlik toplam talebin durakların rolüne göre (hastane, aktarma, stadyum ve merkez daha yoğun) hat boyunca dağıtılmasıyla oluşmaktadır.`}`)}
-      ${tbl(yukThead, yukRows, { first: true })}`;
+      ${tbl(yukThead, yukRows, { first: true })}
+      <div class="fig">${yukDwellSvg(tia.duraklar, rings, en)}<div class="cap">${en ? "Figure 5b — Load profile (per-stop peak load, coloured by occupancy; peak marked) and dwell breakdown (door-open / passenger exchange / door-close), along the line." : "Şekil 5b — Yük profili (durak başına tepe yük, doluluğa göre renkli; tepe işaretli) ve duruş dökümü (kapı açma / yolcu değişimi / kapı kapama), hat boyunca."}</div></div>`;
 
     // 5.2 Depo Çıkışı
     const b52 = `<h3 class="sub">5.2 ${en ? "Depot Dispatch — One Depot, Two Directions" : "Depo Çıkışı — Tek Depodan İki Yön"}</h3>

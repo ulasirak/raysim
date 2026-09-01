@@ -23,6 +23,7 @@ import { BosHat } from "@/components/BosHat";
 import { LiveNetwork } from "@/components/LiveNetwork";
 import { Bildfahrplan } from "@/components/Bildfahrplan";
 import { HizProfili } from "@/components/HizProfili";
+import { YukDwellAnaliz } from "@/components/YukDwellAnaliz";
 import { Tarife } from "@/components/Tarife";
 
 const KMH = 1 / 3.6;
@@ -560,6 +561,13 @@ function StudioIc() {
       {simHazir && (
         <Panel baslik="Hız Profili — v(x)" aciklama="Hat boyunca (gidiş yönünde) tramvayın gerçek hızı ile hız-limiti zarfı. Mavi eğri gerçek hız (canlı sim ile aynı yörüngeden, ds/dt), gri kesikli çizgi segment hız limiti. Dip noktaları istasyon duruşlarıdır; limitin altındaki kısımlar hızlanma/frenleme bölgeleridir. Nerede hangi kısıtın (istasyon, makas, viraj) hızı bağladığı görünür.">
           <HizProfili loop={loopVeri} line={line} />
+        </Panel>
+      )}
+
+      {/* YÜK & DURUŞ ANALİZİ — hat boyu yük profili (doluluk-renkli) + dwell dökümü */}
+      {tersRapor && tersRapor.duraklar.length > 1 && (
+        <Panel baslik="Yük & Duruş Analizi" aciklama="Hat boyunca (ortak mesafe ekseninde) iki grafik: üstte YÜK PROFİLİ — her durakta tepe araç yükü (yolcu/saat), doluluğa göre renkli (yeşil<%50 · sarı %50–85 · kırmızı>%85), tepe durak işaretli; altta DURUŞ (dwell) DÖKÜMÜ — her durakta sürenin kapı-açma / yolcu-değişimi / kapı-kapama kırılımı. Tramvay dwell-baskın olduğundan zamanın nereye gittiğini ve hattın en kalabalık kesimini bir bakışta gösterir.">
+          <YukDwellAnaliz duraklar={tersRapor.duraklar} rings={rings} />
         </Panel>
       )}
 
