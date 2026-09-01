@@ -20,12 +20,14 @@ interface Golden {
   nTeorik: number; nSurd: number; hMin: number; cevrim: number;
   baglayan: string; sinyal: number; gerekenFilo: number; tepeYuk: number;
 }
-// Doğrulanmış değerler (bu oturumda motorla iki kez teyit edildi). Kilit budur.
+// Doğrulanmış değerler. Makas dizilimi kullanıcı teyidiyle güncellendi (HAZIR_VERI_SURUM=11:
+// Alaattin 2S+1X, Adliye 1S, Ravza/Otogar/Betoncular 1S, Depo 2S) → kapasite çıktıları buna
+// göre yeniden kilitlendi (birleşik 57/40 — terminal makas modeli notuyla tutarlı). Kilit budur.
 const GOLDEN: Record<string, Golden> = {
-  mevcut:   { nTeorik: 15, nSurd: 10, hMin: 135, cevrim: 2080, baglayan: "Kritik blok — Hükümet",     sinyal: 23, gerekenFilo: 5,  tepeYuk: 1466 },
-  etap1:    { nTeorik: 26, nSurd: 18, hMin: 139, cevrim: 3703, baglayan: "Kritik blok — Ravza Camii",  sinyal: 30, gerekenFilo: 9,  tepeYuk: 1605 },
-  etap2:    { nTeorik: 23, nSurd: 16, hMin: 125, cevrim: 2885, baglayan: "Kritik blok — Betoncular",   sinyal: 25, gerekenFilo: 7,  tepeYuk: 1405 },
-  birlesik: { nTeorik: 54, nSurd: 37, hMin: 148, cevrim: 7986, baglayan: "Kritik blok — Adliye",       sinyal: 78, gerekenFilo: 15, tepeYuk: 1213 },
+  mevcut:   { nTeorik: 15, nSurd: 10, hMin: 136, cevrim: 2068, baglayan: "Kritik blok — Hükümet",       sinyal: 23, gerekenFilo: 5,  tepeYuk: 1466 },
+  etap1:    { nTeorik: 27, nSurd: 19, hMin: 133, cevrim: 3626, baglayan: "Kritik blok — Ravza Camii",    sinyal: 30, gerekenFilo: 9,  tepeYuk: 1605 },
+  etap2:    { nTeorik: 23, nSurd: 16, hMin: 120, cevrim: 2861, baglayan: "Kritik blok — Barış Caddesi",  sinyal: 25, gerekenFilo: 6,  tepeYuk: 1405 },
+  birlesik: { nTeorik: 57, nSurd: 40, hMin: 136, cevrim: 7874, baglayan: "Kritik blok — Hükümet",        sinyal: 78, gerekenFilo: 15, tepeYuk: 1213 },
 };
 
 const hatlar = hazirHatlar();
