@@ -18,6 +18,8 @@ import { maksimumTren } from "@/lib/anaray/kapasite";
 import { loopToHat } from "@/lib/anaray/hatsim";
 import { BlockingStairChart } from "@/components/BlockingStairChart";
 import { KisitKarsilastirma } from "@/components/KisitKarsilastirma";
+import { TurnbackKapasite } from "@/components/TurnbackKapasite";
+import { HemzeminAnaliz } from "@/components/HemzeminAnaliz";
 import { CK, RAMP_BLUE, SERI } from "@/lib/anaray/chartkit";
 
 const OK = CK.good;
@@ -233,6 +235,18 @@ export function SistemMerkezi() {
           <KisitKarsilastirma kisitlar={maks.kisitlar} kritikRenk={kritikRenk} />
         </Panel>
       )}
+
+      {/* TERMİNAL TURNBACK KAPASİTESİ — iki ucun makas geometrisi → dönüş kapasitesi */}
+      {rings.length > 0 && (<>
+      <Panel baslik="Terminal Turnback Kapasitesi" aciklama="Her uçtaki dönüş (turnback) kapasitesi, makas geometrisinden (S/X sayısı), peron sayısından ve boğaz işgalinden hesaplanır. Tramvay hatlarında hattın kapasitesini çoğu kez terminal dönüşü bağlar; iki uç yan yana, hangisinin ve hangi alt-etkenin (peron mu boğaz/makas mı) bağladığı gösterilir.">
+        <TurnbackKapasite terminalBas={isletme.terminalBas} terminalSon={isletme.terminalSon} cfg={cfg} />
+      </Panel>
+
+      {/* HEMZEMİN GEÇİT & TSP GECİKME — sokak geçitlerinin tur süresine katkısı */}
+      <Panel baslik="Hemzemin Geçit & Sinyal Önceliği (TSP) Gecikmesi" aciklama="Tramvay sokakta çok geçitli çalışır. Her geçit iki gecikme üretir: yavaşlama (geçit hızına düşme) ve karayolu geçidinde bekleme (trafik/sinyal önceliği). Bekleme, TSP'nin doğrudan ölçüsüdür — iyi öncelik düşük bekleme demektir. Grafik geçitlerin tur süresine katkısını hat boyunca gösterir.">
+        <HemzeminAnaliz rings={rings} cfg={cfg} cevrimSn={maks?.gecerli ? maks.cevrimSuresi : 0} />
+      </Panel>
+      </>)}
 
       {/* Duyarlılık (tornado) — hangi parametre kapasiteyi en çok oynatıyor. */}
       <Duyarlilik ringsHam={ringsHam} stock={stock} cfg={cfg} isletme={isletme} />

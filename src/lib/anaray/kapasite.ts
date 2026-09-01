@@ -57,7 +57,7 @@ export interface MaksimumTrenSonuc {
  *     sıralı → alt sınır 2 × boğaz işgali.
  *   • X-makas (scissors): iki bağımsız hareket → 2 tramvay ardışık (eş-zamanlı değil)
  *     dönebilir → peron işgali ÷ 2. Boğaz varış/kalkış ayrı bacakta → alt sınır 1 × boğaz. */
-function terminalHeadway(t: TerminalConfig, cfg: SimConfig): number {
+export function terminalHeadway(t: TerminalConfig, cfg: SimConfig): number {
   if (t.tip === "dongu") return 0; // balon döngü → dönüş beklemesi yok
   // `|| 0` — eski kayıtta eksik alanlara karşı NaN koruması.
   const peronBasi = (t.peronIsgali || 0) / terminalDonusParalel(t);

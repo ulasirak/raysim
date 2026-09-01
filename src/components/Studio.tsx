@@ -24,6 +24,7 @@ import { LiveNetwork } from "@/components/LiveNetwork";
 import { Bildfahrplan } from "@/components/Bildfahrplan";
 import { HizProfili } from "@/components/HizProfili";
 import { YukDwellAnaliz } from "@/components/YukDwellAnaliz";
+import { TalepZinciri } from "@/components/TalepZinciri";
 import { Tarife } from "@/components/Tarife";
 
 const KMH = 1 / 3.6;
@@ -568,6 +569,13 @@ function StudioIc() {
       {tersRapor && tersRapor.duraklar.length > 1 && (
         <Panel baslik="Yük & Duruş Analizi" aciklama="Hat boyunca (ortak mesafe ekseninde) iki grafik: üstte YÜK PROFİLİ — her durakta tepe araç yükü (yolcu/saat), doluluğa göre renkli (yeşil<%50 · sarı %50–85 · kırmızı>%85), tepe durak işaretli; altta DURUŞ (dwell) DÖKÜMÜ — her durakta sürenin kapı-açma / yolcu-değişimi / kapı-kapama kırılımı. Tramvay dwell-baskın olduğundan zamanın nereye gittiğini ve hattın en kalabalık kesimini bir bakışta gösterir.">
           <YukDwellAnaliz duraklar={tersRapor.duraklar} rings={rings} />
+        </Panel>
+      )}
+
+      {/* TALEP → FİLO → DOLULUK ZİNCİRİ — yolcu talebi işletmeyi nasıl belirler */}
+      {tersRapor && tersRapor.duraklar.length > 1 && (
+        <Panel baslik="Talep → Gereken Filo → Doluluk Zinciri" aciklama="Yolcu talebinin işletmeyi nasıl belirlediği üç aşamada: tepe talep → (hedef dolulukta) gereken filo → (mevcut filoda) ulaşılan doluluk. Filo azsa doluluk hedefi aşılır, fazlaysa düşer.">
+          <TalepZinciri t={tersRapor} dolulukHedefi={isletme.dolulukHedefi || 0.85} />
         </Panel>
       )}
 
