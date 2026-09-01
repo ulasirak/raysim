@@ -39,14 +39,26 @@ export function YukDwellAnaliz({ duraklar, rings }: { duraklar: DurakYuk[]; ring
   const { L, dwell, yukTop, dwTop, tepe } = veri;
   const W = 860, padL = 46, padR = 14;
   const X = (k: number) => padL + (k / L) * (W - padL - padR);
-  const barW = Math.max(2, Math.min(16, (W - padL - padR) / Math.max(duraklar.length, dwell.length) * 0.6));
+  // DEĞİŞKEN çubuk genişliği: her çubuk komşularına olan en küçük boşluğun payı kadar →
+  // yakın duraklarda incelir, üst üste binmez; boşta geniş kalır. (16 üst sınır.)
+  const barGenislikleri = (konumlar: number[]): number[] => {
+    const xs = konumlar.map(X);
+    return xs.map((x, i) => {
+      const sol = i > 0 ? x - xs[i - 1] : Infinity;
+      const sag = i < xs.length - 1 ? xs[i + 1] - x : Infinity;
+      const g = Math.min(sol, sag);
+      return Math.max(1.5, Math.min(16, (Number.isFinite(g) ? g : 16) * 0.85));
+    });
+  };
+  const bwY = barGenislikleri(duraklar.map((d) => d.konum));
+  const bwD = barGenislikleri(dwell.map((d) => d.konum));
 
   // ——— 1) Yük profili ———
   const Hy = 190, padTy = 26, padBy = 22, phy = Hy - padTy - padBy;
   const Yy = (v: number) => padTy + (1 - v / yukTop) * phy;
   const yukBar = duraklar.map((d, i) => {
-    const x = X(d.konum), y = Yy(d.tepeYuk);
-    return `<rect x="${(x - barW / 2).toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(0, padTy + phy - y).toFixed(1)}" rx="1" fill="${dolulukRenk(d.doluluk)}" fill-opacity="0.9"><title>${esc(d.ad)}: ${Math.round(d.tepeYuk)} yolcu/sa · %${Math.round(d.doluluk * 100)} doluluk</title></rect>`;
+    const x = X(d.konum), y = Yy(d.tepeYuk), w = bwY[i];
+    return `<rect x="${(x - w / 2).toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(0, padTy + phy - y).toFixed(1)}" rx="1" fill="${dolulukRenk(d.doluluk)}" fill-opacity="0.9"><title>${esc(d.ad)} (${(d.konum / 1000).toFixed(2)} km): ${Math.round(d.tepeYuk)} yolcu/sa · %${Math.round(d.doluluk * 100)} doluluk</title></rect>`;
   }).join("");
   const yukTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(yukTop * f)).map((v) =>
     `<text x="${padL - 5}" y="${(Yy(v) + 2.5).toFixed(1)}" text-anchor="end" font-size="7.5" fill="${brand.muted}">${v}</text>`).join("");
@@ -54,15 +66,15 @@ export function YukDwellAnaliz({ duraklar, rings }: { duraklar: DurakYuk[]; ring
   // ——— 2) Dwell dökümü ———
   const Hd = 170, padTd = 16, padBd = 30, phd = Hd - padTd - padBd;
   const Yd = (v: number) => padTd + (1 - v / dwTop) * phd;
-  const seg = (x: number, yTop: number, yBot: number, col: string, t: string) =>
-    `<rect x="${(x - barW / 2).toFixed(1)}" y="${yTop.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(0, yBot - yTop).toFixed(1)}" fill="${col}"><title>${t}</title></rect>`;
-  const dwBar = dwell.map((d) => {
-    const x = X(d.konum);
+  const seg = (x: number, w: number, yTop: number, yBot: number, col: string, t: string) =>
+    `<rect x="${(x - w / 2).toFixed(1)}" y="${yTop.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(0, yBot - yTop).toFixed(1)}" fill="${col}"><title>${t}</title></rect>`;
+  const dwBar = dwell.map((d, i) => {
+    const x = X(d.konum), w = bwD[i];
     const y0 = padTd + phd;
     const yA = Yd(d.acma), yY = Yd(d.acma + d.yolcu), yK = Yd(d.acma + d.yolcu + d.kapama);
-    return seg(x, Yd(d.acma), y0, "#9AA7B2", `${esc(d.ad)} · kapı açma ${d.acma} s`)
-      + seg(x, yY, yA, CK.blue, `${esc(d.ad)} · yolcu değişimi ${Math.round(d.yolcu)} s`)
-      + seg(x, yK, yY, "#C9D2DA", `${esc(d.ad)} · kapı kapama ${d.kapama} s`);
+    return seg(x, w, Yd(d.acma), y0, "#9AA7B2", `${esc(d.ad)} (${(d.konum / 1000).toFixed(2)} km) · kapı açma ${d.acma} s`)
+      + seg(x, w, yY, yA, CK.blue, `${esc(d.ad)} · yolcu değişimi ${Math.round(d.yolcu)} s · toplam ${Math.round(d.toplam)} s`)
+      + seg(x, w, yK, yY, "#C9D2DA", `${esc(d.ad)} · kapı kapama ${d.kapama} s`);
   }).join("");
   const dwTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(dwTop * f)).map((v) =>
     `<text x="${padL - 5}" y="${(Yd(v) + 2.5).toFixed(1)}" text-anchor="end" font-size="7.5" fill="${brand.muted}">${v}</text>`).join("");
@@ -79,7 +91,7 @@ export function YukDwellAnaliz({ duraklar, rings }: { duraklar: DurakYuk[]; ring
         <div>
           <div className="mb-0.5 px-1 text-xs font-semibold" style={{ color: brand.ink }}>Yük profili — durak başına tepe araç yükü (yolcu/saat), doluluğa göre renkli</div>
           <svg viewBox={`0 0 ${W} ${Hy}`} className="w-full h-auto" role="img" aria-label="Yük profili"
-            dangerouslySetInnerHTML={{ __html: `${yukTicks}<line x1="${padL}" y1="${padTy + phy}" x2="${W - padR}" y2="${padTy + phy}" stroke="${brand.border}"/>${yukBar}<text x="${X(tepe.konum).toFixed(1)}" y="${(Yy(tepe.tepeYuk) - 4).toFixed(1)}" text-anchor="middle" font-size="8" font-weight="700" fill="${CK.red}">↑ tepe: ${esc(tepe.ad)}</text><text x="10" y="${padTy + phy / 2}" text-anchor="middle" font-size="8" font-weight="600" fill="${brand.inkSoft}" transform="rotate(-90 10 ${padTy + phy / 2})">yolcu/sa ↑</text>` }} />
+            dangerouslySetInnerHTML={{ __html: `${yukTicks}<line x1="${padL}" y1="${padTy + phy}" x2="${W - padR}" y2="${padTy + phy}" stroke="${brand.border}"/>${yukBar}<text x="${X(tepe.konum).toFixed(1)}" y="${(Yy(tepe.tepeYuk) - 4).toFixed(1)}" text-anchor="middle" font-size="8" font-weight="700" fill="${CK.red}">↑ tepe: ${esc(tepe.ad)} · ${Math.round(tepe.tepeYuk)} yolcu/sa · ${(tepe.konum / 1000).toFixed(2)} km</text><text x="10" y="${padTy + phy / 2}" text-anchor="middle" font-size="8" font-weight="600" fill="${brand.inkSoft}" transform="rotate(-90 10 ${padTy + phy / 2})">yolcu/sa ↑</text>` }} />
         </div>
         {/* Dwell dökümü */}
         <div>

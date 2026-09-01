@@ -66,19 +66,24 @@ export function HemzeminAnaliz({ rings, cfg, cevrimSn }: { rings: DurakArasiRing
             {g.map((x, i) => {
               const cx = X(x.konum), base = padT + ph;
               const yBek = Y(x.bekle), yTop = Y(x.bekle + x.yavas);
+              const toplam = x.yavas + x.bekle;
               const bekRenk = x.bekle > 20 ? CK.red : x.bekle > 8 ? CK.amber : CK.blue;
               return (
                 <g key={i}>
+                  {/* konum kılavuz çizgisi (bar → eksen) */}
+                  <line x1={cx} y1={toplam > 0 ? yTop : base - 2} x2={cx} y2={base} stroke={CK.track} strokeWidth={0.6} />
                   {x.yavas > 0 && <rect x={cx - bw / 2} y={yTop} width={bw} height={Math.max(0, yBek - yTop)} fill="#9AA7B2"><title>{x.ad}: yavaşlama {Math.round(x.yavas)} s</title></rect>}
                   {x.bekle > 0 && <rect x={cx - bw / 2} y={yBek} width={bw} height={Math.max(0, base - yBek)} fill={bekRenk}><title>{x.ad}: bekleme (TSP/trafik) {Math.round(x.bekle)} s</title></rect>}
                   {x.yavas === 0 && x.bekle === 0 && <rect x={cx - bw / 2} y={base - 2} width={bw} height={2} fill="#9AA7B2" />}
+                  {/* gecikme değeri (üstte) + tam km (altta) — DİNAMİK */}
+                  {toplam > 0 && <text x={cx} y={yTop - 2} textAnchor="middle" fontSize={7} fontWeight={600} fill={brand.inkSoft}>{Math.round(toplam)}s</text>}
+                  <text x={cx} y={base + 21} textAnchor="middle" fontSize={7.5} fontWeight={700} fill={brand.ink}>{(x.konum / 1000).toFixed(2)}</text>
                 </g>
               );
             })}
-            {Array.from({ length: Math.max(2, Math.round(L / 1000)) + 1 }, (_, i) => {
-              const k = (L * i) / Math.max(2, Math.round(L / 1000));
-              return <text key={i} x={X(k)} y={padT + ph + 12} textAnchor="middle" fontSize={7.5} fill={brand.muted}>{(k / 1000).toFixed(1)}</text>;
-            })}
+            {/* eksen uçları (km) — geçit km'leri öne çıksın diye yalnız 0 ve son */}
+            <text x={X(0)} y={padT + ph + 12} textAnchor="middle" fontSize={7.5} fill={brand.muted}>0</text>
+            <text x={X(L)} y={padT + ph + 12} textAnchor="middle" fontSize={7.5} fill={brand.muted}>{(L / 1000).toFixed(1)}</text>
             <text x={padL + pw / 2} y={H - 2} textAnchor="middle" fontSize={8} fontWeight={600} fill={brand.inkSoft}>Mesafe (km) →</text>
             <text x={10} y={padT + ph / 2} textAnchor="middle" fontSize={8} fontWeight={600} fill={brand.inkSoft} transform={`rotate(-90 10 ${padT + ph / 2})`}>gecikme (s) ↑</text>
           </svg>
