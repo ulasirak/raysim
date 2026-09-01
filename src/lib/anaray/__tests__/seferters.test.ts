@@ -41,10 +41,22 @@ describe("Sefer ↔ Ters İşletme entegre algoritma", () => {
   });
 
   it("sık sefer (küçük headway) filo ihtiyacını dengeler", () => {
-    const sik = seferTersEntegre(rings, stock, cfg, isletme, 2 * 60, 0);
+    const sik = seferTersEntegre(rings, stock, cfg, isletme, 3 * 60, 0);
     const seyrek = seferTersEntegre(rings, stock, cfg, isletme, 15 * 60, 0);
     // Daha sık sefer → serviste daha çok araç → daha az/eşit ekleme ihtiyacı
     expect(sik.filoIhtiyac!.eklenecek).toBeLessThanOrEqual(seyrek.filoIhtiyac!.eklenecek);
+  });
+
+  it("aşırı sık sefer fiziksel tavanı aşınca 'aracYetersiz' der (sağlanamaz)", () => {
+    const asiri = seferTersEntegre(rings, stock, cfg, isletme, 0.5 * 60, 0); // 30 s aralık
+    const f = asiri.filoIhtiyac!;
+    expect(f.durum).toBe("aracYetersiz");
+    expect(f.problem).toBe(true);
+    expect(asiri.filo).toBeGreaterThan(f.teorikTavan);   // istenen serviste tavanı aşar
+    expect(f.acikAdet).toBe(asiri.filo - f.teorikTavan); // fazla araç
+    expect(f.minAralikSn).toBeGreaterThan(0);            // en küçük uygulanabilir aralık verilir
+    // makul aralıkta bu durum oluşmaz
+    expect(seferTersEntegre(rings, stock, cfg, isletme, 8 * 60, 0).filoIhtiyac!.durum).not.toBe("aracYetersiz");
   });
 
   it("öneri üretirse dönüş kararı bir araca bağlanır + gerçek ulaşım süresi taşır", () => {

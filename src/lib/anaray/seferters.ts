@@ -15,6 +15,7 @@ import type { SimConfig, Isletme } from "./config";
 import { loopToHat } from "./hatsim";
 import { loopYorunge, type LoopYorunge } from "./signalling";
 import { tersIsletmeAnaliz } from "./tersisletme";
+import { maksimumTren } from "./kapasite";
 
 export interface AracKonum {
   no: number;          // araç no (1..filo)
@@ -38,11 +39,15 @@ export interface DonusOneri {
 }
 
 // Filo yeterlilik durumu: talep arttıkça ters işletme (kısa dönüş) tek başına yetmeyebilir →
-// tramvay ekleme ihtiyacı doğar; altyapı tavanı aşılırsa ekleme de yetmez.
-export type FiloDurum = "dengeli" | "tersYeter" | "ekle" | "altyapi";
+// tramvay ekleme ihtiyacı doğar; altyapı tavanı aşılırsa ekleme de yetmez. Sefer sıklığı çok
+// yükseltilirse serviste gereken araç, hattın fiziksel tavanını (min güvenli aralık) aşar →
+// "aracYetersiz": bu sıklık SAĞLANAMAZ (blocking-time min headway sınırı).
+export type FiloDurum = "dengeli" | "tersYeter" | "ekle" | "altyapi" | "aracYetersiz";
 export interface FiloIhtiyac {
   durum: FiloDurum;
-  problem: boolean;            // ekle | altyapi → rapora tramvay ekletme isteği düşer
+  problem: boolean;            // ekle | altyapi | aracYetersiz → rapora/karta sorun düşer
+  teorikTavan: number;        // hattın taşıyabileceği mutlak azami tramvay (⌊çevrim÷hMin⌋)
+  minAralikSn: number;        // en küçük güvenli sefer aralığı (hMin)
   serviste: number;           // seçilen aralıkta serviste araç (headway'den)
   gereken: number;            // talep+doluluk hedefi için gereken (ham)
   gerekenKisaDonusle: number; // kısa dönüş (ters işletme) uygulanınca gereken
@@ -186,18 +191,26 @@ export function seferTersEntegre(
   const frekansServiste = (filo * 3600) / periyot;         // tramvay/saat
   const arzServiste = Math.max(1, frekansServiste * C);    // kişi/saat kapasite
   const tepeDoluluk = tia.tepeYuk / arzServiste;
+  // FİZİKSEL TAVAN: hat, blocking-time (min güvenli aralık hMin) gereği en fazla ⌊çevrim÷hMin⌋
+  // tramvay taşır. Seçilen aralık bundan çok araç ister → o sefer sıklığı SAĞLANAMAZ.
+  const maks = maksimumTren(rings, stock, cfg, isletme);
+  const teorikTavan = maks.hMin > 0 ? Math.max(1, Math.floor(periyot / maks.hMin)) : Math.max(1, maks.nTeorik || filo);
+  const minAralikSn = Math.max(1, Math.round(maks.hMin > 0 ? maks.hMin : periyot / Math.max(1, teorikTavan)));
   // Üniform servis hedefe iner: yeniServiste = gereken (aynı formül garanti eder). Kısa dönüş
   // yoğun çekirdeğe yönlendirerek eklenecek sayısını azaltır (gerekenKD). Tavan = altyapı sınırı.
   const eklenecekUniform = Math.max(0, Math.min(tavan, gereken) - filo);
   const eklenecekKD = Math.max(0, Math.min(tavan, gerekenKD) - filo);
   let durum: FiloDurum; let eklenecek = 0; let acikAdet = 0; let kisaDonusZorunlu = false;
-  if (filo >= gereken) { durum = "dengeli"; }
+  if (filo > teorikTavan) { durum = "aracYetersiz"; acikAdet = filo - teorikTavan; }  // sefer sıklığı fiziksel tavanı aşıyor
+  else if (filo >= gereken) { durum = "dengeli"; }
   else if (filo >= gerekenKD) { durum = "tersYeter"; }               // kısa dönüş tek başına (eklemesiz) yeter
   else if (gereken <= tavan) { durum = "ekle"; eklenecek = eklenecekUniform; } // üniform ekleme hedefe iner
   else if (gerekenKD <= tavan) { durum = "ekle"; eklenecek = eklenecekKD; kisaDonusZorunlu = true; } // üniform tavanı aşar → kısa dönüş zorunlu
   else { durum = "altyapi"; eklenecek = Math.max(0, tavan - filo); acikAdet = gerekenKD - tavan; }
-  const yeniServiste = filo + eklenecek;
-  const yeniHeadwaySn = yeniServiste > 0 ? periyot / yeniServiste : periyot;
+  const aracYetersiz = durum === "aracYetersiz";
+  // aracYetersiz'de "yeni" hedef = fiziksel tavan (en küçük uygulanabilir aralık); diğerlerinde ekleme.
+  const yeniServiste = aracYetersiz ? teorikTavan : filo + eklenecek;
+  const yeniHeadwaySn = aracYetersiz ? minAralikSn : (yeniServiste > 0 ? periyot / yeniServiste : periyot);
   const yeniDoluluk = tia.tepeYuk / Math.max(1, (yeniServiste * 3600 / periyot) * C);
   const py = (r: number) => `%${Math.round(r * 100)}`;
   const kdNot = eklenecekKD < eklenecekUniform ? ` (${tia.tepeDurak} çekirdeğinde kısa dönüş uygulanırsa ${eklenecekKD} tramvay yeterli)` : "";
@@ -208,9 +221,11 @@ export function seferTersEntegre(
       ? `Yoğunluk, üniform seferle tavanı (${tavan} tramvay) zorluyor: hedefi kısa dönüşle karşılamak için hatta ${eklenecek} tramvay daha çıkarılmalı (${filo} → ${yeniServiste}; aralık ${saatKisa(headwaySn)} → ${saatKisa(yeniHeadwaySn)}) ve ${tia.tepeDurak} çekirdeğinde kısa dönüş uygulanmalı. Bu ikisi birlikte en yoğun kolu hedefe indirir.`
       : `Yoğunluk arttı: serviste ${filo} tramvayla en yoğun kesim ${py(tepeDoluluk)} doluluğa ulaşıyor (hedef ${py(hedef)}). Ters işletme tek başına yetmiyor — hatta ${eklenecek} tramvay daha çıkarılmalı (${filo} → ${yeniServiste}; aralık ${saatKisa(headwaySn)} → ${saatKisa(yeniHeadwaySn)}). Bununla en yoğun kesim ≈${py(yeniDoluluk)} dolulukla hedefe iner${kdNot}.`,
     altyapi: `Yoğunluk, hattın sürdürülebilir tavanını (${tavan} tramvay) aşıyor: kısa dönüşle bile ${gerekenKD} araç gerekiyor. Yapılabilecek en fazla ${eklenecek} tramvay eklense de ${acikAdet} araçlık açık kalır. Kalıcı çözüm için blok/terminal altyapısının iyileştirilmesi (min. aralığı düşürmek) veya daha yüksek kapasiteli araç gerekir.`,
+    aracYetersiz: `Girilen ${saatKisa(headwaySn)} sefer aralığı ${filo} tramvay serviste gerektiriyor; ancak hat, blocking-time (en küçük güvenli aralık ${saatKisa(minAralikSn)}) gereği en fazla ${teorikTavan} tramvay taşıyabilir — ${acikAdet} araç fazla. Bu sefer sıklığı SAĞLANAMAZ: aralığı en az ${saatKisa(minAralikSn)} yapın. Talebe göre gereken filoyu ve ulaşılabilir en yüksek sıklığı Filo Paneli'nde (Gereken Filo) görün.`,
   };
   const filoIhtiyac: FiloIhtiyac = {
-    durum, problem: durum === "ekle" || durum === "altyapi",
+    durum, problem: durum === "ekle" || durum === "altyapi" || durum === "aracYetersiz",
+    teorikTavan, minAralikSn,
     serviste: filo, gereken, gerekenKisaDonusle: gerekenKD,
     eklenecek, eklenecekKisaDonusle: eklenecekKD, kisaDonusZorunlu,
     yeniServiste, yeniHeadwaySn: Math.round(yeniHeadwaySn),
@@ -224,9 +239,12 @@ export function seferTersEntegre(
   if (!yolcuVar) bilgi.push("Yolcu sayıları rolden tahmin edildi (istasyon başına iniş-biniş girilmedi). Gerçek sayımlar girilirse öneriler doğrudan ölçüme dayanır.");
   if (oneriler.length === 0) bilgi.push(tia.makaslar.some((m) => m.kisaDonusOnerilir) ? "Kısa dönüş adayı makas(lar) var ancak şu anlık-görüntüde makasa gidiş yönünde yaklaşan araç yok; zaman çubuğunu oynatınca bağlanır." : "Talep dengeli — hiçbir makasta kısa dönüş gerekmiyor (tüm kollar hedef dolulukta).");
 
-  if (filoIhtiyac.problem) bilgi.push(filoIhtiyac.durum === "altyapi"
-    ? `Filo yeterliliği: talep sürdürülebilir tavanı aşıyor — ekleme tek başına yetmez (aşağıdaki modüle bakınız).`
-    : `Filo yeterliliği: yoğunluk için ${filoIhtiyac.eklenecek} tramvay eklenmesi öneriliyor (aşağıdaki modüle bakınız).`);
+  if (filoIhtiyac.problem) bilgi.push(
+    filoIhtiyac.durum === "aracYetersiz"
+      ? `Filo yeterliliği: girilen sefer sıklığı hattın fiziksel tavanını (${teorikTavan} tramvay) aşıyor — bu sıklık sağlanamaz; aralığı en az ${saatKisa(minAralikSn)} yapın (aşağıdaki modüle bakınız).`
+      : filoIhtiyac.durum === "altyapi"
+        ? `Filo yeterliliği: talep sürdürülebilir tavanı aşıyor — ekleme tek başına yetmez (aşağıdaki modüle bakınız).`
+        : `Filo yeterliliği: yoğunluk için ${filoIhtiyac.eklenecek} tramvay eklenmesi öneriliyor (aşağıdaki modüle bakınız).`);
 
   const makaslar = tia.makaslar.map((m) => ({ ad: m.ad, km: Math.max(0, Math.min(L, m.konum)) / 1000, crossover: m.crossover, onerilir: m.kisaDonusOnerilir }));
   return { gecerli: true, headwaySn, filo, cevrimSn: periyot, L, anSn: an, araclar, oneriler, makaslar, filoIhtiyac, bilgi };

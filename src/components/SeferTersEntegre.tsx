@@ -115,6 +115,7 @@ export function SeferTersEntegre({ rings, stock, cfg, isletme, headwayDk, onHead
           tersYeter: { bg: "#EEF4FC", bd: CK.blue, ik: "#1B4E86", et: "Ters işletme yeterli" },
           ekle: { bg: "#FDF3F4", bd: CK.red, ik: "#8E1224", et: "Tramvay ekle" },
           altyapi: { bg: "#FBECEC", bd: "#8E1224", ik: "#6E0E1C", et: "Altyapı sınırı" },
+          aracYetersiz: { bg: "#FBECEC", bd: "#8E1224", ik: "#6E0E1C", et: "Sefer sıklığı sağlanamaz" },
         };
         const c = stil[f.durum];
         const py = (r: number) => `%${Math.round(r * 100)}`;
@@ -125,7 +126,14 @@ export function SeferTersEntegre({ rings, stock, cfg, isletme, headwayDk, onHead
               <span className="text-sm font-semibold" style={{ color: c.ik }}>Pik {Math.round(f.tepeYuk)} yolcu/sa · {f.tepeDurak} · en yoğun kesim {py(f.tepeDoluluk)} (hedef {py(f.hedefDoluluk)})</span>
             </div>
             <p className="mt-1 text-sm" style={{ color: brand.inkSoft }}>{f.mesaj}</p>
-            {f.eklenecek > 0 && (
+            {f.durum === "aracYetersiz" ? (
+              <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs" style={{ color: brand.ink }}>
+                <span>İstenen serviste: <b style={{ color: c.bd }}>{f.serviste}</b></span>
+                <span>Fiziksel tavan: <b>{f.teorikTavan} tramvay</b></span>
+                <span>Fazla: <b style={{ color: c.bd }}>{f.acikAdet} araç</b></span>
+                <span>En küçük uygulanabilir aralık: <b>{sure(f.minAralikSn)}</b></span>
+              </div>
+            ) : f.eklenecek > 0 && (
               <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs" style={{ color: brand.ink }}>
                 <span>Serviste: <b>{f.serviste}</b></span>
                 <span>Önerilen: <b style={{ color: c.bd }}>+{f.eklenecek} tramvay</b> → <b>{f.yeniServiste}</b></span>
@@ -133,6 +141,12 @@ export function SeferTersEntegre({ rings, stock, cfg, isletme, headwayDk, onHead
                 <span>Doluluk: {py(f.tepeDoluluk)} → <b>{py(f.yeniDoluluk)}</b></span>
                 {f.durum === "altyapi" && <span style={{ color: c.bd }}>Karşılanamayan: <b>{f.acikAdet} araç</b></span>}
               </div>
+            )}
+            {f.problem && (
+              <button type="button" onClick={() => { const el = document.getElementById("filo-paneli"); if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); el.style.outline = `2px solid ${c.bd}`; el.style.outlineOffset = "3px"; el.style.borderRadius = "10px"; setTimeout(() => { el.style.outline = ""; el.style.outlineOffset = ""; }, 1800); } }}
+                className="mt-2 rounded-md px-2.5 py-1 text-xs font-semibold text-white" style={{ background: c.bd }}>
+                Gereken Filo Paneli’ne git →
+              </button>
             )}
           </div>
         );

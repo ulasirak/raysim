@@ -899,7 +899,13 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
       ${(() => {
         const f = ste.filoIhtiyac; if (!f) return "";
         const py = (r: number) => `%${Math.round(r * 100)}`;
-        const rows = f.eklenecek > 0 ? [
+        const yetersiz = f.durum === "aracYetersiz";
+        const rows = yetersiz ? [
+          [en ? "Requested in service" : "İstenen serviste", `${f.serviste}`],
+          [en ? "Physical ceiling" : "Fiziksel tavan", `${f.teorikTavan} ${en ? "trams" : "tramvay"}`],
+          [en ? "Excess" : "Fazla", `${f.acikAdet} ${en ? "trams" : "araç"}`],
+          [en ? "Smallest feasible interval" : "En küçük uygulanabilir aralık", stHw(f.minAralikSn)],
+        ] : f.eklenecek > 0 ? [
           [en ? "In service" : "Serviste", `${f.serviste}`],
           [en ? "Recommended addition" : "Önerilen ekleme", `+${f.eklenecek} → ${f.yeniServiste}`],
           [en ? "New interval" : "Yeni aralık", stHw(f.yeniHeadwaySn)],
@@ -907,9 +913,10 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
           ...(f.durum === "altyapi" ? [[en ? "Unmet (beyond ceiling)" : "Karşılanamayan (tavan üstü)", `${f.acikAdet} ${en ? "trams" : "araç"}`]] : []),
         ] : [];
         if (f.problem) {
-          // PROBLEM VAR → rapora belirgin TRAMVAY EKLEME İSTEĞİ düşür.
+          // PROBLEM VAR → rapora belirgin uyarı düşür (ekleme İSTEĞİ ya da sıklık SAĞLANAMAZ).
+          const baslik = yetersiz ? (en ? "SERVICE FREQUENCY NOT FEASIBLE" : "SEFER SIKLIĞI SAĞLANAMAZ") : (en ? "TRAM ADDITION REQUIRED" : "TRAMVAY EKLEME İHTİYACI");
           return `<div style="margin-top:8px;border:1px solid ${CK.red};border-left:4px solid ${CK.red};background:${CK.badBgSoft};border-radius:6px;padding:9px 11px">
-            <div style="font-weight:800;color:#8E1224;font-size:10pt;letter-spacing:.02em">⚠ ${en ? "TRAM ADDITION REQUIRED" : "TRAMVAY EKLEME İHTİYACI"}</div>
+            <div style="font-weight:800;color:#8E1224;font-size:10pt;letter-spacing:.02em">⚠ ${baslik}</div>
             <p style="margin:4px 0 0;font-size:9.5pt;color:#3a2226">${esc(f.mesaj)}</p>
             ${rows.length ? tbl(en ? ["Metric", "Value"] : ["Gösterge", "Değer"], rows, { first: true }) : ""}
           </div>`;
