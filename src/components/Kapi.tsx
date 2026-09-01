@@ -27,8 +27,9 @@ export function useErisim(): ErisimDurumu {
   // Firebase yapılandırılmamışsa (yerel geliştirme, .env.local yok) kapı
   // uygulamayı büsbütün kilitlemesin — GirisEkrani zaten uyarıyı gösterir.
   if (!yapilandirildi) return "acik";
-  // Paylaşım linki ve /giris rotası kapının dışındadır.
-  if (paylasimGorunumu || pathname.startsWith("/giris")) return "acik";
+  // Paylaşım linki, /giris ve /canli (QR canlı sim vitrini) kapının dışındadır —
+  // /canli DAİMA açık: ?hat= parametresi effect'te okunmadan önce login flaşı/yönlendirmesi olmasın.
+  if (paylasimGorunumu || pathname.startsWith("/giris") || pathname.startsWith("/canli")) return "acik";
   if (!hazir) return "bekliyor";
   return user ? "acik" : "kapali";
 }

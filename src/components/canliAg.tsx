@@ -202,10 +202,12 @@ export function CanliAgSayfa() {
 
       {/* Tam genişlik canlı sim — ters işletme KAPALI gelir; mod/hız/oynat LiveNetwork içinde */}
       <div className="px-2 py-3 sm:px-4">
+        {/* Vitrinde blok tıklaması KAPALI (onBlockClick verilmez): blok "arıza"sı döngü
+            modunu kapatıp tek-tren sinyal simine düşürüyordu. Ziyaretçi trenlere tıklar. */}
         <LiveNetwork
           autoOynat network={p.network} route={p.route} line={p.line} blocks={p.canliGidis.blocks}
           up={p.canliGidis.trains} down={p.donusSim.trains} tMax={Math.max(p.canliGidis.tMax, p.donusSim.tMax)}
-          trainLen={p.trainLen} faultBlocks={p.ariza} onBlockClick={p.arizaToggle} depots={p.depotPlan.depots}
+          trainLen={p.trainLen} faultBlocks={[]} depots={p.depotPlan.depots}
           features={p.hatOzellik} loop={p.loopVeri} terminalBas={p.terminalBas} terminalSon={p.terminalSon}
           tersMod={tm} onTersMod={setTm} />
       </div>
