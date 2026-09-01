@@ -179,6 +179,9 @@ export function CanliAgSayfa() {
           </ul>
           <div className="mt-2 leading-snug">
             Bir trene <b>dokun</b> → bir tam turda hangi nedene kaç saniye harcadığının dökümü açılır.
+            Bir <b>bloğa dokun</b> → o bloğu <b>arızalı</b> yaparsın; trenler arızalı bloğun gerisinde
+            güvenle kuyruklanır (arkadan gelen önündekine çarpmaz — fail-safe), geçmiş trenler akmaya
+            devam eder; tekrar dokununca arıza kalkar ve herkes kaldığı yerden sürer.
             Alttaki <b>▶ Oynat</b>, <b>hız</b> ve <b>zaman çubuğu</b> ile oynat/durdur; <b>Ters işletme</b>
             {" "}kapalı gelir, istersen üstteki butonlarla açabilirsin.
           </div>
@@ -192,12 +195,13 @@ export function CanliAgSayfa() {
         <div className="mb-1 text-center text-[11px] sm:hidden" style={{ color: brand.muted }}>
           şemayı yana kaydırabilirsin →
         </div>
-        {/* Vitrinde blok tıklaması KAPALI (onBlockClick verilmez): blok "arıza"sı döngü
-            modunu kapatıp tek-tren sinyal simine düşürüyordu. Ziyaretçi trenlere tıklar. */}
+        {/* Blok tıklaması AÇIK: arıza artık döngü İÇİNDE ele alınıyor (motor değişmez,
+            ışınlanma/donma yok) → ziyaretçi bir bloğa dokunup arıza yaratabilir, trenlerin
+            arızalı bloğun gerisinde güvenle kuyruklanmasını izler; tekrar dokununca kalkar. */}
         <LiveNetwork
           autoOynat network={p.network} route={p.route} line={p.line} blocks={p.canliGidis.blocks}
           up={p.canliGidis.trains} down={p.donusSim.trains} tMax={Math.max(p.canliGidis.tMax, p.donusSim.tMax)}
-          trainLen={p.trainLen} faultBlocks={[]} depots={p.depotPlan.depots}
+          trainLen={p.trainLen} faultBlocks={p.ariza} onBlockClick={p.arizaToggle} depots={p.depotPlan.depots}
           features={p.hatOzellik} loop={p.loopVeri} terminalBas={p.terminalBas} terminalSon={p.terminalSon}
           tersMod={tm} onTersMod={setTm} />
       </div>
