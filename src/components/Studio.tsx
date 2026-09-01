@@ -27,6 +27,7 @@ import { YukDwellAnaliz } from "@/components/YukDwellAnaliz";
 import { TalepZinciri } from "@/components/TalepZinciri";
 import { GrafikCerceve } from "@/components/GrafikCerceve";
 import { Tarife } from "@/components/Tarife";
+import { SeferTersEntegre } from "@/components/SeferTersEntegre";
 
 const KMH = 1 / 3.6;
 
@@ -630,6 +631,13 @@ function StudioIc() {
 
       {/* Tarife (zaman çizelgesi) — çevrim + ulaşılan aralıktan kalkışlar + araç diyagramı. */}
       {maks.gecerli && <Tarife cevrimSn={maks.cevrimSuresi} headwaySn={ulasilanHeadwaySn} />}
+
+      {/* SEFER ↔ TERS İŞLETME ENTEGRE — manuel headway + zaman → araç konumları → araca bağlı kısa dönüş önerileri */}
+      {maks.gecerli && rings.length >= 2 && (
+        <Panel baslik="Sefer & Ters İşletme — Entegre Analiz" aciklama="Sefer aralığını (headway) elle ayarla; o an seferdeki araçların GERÇEK konumları (yörüngeden — sinyal lambaları, karayolu/yaya geçitleri, makas geçiş hızı, eğim ve duruşlar dâhil) diyagramda görünür. Zaman çubuğuyla ilerlet. Girilen yolcu talebine göre yük dengesizliği olan makaslara yaklaşan araç bulunur ve KISA DÖNÜŞ (ters işletme) kararı O ARACA bağlanır — kazanç ve gerekçesiyle önerilir. Tarife ile ters işletme burada ortaklaşır.">
+          <SeferTersEntegre rings={rings} stock={stock} cfg={cfg} isletme={isletme} />
+        </Panel>
+      )}
 
       {/* Özet künye */}
       <section className="mt-6 overflow-hidden rounded-lg border bg-white" style={{ borderColor: brand.border }}>
