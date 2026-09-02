@@ -27,6 +27,7 @@ import { YukDwellAnaliz } from "@/components/YukDwellAnaliz";
 import { TalepZinciri } from "@/components/TalepZinciri";
 import { GrafikCerceve } from "@/components/GrafikCerceve";
 import { Tarife } from "@/components/Tarife";
+import { TersIsletme } from "@/components/TersIsletme";
 import { SeferTersEntegre } from "@/components/SeferTersEntegre";
 
 const KMH = 1 / 3.6;
@@ -555,6 +556,19 @@ function StudioIc() {
       </div>
       </div>
 
+      {/* TERS İŞLETME — Canlı Ağ Simülasyonu'nun HEMEN ALTINDA (kullanıcı düzeni).
+          Kendi üst-bölümü yerine buraya taşındı; id korunur → /#tersisletme linkleri çalışır. */}
+      <section id="tersisletme" className="mt-8 scroll-mt-28 border-t pt-6" style={{ borderColor: brand.border }}>
+        <TersIsletme />
+      </section>
+
+      {/* TARİFE (zaman çizelgesi) — Ters İşletme'nin hemen altında. */}
+      {maks.gecerli && (
+        <section className="mt-8 border-t pt-6" style={{ borderColor: brand.border }}>
+          <Tarife cevrimSn={maks.cevrimSuresi} headwaySn={ulasilanHeadwaySn} />
+        </section>
+      )}
+
       {/* BİLDFAHRPLAN — canlı sim ile aynı loop yörüngesinden zaman-mesafe tren grafiği */}
       {simHazir && (
         <Panel baslik="Bildfahrplan — Zaman–Mesafe Grafiği" aciklama="Demiryolu mühendisliğinin klasik grafiği (Marey diyagramı): yatay = zaman (bir tam çevrim), dikey = mesafe (istasyonlar ızgara). Her tren bir çizgidir — eğim hızı, yatay kısım duruşu, gidiş↔dönüş çizgilerinin kesişimi karşılaşma noktasını gösterir. Çizgiler arası eşit dikey aralık düzenli headway'i, bozulması öbekleşmeyi (bunching) ortaya koyar. Veri canlı sim ile birebir aynıdır.">
@@ -630,9 +644,6 @@ function StudioIc() {
           hatta, pik-dışında fazlası depoya döner (parklanma), gece hepsi depoda. */}
 
 
-
-      {/* Tarife (zaman çizelgesi) — çevrim + ulaşılan aralıktan kalkışlar + araç diyagramı. */}
-      {maks.gecerli && <Tarife cevrimSn={maks.cevrimSuresi} headwaySn={ulasilanHeadwaySn} />}
 
       {/* SEFER ↔ TERS İŞLETME ENTEGRE — manuel headway + zaman → araç konumları → araca bağlı kısa dönüş önerileri */}
       {maks.gecerli && rings.length >= 2 && (
