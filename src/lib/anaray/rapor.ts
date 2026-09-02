@@ -11,7 +11,7 @@
 import { qrSvgString } from "./qr";
 import { emblemSvg } from "@/lib/emblem";
 import { aslsLogoSvg, firmaAslsMi } from "./aslsLogo";
-import { CK, RAMP_BLUE, num, lab, areaGrad } from "./chartkit";
+import { CK, RAMP_BLUE, num, lab } from "./chartkit";
 import type { SimConfig, ProjeMeta, Isletme } from "./config";
 import { PARAM_META, paramGoster, birim, varsayilanIsletme } from "./config";
 import { terminalMakasSayilari, etkinPeronSayisi, etkinBogazIsgali, terminalDonusParalel, terminalSeriDonus, type TerminalConfig } from "./config";
@@ -28,8 +28,6 @@ import {
 } from "./ring";
 import { blockingTimeRing } from "./blockingtime";
 import { loopToHat } from "./hatsim";
-import { simulate } from "./sim";
-import { computeEnergy } from "./energy";
 import { loopYorunge, type LoopYorunge } from "./signalling";
 import { hatOzellikleri } from "./network";
 import type { Line } from "./types";
@@ -473,44 +471,6 @@ function sperrzeitSvg(bt: ReturnType<typeof blockingTimeRing>, L: number, kritik
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%">${yTicks}${rects.join("")}${traj(0, CK.blue)}${traj(h, CK.orange)}${hMark}${lab(padL, H - 8, en ? "time (s) →" : "zaman (s) →", { size: 8.5 })}${lab(8, padT + 4, "m", { size: 8.5 })}</svg>`;
 }
 
-// Enerji-mesafe (gömülü SVG): kümülatif çekiş enerjisi (kWh) vs mesafe.
-function energyGradeSvg(line: Line, stock: RollingStock, ing = false): { svg: string; net: number; perKm: number } {
-  if (line.length <= 0) return { svg: "", net: 0, perKm: 0 };
-  const res = simulate(line, stock, 0.5);
-  if (!res.points.length) return { svg: "", net: 0, perKm: 0 };
-  const en = computeEnergy(line, stock, res);
-  const L = line.length;
-  const meff = stock.mass * (1 + stock.rotatingMassFactor);
-  const Gg = 9.81, EFF = 0.85, J = 3.6e6;
-  const segAtL = (s: number) => { for (const sg of line.segments) if (s >= sg.start && s < sg.end) return sg; return line.segments[line.segments.length - 1]; };
-  const pts = res.points; let Wtr = 0; const cp = [{ s: 0, E: 0 }];
-  for (let i = 1; i < pts.length; i++) {
-    const p0 = pts[i - 1], p1 = pts[i], ds = p1.s - p0.s;
-    if (ds <= 1e-6) continue;
-    const vmid = (p0.v + p1.v) / 2, seg = segAtL(p0.s);
-    const dKE = 0.5 * meff * (p1.v * p1.v - p0.v * p0.v);
-    const Wres = (stock.davisA + stock.davisB * vmid + stock.davisC * vmid * vmid) * ds;
-    const Wg = stock.mass * Gg * (seg.gradient / 1000) * ds;
-    const rhs = dKE + Wres + Wg;
-    if (rhs > 0) Wtr += rhs;
-    cp.push({ s: p1.s, E: Wtr / EFF / J });
-  }
-  const W = 760, padL = 46, padR = 12, padT = 14, pw = 760 - 46 - 12;
-  const topH = 108;
-  const topTop = padT, H = topTop + topH + 28;
-  const xOf = (s: number) => padL + (s / L) * pw;
-  const Emax = Math.max(0.1, ...cp.map((p) => p.E));
-  const yE = (E: number) => topTop + topH - (E / Emax) * topH;
-  const st = line.stations.map((s) => `<line x1="${xOf(s.position).toFixed(1)}" y1="${topTop}" x2="${xOf(s.position).toFixed(1)}" y2="${topTop + topH}" stroke="${CK.grid}"/>`).join("");
-  const ePts = cp.map((p) => `${xOf(p.s).toFixed(1)},${yE(p.E).toFixed(1)}`).join(" ");
-  const eArea = `<polygon points="${xOf(0).toFixed(1)},${(topTop + topH).toFixed(1)} ${ePts} ${xOf(L).toFixed(1)},${(topTop + topH).toFixed(1)}" fill="url(#g-en)"/>`;
-  const ePoly = `<polyline points="${ePts}" fill="none" stroke="${CK.orange}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
-  const yTicks = [0, Emax / 2, Emax].map((v) => `<line x1="${padL}" y1="${yE(v).toFixed(1)}" x2="${W - padR}" y2="${yE(v).toFixed(1)}" stroke="${CK.grid}"/>${num(padL - 7, yE(v) + 3, v.toFixed(1), { anchor: "end", size: 8 })}`).join("");
-  const base = `<line x1="${padL}" y1="${(topTop + topH).toFixed(1)}" x2="${W - padR}" y2="${(topTop + topH).toFixed(1)}" stroke="${CK.baseline}"/>`;
-  const lblSvg = `${lab(8, topTop + 8, "kWh", { size: 8 })}${lab(W - padR, topTop + topH + 16, ing ? "distance (m) →" : "mesafe (m) →", { anchor: "end", size: 8 })}`;
-  const svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%"><defs>${areaGrad("g-en", CK.orange, 0.2)}</defs>${st}${yTicks}${base}${eArea}${ePoly}${lblSvg}</svg>`;
-  return { svg, net: en.netKWh, perKm: en.perKm };
-}
 
 export type RaporDil = "tr" | "en";
 
@@ -529,7 +489,6 @@ function rDil(lang: RaporDil) {
     thParam: ["Parametre", "Değer", "Etkisi"],
     s2: "Durak Arası İşletim Hücreleri", s2i: (n: number, h: number) => `Hat, ${n} durak-arası hücreye (ring) ayrılmıştır; her hücre kendi mesafe, makas, hemzemin geçit ve tehlike noktası şartlarını taşır (hedef aralık ${h} s).`,
     fig1: "Şekil 1 — Hat şeması: istasyon zinciri, makas (⑂) ve hemzemin geçit dağılımı.",
-    figEnergy: (net: number, perKm: number) => `Şekil 2 — Enerji-mesafe: kümülatif çekiş enerjisi. Net ${net.toFixed(1)} kWh · ${perKm.toFixed(2)} kWh/km.`,
     gClimb: "tırmanış", gDescent: "iniş", gGrade: "eğim", gNoElev: "Yükseklik verisi girilmedi — düz profil varsayıldı", mUnit: "m",
     fig3: (c: number, h: number) => `Şekil 3 — Zaman-mesafe diyagramı (Bildfahrplan): gidiş (mavi) + dönüş (turuncu), ${c}+${c} tramvay, ${h} s aralık.`,
     thRing: ["No", "Durak Arası", "Mesafe (m)", "Worst (m)", "Makas", "Hemzemin", "Tehlike", "Worst Toplam", "Headway"],
@@ -561,7 +520,6 @@ function rDil(lang: RaporDil) {
     thParam: ["Parameter", "Value", "Effect"],
     s2: "Inter-station Operating Cells", s2i: (n, h) => `The line is divided into ${n} inter-station cells (rings); each carries its own distance, switch, level-crossing and hazard conditions (target headway ${h}s).`,
     fig1: "Figure 1 — Line schematic: station chain, switch (⑂) and level-crossing distribution.",
-    figEnergy: (net, perKm) => `Figure 2 — Energy-distance: cumulative traction energy. Net ${net.toFixed(1)} kWh · ${perKm.toFixed(2)} kWh/km.`,
     gClimb: "climb", gDescent: "descent", gGrade: "grade", gNoElev: "No elevation data — level profile assumed", mUnit: "m",
     fig3: (c, h) => `Figure 3 — Time-distance diagram (Bildfahrplan): outbound (blue) + return (orange), ${c}+${c} trains, ${h}s headway.`,
     thRing: ["No", "Section", "Distance (m)", "Worst (m)", "Switches", "Level xing", "Hazards", "Worst Total", "Headway"],
@@ -626,8 +584,6 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const peronSonBf = isletme.terminalSon.tip === "dongu" ? 0 : (isletme.terminalSon.peronIsgali || 0);
   const loopYbf: LoopYorunge | null = line ? loopYorunge(line, reverseLineOf(line), stock, { peronIsgaliBas: peronBasBf, peronIsgaliSon: peronSonBf }) : null;
   const bfHeadway = loopYbf && filoGercek > 0 ? Math.round(loopYbf.periyot / filoGercek) : cfg.headway;
-  const eg = line ? energyGradeSvg(line, stock, en) : null;
-  const energyFig = eg && eg.svg ? `<div class="fig">${eg.svg}<div class="cap">${L.figEnergy(eg.net, eg.perKm)}</div></div>` : "";
   const bfFig = (line && loopYbf) ? `<div class="fig">${bildfahrplanSvg(loopYbf, line, filoGercek, en)}<div class="cap">${en ? `Figure 3 — Time-distance diagram (Bildfahrplan): ${filoGercek} trams (round-trip loop), ${bfHeadway}s headway.` : `Şekil 3 — Zaman-mesafe diyagramı (Bildfahrplan): ${filoGercek} tramvay (git-gel döngü), ${bfHeadway} s aralık.`}</div></div>` : "";
   const turnbackTblStr = turnbackTbl(isletme.terminalBas, isletme.terminalSon, cfg, en);
   const hz = rings.length ? hemzeminSvg(rings, cfg) : { svg: "", adet: 0, karayolu: 0, toplamTur: 0 };
@@ -1343,7 +1299,6 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     </ol>
     <div class="toc-fig">${en ? "Figures" : "Şekiller"}<ul>
       <li>${en ? "Fig. 1 — Line schematic" : "Şekil 1 — Hat şeması"}</li>
-      <li>${en ? "Fig. 2 — Energy-distance" : "Şekil 2 — Enerji-mesafe"}</li>
       <li>${en ? "Fig. 3 — Time-distance (Bildfahrplan)" : "Şekil 3 — Zaman-mesafe (Bildfahrplan)"}</li>
       <li>${en ? "Fig. 4 — Sperrzeitentreppe" : "Şekil 4 — Sperrzeitentreppe"}</li>
       <li>${en ? "Fig. 5 — Blocking-time components" : "Şekil 5 — Blocking-time bileşenleri"}</li></ul></div>
@@ -1361,7 +1316,6 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <div class="banner"><span class="no">02</span>${L.s2}</div>
   <p>${L.s2i(rings.length, cfg.headway)}</p>
   <div class="fig">${ringSemaSvg(rings)}<div class="cap">${L.fig1}</div></div>
-  ${energyFig}
   ${tbl(L.thRing, ringRows, { first: true })}
   <h3 class="sub" style="page-break-before:always">${sunum ? (lang === "en" ? "2.1 Per-cell Constraint Analysis" : "2.1 Ring Bazında Kısıt Analizi") : L.s21}</h3>
   ${ringDetay}
