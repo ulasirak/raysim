@@ -2,8 +2,8 @@
 
 // raysim — TEKNİK BELGELER modülü.
 // Karşı taraf proje künyesini girer; mevcut hat (ringler) + parametrelerden
-// profesyonel Word (.docx) Tasarım El Kitabı ve Excel (.xlsx) çalışma kitabı
-// üretir. İçerik tamamen girilen projeden türer (Konya'ya bağlı değil).
+// amblemli, baskıya hazır PROFESYONEL PDF rapor üretir (sunucuda; /api/rapor,
+// kredi düşülür). İçerik tamamen girilen projeden türer (Konya'ya bağlı değil).
 
 import { useMemo, useState } from "react";
 import { brand } from "@/lib/anaray/brand";
@@ -13,8 +13,6 @@ import { useSimConfig, useProje, useArac, useIsletme, useHesap } from "@/compone
 import { PROJE_META_ALANLAR } from "@/lib/anaray/config";
 import { loopDenge, olceklenme, ringChallenge, ringDogrula, loopTamMi } from "@/lib/anaray/ring";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
-// wordUret/excelUret ağır (docx + exceljs ~1MB) — statik import etmiyoruz; yalnız
-// ilgili buton tıklandığında await import() ile tembel yüklenir (indir hafif, format'ta).
 import { type RaporDil } from "@/lib/anaray/rapor";
 import { useCuzdan } from "@/components/CuzdanProvider";
 import { getAuthInstance } from "@/lib/firebase";
