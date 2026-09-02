@@ -476,6 +476,25 @@ export function LiveNetwork({
     return { idx: r.idx, no: r.no, fp, up: r.yon === "gelen" };
   }) : [];
 
+  // KAVŞAK ÇAKIŞMASI (gösterim-amaçlı; state DEĞİŞTİRMEZ → freeze riski yok).
+  // Bir ters-işletme treni crossover'ı geçerken (şerit değiştirir) o kavşak fouling
+  // bölgesini işgal eder — kavşak kısa süre HER İKİ hattı çaprazlar. Aynı bölgeye giren
+  // normal servis treni gerçek interlocking'de bekletilirdi; burada çakışma rozetiyle
+  // + kavşak halkasıyla İŞARETLENİR (motor kinematik faz-oynatıcı; fiziksel yeniden-tutma
+  // yapılmaz — bu, kavşak çakışmasının NEREDE/NE ZAMAN oluştuğunu dürüstçe gösterir).
+  const KAVSAK_W = Math.max(45, Math.min(loop ? loop.loopLen * 0.02 : 60, 90)); // m — fouling yarıçapı
+  const mesgulKavsaklar = loopAktif
+    ? tersNow
+        .map((r) => tersMakaslar.find((m) => Math.abs(r.fp - m.pos) <= KAVSAK_W) ?? null)
+        .filter((m): m is { pos: number; ad: string; crossover: "s" | "x" } => m !== null)
+    : [];
+  const cakisanIdx = new Set<number>();
+  if (mesgulKavsaklar.length) {
+    for (const x of [...gidenler, ...gelenler]) {
+      if (mesgulKavsaklar.some((mk) => Math.abs(x.fp - mk.pos) <= KAVSAK_W)) cakisanIdx.add(x.tr.index);
+    }
+  }
+
   // Blok işgali — her şerit ayrı
   const blokIndeks = (fp: number) => {
     for (let i = 0; i < blocks.length - 1; i++) {
@@ -553,6 +572,16 @@ export function LiveNetwork({
             <line x1={0} y1={2} x2={pos.x - rz.x} y2={pos.y - rz.y} stroke={st.renk} strokeWidth={0.5} strokeDasharray="1 1" opacity={0.6} />
             <rect x={-rozetW / 2} y={-6} width={rozetW} height={9} rx={4.5} fill="#fff" stroke={st.renk} strokeWidth={0.9} />
             <text x={0} y={0.6} fill={st.renk} fontSize={5.5} fontWeight={700} textAnchor="middle">{st.ikon} {kmh > 1 ? `${kmh}` : "0"}</text>
+          </g>
+        )}
+        {/* KAVŞAK ÇAKIŞMASI rozeti — bu tren, ters-işletme treninin geçtiği bir crossover'ın
+            fouling bölgesinde: gerçek interlocking bekletirdi. Kırmızı ⚠ + halka. */}
+        {cakisanIdx.has(x.tr.index) && (
+          <g>
+            <circle cx={pos.x} cy={pos.y} r={11} fill="none" stroke={brand.red} strokeWidth={1.4} opacity={0.9}>
+              <animate attributeName="opacity" values="0.9;0.3;0.9" dur="0.9s" repeatCount="indefinite" />
+            </circle>
+            <text x={pos.x} y={pos.y - 13} fill={brand.red} fontSize={7.5} fontWeight={800} textAnchor="middle">⚠ kavşak</text>
           </g>
         )}
       </g>
@@ -850,6 +879,19 @@ export function LiveNetwork({
         {/* Depolar (parklanma alanları) — gidiş (alt) şeridinin yanında */}
         {depots.map(depotMark)}
 
+        {/* KAVŞAK ÇAKIŞMASI — ters-işletme trenince işgal edilen crossover'lar (fouling
+            bölgesi) trenlerin ALTINDA vurgulanır: kesikli kırmızı halka + "kavşak meşgul". */}
+        {mesgulKavsaklar.map((mk, i) => {
+          const c = laneAt(mk.pos, 0);
+          return (
+            <g key={`mk${i}`}>
+              <circle cx={c.x} cy={c.y} r={13} fill={brand.red} opacity={0.10} />
+              <circle cx={c.x} cy={c.y} r={13} fill="none" stroke={brand.red} strokeWidth={1.2} strokeDasharray="3 2" opacity={0.85} />
+              <text x={c.x} y={c.y + 24} fill={brand.red} fontSize={7} fontWeight={700} textAnchor="middle">kavşak meşgul ({mk.crossover === "x" ? "X" : "S"})</text>
+            </g>
+          );
+        })}
+
         {/* Trenler */}
         {gidenler.map(wagon)}
         {gelenler.map((x, i) => wagon(x, i + gidenler.length))}
@@ -895,14 +937,33 @@ export function LiveNetwork({
         const st = loopNow.find((x) => x.tr.index === secili);
         if (!st) return null;
         const stil = DURUM_STIL[st.durum];
-        const topSn = Object.values(loop!.dokum).reduce((a, b) => a + b, 0) || 1;
-        const sirali = (Object.entries(loop!.dokum) as [LoopDurum, number][]).filter(([, v]) => v > 0.5).sort((a, b) => b[1] - a[1]);
+        const dokum = loop!.dokum;
+        const topSn = Object.values(dokum).reduce((a, b) => a + b, 0) || 1;
+        const sirali = (Object.entries(dokum) as [LoopDurum, number][]).filter(([, v]) => v > 0.5).sort((a, b) => b[1] - a[1]);
+        // ÜRETKEN (hareket: seyir+hızlanma) ↔ DURUŞ/KISIT (dwell+dönüş+hız kısıtı) ayrımı —
+        // turun ne kadarı yol alıyor, ne kadarı durak/dönüş/kısıtta geçiyor.
+        const hareketSn = (dokum.seyir || 0) + (dokum.hizlanma || 0);
+        const duruklamaSn = (dokum.dwell || 0) + (dokum.donus || 0) + (dokum.kisit || 0);
+        const hareketPct = (hareketSn / topSn) * 100;
+        const cakismaVar = cakisanIdx.has(secili);
+        const legAd = st.up ? "gidiş (sol→sağ)" : "dönüş (sağ→sol)";
         return (
-          <div className="mt-2 rounded-lg border p-3" style={{ borderColor: brand.ink, background: brand.surface }}>
+          <div className="mt-2 rounded-lg border p-3" style={{ borderColor: cakismaVar ? brand.red : brand.ink, background: brand.surface }}>
             <div className="flex items-center justify-between">
-              <span className="text-sm font-bold" style={{ color: brand.ink }}>🚋 Tren {secili + 1} — şu an: <span style={{ color: stil.renk }}>{stil.ikon} {st.ad}</span> · {Math.round(st.v * 3.6)} km/h</span>
+              <span className="text-sm font-bold" style={{ color: brand.ink }}>🚋 Tren {secili + 1} — şu an: <span style={{ color: cakismaVar ? brand.red : stil.renk }}>{cakismaVar ? "⚠ kavşak çakışması" : `${stil.ikon} ${st.ad}`}</span> · {Math.round(st.v * 3.6)} km/h</span>
               <button onClick={() => setSecili(null)} className="text-xs underline" style={{ color: brand.muted }}>kapat</button>
             </div>
+            {/* Anlık durum: konum (km) + şerit + hareket/duruş özeti */}
+            <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs" style={{ color: brand.inkSoft }}>
+              <span>📍 <b>{(st.fp / 1000).toFixed(2)} km</b> · {legAd}</span>
+              <span>▶ hareket <b style={{ color: CK.good }}>{Math.round(hareketPct)}%</b></span>
+              <span>⏸ duruş/kısıt <b style={{ color: CK.amber }}>{Math.round(100 - hareketPct)}%</b> ({Math.round(duruklamaSn)} s/tur)</span>
+            </div>
+            {cakismaVar && (
+              <div className="mt-1.5 rounded border-l-2 px-2 py-1 text-xs" style={{ borderColor: brand.red, background: CK.badBgSoft, color: brand.inkSoft }}>
+                Bu tramvay, bir ters-işletme treninin geçtiği <b>crossover fouling bölgesinde</b> — gerçek interlocking&apos;de kavşak boşalana dek bekletilirdi.
+              </div>
+            )}
             <div className="mt-2 text-xs" style={{ color: brand.inkSoft }}>Bir tam turda (çevrim {saat(loop!.periyot)}) hangi nedene ne kadar süre geçiriyor:</div>
             <div className="mt-1 space-y-1">
               {sirali.map(([d, v]) => {
@@ -919,6 +980,16 @@ export function LiveNetwork({
           </div>
         );
       })()}
+
+      {/* KAVŞAK ÇAKIŞMASI bilgi şeridi — bir ters-işletme treni crossover'ı geçerken aynı
+          fouling bölgesine giren normal tren(ler). Gerçek interlocking bunları bekletirdi. */}
+      {loop && cakisanIdx.size > 0 && (
+        <div className="mb-2 overflow-hidden rounded-md border-l-4 text-xs" style={{ background: CK.badBgSoft, borderColor: brand.red, color: brand.inkSoft }}>
+          <div className="px-3 py-2">
+            <b style={{ color: brand.red }}>⚠ Kavşak çakışması ({cakisanIdx.size} tramvay)</b> — bir <b>ters işletme</b> treni crossover&apos;dan karşı hatta geçerken (kavşak her iki hattı çaprazlar), {cakisanIdx.size === 1 ? "bir tramvay" : `${cakisanIdx.size} tramvay`} aynı <b>fouling bölgesine</b> girdi. Gerçek interlocking bu hareketi <b>bekletir</b> (kavşak sırayla kullanılır — bkz. Sistem Merkezi kavşak blocking-time). Çakışan tramvaylar kırmızı halkayla işaretli.
+          </div>
+        </div>
+      )}
 
       {/* Arıza aktif → FAIL-SAFE bilgi kartı: döngü İÇİNDE kuyruk (motor değişmez, sahne
           sıfırlanmaz). Kuyruktaki tren sayısı canlı sayılır (arizaTutRef her kare güncel). */}
@@ -995,6 +1066,23 @@ export function LiveNetwork({
                 ? " Bu DÖNÜŞ trenini karşı (gidiş) hatta geçirip ileri, bitiş terminaline doğru göndermek istiyor musunuz?"
                 : " Bu GİDEN treni karşı (dönüş) şeride geçirip başa (sıranın en arkasına) geri döndürmek istiyor musunuz?"}
             </p>
+            {/* Senaryo dökümü — crossover tipi fiziği + tahmini dönüş süresi + kavşak çakışma uyarısı */}
+            {(() => {
+              const geriMesafe = karar.yon === "gelen" ? Math.max(0, L - karar.makasPos) : Math.max(0, karar.makasPos);
+              const sureSn = Math.round(geriMesafe / Math.max(1, vTers));
+              const mesgul = mesgulKavsaklar.some((mk) => Math.abs(mk.pos - karar.makasPos) <= KAVSAK_W);
+              return (
+                <div className="mt-2 rounded-md border px-2.5 py-2 text-[0.72rem] leading-relaxed" style={{ borderColor: brand.border, background: CK.track, color: brand.inkSoft }}>
+                  <div>
+                    {karar.crossover === "x"
+                      ? <><b>X-makas (scissors):</b> iki bağımsız hareket — varış ve kalkış ayrı bacakta, ardışık iki tren daha sık dönebilir.</>
+                      : <><b>S-makas (tek crossover):</b> dönüşler seri — kavşağı bir tren boşaltmadan ikincisi giremez.</>}
+                  </div>
+                  <div className="mt-1">Tahmini karşı-hatta geçiş + geri sürüş: <b>~{sureSn} s</b> ({Math.round(geriMesafe)} m @ {Math.round(vTers * 3.6)} km/h).</div>
+                  {mesgul && <div className="mt-1" style={{ color: brand.red }}><b>⚠ Bu kavşak şu an meşgul</b> — başka bir ters hareket crossover&apos;ı işgal ediyor; gerçek interlocking önce onu boşaltırdı.</div>}
+                </div>
+              );
+            })()}
             <div className="mt-3 flex flex-wrap gap-2">
               <button onClick={onayla} className="flex-1 rounded-md px-3 py-1.5 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: brand.red }}>Ters işletmeyi onaylıyorum</button>
               <button onClick={vazgec} className="rounded-md border px-3 py-1.5 text-sm transition hover:opacity-80" style={{ borderColor: brand.ink, color: brand.ink }}>Vazgeç</button>
