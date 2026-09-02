@@ -133,8 +133,18 @@ export function RingEditor() {
   const tumEksik = useMemo(() => rings.flatMap((r) => ringDogrula(r, cfg)), [rings, cfg]);
   // Durak zinciri (ring uçlarından türer) — üstteki hızlı durak editörü için.
   const duraklar = useMemo(() => ringDuraklari(rings), [rings]);
-  // GTFS export ancak tüm duraklar coğrafi koordinatlıysa (lat/lon) mümkün (GTFS import'tan gelir).
-  const gtfsKoordVar = duraklar.length > 0 && duraklar.every((d) => isletme.istasyonKoordinat?.[d.ad]);
+  // GTFS export ancak TÜM duraklar geçerli (finite) lat/lon taşıyorsa mümkün.
+  // Koordinat GTFS içe aktarımından gelir ya da aşağıdan ELLE girilir.
+  const gtfsKoordVar = duraklar.length > 0 && duraklar.every((d) => {
+    const k = isletme.istasyonKoordinat?.[d.ad];
+    return !!k && Number.isFinite(k.lat) && Number.isFinite(k.lon);
+  });
+  const koordSayisi = duraklar.filter((d) => { const k = isletme.istasyonKoordinat?.[d.ad]; return !!k && Number.isFinite(k.lat) && Number.isFinite(k.lon); }).length;
+  const koordGuncelle = (ad: string, alan: "lat" | "lon", v: number) => {
+    const cur = isletme.istasyonKoordinat ?? {};
+    const mevcut = cur[ad] ?? { lat: NaN, lon: NaN };
+    patchIsletme({ istasyonKoordinat: { ...cur, [ad]: { ...mevcut, [alan]: v } } });
+  };
   // Durak ekleme yardımcı girdileri: hızlı kurulum (toplam+sayı), ekleme mesafesi,
   // ortaya bölme konumu (hangi ring + hangi metre).
   const [hizliToplam, setHizliToplam] = useState(6000);
@@ -306,7 +316,7 @@ export function RingEditor() {
                   let t = 0;
                   for (let i = 0; i < duraklar.length; i++) {
                     const k = kmap[duraklar[i].ad];
-                    if (!k) return; // koordinatsız durak → GTFS geçersiz (buton zaten kapalı)
+                    if (!k || !Number.isFinite(k.lat) || !Number.isFinite(k.lon)) return; // eksik koordinat → GTFS geçersiz (buton zaten kapalı)
                     const dwell = i === 0 ? 0 : Math.max(0, rings[i - 1]?.dwell ?? 0);
                     const varis = t;
                     const kalkis = varis + dwell;
@@ -324,8 +334,34 @@ export function RingEditor() {
             </div>
             {!gtfsKoordVar && (
               <p className="mt-2 text-[0.7rem]" style={{ color: brand.muted }}>
-                GTFS için durakların <b>coğrafi koordinatı (lat/lon)</b> gerekir; bu yalnız <b>GTFS&apos;ten içe aktarılan</b> hatlarda saklanır. railML her hatta çalışır.
+                GTFS için durakların <b>coğrafi koordinatı (lat/lon)</b> gerekir — GTFS&apos;ten içe aktarınca otomatik gelir, ya da <b>aşağıdan elle gir</b>. railML her hatta çalışır.
               </p>
+            )}
+
+            {/* ELLE KOORDİNAT — her durağa WGS84 lat/lon gir → GTFS herhangi bir hatta açılır.
+                (Shapefile/DXF projeksiyonlu koordinat WGS84'e çevrilmez — CRS/proj4 gerekir;
+                elle giriş her durumda çalışan güvenli yoldur.) */}
+            {yazilabilir && duraklar.length > 0 && (
+              <details className="mt-3 rounded border" style={{ borderColor: brand.border }}>
+                <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium" style={{ color: brand.ink }}>
+                  İstasyon koordinatları (GTFS için) — <span style={{ color: koordSayisi === duraklar.length ? "#16794C" : CK.amberInk }}>{koordSayisi}/{duraklar.length}</span> girildi
+                </summary>
+                <div className="max-h-64 overflow-auto border-t px-3 py-2" style={{ borderColor: brand.border }}>
+                  <p className="mb-2 text-[0.68rem]" style={{ color: brand.muted }}>Enlem/boylam (WGS84, ondalık derece). Tümü dolunca GTFS indirilebilir. <b>İpucu:</b> Google Maps&apos;te durağa sağ tık → koordinat çiftini kopyala.</p>
+                  {duraklar.map((d, i) => {
+                    const k = isletme.istasyonKoordinat?.[d.ad];
+                    return (
+                      <div key={i} className="flex items-center gap-2 py-0.5 text-xs">
+                        <span className="w-40 shrink-0 truncate" title={d.ad} style={{ color: brand.inkSoft }}>{i + 1}. {d.ad}</span>
+                        <input type="number" step="0.000001" placeholder="enlem" value={k && Number.isFinite(k.lat) ? k.lat : ""} onChange={(e) => koordGuncelle(d.ad, "lat", parseFloat(e.target.value))}
+                          className="w-28 rounded border px-1.5 py-0.5" style={{ borderColor: brand.border, color: brand.ink }} />
+                        <input type="number" step="0.000001" placeholder="boylam" value={k && Number.isFinite(k.lon) ? k.lon : ""} onChange={(e) => koordGuncelle(d.ad, "lon", parseFloat(e.target.value))}
+                          className="w-28 rounded border px-1.5 py-0.5" style={{ borderColor: brand.border, color: brand.ink }} />
+                      </div>
+                    );
+                  })}
+                </div>
+              </details>
             )}
           </div>
         </details>
