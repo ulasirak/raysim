@@ -18,6 +18,7 @@ import { BasaDonButonu } from "@/components/BasaDonButonu";
 import { KayitBildirimi } from "@/components/KayitBildirimi";
 import { OdemeModal } from "@/components/OdemeModal";
 import { ParametreDuzenleButonu } from "@/components/ParametreDuzenleButonu";
+import { Karsilama } from "@/components/Karsilama";
 import { brand } from "@/lib/anaray/brand";
 
 interface Modul {
@@ -331,6 +332,10 @@ function Govde({ children }: { children: React.ReactNode }) {
       {/* Global ödeme modalı — iyzico Checkout Form gömülü; kullanıcı siteden çıkmaz,
           "Vazgeç" ile geri döner. Yalnız ödeme başlatılınca görünür. */}
       <OdemeModal />
+
+      {/* İlk giriş karşılama sihirbazı — boru hattını tanıtır, yeni kullanıcıyı
+          ilk adıma taşır. Yalnız giriş yapılmış içerik görünümünde ve bir kez. */}
+      {icerikVar && <Karsilama />}
 
       {/* Global footer — sol: dürüst metodoloji notu · orta: amblem · sağ: künye */}
       <footer className="border-t-2" style={{ background: "#0C2233", borderColor: "#C8102E" }}>
