@@ -234,6 +234,33 @@ export function SistemMerkezi() {
       {maks && maks.gecerli && maks.kisitlar.length > 0 && (
         <Panel baslik="Belirleyici Kısıt — Rakip Headway Kısıtları" aciklama="Min headway (hMin) beş rakip kısıdın EN YÜKSEĞİdir: blok (Sperrzeit) · terminal turnback (makas geometrisi) · tek hat · kavşak · sinyal. En uzun çubuk hattı bağlar. Diğerlerinin ne kadar geride olduğu, o kısıtta ne kadar pay (headway marjı) olduğunu gösterir — bir kısıt iyileştirilirse sıradaki bağlar. Tramvay hatlarında çoğu kez terminal turnback bağlar.">
           <KisitKarsilastirma kisitlar={maks.kisitlar} kritikRenk={kritikRenk} />
+
+          {/* KAVŞAK SPERRZEIT DÖKÜMÜ — kritik düz kavşağın blocking-time bileşenleri.
+              Kavşak kısıtı varsa gösterilir: neden bu kadar? Tren boyu kavşağı ne kadar
+              işgal ediyor (eski model bunu yok sayıyordu). */}
+          {maks.kavsakDetay && (
+            <div className="mt-4 rounded-md border p-3" style={{ borderColor: brand.border, background: brand.paper }}>
+              <div className="mb-2 flex items-baseline justify-between gap-2">
+                <span className="text-xs font-semibold" style={{ color: brand.ink }}>
+                  Kritik kavşak blocking-time — {maks.kavsakDetay.ad.replace(/^Kavşak — /, "")}
+                </span>
+                <span className="text-xs tabular-nums" style={{ color: maks.baglayanAnahtar === "kavsak" ? kritikRenk : brand.muted }}>
+                  {Math.round(maks.kavsakDetay.isgal)} s
+                  <span style={{ color: brand.faint }}> (×{maks.kavsakDetay.faktor})</span>
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[0.72rem]" style={{ color: brand.inkSoft }}>
+                <span>tanzim <b>{Math.round(maks.kavsakDetay.tSetup)} s</b></span>
+                <span>görme <b>{maks.kavsakDetay.tGorme} s</b></span>
+                <span>geçiş + <b>{Math.round(stock.length)} m</b> tren temizleme <b>{Math.round(maks.kavsakDetay.tGecis)} s</b></span>
+                <span>release <b>{Math.round(maks.kavsakDetay.tRelease)} s</b></span>
+                <span style={{ color: brand.muted }}>= tek geçiş {Math.round(maks.kavsakDetay.tekGecis)} s</span>
+              </div>
+              <div className="mt-1.5 text-[0.7rem]" style={{ color: brand.muted }}>
+                Fouling bölgesi {Math.round(maks.kavsakDetay.foulUzunluk)} m (kısıt bölgesi + tren boyu) {Math.round(maks.kavsakDetay.gecisHizi * 3.6)} km/h geçiş hızında temizlenir; karşı-yön varış+kalkış crossover&apos;ı sırayla kullandığından ×{maks.kavsakDetay.faktor}. Uzun araç kavşağı daha uzun işgal eder.
+              </div>
+            </div>
+          )}
         </Panel>
       )}
 

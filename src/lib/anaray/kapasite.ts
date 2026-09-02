@@ -47,6 +47,7 @@ export interface MaksimumTrenSonuc {
   baglayanAd: string;            // bağlayan kısıtın etiketi
   teorikKapasiteTrenSaat: number;// 3600 / hMin (bilgi)
   kisitlar: KapasiteKisit[];     // tüm terimlerin şeffaf dökümü
+  kavsakDetay: (KavsakSperr & { ad: string }) | null; // bağlayan/kritik kavşağın Sperrzeit dökümü (varsa)
 }
 
 /** Bir terminalin dayattığı minimum aralık — MAKAS TİPİ belirler.
@@ -67,11 +68,38 @@ export function terminalHeadway(t: TerminalConfig, cfg: SimConfig): number {
   return Math.max(peronBasi, bogaz);
 }
 
-/** Düz kavşakta (karşı-yön çakışmalı makas) tek geçiş işgali (setup + geçiş + release). */
-function kavsakIsgali(m: DurakArasiRing["makaslar"][number], cfg: SimConfig): number {
-  const gecis = cfg.kisitGenisligi / Math.max(0.1, m.gecisHizi); // bölge genişliği / geçiş hızı
-  const setup = Math.max(1, m.makasSayisi) * m.makasAdimSuresi;
-  return setup + gecis + m.routeRelease;
+const T_KAVSAK_GORME = 4; // s — sürücü kavşak sinyalini görme/reaksiyon (blockingtime T_SIGHTING ile aynı taban)
+
+/** Düz kavşak (flat junction) blocking-time DÖKÜMÜ — Sperrzeit bileşenleriyle. */
+export interface KavsakSperr {
+  tSetup: number;   // s — makas tanzim (makasSayisi × adım süresi)
+  tGorme: number;   // s — sürücünün kavşak sinyalini görme/reaksiyonu
+  tGecis: number;   // s — fouling bölgesi + TREN BOYU, geçiş hızında (yaklaşma·geçiş·kuyruk temizleme)
+  tRelease: number; // s — rota serbest bırakma kilidi
+  tekGecis: number; // s — tek yön tek geçişin toplam kavşak işgali
+  faktor: number;   // çakışma çarpanı (karşı-yön varış+kalkış crossover'ı sıralı paylaşır: 2)
+  isgal: number;    // s — kavşağın dayattığı minimum headway (faktor × tekGecis)
+  gecisHizi: number;// m/s — kavşak geçiş hızı (rapor/döküm için)
+  foulUzunluk: number; // m — fouling bölgesi + tren boyu
+}
+
+/** Düz kavşakta bir geçişin blocking-time'ı — FİZİKSEL model. Eski sürüm yalnız
+ *  `bölge_genişliği / geçiş_hızı` alıyordu; kavşağın gerçekte tekrar serbest kalması
+ *  için trenin KUYRUĞU da fouling noktasını geçmeli → geçiş yolu = bölge + tren boyu.
+ *  Böylece uzun araç kavşağı daha uzun işgal eder (blocking-time t_clearing ile tutarlı).
+ *  Ayrıca sürücü görme/reaksiyonu (t_sighting) eklenir. */
+export function kavsakSperr(
+  m: DurakArasiRing["makaslar"][number], stock: RollingStock, cfg: SimConfig,
+): KavsakSperr {
+  const v = Math.max(0.1, m.gecisHizi); // m/s — geçiş hızı (0 girilirse Infinity olmasın)
+  const foulUzunluk = Math.max(1, cfg.kisitGenisligi || 40) + Math.max(0, stock.length); // fouling bölgesi + kuyruk temizleme
+  const tGecis = foulUzunluk / v;
+  const tSetup = Math.max(1, m.makasSayisi) * m.makasAdimSuresi;
+  const tGorme = T_KAVSAK_GORME;
+  const tRelease = Math.max(0, m.routeRelease);
+  const tekGecis = tSetup + tGorme + tGecis + tRelease;
+  const faktor = 2; // karşı-yön hareketleri (varış + kalkış) crossover'ı sırayla kullanır
+  return { tSetup, tGorme, tGecis, tRelease, tekGecis, faktor, isgal: faktor * tekGecis, gecisHizi: v, foulUzunluk };
 }
 
 export function maksimumTren(
@@ -83,7 +111,7 @@ export function maksimumTren(
   if (rings.length === 0) {
     return {
       gecerli: false, hMin: 0, cevrimSuresi: 0, nTeorik: 0, nSurdurulebilir: 0, dolulukTavani,
-      baglayanAnahtar: "blok", baglayanAd: "—", teorikKapasiteTrenSaat: 0, kisitlar: [],
+      baglayanAnahtar: "blok", baglayanAd: "—", teorikKapasiteTrenSaat: 0, kisitlar: [], kavsakDetay: null,
     };
   }
   const globalSu = Math.max(0, isletme.kalkisOluZamaniSn);
@@ -133,14 +161,20 @@ export function maksimumTren(
     if (isgal > hTekhat) { hTekhat = isgal; tekhatAd = `Tek hat — ${r.ad || `${r.fromAd}–${r.toAd}`}`; }
   }
 
-  // 4) Düz kavşak — karşı-yön çakışmalı makaslar (yüz yüze / barınma) → 2 × işgal
+  // 4) Düz kavşak — karşı-yön çakışmalı makaslar (yüz yüze / barınma). Her kavşağın
+  //    FİZİKSEL blocking-time'ı (tren boyu temizleme dâhil) hesaplanır; en büyüğü bağlar.
   let hKavsak = 0;
   let kavsakAd = "Düz kavşak çakışması";
+  let kavsakDetay: (KavsakSperr & { ad: string }) | null = null;
   for (const r of rings) {
     for (const m of r.makaslar) {
       if (m.tip !== "karsilasmali" && m.tip !== "barinma") continue;
-      const isgal = 2 * kavsakIsgali(m, cfg);
-      if (isgal > hKavsak) { hKavsak = isgal; kavsakAd = `Kavşak — ${m.ad || r.ad || `${r.fromAd}–${r.toAd}`}`; }
+      const d = kavsakSperr(m, stock, cfg);
+      if (d.isgal > hKavsak) {
+        hKavsak = d.isgal;
+        kavsakAd = `Kavşak — ${m.ad || r.ad || `${r.fromAd}–${r.toAd}`}`;
+        kavsakDetay = { ...d, ad: kavsakAd };
+      }
     }
   }
 
@@ -191,8 +225,12 @@ export function maksimumTren(
       aciklama: "Tek hatlı kesimde çift yön aynı hattı paylaşır → tek anda tek tren (2 × kesim işgali)." });
   }
   if (hKavsak > 0) {
+    const d = kavsakDetay;
+    const dokum = d
+      ? ` Tek geçiş ${Math.round(d.tekGecis)} s = tanzim ${Math.round(d.tSetup)} + görme ${d.tGorme} + geçiş/temizleme ${Math.round(d.tGecis)} (${Math.round(d.foulUzunluk)} m: bölge + ${Math.round(stock.length)} m tren boyu @ ${Math.round(d.gecisHizi * 3.6)} km/h) + release ${Math.round(d.tRelease)}; karşı-yön çakışması ×${d.faktor}.`
+      : "";
     kisitlar.push({ anahtar: "kavsak", ad: kavsakAd, headway: hKavsak, aktif: hMin === hKavsak,
-      aciklama: "Düz kavşakta karşı-yön hareketleri çakışır → kavşak sırayla kullanılır (2 × kavşak işgali)." });
+      aciklama: `Düz kavşakta karşı-yön hareketleri çakışır → kavşak sırayla kullanılır.${dokum}` });
   }
   if (hSinyal > 0) {
     kisitlar.push({ anahtar: "sinyal", ad: sinyalAd, headway: hSinyal, aktif: hMin === hSinyal,
@@ -211,5 +249,6 @@ export function maksimumTren(
     baglayanAd: baglayan.ad,
     teorikKapasiteTrenSaat: hMin > 0 ? 3600 / hMin : 0,
     kisitlar,
+    kavsakDetay,
   };
 }
