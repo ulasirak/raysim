@@ -13,7 +13,9 @@
 
 import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import { useHesap } from "@/components/SimConfigProvider";
+import { useHesap, useProje } from "@/components/SimConfigProvider";
+import { HatIceAktar } from "@/components/HatIceAktar";
+import type { DurakArasiRing } from "@/lib/anaray/ring";
 import { useCuzdan } from "@/components/CuzdanProvider";
 import { KREDI_PAKETLERI, paketAvantaj, hareketleriGetir, type KrediHareket } from "@/lib/cuzdan";
 import { tanitimAc } from "@/components/Karsilama";
@@ -48,8 +50,11 @@ export function HesapKontrolleri() {
     projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle,
   } = useHesap();
   const { bakiye, krediSatinAl } = useCuzdan();
+  // "+ Yeni hat" → dosyadan içe aktararak yeni proje kurma için (mevcut import motoru).
+  const { setRings, patchMeta } = useProje();
 
   const [yeniAcik, setYeniAcik] = useState(false);
+  const [iceModal, setIceModal] = useState(false); // dosyadan içe aktar modalı
   const [odemeHata, setOdemeHata] = useState<string | null>(null);
   const [yeniAd, setYeniAd] = useState("");
   const [menuAcik, setMenuAcik] = useState(false);
@@ -127,6 +132,10 @@ export function HesapKontrolleri() {
             <button onClick={() => { setOdemeHata(null); sar(projeYeni(yeniAd.trim()), "yeni"); setYeniAd(""); setYeniAcik(false); }} disabled={isBasi === "yeni"}
               className="rounded-md px-2.5 py-1 font-medium disabled:opacity-50" style={{ background: brand.red, color: "#fff" }}>Oluştur</button>
             <button onClick={() => setYeniAcik(false)} className="rounded-md px-2 py-1" style={{ color: koyu.metinYumusak }}>Vazgeç</button>
+            <span style={{ color: koyu.etiket }}>·</span>
+            <button onClick={() => { setYeniAcik(false); setIceModal(true); }} title="railML / GTFS / DXF / Shapefile dosyasından yeni hat kur"
+              className="rounded-md border px-2.5 py-1 font-medium transition hover:bg-white/10"
+              style={{ background: koyu.yuzey, borderColor: koyu.kenar, color: koyu.metinYumusak }}>📁 Dosyadan</button>
           </>
         ) : (
           <button onClick={() => setYeniAcik(true)} disabled={kotaDoldu}
@@ -252,6 +261,27 @@ export function HesapKontrolleri() {
             </div>
           </div>
         </>
+      )}
+
+      {/* DOSYADAN YENİ HAT — mevcut import motoru (HatIceAktar) "yeni hat" modunda.
+          Sistemi bozmayan ekstra giriş noktası: "+ Yeni hat" → 📁 Dosyadan. */}
+      {iceModal && (
+        <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/55 p-4 sm:p-8"
+          role="dialog" aria-modal="true" aria-label="Dosyadan yeni hat"
+          onClick={(e) => { if (e.target === e.currentTarget) setIceModal(false); }}>
+          <div className="w-full max-w-xl rounded-xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between rounded-t-xl px-5 py-3" style={{ background: "linear-gradient(180deg,#0F2B40 0%,#0C2233 100%)" }}>
+              <span className="font-brand text-sm font-semibold text-white">📁 Dosyadan yeni hat kur</span>
+              <button onClick={() => setIceModal(false)} className="rounded px-2 py-1 text-xs font-medium text-slate-300 transition hover:bg-white/10 hover:text-white">✕ Kapat</button>
+            </div>
+            <div className="px-4 py-4">
+              <HatIceAktar gomulu onIceAktar={async (yeni: DurakArasiRing[], ad: string) => {
+                try { await projeYeni(ad); setRings(() => yeni); patchMeta({ hatAdi: ad }); setIceModal(false); }
+                catch { /* hata hesap çubuğunda görünür; modal açık kalır */ }
+              }} />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -24,10 +24,12 @@ import type { DurakArasiRing } from "@/lib/anaray/ring";
 export type IceAktarMod = "degistir" | "ekle" | "yeniHat";
 interface HatSonuc { rings: DurakArasiRing[]; ad: string; durakSayisi: number; toplamKm: number; uyarilar: string[]; yol?: { x: number; y: number }[]; duraklar?: { ad: string; km: number; x: number; y: number }[]; }
 
-export function HatIceAktar({ onIceAktar, disabled, mesgulDis }: {
+export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false }: {
   onIceAktar: (rings: DurakArasiRing[], ad: string, mod: IceAktarMod) => void | Promise<void>;
   disabled?: boolean;
   mesgulDis?: boolean;
+  /** Gömülü (ör. "+ Yeni hat" modalı): daima YENİ hat modu, mod seçici + details sarmalı yok. */
+  gomulu?: boolean;
 }) {
   const [kaynak, setKaynak] = useState<"gtfs" | "railml" | "cad" | null>(null);
   const [feed, setFeed] = useState<GtfsFeed | null>(null);
@@ -41,7 +43,7 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis }: {
   const [dosyaAd, setDosyaAd] = useState("");
   const [routeId, setRouteId] = useState("");
   const [dir, setDir] = useState("");
-  const [mod, setMod] = useState<IceAktarMod>("degistir");
+  const [mod, setMod] = useState<IceAktarMod>(gomulu ? "yeniHat" : "degistir");
   const [hata, setHata] = useState<string | null>(null);
   const [mesgul, setMesgul] = useState(false);
 
@@ -126,14 +128,8 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis }: {
     await onIceAktar(sonuc.rings, sonuc.ad, mod);
   };
 
-  return (
-    <details className="mt-4 rounded-lg border bg-white" style={{ borderColor: brand.border }}>
-      <summary className="flex cursor-pointer select-none items-center gap-2 p-4">
-        <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
-        <span className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>Dosyadan İçe Aktar</span>
-        <span className="ml-2 text-xs" style={{ color: brand.muted }}>GTFS · railML · CAD (DXF) · Shapefile → hattı otomatik kur</span>
-      </summary>
-      <div className="border-t px-4 pb-4 pt-3" style={{ borderColor: brand.border }}>
+  const govde = (
+      <div className={gomulu ? "px-1 pb-1 pt-1" : "border-t px-4 pb-4 pt-3"} style={{ borderColor: brand.border }}>
         <p className="mb-3 text-xs" style={{ color: brand.muted }}>
           <b>GTFS .zip</b>, <b>railML .xml</b>, <b>CAD .dxf</b> veya <b>Shapefile .zip</b> (.shp/.dbf/.prj) yükle. Sıralı duraklar + gerçek mesafelerle hat kurulur.
           {" "}Makas/sinyal içe aktarılmaz; Ringler'de eklenir. <b>DWG</b> için önce DXF'e çevir.
@@ -217,6 +213,9 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis }: {
               </ul>
             </div>
 
+            {gomulu ? (
+              <div className="mt-3 text-xs" style={{ color: brand.muted }}>Bu dosya <b style={{ color: brand.ink }}>ayrı yeni bir hat</b> olarak açılır (1 kredi düşer).</div>
+            ) : (
             <div className="mt-3 text-sm">
               <div className="mb-1 field-label">Nasıl uygulansın?</div>
               <div className="flex flex-col gap-1">
@@ -228,6 +227,7 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis }: {
                 ))}
               </div>
             </div>
+            )}
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <button type="button" disabled={disabled || mesgulDis}
@@ -241,6 +241,17 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis }: {
         )}
         {kaynak === "cad" && !sonuc && !kurHata && <p className="mt-3 text-xs" style={{ color: brand.muted }}>Güzergâh ve durak katmanlarını seç → hat kurulur.</p>}
       </div>
+  );
+  // Gömülü ("+ Yeni hat" modalı): düz kart, hep açık. Aksi halde katlanır details.
+  if (gomulu) return govde;
+  return (
+    <details className="mt-4 rounded-lg border bg-white" style={{ borderColor: brand.border }}>
+      <summary className="flex cursor-pointer select-none items-center gap-2 p-4">
+        <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
+        <span className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>Dosyadan İçe Aktar</span>
+        <span className="ml-2 text-xs" style={{ color: brand.muted }}>GTFS · railML · CAD (DXF) · Shapefile → hattı otomatik kur</span>
+      </summary>
+      {govde}
     </details>
   );
 }
