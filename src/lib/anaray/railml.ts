@@ -7,7 +7,7 @@
 // Konumlar (pos, m) sıralanıp durak-arası mesafeler (pos farkı) ile ring zinciri kurulur.
 // Makas/sinyal detayı V1'de aktarılmaz (Ringler'de eklenir).
 
-import { yeniRing, ringDuraklari, type DurakArasiRing } from "./ring";
+import { yeniRing, ringDuraklari, MAKAS_TIP_AD, type DurakArasiRing } from "./ring";
 
 // —— Minimal XML: başlangıç etiketlerini + niteliklerini tarar (yapı ağacı gerekmez;
 // yalnız nitelik çıkarımı yapılır → railML 2.x sürüm farklarına dayanıklı). ——
@@ -83,17 +83,18 @@ export function railmlHatKur(xml: string): RailmlHatSonuc {
 }
 
 // ————————————————————————————————————————————————————————————————
-// railML DIŞA AKTARMA (export). RaySim ring zinciri → railML 2.x altyapı XML'i.
-// V1 kapsam: operationControlPoint (istasyon) + track + crossSection (kilometrajlı
-// konumlar). Kendi içe-aktarıcımızla ROUND-TRIP uyumlu (crossSection pos/ocpRef).
-// Makas/sinyal/eğim, içe aktarmada olduğu gibi V1'de aktarılmaz (bilgi notu eklenir).
+// railML DIŞA AKTARMA (export) — V2. RaySim ring zinciri → railML 2.x altyapı XML'i.
+// Kapsam: operationControlPoint (istasyon) + track + crossSection (kilometraj) +
+// gradientChange (eğim ‰) + switch (makas: tip/geçiş hızı) + signal (sinyal: yön).
+// crossSection'lar kendi içe-aktarıcımızla ROUND-TRIP uyumludur (pos/ocpRef).
+// (İçe aktarma V1 hâlâ yalnız istasyon konumlarını okur; makas/sinyal/eğim export'a özgü.)
 // ————————————————————————————————————————————————————————————————
 
 function xmlKac(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-/** Ring zincirini railML 2.x altyapı XML string'ine çevirir (dışa aktarma). */
+/** Ring zincirini railML 2.x altyapı XML string'ine çevirir (dışa aktarma, V2). */
 export function railmlIhrac(rings: DurakArasiRing[], hatAdi = "RaySim hattı"): string {
   const duraklar = ringDuraklari(rings); // {ad, konum}[] — kümülatif kilometraj (m)
   const toplam = duraklar.length ? Math.round(duraklar[duraklar.length - 1].konum) : 0;
@@ -104,6 +105,33 @@ export function railmlIhrac(rings: DurakArasiRing[], hatAdi = "RaySim hattı"): 
   const csXml = duraklar
     .map((d, i) => `          <crossSection id="cs_${i}" pos="${Math.round(d.konum)}" ocpRef="${id(i)}"/>`)
     .join("\n");
+
+  // Kümülatif geçişte makas / sinyal / eğim topla (ring başı offset + eleman konumu).
+  const gradlar: string[] = [];
+  const makaslar: string[] = [];
+  const sinyaller: string[] = [];
+  let off = 0;
+  let oncekiEgim: number | null = null;
+  rings.forEach((r) => {
+    if (oncekiEgim === null || Math.abs(r.egim - oncekiEgim) > 1e-9) {
+      gradlar.push(`          <gradientChange id="g_${gradlar.length}" pos="${Math.round(off)}" slope="${r.egim.toFixed(1)}"/>`);
+      oncekiEgim = r.egim;
+    }
+    for (const m of r.makaslar) {
+      const pos = Math.round(off + Math.max(0, Math.min(r.uzunluk, m.konum)));
+      makaslar.push(`          <switch id="sw_${makaslar.length}" name="${xmlKac(m.ad || MAKAS_TIP_AD[m.tip])}" pos="${pos}" description="${xmlKac(MAKAS_TIP_AD[m.tip])}; ${Math.round(m.gecisHizi * 3.6)} km/h"/>`);
+    }
+    for (const s of r.sinyaller ?? []) {
+      const pos = Math.round(off + Math.max(0, Math.min(r.uzunluk, s.konum)));
+      sinyaller.push(`          <signal id="sig_${sinyaller.length}" name="${xmlKac(s.ad || (s.yon === "giden" ? "Giden sinyal" : "Gelen sinyal"))}" pos="${pos}" dir="${s.yon === "giden" ? "up" : "down"}"${s.tersIsletme ? ` description="ters işletme"` : ""}/>`);
+    }
+    off += r.uzunluk;
+  });
+  const gradXml = gradlar.length ? `          <gradientChanges>\n${gradlar.join("\n")}\n          </gradientChanges>\n` : "";
+  const ocsXml = (makaslar.length || sinyaller.length)
+    ? `        <ocsElements>\n${makaslar.length ? `          <switches>\n${makaslar.join("\n")}\n          </switches>\n` : ""}${sinyaller.length ? `          <signals>\n${sinyaller.join("\n")}\n          </signals>\n` : ""}        </ocsElements>\n`
+    : "";
+
   const tarih = new Date().toISOString();
   return `<?xml version="1.0" encoding="UTF-8"?>
 <railml xmlns="https://www.railml.org/schemas/2013" version="2.2">
@@ -123,11 +151,11 @@ ${ocpXml}
           <trackEnd id="te_1" pos="${toplam}"><openEnd id="oe_2"/></trackEnd>
         </trackTopology>
         <trackElements>
-          <crossSections>
+${gradXml}          <crossSections>
 ${csXml}
           </crossSections>
         </trackElements>
-      </track>
+${ocsXml}      </track>
     </tracks>
   </infrastructure>
 </railml>

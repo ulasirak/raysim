@@ -286,7 +286,7 @@ export function RingEditor() {
           </summary>
           <div className="border-t px-4 pb-4 pt-3" style={{ borderColor: brand.border }}>
             <p className="mb-3 text-xs" style={{ color: brand.muted }}>
-              Hattı standart formatlara indir. <b>railML</b> = altyapı (OpenTrack/RailSys köprüsü). <b>GTFS</b> = duraklar + <b>RaySim çizelgesi</b> (transit araçları).
+              Hattı standart formatlara indir. <b>railML</b> = altyapı (istasyon + kilometraj + <b>makas · sinyal · eğim</b>) → OpenTrack/RailSys köprüsü. <b>GTFS</b> = duraklar + <b>RaySim çizelgesi</b> (transit araçları).
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <button type="button"
