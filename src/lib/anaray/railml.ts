@@ -7,7 +7,7 @@
 // Konumlar (pos, m) sıralanıp durak-arası mesafeler (pos farkı) ile ring zinciri kurulur.
 // Makas/sinyal detayı V1'de aktarılmaz (Ringler'de eklenir).
 
-import { yeniRing, type DurakArasiRing } from "./ring";
+import { yeniRing, ringDuraklari, type DurakArasiRing } from "./ring";
 
 // —— Minimal XML: başlangıç etiketlerini + niteliklerini tarar (yapı ağacı gerekmez;
 // yalnız nitelik çıkarımı yapılır → railML 2.x sürüm farklarına dayanıklı). ——
@@ -80,4 +80,56 @@ export function railmlHatKur(xml: string): RailmlHatSonuc {
   if (varsayilanKullanildi > 0) uyarilar.push(`${varsayilanKullanildi} durak arası konum farkı çıkarılamadı → varsayılan 600 m kullanıldı.`);
   uyarilar.push("Makas, sinyal ve duruş süresi V1'de aktarılmaz; Ringler'de ekleyin.");
   return { rings, ad, durakSayisi: sirali.length, toplamKm: toplam / 1000, uyarilar };
+}
+
+// ————————————————————————————————————————————————————————————————
+// railML DIŞA AKTARMA (export). RaySim ring zinciri → railML 2.x altyapı XML'i.
+// V1 kapsam: operationControlPoint (istasyon) + track + crossSection (kilometrajlı
+// konumlar). Kendi içe-aktarıcımızla ROUND-TRIP uyumlu (crossSection pos/ocpRef).
+// Makas/sinyal/eğim, içe aktarmada olduğu gibi V1'de aktarılmaz (bilgi notu eklenir).
+// ————————————————————————————————————————————————————————————————
+
+function xmlKac(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+/** Ring zincirini railML 2.x altyapı XML string'ine çevirir (dışa aktarma). */
+export function railmlIhrac(rings: DurakArasiRing[], hatAdi = "RaySim hattı"): string {
+  const duraklar = ringDuraklari(rings); // {ad, konum}[] — kümülatif kilometraj (m)
+  const toplam = duraklar.length ? Math.round(duraklar[duraklar.length - 1].konum) : 0;
+  const id = (i: number) => `ocp_${i}`;
+  const ocpXml = duraklar
+    .map((d, i) => `      <ocp id="${id(i)}" name="${xmlKac(d.ad)}" code="${id(i)}"/>`)
+    .join("\n");
+  const csXml = duraklar
+    .map((d, i) => `          <crossSection id="cs_${i}" pos="${Math.round(d.konum)}" ocpRef="${id(i)}"/>`)
+    .join("\n");
+  const tarih = new Date().toISOString();
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<railml xmlns="https://www.railml.org/schemas/2013" version="2.2">
+  <metadata>
+    <dc:title xmlns:dc="http://purl.org/dc/elements/1.1/">${xmlKac(hatAdi)}</dc:title>
+    <dc:source xmlns:dc="http://purl.org/dc/elements/1.1/">RaySim</dc:source>
+    <dc:date xmlns:dc="http://purl.org/dc/elements/1.1/">${tarih}</dc:date>
+  </metadata>
+  <infrastructure id="is_raysim" name="${xmlKac(hatAdi)}">
+    <operationControlPoints>
+${ocpXml}
+    </operationControlPoints>
+    <tracks>
+      <track id="trk_1" name="${xmlKac(hatAdi)}">
+        <trackTopology>
+          <trackBegin id="tb_1" pos="0"><openEnd id="oe_1"/></trackBegin>
+          <trackEnd id="te_1" pos="${toplam}"><openEnd id="oe_2"/></trackEnd>
+        </trackTopology>
+        <trackElements>
+          <crossSections>
+${csXml}
+          </crossSections>
+        </trackElements>
+      </track>
+    </tracks>
+  </infrastructure>
+</railml>
+`;
 }

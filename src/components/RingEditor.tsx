@@ -15,7 +15,8 @@ import { maksimumTren } from "@/lib/anaray/kapasite";
 import { yolcuAkisSuresi } from "@/lib/anaray/yolcu";
 import { brand } from "@/lib/anaray/brand";
 import { CK, SERI } from "@/lib/anaray/chartkit";
-import { kmh, km, sure } from "@/lib/anaray/format";
+import { kmh, km, sure, indir } from "@/lib/anaray/format";
+import { railmlIhrac } from "@/lib/anaray/railml";
 import {
   MAKAS_TIP_AD,
   ringChallenge,
@@ -268,6 +269,32 @@ export function RingEditor() {
           (mevcut hattın üzerine yazar; "Silmeyi geri al" ile dönülebilir). */}
       {!yukleniyor && (
         <HatIceAktar onIceAktar={iceAktarUygula} disabled={!yazilabilir} mesgulDis={iceMesgul} />
+      )}
+
+      {/* railML DIŞA AKTARMA — hattı endüstri-standart railML 2.x XML olarak indir
+          (OpenTrack/RailSys köprüsü). Salt-okunur görünümde de açık (veri değişmez). */}
+      {!yukleniyor && rings.length > 0 && (
+        <details className="mt-4 rounded-lg border bg-white" style={{ borderColor: brand.border }}>
+          <summary className="flex cursor-pointer select-none items-center gap-2 p-4">
+            <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
+            <span className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>Dışa Aktar</span>
+            <span className="ml-2 text-xs" style={{ color: brand.muted }}>railML 2.x (.xml) — istasyon + kilometraj</span>
+          </summary>
+          <div className="border-t px-4 pb-4 pt-3" style={{ borderColor: brand.border }}>
+            <p className="mb-3 text-xs" style={{ color: brand.muted }}>
+              Hattı <b>railML 2.x</b> altyapı XML&apos;i olarak indir — istasyonlar (ocp) + durak-arası kilometraj (crossSection). OpenTrack / RailSys gibi araçlara köprü. <b>Makas, sinyal ve eğim V1&apos;de aktarılmaz</b> (içe aktarmayla simetrik).
+            </p>
+            <button type="button"
+              onClick={() => {
+                const xml = railmlIhrac(rings, meta.hatAdi || "RaySim hattı");
+                const ad = (meta.hatAdi || "raysim-hat").trim().replace(/[^\w.-]+/g, "_") || "raysim-hat";
+                indir(new Blob([xml], { type: "application/xml" }), `${ad}.railml.xml`);
+              }}
+              className="rounded-md px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: brand.ink }}>
+              ⬆ railML olarak indir (.xml)
+            </button>
+          </div>
+        </details>
       )}
 
       {/* DURAKLAR & MESAFELER — hattın GİRİŞ NOKTASI. Boş hatta da görünür: müşteri
