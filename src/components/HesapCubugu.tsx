@@ -17,6 +17,7 @@ import { useHesap } from "@/components/SimConfigProvider";
 import { useCuzdan } from "@/components/CuzdanProvider";
 import { KREDI_PAKETLERI, paketAvantaj, hareketleriGetir, type KrediHareket } from "@/lib/cuzdan";
 import { karsilamaSifirla } from "@/components/Karsilama";
+import { PaylasimPano } from "@/components/PaylasimPano";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 
@@ -43,15 +44,14 @@ export function HesapKontrolleri() {
   const { user, hazir, yapilandirildi, cikisYap } = useAuth();
   const {
     demoMu, paylasimGorunumu, durum, hataMetni, projeler, aktifId, aktifAd,
-    paylasimAcik, kota, kotaDoldu,
-    projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle, paylasimDegistir,
+    kota, kotaDoldu,
+    projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle,
   } = useHesap();
   const { bakiye, krediSatinAl } = useCuzdan();
 
   const [yeniAcik, setYeniAcik] = useState(false);
   const [odemeHata, setOdemeHata] = useState<string | null>(null);
   const [yeniAd, setYeniAd] = useState("");
-  const [kopyalandi, setKopyalandi] = useState(false);
   const [menuAcik, setMenuAcik] = useState(false);
   const [adTaslak, setAdTaslak] = useState<string | null>(null);
   const [isBasi, setIsBasi] = useState<string | null>(null);
@@ -78,7 +78,6 @@ export function HesapKontrolleri() {
   const hareketAdi = (t: KrediHareket["tur"]) =>
     t === "satinalma" ? "Kredi alımı" : t === "rapor" ? "PDF rapor" : t === "projeYukleme" ? "Yeni hat" : "Düzeltme";
 
-  const paylasimLinki = aktifId ? `${typeof window !== "undefined" ? window.location.origin : ""}/?proje=${aktifId}` : "";
   const silinebilir = projeler.length > 1 && Boolean(aktifId);
   const menuKapat = () => setMenuAcik(false);
 
@@ -231,18 +230,8 @@ export function HesapKontrolleri() {
               )}
             </div>
 
-            <MenuOge onClick={() => { sar(paylasimDegistir(!paylasimAcik), "paylasim"); }}
-              ad={paylasimAcik ? "Paylaşımı kapat" : "Paylaşım linki oluştur"}
-              alt={paylasimAcik
-                ? "Link şu an açık — kapatınca erişim anında kesilir"
-                : "Linki verdiğiniz kişi projeyi sadece görüntüler, değiştiremez"} />
-
-            {paylasimAcik && (
-              <MenuOge
-                onClick={() => { navigator.clipboard?.writeText(paylasimLinki); setKopyalandi(true); setTimeout(() => setKopyalandi(false), 2000); }}
-                ad={kopyalandi ? "✓ Kopyalandı" : "🔗 Linki kopyala"}
-                alt="Salt-okunur görüntüleme linkini panoya kopyalar" />
-            )}
+            {/* Paylaşım panosu — durum anahtarı + okunur link + kopyala + QR + mobil paylaş */}
+            <PaylasimPano />
 
             {silinebilir && (
               <MenuOge tehlike

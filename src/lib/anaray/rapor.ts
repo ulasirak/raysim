@@ -8,7 +8,7 @@
 // Tarayıcıda çalışır: yeni pencerede açar, yazdırma diyalogunu tetikler
 // (kullanıcı "Hedef: PDF olarak kaydet" ile indirir). SSR'de çağrılmaz.
 
-import qrcode from "qrcode-generator";
+import { qrSvgString } from "./qr";
 import { emblemSvg } from "@/lib/emblem";
 import { aslsLogoSvg, firmaAslsMi } from "./aslsLogo";
 import { CK, RAMP_BLUE, num, lab, areaGrad } from "./chartkit";
@@ -51,17 +51,9 @@ const kmFmt = (m: number) => {
 };
 
 // QR kodu (gömülü SVG) — canlı simülasyon linki için.
+// QR SVG — paylaşılan üreticiden (qr.ts); rapor mürekkep renginde.
 function qrSvg(text: string, size = 96): string {
-  try {
-    const qr = qrcode(0, "M");
-    qr.addData(text);
-    qr.make();
-    const n = qr.getModuleCount();
-    const cell = size / n;
-    let rects = "";
-    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) rects += `<rect x="${(c * cell).toFixed(2)}" y="${(r * cell).toFixed(2)}" width="${cell.toFixed(2)}" height="${cell.toFixed(2)}"/>`;
-    return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}"><rect width="${size}" height="${size}" fill="#fff"/><g fill="${INK}">${rects}</g></svg>`;
-  } catch { return ""; }
+  return qrSvgString(text, size, INK);
 }
 
 function tbl(headers: string[], rows: (string | number)[][], opts: { first?: boolean } = {}): string {
