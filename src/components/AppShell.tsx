@@ -333,9 +333,9 @@ function Govde({ children }: { children: React.ReactNode }) {
           "Vazgeç" ile geri döner. Yalnız ödeme başlatılınca görünür. */}
       <OdemeModal />
 
-      {/* Kullanıcı kılavuzu — oturum içinde OTOMATİK AÇILMAZ; yalnız "Tanıtımı göster"
-          ile açılır. Giriş ekranında ayrı bir örneği (girisModu) çalışır, o yüzden
-          burada /giris rotasında render ETMEYİZ (çift modal olmasın). */}
+      {/* Kullanıcı kılavuzu — kullanıcı İLK KEZ giriş yaptıktan sonra ana sayfaya düşünce
+          bir kez otomatik açılır (bir daha açılmaz). "Tanıtımı göster" ile tekrar açılabilir.
+          /giris rotasında (henüz içerik yok) render edilmez. */}
       {icerikVar && !pathname.startsWith("/giris") && <Karsilama />}
 
       {/* Global footer — sol: dürüst metodoloji notu · orta: amblem · sağ: künye */}

@@ -1,37 +1,27 @@
 "use client";
 
 // raysim — KULLANICI KILAVUZU / TANITIM SİHİRBAZI.
-// Yeni kullanıcı asıl olarak GİRİŞ/KAYIT ekranından geçer → kılavuz orada
-// (girisModu) bir kez otomatik açılır. Oturum içinde (AppShell) OTOMATİK AÇILMAZ;
-// yalnız "Tanıtımı göster" ile (event) açılır — böylece ana sayfa yenilenince
-// tekrar çıkmaz (eski bug).
+// Kullanıcı İLK KEZ giriş yaptıktan sonra ana sayfaya (henüz proje üstünde çalışmadan)
+// düşünce BİR KEZ otomatik açılır. Sonraki her açılışta / yenilemede AÇILMAZ.
 //
-// GÖSTERME KONTROLÜ iki katmanlı:
-//   • KALICI (localStorage): "bir daha gösterme" işaretliyse bir daha hiç açılmaz.
-//   • OTURUMLUK (sessionStorage): bir kez gösterilince aynı oturumda (refresh dahil)
-//     yeniden açılmaz — kullanıcı kapatmadan yenilese bile nag olmaz.
-// "Tanıtımı göster" (tanitimAc) her iki bayrağı da yok sayıp zorla açar.
+// BUG DÜZELTMESİ: bayrak, kılavuz GÖSTERİLİR GÖSTERİLMEZ yazılır (eskiden yalnız
+// "kapat"ta yazılıyordu → kullanıcı kapatmadan yenilerse tekrar çıkıyordu). Böylece
+// ana sayfada çalışırken yenileyince "ilk giriş" ekranı bir daha çıkmaz.
+//
+// Yeniden görmek için: hesap menüsü → "Tanıtımı göster" (tanitimAc, bayrağı yok sayar).
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/components/AuthProvider";
+import { useHesap } from "@/components/SimConfigProvider";
 import { brand } from "@/lib/anaray/brand";
 
-const KALICI = (uid: string | null) => (uid ? `raysim_karsilama_v2_${uid}` : "raysim_karsilama_giris_v2");
-const OTURUM = (uid: string | null) => `raysim_karsilama_ses_${uid ?? "giris"}`;
+const BAYRAK = (uid: string) => `raysim_karsilama_v3_${uid}`; // ilk-giriş "görüldü" bayrağı
 const OLAY = "raysim-tanitim-ac"; // "Tanıtımı göster" tetikleyicisi
 
-/** Tanıtımı zorla aç (menüden ya da giriş ekranı butonundan). */
+/** Tanıtımı zorla aç (hesap menüsündeki "Tanıtımı göster"den). */
 export function tanitimAc() {
   try { window.dispatchEvent(new CustomEvent(OLAY)); } catch { /* sessiz */ }
-}
-
-/** Bu hesap/ziyaretçi için kılavuzu yeniden açılabilir yap (bayrakları temizle). */
-export function karsilamaSifirla(uid: string | null) {
-  try {
-    localStorage.removeItem(KALICI(uid));
-    sessionStorage.removeItem(OTURUM(uid));
-  } catch { /* sessiz */ }
 }
 
 interface Adim {
@@ -121,48 +111,40 @@ const ADIMLAR: Adim[] = [
   },
 ];
 
-/** girisModu: giriş/kayıt ekranında otomatik açılır. Aksi halde (oturum içi) yalnız
- *  "Tanıtımı göster" event'iyle açılır — otomatik açılmaz. */
-export function Karsilama({ girisModu = false }: { girisModu?: boolean } = {}) {
+export function Karsilama() {
   const { user } = useAuth();
-  const uid = user?.uid ?? null;
+  const { paylasimGorunumu, demoMu } = useHesap();
   const [acik, setAcik] = useState(false);
   const [i, setI] = useState(0);
-  const [birDaha, setBirDaha] = useState(true); // "bir daha gösterme" — varsayılan işaretli
 
-  // OTOMATİK AÇILIŞ yalnız giriş ekranında: kalıcı + oturumluk bayrak yoksa aç,
-  // ve açılır açılmaz oturumluk bayrağı yaz (aynı oturumda yenileyince tekrar açılmasın).
+  // İLK GİRİŞ: kullanıcı ilk kez giriş yapıp ana sayfaya düşünce bir kez açılır.
+  // Bayrak GÖSTERİLİR GÖSTERİLMEZ yazılır → yenilemede/tekrar girişte bir daha açılmaz.
   useEffect(() => {
-    if (!girisModu) return;
+    if (!user || paylasimGorunumu || demoMu) return;
     try {
-      if (localStorage.getItem(KALICI(uid)) || sessionStorage.getItem(OTURUM(uid))) return;
-      sessionStorage.setItem(OTURUM(uid), "1");
+      if (localStorage.getItem(BAYRAK(user.uid))) return;
+      localStorage.setItem(BAYRAK(user.uid), "1"); // görüldü — kalıcı işaretle (bir kez)
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setAcik(true);
       setI(0);
     } catch { /* sessiz */ }
-  }, [girisModu, uid]);
+  }, [user, paylasimGorunumu, demoMu]);
 
-  // "Tanıtımı göster" — bayrakları yok say, zorla aç.
+  // "Tanıtımı göster" — bayrağı yok say, zorla aç.
   useEffect(() => {
-    const ac = () => { setI(0); setBirDaha(true); setAcik(true); };
+    const ac = () => { setI(0); setAcik(true); };
     window.addEventListener(OLAY, ac);
     return () => window.removeEventListener(OLAY, ac);
   }, []);
 
-  const kapat = () => {
-    // "Bir daha gösterme" işaretliyse KALICI bayrağı yaz (bir daha hiç açılmaz).
-    if (birDaha) { try { localStorage.setItem(KALICI(uid), "1"); } catch { /* sessiz */ } }
-    setAcik(false);
-  };
+  const kapat = () => setAcik(false);
 
   // ESC ile kapat.
   useEffect(() => {
     if (!acik) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") kapat(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setAcik(false); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [acik]);
 
   if (!acik) return null;
@@ -172,12 +154,10 @@ export function Karsilama({ girisModu = false }: { girisModu?: boolean } = {}) {
 
   const bitir = () => {
     kapat();
-    // Oturum içi açıldıysa ilk adıma (Ringler) kaydır; giriş ekranında kaydıracak bir şey yok.
-    if (!girisModu) {
-      setTimeout(() => {
-        document.getElementById("ringler")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 60);
-    }
+    // İlk adıma (Ringler) kaydır — kullanıcı hattı kurmaya başlasın.
+    setTimeout(() => {
+      document.getElementById("ringler")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 60);
   };
 
   return createPortal(
@@ -216,11 +196,10 @@ export function Karsilama({ girisModu = false }: { girisModu?: boolean } = {}) {
           ))}
         </div>
 
-        {/* "Bir daha gösterme" seçeneği */}
-        <label className="flex cursor-pointer items-center gap-2 border-t px-5 py-2.5 text-xs" style={{ borderColor: brand.border, color: brand.inkSoft }}>
-          <input type="checkbox" checked={birDaha} onChange={(e) => setBirDaha(e.target.checked)} className="h-3.5 w-3.5" style={{ accentColor: brand.red }} />
-          <span>Bir daha gösterme <span style={{ color: brand.faint }}>· istediğinde “Tanıtımı göster”den tekrar açabilirsin</span></span>
-        </label>
+        {/* Bu tanıtım yalnız ilk girişte bir kez gösterilir — bilgilendirme */}
+        <div className="border-t px-5 py-2 text-[0.68rem]" style={{ borderColor: brand.border, color: brand.faint }}>
+          Bu tanıtım yalnız ilk girişte bir kez açılır. İstediğinde hesap menüsünden <b>“Tanıtımı göster”</b> ile tekrar açabilirsin.
+        </div>
 
         {/* Aksiyonlar */}
         <div className="flex items-center justify-between gap-3 border-t px-5 py-3" style={{ borderColor: brand.border }}>
@@ -247,7 +226,7 @@ export function Karsilama({ girisModu = false }: { girisModu?: boolean } = {}) {
               className="rounded-md px-4 py-1.5 text-xs font-semibold text-white transition hover:opacity-90"
               style={{ background: brand.red }}
             >
-              {girisModu ? "Anladım" : "Hattı kurmaya başla →"}
+              Hattı kurmaya başla →
             </button>
           )}
         </div>
