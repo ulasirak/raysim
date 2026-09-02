@@ -307,6 +307,9 @@ export interface ProjeMeta {
    *  challenge (risk/uyarı) bayrakları, denge sapması ve "ihlal" işaretleri
    *  gösterilmez; göstergeler uygun/dengeli yansıtılır. Opsiyonel (varsayılan kapalı). */
   sunumModu?: boolean;
+  /** Müşavir/firma logosu — PDF kapağına basılır (küçültülmüş PNG data URI).
+   *  Boşsa firma adı / ASLS amblemi gösterilir. Kalıcılık için küçültülür. */
+  logo?: string;
 }
 
 // Yeni bir hesabın/hattın künyesi NÖTRDÜR: hiçbir gerçek projeye ait ad taşımaz.

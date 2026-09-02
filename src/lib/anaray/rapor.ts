@@ -1088,6 +1088,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   /* Kapak marka hiyerarşisi (opt.3): ANA MARKA = firma (büyük); RaySim = küçük alt rozet. */
   .cover-brand { margin: 6px 0 2px; line-height: 0; }
   .cover-brand svg { height: 17mm; width: auto; display: inline-block; }
+  .cover-logo { height: 18mm; width: auto; max-width: 85mm; display: inline-block; object-fit: contain; }
   .cover-brand-name { font-size: 20pt; font-weight: 700; letter-spacing: .04em; color: ${INK}; }
   .poweredby { margin-top: 9px; display: flex; align-items: center; justify-content: center; gap: 7px; }
   .poweredby .pb-emblem { line-height: 0; }
@@ -1267,7 +1268,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <!-- KAPAK — ANA MARKA = sinyalizasyon firması (büyük). RaySim, altta küçük
        "Powered by" rozetine indirgenir (araç/motor kimliği). -->
   <section class="cover">
-    <div class="cover-brand">${firmaAsls ? aslsLogoSvg : `<span class="cover-brand-name">${esc(meta.sinyalizasyonFirmasi || "")}</span>`}</div>
+    <div class="cover-brand">${meta.logo ? `<img class="cover-logo" src="${meta.logo}" alt="${esc(meta.sinyalizasyonFirmasi || "logo")}"/>` : firmaAsls ? aslsLogoSvg : `<span class="cover-brand-name">${esc(meta.sinyalizasyonFirmasi || "")}</span>`}</div>
     <div class="rule"></div>
     <div class="sys">${L.sys}</div>
     <div class="kit">${L.kit}</div>

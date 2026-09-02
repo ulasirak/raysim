@@ -114,6 +114,33 @@ export function Belgeler() {
     } finally { setMesgul(""); }
   };
 
+  // Kapak logosu: yüklenen görseli küçült (kapak için ~18 mm yeterli) → PNG data URI.
+  // Projeye kaydedilir; büyükse (data URI > ~300 KB) reddedilir (Firestore doküman sınırı).
+  const logoYukle = (file: File) => {
+    const reader = new FileReader();
+    reader.onerror = () => setDurum({ tip: "err", metin: "Logo okunamadı." });
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => setDurum({ tip: "err", metin: "Görsel çözümlenemedi — PNG/JPG deneyin." });
+      img.onload = () => {
+        const maxW = 640, maxH = 220;
+        const oran = Math.min(maxW / img.width, maxH / img.height, 1);
+        const w = Math.max(1, Math.round(img.width * oran)), h = Math.max(1, Math.round(img.height * oran));
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { setDurum({ tip: "err", metin: "Logo işlenemedi." }); return; }
+        ctx.drawImage(img, 0, 0, w, h);
+        const uri = canvas.toDataURL("image/png");
+        if (uri.length > 300000) { setDurum({ tip: "err", metin: "Logo çok büyük — daha sade/küçük bir görsel deneyin." }); return; }
+        patchMeta({ logo: uri });
+        setDurum({ tip: "ok", metin: "Logo eklendi — PDF kapağında görünür." });
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
@@ -140,6 +167,30 @@ export function Belgeler() {
                   className="mt-1 w-full rounded border px-2 py-1.5 text-sm disabled:opacity-60" style={{ borderColor: brand.border, color: brand.ink }} />
               </label>
             ))}
+          </div>
+
+          {/* Müşavir/firma LOGOSU — PDF kapağına basılır. Küçültülüp data URI olarak
+              projeye kaydedilir (boşsa firma adı/amblem gösterilir). */}
+          <div className="mt-4 border-t pt-3" style={{ borderColor: brand.border }}>
+            <span className="field-label">Kapak logosu (opsiyonel)</span>
+            <div className="mt-1 flex flex-wrap items-center gap-3">
+              {meta.logo ? (
+                // Kullanıcı yüklemesi (data URI) — next/image uygulanmaz; basit önizleme.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={meta.logo} alt="Kapak logosu" className="h-12 w-auto max-w-[180px] rounded border object-contain p-1" style={{ borderColor: brand.border, background: "#fff" }} />
+              ) : (
+                <span className="text-xs" style={{ color: brand.muted }}>Logo yok — kapakta firma adı görünür.</span>
+              )}
+              <label className="cursor-pointer rounded-md border px-3 py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.ink }}>
+                {meta.logo ? "Değiştir" : "📷 Logo yükle"}
+                <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) logoYukle(f); e.currentTarget.value = ""; }} />
+              </label>
+              {meta.logo && (
+                <button type="button" onClick={() => patchMeta({ logo: "" })} className="text-xs underline" style={{ color: brand.red }}>Kaldır</button>
+              )}
+            </div>
+            <p className="mt-1 text-[0.7rem]" style={{ color: brand.muted }}>PNG/JPG/SVG · otomatik küçültülür (kapak yüksekliği ~18 mm). Şeffaf arka plan için PNG önerilir.</p>
           </div>
         </fieldset>
       </Panel>
