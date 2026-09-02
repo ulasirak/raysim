@@ -429,7 +429,7 @@ function StudioIc() {
 
       {/* ÇEKEN ARAÇ — Sefer'in tek düzenleme yüzeyi. Hat (istasyon/mesafe/hız/makas/
           depo) düzenlemesi Ringler'de (KUR) → ikili düzenleme sadeleştirildi. */}
-      <div className="mt-6">
+      <div id="ceken-arac" className="mt-6 scroll-mt-28">
         <Panel baslik="Çeken Araç" aciklama="Simülasyonda kullanılan aracı seç veya özelliklerini ayarla — değişiklik anında projeye kaydedilir. İstasyon, mesafe, hız limiti, makas ve parklanma düzenlemesi Ringler (KUR) bölümünde yapılır.">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <label className="block sm:col-span-2 lg:col-span-1">
@@ -573,6 +573,7 @@ function StudioIc() {
       {simHazir && (
         <Panel baslik="Bildfahrplan — Zaman–Mesafe Grafiği" aciklama="Demiryolu mühendisliğinin klasik grafiği (Marey diyagramı): yatay = zaman (bir tam çevrim), dikey = mesafe (istasyonlar ızgara). Her tren bir çizgidir — eğim hızı, yatay kısım duruşu, gidiş↔dönüş çizgilerinin kesişimi karşılaşma noktasını gösterir. Çizgiler arası eşit dikey aralık düzenli headway'i, bozulması öbekleşmeyi (bunching) ortaya koyar. Veri canlı sim ile birebir aynıdır.">
           <GrafikCerceve baslik="Bildfahrplan — Zaman–Mesafe Grafiği"><Bildfahrplan loop={loopVeri} line={line} /></GrafikCerceve>
+          <VeriKaynaklari />
         </Panel>
       )}
 
@@ -841,6 +842,31 @@ function Field({ etiket, deger, birim, alt }: { etiket: string; deger: string; b
         {birim && <span className="text-xs" style={{ color: brand.muted }}>{birim}</span>}
       </div>
       {alt && <div className="mt-0.5 text-xs" style={{ color: brand.faint }}>{alt}</div>}
+    </div>
+  );
+}
+
+/**
+ * Bildfahrplan grafiğinin altında: grafiği belirleyen girdilerin uygulamada NEREDE
+ * girildiğini linkleyerek gösterir. (Tarife/Bildfahrplan verileri sistemden manuel
+ * girilir → kullanıcı "bunu nereden değiştiririm?" sorusuna tek tıkla ulaşır.)
+ */
+function VeriKaynaklari() {
+  const kaydir = (id: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  const link = { color: brand.ink } as const;
+  return (
+    <div className="mt-3 rounded-md border p-3 text-xs" style={{ borderColor: brand.border, background: CK.track, color: brand.inkSoft }}>
+      <b style={{ color: brand.ink }}>Bu grafiği ne belirliyor?</b> Bildfahrplan tamamen aşağıdaki girdilerden türer — değiştirmek için:
+      <ul className="mt-1.5 grid grid-cols-1 gap-1 sm:grid-cols-2">
+        <li>• Çizgi şekli (mesafe · hız limiti · makas geçiş hızı · viraj) → <Link href="/#ringler" className="underline" style={link}>Ringler (KUR)</Link></li>
+        <li>• Yatay kısımlar (istasyon duruşu / dwell · yolcu) → <Link href="/#ringler" className="underline" style={link}>Ringler → durak yolcu</Link></li>
+        <li>• Çizgi sayısı & aralık (headway = çevrim ÷ filo) → <a href="#filo-paneli" onClick={kaydir("filo-paneli")} className="underline" style={link}>Filo &amp; Öneri</a></li>
+        <li>• Uçtaki dönüş (turnback) → <Link href="/#ringler" className="underline" style={link}>Ringler → dönüş tipi</Link></li>
+        <li>• Hızlanma / frenleme dinamiği → <a href="#ceken-arac" onClick={kaydir("ceken-arac")} className="underline" style={link}>Çeken Araç</a></li>
+      </ul>
     </div>
   );
 }
