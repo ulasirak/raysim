@@ -61,7 +61,9 @@ export function PaylasimPano() {
   return (
     <div className="border-b px-3 py-2.5" style={{ borderColor: brand.border }}>
       <div className="mb-1.5 flex items-center justify-between">
-        <span className="field-label" style={{ color: brand.faint }}>PAYLAŞIM (SALT-OKUNUR)</span>
+        <span className="field-label" style={{ color: paylasimAcik ? CK.good : brand.faint }}>
+          {paylasimAcik ? "PAYLAŞIM LİNKİ · AÇIK (SALT-OKUNUR)" : "PAYLAŞIM LİNKİ OLUŞTUR"}
+        </span>
         {/* Durum anahtarı */}
         <button
           onClick={() => degistir(!paylasimAcik)}

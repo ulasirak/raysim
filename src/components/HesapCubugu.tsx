@@ -16,7 +16,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { useHesap } from "@/components/SimConfigProvider";
 import { useCuzdan } from "@/components/CuzdanProvider";
 import { KREDI_PAKETLERI, paketAvantaj, hareketleriGetir, type KrediHareket } from "@/lib/cuzdan";
-import { karsilamaSifirla } from "@/components/Karsilama";
+import { tanitimAc } from "@/components/Karsilama";
 import { PaylasimPano } from "@/components/PaylasimPano";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
@@ -241,7 +241,7 @@ export function HesapKontrolleri() {
 
             {/* Tanıtım sihirbazını yeniden aç — bir daha "nasıl çalışır" için */}
             <div className="border-t" style={{ borderColor: brand.border }}>
-              <MenuOge onClick={() => { menuKapat(); if (user) { karsilamaSifirla(user.uid); window.scrollTo({ top: 0 }); location.reload(); } }}
+              <MenuOge onClick={() => { menuKapat(); tanitimAc(); }}
                 ad="Tanıtımı göster" alt="RaySim iş akışı sihirbazını yeniden açar" />
             </div>
 

@@ -1,27 +1,37 @@
 "use client";
 
-// raysim — İLK GİRİŞ KARŞILAMA SİHİRBAZI (onboarding).
-// Yeni kullanıcı boş "İlk hattım" ile açılıp yönlendirmesiz boş bir editöre
-// bakıyordu. Bu sihirbaz, ilk girişte bir kez, boru hattını (KUR → ANALİZ →
-// BELGELE → KARŞILAŞTIR) tanıtır ve kullanıcıyı ilk adıma (Ringler) taşır ya da
-// örnek bir Konya hattını ayrı sekmede incelemeye yönlendirir.
+// raysim — KULLANICI KILAVUZU / TANITIM SİHİRBAZI.
+// Yeni kullanıcı asıl olarak GİRİŞ/KAYIT ekranından geçer → kılavuz orada
+// (girisModu) bir kez otomatik açılır. Oturum içinde (AppShell) OTOMATİK AÇILMAZ;
+// yalnız "Tanıtımı göster" ile (event) açılır — böylece ana sayfa yenilenince
+// tekrar çıkmaz (eski bug).
 //
-// GÖRÜNME KOŞULU: giriş yapmış + yazılabilir (kendi hattı) + paylaşım/demo DEĞİL
-// + bu hesap için daha önce kapatılmamış (localStorage bayrağı uid'e bağlı).
-// Kapanınca bayrak yazılır; bir daha açılmaz. "Sihirbazı tekrar göster" için
-// bayrağı sıfırlayan bir kanca da dışa verilir (HesapCubugu ileride kullanabilir).
+// GÖSTERME KONTROLÜ iki katmanlı:
+//   • KALICI (localStorage): "bir daha gösterme" işaretliyse bir daha hiç açılmaz.
+//   • OTURUMLUK (sessionStorage): bir kez gösterilince aynı oturumda (refresh dahil)
+//     yeniden açılmaz — kullanıcı kapatmadan yenilese bile nag olmaz.
+// "Tanıtımı göster" (tanitimAc) her iki bayrağı da yok sayıp zorla açar.
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/components/AuthProvider";
-import { useHesap } from "@/components/SimConfigProvider";
 import { brand } from "@/lib/anaray/brand";
 
-const BAYRAK = (uid: string) => `raysim_karsilama_v1_${uid}`;
+const KALICI = (uid: string | null) => (uid ? `raysim_karsilama_v2_${uid}` : "raysim_karsilama_giris_v2");
+const OTURUM = (uid: string | null) => `raysim_karsilama_ses_${uid ?? "giris"}`;
+const OLAY = "raysim-tanitim-ac"; // "Tanıtımı göster" tetikleyicisi
 
-/** Sihirbazı bu hesap için yeniden açılabilir yap (bayrağı sil). */
-export function karsilamaSifirla(uid: string) {
-  try { localStorage.removeItem(BAYRAK(uid)); } catch { /* sessiz */ }
+/** Tanıtımı zorla aç (menüden ya da giriş ekranı butonundan). */
+export function tanitimAc() {
+  try { window.dispatchEvent(new CustomEvent(OLAY)); } catch { /* sessiz */ }
+}
+
+/** Bu hesap/ziyaretçi için kılavuzu yeniden açılabilir yap (bayrakları temizle). */
+export function karsilamaSifirla(uid: string | null) {
+  try {
+    localStorage.removeItem(KALICI(uid));
+    sessionStorage.removeItem(OTURUM(uid));
+  } catch { /* sessiz */ }
 }
 
 interface Adim {
@@ -85,49 +95,64 @@ const ADIMLAR: Adim[] = [
   },
   {
     rozet: "BAŞLARKEN",
-    baslik: "İki yoldan başlayabilirsin",
+    baslik: "Kendi hattınla başla",
     govde: (
       <div className="flex flex-col gap-3 text-sm leading-relaxed" style={{ color: brand.inkSoft }}>
         <p>
-          Hesabın <strong>boş bir hatla</strong> açıldı. İki seçeneğin var:
+          Hesabın <strong>boş bir hatla</strong> açılır. Sıra şu:
         </p>
-        <div className="rounded-md border p-3" style={{ borderColor: brand.border, background: brand.paper }}>
-          <div className="font-medium" style={{ color: brand.ink }}>① Kendi hattını kur</div>
-          <div className="text-[0.82rem]" style={{ color: brand.muted }}>
-            Ringler'de durakları, mesafeleri ve makasları gir. GTFS / railML / DXF /
-            shapefile içe aktarabilir ya da coğrafi koordinattan üretebilirsin.
-          </div>
-        </div>
-        <div className="rounded-md border p-3" style={{ borderColor: brand.border, background: brand.paper }}>
-          <div className="font-medium" style={{ color: brand.ink }}>② Örnek Konya hattını incele</div>
-          <div className="text-[0.82rem]" style={{ color: brand.muted }}>
-            Gerçek CAD verisinden hazırlanmış bir tramvay hattını yeni sekmede aç,
-            canlı simülasyonu oynat, çalışan bir örneği kurcala. (Kendi hattın
-            olduğu gibi kalır.)
-          </div>
-        </div>
+        <ol className="flex flex-col gap-2">
+          {[
+            ["1", "Hattı kur", "Ringler'de durakları, mesafeleri ve makasları gir — GTFS / railML / DXF / shapefile içe aktarabilir ya da coğrafi koordinattan üretebilirsin."],
+            ["2", "Simüle et", "Sefer ve Sistem Merkezi'nde canlı ağı, kapasiteyi ve darboğazları çöz."],
+            ["3", "Belgele", "Teknik Belgeler'den amblemli, baskıya hazır PDF raporu üret."],
+          ].map(([n, b, a]) => (
+            <li key={n} className="flex items-start gap-3">
+              <span className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[0.7rem] font-bold text-white" style={{ background: brand.red }}>{n}</span>
+              <span className="min-w-0">
+                <span className="font-medium" style={{ color: brand.ink }}>{b}</span>
+                <span className="block text-[0.82rem]" style={{ color: brand.muted }}>{a}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
       </div>
     ),
   },
 ];
 
-export function Karsilama() {
+/** girisModu: giriş/kayıt ekranında otomatik açılır. Aksi halde (oturum içi) yalnız
+ *  "Tanıtımı göster" event'iyle açılır — otomatik açılmaz. */
+export function Karsilama({ girisModu = false }: { girisModu?: boolean } = {}) {
   const { user } = useAuth();
-  const { paylasimGorunumu, demoMu } = useHesap();
+  const uid = user?.uid ?? null;
   const [acik, setAcik] = useState(false);
   const [i, setI] = useState(0);
+  const [birDaha, setBirDaha] = useState(true); // "bir daha gösterme" — varsayılan işaretli
 
-  // Görünme kararı: giriş yapmış + kendi hattı görünümü + bayrak yazılmamış.
+  // OTOMATİK AÇILIŞ yalnız giriş ekranında: kalıcı + oturumluk bayrak yoksa aç,
+  // ve açılır açılmaz oturumluk bayrağı yaz (aynı oturumda yenileyince tekrar açılmasın).
   useEffect(() => {
-    if (!user || paylasimGorunumu || demoMu) return;
+    if (!girisModu) return;
     try {
+      if (localStorage.getItem(KALICI(uid)) || sessionStorage.getItem(OTURUM(uid))) return;
+      sessionStorage.setItem(OTURUM(uid), "1");
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (!localStorage.getItem(BAYRAK(user.uid))) setAcik(true);
+      setAcik(true);
+      setI(0);
     } catch { /* sessiz */ }
-  }, [user, paylasimGorunumu, demoMu]);
+  }, [girisModu, uid]);
+
+  // "Tanıtımı göster" — bayrakları yok say, zorla aç.
+  useEffect(() => {
+    const ac = () => { setI(0); setBirDaha(true); setAcik(true); };
+    window.addEventListener(OLAY, ac);
+    return () => window.removeEventListener(OLAY, ac);
+  }, []);
 
   const kapat = () => {
-    if (user) { try { localStorage.setItem(BAYRAK(user.uid), "1"); } catch { /* sessiz */ } }
+    // "Bir daha gösterme" işaretliyse KALICI bayrağı yaz (bir daha hiç açılmaz).
+    if (birDaha) { try { localStorage.setItem(KALICI(uid), "1"); } catch { /* sessiz */ } }
     setAcik(false);
   };
 
@@ -145,18 +170,14 @@ export function Karsilama() {
   const sonAdim = i === ADIMLAR.length - 1;
   const adim = ADIMLAR[i];
 
-  const hattaGit = () => {
+  const bitir = () => {
     kapat();
-    // Kısa gecikme: modal kapanıp DOM oturunca ankora kaydır.
-    setTimeout(() => {
-      const el = document.getElementById("ringler");
-      el?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 60);
-  };
-
-  const ornekIncele = () => {
-    // Ayrı sekmede aç — kullanıcının kendi oturumu/hattı bozulmasın.
-    try { window.open("/?hat=birlesik", "_blank", "noopener"); } catch { /* sessiz */ }
+    // Oturum içi açıldıysa ilk adıma (Ringler) kaydır; giriş ekranında kaydıracak bir şey yok.
+    if (!girisModu) {
+      setTimeout(() => {
+        document.getElementById("ringler")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 60);
+    }
   };
 
   return createPortal(
@@ -172,7 +193,7 @@ export function Karsilama() {
         <div className="flex items-center justify-between rounded-t-xl px-5 py-3"
           style={{ background: "linear-gradient(180deg, #0F2B40 0%, #0C2233 100%)" }}>
           <span className="font-brand text-sm font-semibold tracking-[0.16em] text-white">RaySim</span>
-          <button onClick={kapat} title="Kapat (bir daha gösterme)"
+          <button onClick={kapat} title="Kapat"
             className="rounded-md px-2 py-1 text-xs font-medium text-slate-300 transition hover:bg-white/10 hover:text-white">
             ✕ Atla
           </button>
@@ -195,6 +216,12 @@ export function Karsilama() {
           ))}
         </div>
 
+        {/* "Bir daha gösterme" seçeneği */}
+        <label className="flex cursor-pointer items-center gap-2 border-t px-5 py-2.5 text-xs" style={{ borderColor: brand.border, color: brand.inkSoft }}>
+          <input type="checkbox" checked={birDaha} onChange={(e) => setBirDaha(e.target.checked)} className="h-3.5 w-3.5" style={{ accentColor: brand.red }} />
+          <span>Bir daha gösterme <span style={{ color: brand.faint }}>· istediğinde “Tanıtımı göster”den tekrar açabilirsin</span></span>
+        </label>
+
         {/* Aksiyonlar */}
         <div className="flex items-center justify-between gap-3 border-t px-5 py-3" style={{ borderColor: brand.border }}>
           <button
@@ -215,22 +242,13 @@ export function Karsilama() {
               İleri →
             </button>
           ) : (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={ornekIncele}
-                className="rounded-md border px-3 py-1.5 text-xs font-medium transition hover:bg-slate-50"
-                style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}
-              >
-                Örneği incele ↗
-              </button>
-              <button
-                onClick={hattaGit}
-                className="rounded-md px-4 py-1.5 text-xs font-semibold text-white transition hover:opacity-90"
-                style={{ background: brand.red }}
-              >
-                Hattı kurmaya başla →
-              </button>
-            </div>
+            <button
+              onClick={bitir}
+              className="rounded-md px-4 py-1.5 text-xs font-semibold text-white transition hover:opacity-90"
+              style={{ background: brand.red }}
+            >
+              {girisModu ? "Anladım" : "Hattı kurmaya başla →"}
+            </button>
           )}
         </div>
       </div>

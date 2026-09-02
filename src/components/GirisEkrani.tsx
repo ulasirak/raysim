@@ -8,6 +8,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth, authHata } from "@/components/AuthProvider";
+import { Karsilama, tanitimAc } from "@/components/Karsilama";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 
@@ -90,7 +91,15 @@ export function GirisEkrani({ kapiModu = false }: { kapiModu?: boolean } = {}) {
           <path d="M18.4 28 L27.6 28 M19.3 24 L26.7 24 M20 20.5 L26 20.5 M20.7 17.5 L25.3 17.5" stroke={brand.red} strokeWidth="1.4" strokeLinecap="round" />
         </svg>
         <span className="font-brand text-lg font-semibold tracking-[0.15em]" style={{ color: brand.ink }}>RaySim</span>
+        {/* Kullanıcı kılavuzu — yeni ziyaretçiye bir kez otomatik açılır (girisModu);
+            buradan istenildiğinde tekrar açılabilir. */}
+        <button type="button" onClick={tanitimAc} className="mt-0.5 text-xs underline" style={{ color: brand.muted }}>
+          Nasıl çalışır? · Tanıtımı gör
+        </button>
       </div>
+
+      {/* Kılavuz sihirbazı — giriş ekranında otomatik (bir kez) + butonla tekrar */}
+      <Karsilama girisModu />
 
       <div className="rounded-lg border p-7" style={{ background: brand.surface, borderColor: brand.border }}>
         <h1 className="font-brand text-xl font-semibold" style={{ color: brand.ink }}>{BASLIK[mod]}</h1>
