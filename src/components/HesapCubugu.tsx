@@ -13,7 +13,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import { useHesap, useProje } from "@/components/SimConfigProvider";
+import { useHesap, useProje, useIsletme } from "@/components/SimConfigProvider";
 import { HatIceAktar } from "@/components/HatIceAktar";
 import type { DurakArasiRing } from "@/lib/anaray/ring";
 import { useCuzdan } from "@/components/CuzdanProvider";
@@ -52,6 +52,7 @@ export function HesapKontrolleri() {
   const { bakiye, krediSatinAl } = useCuzdan();
   // "+ Yeni hat" → dosyadan içe aktararak yeni proje kurma için (mevcut import motoru).
   const { setRings, patchMeta } = useProje();
+  const { patchIsletme } = useIsletme();
 
   const [yeniAcik, setYeniAcik] = useState(false);
   const [iceModal, setIceModal] = useState(false); // dosyadan içe aktar modalı
@@ -275,8 +276,8 @@ export function HesapKontrolleri() {
               <button onClick={() => setIceModal(false)} className="rounded px-2 py-1 text-xs font-medium text-slate-300 transition hover:bg-white/10 hover:text-white">✕ Kapat</button>
             </div>
             <div className="px-4 py-4">
-              <HatIceAktar gomulu onIceAktar={async (yeni: DurakArasiRing[], ad: string) => {
-                try { await projeYeni(ad); setRings(() => yeni); patchMeta({ hatAdi: ad }); setIceModal(false); }
+              <HatIceAktar gomulu onIceAktar={async (yeni: DurakArasiRing[], ad: string, _mod, koord?: Record<string, { lat: number; lon: number }>) => {
+                try { await projeYeni(ad); setRings(() => yeni); patchMeta({ hatAdi: ad }); patchIsletme({ istasyonKoordinat: koord ?? {} }); setIceModal(false); }
                 catch { /* hata hesap çubuğunda görünür; modal açık kalır */ }
               }} />
             </div>

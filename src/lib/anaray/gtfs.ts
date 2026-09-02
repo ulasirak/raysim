@@ -5,7 +5,7 @@
 // çıkarılıp RaySim ring zinciri (DurakArasiRing[]) kurulur. Makas/sinyal GTFS'te yok →
 // varsayılan kalır (kullanıcı Ringler'de ekler).
 
-import { unzipSync, strFromU8 } from "fflate";
+import { unzipSync, strFromU8, zipSync, strToU8 } from "fflate";
 import { yeniRing, type DurakArasiRing } from "./ring";
 
 // —— Minimal CSV (RFC-4180: tırnaklı alan + kaçışlı çift tırnak) ——
@@ -129,7 +129,7 @@ function enYakinIdx(pts: { lat: number; lon: number }[], p: { lat: number; lon: 
   return bi;
 }
 
-export interface GtfsHatSonuc { rings: DurakArasiRing[]; ad: string; durakSayisi: number; toplamKm: number; uyarilar: string[]; }
+export interface GtfsHatSonuc { rings: DurakArasiRing[]; ad: string; durakSayisi: number; toplamKm: number; uyarilar: string[]; duraklar?: { ad: string; lat: number; lon: number }[]; }
 
 /** Rota + yön → RaySim ring zinciri. Temsili trip = o yönde EN ÇOK duraklı trip. */
 export function gtfsHatKur(feed: GtfsFeed, routeId: string, dir: string): GtfsHatSonuc {
@@ -183,5 +183,54 @@ export function gtfsHatKur(feed: GtfsFeed, routeId: string, dir: string): GtfsHa
     : "Mesafeler kuş-uçuşu (haversine) enlem-boylamdan hesaplandı; gerçek ray uzunluğundan bir miktar kısa olabilir — Ringler'de düzeltebilirsiniz.");
   if (koordsuz > 0) uyarilar.push(`${koordsuz} durak arası mesafe çıkarılamadı → varsayılan 600 m kullanıldı.`);
   uyarilar.push("Makas, sinyal ve hemzemin geçit bilgisi GTFS'te bulunmaz → boş bırakıldı; Ringler'de ekleyin.");
-  return { rings, ad, durakSayisi: dizi.length, toplamKm: toplam / 1000, uyarilar };
+  // Durak koordinatları (lat/lon) — GTFS export'ta yeniden kullanılmak üzere dışa verilir.
+  const duraklar = dizi
+    .map((d) => { const s = feed.stops.get(d.stopId); return s && Number.isFinite(s.lat) && Number.isFinite(s.lon) ? { ad: s.ad || d.stopId, lat: s.lat, lon: s.lon } : null; })
+    .filter((x): x is { ad: string; lat: number; lon: number } => x !== null);
+  return { rings, ad, durakSayisi: dizi.length, toplamKm: toplam / 1000, uyarilar, duraklar };
+}
+
+// ————————————————————————————————————————————————————————————————
+// GTFS DIŞA AKTARMA (export). Ring zinciri + istasyon koordinatları + RaySim
+// çizelgesi → geçerli GTFS .zip (agency/stops/routes/trips/stop_times/calendar).
+// stops.txt lat/lon ZORUNLU → yalnız koordinatlı hatlarda (GTFS'ten içe aktarılmış)
+// çağrılmalı. Çizelge (stop_times) RaySim'in fizik simülasyonundan gelir (asıl değer).
+// ————————————————————————————————————————————————————————————————
+
+function sn2hms(sn: number): string {
+  const s = Math.max(0, Math.round(sn));
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`;
+}
+function csvKac(s: string): string {
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+export interface GtfsDurakZaman {
+  id: string; ad: string; lat: number; lon: number;
+  varisSn: number;  // trip başından varış (s)
+  kalkisSn: number; // trip başından kalkış (s)
+}
+
+/** GTFS .zip baytları üretir (fflate). Zamanlar `baslangicSn`'den (vars. 06:00) başlar. */
+export function gtfsIhrac(opts: {
+  hatAdi: string;
+  agency: string;
+  duraklar: GtfsDurakZaman[];
+  baslangicSn?: number;
+}): Uint8Array {
+  const bas = opts.baslangicSn ?? 6 * 3600;
+  const agencyId = "A1", routeId = "R1", serviceId = "HAFTAICI", tripId = "T1";
+  const ad = opts.hatAdi || "RaySim hattı";
+  const files: Record<string, Uint8Array> = {
+    "agency.txt": strToU8(`agency_id,agency_name,agency_url,agency_timezone,agency_lang\n${agencyId},${csvKac(opts.agency || "RaySim")},https://raysim.vercel.app,Europe/Istanbul,tr\n`),
+    "stops.txt": strToU8("stop_id,stop_name,stop_lat,stop_lon\n" +
+      opts.duraklar.map((d) => `${d.id},${csvKac(d.ad)},${d.lat.toFixed(6)},${d.lon.toFixed(6)}`).join("\n") + "\n"),
+    "routes.txt": strToU8(`route_id,agency_id,route_short_name,route_long_name,route_type\n${routeId},${agencyId},${csvKac(ad.slice(0, 20))},${csvKac(ad)},0\n`),
+    "trips.txt": strToU8(`route_id,service_id,trip_id\n${routeId},${serviceId},${tripId}\n`),
+    "stop_times.txt": strToU8("trip_id,arrival_time,departure_time,stop_id,stop_sequence\n" +
+      opts.duraklar.map((d, i) => `${tripId},${sn2hms(bas + d.varisSn)},${sn2hms(bas + d.kalkisSn)},${d.id},${i + 1}`).join("\n") + "\n"),
+    "calendar.txt": strToU8(`service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\n${serviceId},1,1,1,1,1,1,1,20260101,20261231\n`),
+  };
+  return zipSync(files, { level: 6 });
 }

@@ -245,6 +245,10 @@ export interface Isletme {
   /** "Her istasyon" modunda durak-başı yolcu (yolcu/saat): ad→{binen,inen}. Girili değilse
    *  rolden tahmin edilen değerle doldurulur. DWELL'i ETKİLEMEZ (ayrı alan) — kapasiteyi bozmaz. */
   istasyonYolcu?: Record<string, { binen: number; inen: number }>;
+  /** İstasyon COĞRAFİ koordinatları (durak adı → enlem/boylam). GTFS içe aktarımında
+   *  yakalanır; GTFS DIŞA aktarımında (stops.txt) kullanılır. Elle kurulan/DXF hatlarda
+   *  boştur (GTFS export yalnız koordinatlı hatlarda anlamlı). */
+  istasyonKoordinat?: Record<string, { lat: number; lon: number }>;
   /** Parklanma dizilimi: her depo (ring id / "origin") → oraya ELLE yerleştirilen araç sayısı.
    *  Rastgele dağıtılmaz; kullanıcı doldurur (toplam = filo). Boşsa henüz dizilmemiş. */
   parklanmaDagilim?: Record<string, number>;

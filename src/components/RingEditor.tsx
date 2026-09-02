@@ -17,6 +17,7 @@ import { brand } from "@/lib/anaray/brand";
 import { CK, SERI } from "@/lib/anaray/chartkit";
 import { kmh, km, sure, indir } from "@/lib/anaray/format";
 import { railmlIhrac } from "@/lib/anaray/railml";
+import { gtfsIhrac, type GtfsDurakZaman } from "@/lib/anaray/gtfs";
 import {
   MAKAS_TIP_AD,
   ringChallenge,
@@ -116,12 +117,13 @@ export function RingEditor() {
   useEffect(() => () => { if (geriAlZaman.current) clearTimeout(geriAlZaman.current); }, []);
 
   // İçe aktarma — 3 mod. "yeniHat" mevcut hatta HİÇ dokunmaz (yeni proje açar, ona doldurur).
-  const iceAktarUygula = async (yeni: DurakArasiRing[], ad: string, mod: IceAktarMod) => {
-    if (mod === "degistir") { silHatirla(() => yeni); patchMeta({ hatAdi: ad }); }
-    else if (mod === "ekle") { silHatirla((rs) => [...rs, ...yeni]); }
+  const iceAktarUygula = async (yeni: DurakArasiRing[], ad: string, mod: IceAktarMod, koord?: Record<string, { lat: number; lon: number }>) => {
+    // koord: GTFS içe aktarımından gelen durak lat/lon (GTFS export için saklanır).
+    if (mod === "degistir") { silHatirla(() => yeni); patchMeta({ hatAdi: ad }); patchIsletme({ istasyonKoordinat: koord ?? {} }); }
+    else if (mod === "ekle") { silHatirla((rs) => [...rs, ...yeni]); if (koord) patchIsletme({ istasyonKoordinat: { ...(isletme.istasyonKoordinat ?? {}), ...koord } }); }
     else if (mod === "yeniHat") {
       setIceMesgul(true);
-      try { await projeYeni(ad); setRings(() => yeni); patchMeta({ hatAdi: ad }); }
+      try { await projeYeni(ad); setRings(() => yeni); patchMeta({ hatAdi: ad }); patchIsletme({ istasyonKoordinat: koord ?? {} }); }
       catch (e) { alert(e instanceof Error ? e.message : "Yeni hat oluşturulamadı."); }
       finally { setIceMesgul(false); }
     }
@@ -131,6 +133,8 @@ export function RingEditor() {
   const tumEksik = useMemo(() => rings.flatMap((r) => ringDogrula(r, cfg)), [rings, cfg]);
   // Durak zinciri (ring uçlarından türer) — üstteki hızlı durak editörü için.
   const duraklar = useMemo(() => ringDuraklari(rings), [rings]);
+  // GTFS export ancak tüm duraklar coğrafi koordinatlıysa (lat/lon) mümkün (GTFS import'tan gelir).
+  const gtfsKoordVar = duraklar.length > 0 && duraklar.every((d) => isletme.istasyonKoordinat?.[d.ad]);
   // Durak ekleme yardımcı girdileri: hızlı kurulum (toplam+sayı), ekleme mesafesi,
   // ortaya bölme konumu (hangi ring + hangi metre).
   const [hizliToplam, setHizliToplam] = useState(6000);
@@ -282,17 +286,47 @@ export function RingEditor() {
           </summary>
           <div className="border-t px-4 pb-4 pt-3" style={{ borderColor: brand.border }}>
             <p className="mb-3 text-xs" style={{ color: brand.muted }}>
-              Hattı <b>railML 2.x</b> altyapı XML&apos;i olarak indir — istasyonlar (ocp) + durak-arası kilometraj (crossSection). OpenTrack / RailSys gibi araçlara köprü. <b>Makas, sinyal ve eğim V1&apos;de aktarılmaz</b> (içe aktarmayla simetrik).
+              Hattı standart formatlara indir. <b>railML</b> = altyapı (OpenTrack/RailSys köprüsü). <b>GTFS</b> = duraklar + <b>RaySim çizelgesi</b> (transit araçları).
             </p>
-            <button type="button"
-              onClick={() => {
-                const xml = railmlIhrac(rings, meta.hatAdi || "RaySim hattı");
-                const ad = (meta.hatAdi || "raysim-hat").trim().replace(/[^\w.-]+/g, "_") || "raysim-hat";
-                indir(new Blob([xml], { type: "application/xml" }), `${ad}.railml.xml`);
-              }}
-              className="rounded-md px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: brand.ink }}>
-              ⬆ railML olarak indir (.xml)
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button"
+                onClick={() => {
+                  const xml = railmlIhrac(rings, meta.hatAdi || "RaySim hattı");
+                  const ad = (meta.hatAdi || "raysim-hat").trim().replace(/[^\w.-]+/g, "_") || "raysim-hat";
+                  indir(new Blob([xml], { type: "application/xml" }), `${ad}.railml.xml`);
+                }}
+                className="rounded-md px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: brand.ink }}>
+                ⬆ railML (.xml)
+              </button>
+              <button type="button" disabled={!gtfsKoordVar}
+                title={gtfsKoordVar ? "GTFS .zip indir (duraklar + RaySim çizelgesi)" : "GTFS için durak koordinatı (lat/lon) gerekli — hattı GTFS'ten içe aktarın"}
+                onClick={() => {
+                  const kmap = isletme.istasyonKoordinat ?? {};
+                  const dz: GtfsDurakZaman[] = [];
+                  let t = 0;
+                  for (let i = 0; i < duraklar.length; i++) {
+                    const k = kmap[duraklar[i].ad];
+                    if (!k) return; // koordinatsız durak → GTFS geçersiz (buton zaten kapalı)
+                    const dwell = i === 0 ? 0 : Math.max(0, rings[i - 1]?.dwell ?? 0);
+                    const varis = t;
+                    const kalkis = varis + dwell;
+                    dz.push({ id: `S${i}`, ad: duraklar[i].ad, lat: k.lat, lon: k.lon, varisSn: varis, kalkisSn: kalkis });
+                    if (i < rings.length) t = kalkis + ringSenaryo(rings[i], stock, cfg).nominalSeyir;
+                  }
+                  const zip = gtfsIhrac({ hatAdi: meta.hatAdi || "RaySim hattı", agency: meta.idare || meta.sinyalizasyonFirmasi || "RaySim", duraklar: dz });
+                  const ad = (meta.hatAdi || "raysim-hat").trim().replace(/[^\w.-]+/g, "_") || "raysim-hat";
+                  indir(new Blob([new Uint8Array(zip)], { type: "application/zip" }), `${ad}.gtfs.zip`);
+                }}
+                className="rounded-md border px-4 py-2 text-sm font-semibold transition enabled:hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45"
+                style={{ borderColor: brand.borderStrong, color: brand.ink }}>
+                ⬆ GTFS (.zip)
+              </button>
+            </div>
+            {!gtfsKoordVar && (
+              <p className="mt-2 text-[0.7rem]" style={{ color: brand.muted }}>
+                GTFS için durakların <b>coğrafi koordinatı (lat/lon)</b> gerekir; bu yalnız <b>GTFS&apos;ten içe aktarılan</b> hatlarda saklanır. railML her hatta çalışır.
+              </p>
+            )}
           </div>
         </details>
       )}

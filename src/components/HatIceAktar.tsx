@@ -25,7 +25,7 @@ export type IceAktarMod = "degistir" | "ekle" | "yeniHat";
 interface HatSonuc { rings: DurakArasiRing[]; ad: string; durakSayisi: number; toplamKm: number; uyarilar: string[]; yol?: { x: number; y: number }[]; duraklar?: { ad: string; km: number; x: number; y: number }[]; }
 
 export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false }: {
-  onIceAktar: (rings: DurakArasiRing[], ad: string, mod: IceAktarMod) => void | Promise<void>;
+  onIceAktar: (rings: DurakArasiRing[], ad: string, mod: IceAktarMod, koord?: Record<string, { lat: number; lon: number }>) => void | Promise<void>;
   disabled?: boolean;
   mesgulDis?: boolean;
   /** Gömülü (ör. "+ Yeni hat" modalı): daima YENİ hat modu, mod seçici + details sarmalı yok. */
@@ -101,10 +101,15 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false }:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeId, feed]);
 
-  const gtfsSonuc = useMemo<HatSonuc | null>(() => {
+  const gtfsFull = useMemo(() => {
     if (!feed || !routeId || !dir) return null;
     try { return gtfsHatKur(feed, routeId, dir); } catch { return null; }
   }, [feed, routeId, dir]);
+  // GtfsHatSonuc.duraklar (lat/lon) yerel HatSonuc.duraklar (x/y) ile farklı; koordinatı
+  // ayrı taşırız (GTFS export için isletme.istasyonKoordinat'a yazılır).
+  const gtfsSonuc: HatSonuc | null = gtfsFull
+    ? { rings: gtfsFull.rings, ad: gtfsFull.ad, durakSayisi: gtfsFull.durakSayisi, toplamKm: gtfsFull.toplamKm, uyarilar: gtfsFull.uyarilar }
+    : null;
 
   const cadSonuc = useMemo<{ sonuc: CadHatSonuc | null; hata: string | null }>(() => {
     if (!geo || esle.guzergahKatman.length === 0 || esle.durakKatman.length === 0) return { sonuc: null, hata: null };
@@ -125,7 +130,13 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false }:
   const uygula = async () => {
     if (!sonuc) return;
     if (!confirm(`“${sonuc.ad}” (${sonuc.durakSayisi} durak) içe aktarılsın mı?\n\n${modAd[mod]}`)) return;
-    await onIceAktar(sonuc.rings, sonuc.ad, mod);
+    // GTFS ise durak koordinatlarını (lat/lon) da geçir → GTFS export için saklanır.
+    let koord: Record<string, { lat: number; lon: number }> | undefined;
+    if (kaynak === "gtfs" && gtfsFull?.duraklar?.length) {
+      koord = {};
+      for (const d of gtfsFull.duraklar) koord[d.ad] = { lat: d.lat, lon: d.lon };
+    }
+    await onIceAktar(sonuc.rings, sonuc.ad, mod, koord);
   };
 
   const govde = (
