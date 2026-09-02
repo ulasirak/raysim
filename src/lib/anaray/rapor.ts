@@ -525,7 +525,7 @@ function rDil(lang: RaporDil) {
     kunye: { proje: "Proje", hat: "Hat", dok: "Doküman No", rev: "Revizyon", tarih: "Tarih", idare: "İdare", yuk: "Yüklenici", mus: "Müşavir", firma: "Sinyalizasyon Firması" },
     kpi: { hucre: "Durak arası hücre", hedef: "Hedef headway", sigan: "Headway'de sığan tramvay", kapasite: "Teorik kapasite", pratik: "İşletme kapasitesi", uic: "UIC 406 doluluk", ch: "Challenge / kritik" },
     altMakas: (n: number) => `${n} makas`, altTumu: "tümü uygun", altIhlal: "ihlal var", altTur: (s: string) => `tur ${s}`, altTph: "tramvay/saat", altUygun: "uygun", altIhlalK: "ihlal", altRisk: "risk kaydı",
-    s1: "Kapasite Sonucu ve Parametreler", s1i: "Hattın azami tramvay kapasitesi ve belirleyici kısıtlar; sinyalizasyon, makas tip/sayıları, istasyon duruş süreleri, terminal dönüşü, hemzemin geçitler ve araç dinamiği parametrelerinden hesaplanmıştır.",
+    s1: "Girdi Parametreleri ve İşletme Verileri", s1i: "Analizin dayandığı girdi parametreleri: sinyalizasyon, makas tip/sayıları, istasyon duruş süreleri, terminal dönüşü, hemzemin geçitler ve araç dinamiği. Tüm kapasite, işletme ve tarife sonuçları bu değerlerden türetilir; kapasite çıktıları Bölüm 4'te ayrıntılandırılır.",
     thParam: ["Parametre", "Değer", "Etkisi"],
     s2: "Durak Arası İşletim Hücreleri", s2i: (n: number, h: number) => `Hat, ${n} durak-arası hücreye (ring) ayrılmıştır; her hücre kendi mesafe, makas, hemzemin geçit ve tehlike noktası şartlarını taşır (hedef aralık ${h} s).`,
     fig1: "Şekil 1 — Hat şeması: istasyon zinciri, makas (⑂) ve hemzemin geçit dağılımı.",
@@ -557,7 +557,7 @@ function rDil(lang: RaporDil) {
     kunye: { proje: "Project", hat: "Line", dok: "Document No", rev: "Revision", tarih: "Date", idare: "Authority", yuk: "Contractor", mus: "Consultant", firma: "Signalling Firm" },
     kpi: { hucre: "Inter-station cells", hedef: "Target headway", sigan: "Trains within headway", kapasite: "Theoretical capacity", pratik: "Operating capacity", uic: "UIC 406 occupancy", ch: "Challenges / critical" },
     altMakas: (n) => `${n} switches`, altTumu: "all compliant", altIhlal: "violations", altTur: (s) => `cycle ${s}`, altTph: "trains/hour", altUygun: "compliant", altIhlalK: "violation", altRisk: "risk records",
-    s1: "Capacity Result and Parameters", s1i: "The line's maximum tram capacity and determining constraints are computed from the signalling, switch types/counts, station dwell times, terminal turnback, level crossings and vehicle dynamics parameters.",
+    s1: "Input Parameters and Operating Data", s1i: "The input parameters the analysis rests on: signalling, switch types/counts, station dwell times, terminal turnback, level crossings and vehicle dynamics. All capacity, operating and timetable results are derived from these values; the capacity outputs are detailed in Section 4.",
     thParam: ["Parameter", "Value", "Effect"],
     s2: "Inter-station Operating Cells", s2i: (n, h) => `The line is divided into ${n} inter-station cells (rings); each carries its own distance, switch, level-crossing and hazard conditions (target headway ${h}s).`,
     fig1: "Figure 1 — Line schematic: station chain, switch (⑂) and level-crossing distribution.",
@@ -1355,7 +1355,6 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <!-- 1 -->
   <div class="banner breakbefore"><span class="no">01</span>${L.s1}</div>
   <p>${L.s1i}</p>
-  ${kpiRow}
   ${tbl(L.thParam, paramRows, { first: true })}
 
   <!-- 2 -->
@@ -1373,6 +1372,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <!-- 4 -->
   <div class="banner"><span class="no">04</span>${L.s4}</div>
   <p>${L.s4i}</p>
+  ${kpiRow}
   ${kapasiteTbl}
   ${kapGirdiNot}
   ${sunum ? `<div class="gs ok"><b style="color:#2E7D57">✓</b> ${lang === "en" ? `Capacity analysis confirms that all blocks remain within the target headway (${cfg.headway} s); no limit is exceeded. The design is compliant in terms of capacity.` : `Kapasite analizi, tüm blokların hedef headway (${cfg.headway} s) sınırı içinde kaldığını göstermektedir; sınır aşımı bulunmamaktadır. Tasarım, kapasite açısından uygundur.`}</div>` : ""}
