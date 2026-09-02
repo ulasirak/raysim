@@ -646,6 +646,26 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const kisitFig = (maks.gecerli && maks.kisitlar.length) ? `<div class="fig">${kisitBarSvg(maks.kisitlar, kritikRenk, en)}<div class="cap">${en ? "Figure 2c — Determining constraint: competing headway limits (block / terminal turnback / single track / junction / signal); the longest binds (hMin)." : "Şekil 2c — Belirleyici kısıt: rakip headway limitleri (blok / terminal turnback / tek hat / kavşak / sinyal); en uzunu bağlar (hMin)."}</div></div>` : "";
   const hizFig = (line && loopYbf) ? `<div class="fig">${hizProfilSvg(loopYbf, line, en)}<div class="cap">${en ? "Figure 3b — Speed profile v(x): actual speed (blue) vs. segment speed limit (dashed), outbound leg. Dips = station stops; below-limit = acceleration/braking." : "Şekil 3b — Hız profili v(x): gerçek hız (mavi) ile segment hız limiti (kesikli), gidiş legi. Dipler = istasyon duruşları; limit altı = hızlanma/frenleme."}</div></div>` : "";
 
+  // Düz kavşak (flat junction) blocking-time DÖKÜMÜ — kritik kavşağın Sperrzeit bileşenleri.
+  // Yalnız çakışmalı bir makas varsa üretilir; tren boyunun kavşak işgaline katkısını gösterir.
+  const kavsakDetayBlok = maks.kavsakDetay ? (() => {
+    const d = maks.kavsakDetay!;
+    const bagliyor = maks.baglayanAnahtar === "kavsak";
+    const rows: (string | number)[][] = [
+      [en ? "Route setting (throw)" : "Makas tanzim", `${Math.round(d.tSetup)} s`],
+      [en ? "Sighting / reaction" : "Görme / reaksiyon", `${d.tGorme} s`],
+      [en ? `Traverse + ${Math.round(stock.length)} m train clearing @ ${Math.round(d.gecisHizi * 3.6)} km/h`
+          : `Geçiş + ${Math.round(stock.length)} m tren temizleme @ ${Math.round(d.gecisHizi * 3.6)} km/h`, `${Math.round(d.tGecis)} s`],
+      [en ? "Route release" : "Rota serbest bırakma", `${Math.round(d.tRelease)} s`],
+      [en ? "Single pass (subtotal)" : "Tek geçiş (ara toplam)", `${Math.round(d.tekGecis)} s`],
+      [en ? `Conflict headway (opposing ×${d.faktor})` : `Çakışma headway (karşı-yön ×${d.faktor})`, `${Math.round(d.isgal)} s`],
+    ];
+    const not = en
+      ? `Flat junction <b>${esc(d.ad.replace(/^Junction — |^Kavşak — /, ""))}</b>: for the crossing to clear, the train's <b>rear</b> must also pass the fouling point, so the traverse path is the constraint zone <b>plus the ${Math.round(stock.length)} m train length</b> at ${Math.round(d.gecisHizi * 3.6)} km/h (a longer vehicle occupies the junction longer). Opposing arrival + departure use the crossover in turn, hence ×${d.faktor}.${bagliyor ? " <b>This junction is the binding constraint (hMin).</b>" : ""}`
+      : `Düz kavşak <b>${esc(d.ad.replace(/^Kavşak — /, ""))}</b>: kavşağın serbest kalması için trenin <b>kuyruğu</b> da fouling noktasını geçmeli; bu yüzden geçiş yolu, kısıt bölgesi <b>artı ${Math.round(stock.length)} m tren boyu</b>, ${Math.round(d.gecisHizi * 3.6)} km/h geçiş hızında alınır (uzun araç kavşağı daha uzun işgal eder). Karşı-yön varış + kalkış crossover'ı sırayla kullandığından ×${d.faktor}.${bagliyor ? " <b>Bu kavşak belirleyici kısıttır (hMin).</b>" : ""}`;
+    return `<h3 class="sub">${en ? "Critical Junction — Blocking-Time" : "Kritik Kavşak — Blocking-Time"}</h3>${tbl([en ? "Component" : "Bileşen", en ? "Time" : "Süre"], rows, { first: true })}<div class="gs" style="font-size:9.5pt">${not}</div>`;
+  })() : "";
+
   // ---- Kapak künye ----
   const kunye = [
     [L.kunye.proje, meta.projeAdi], [L.kunye.hat, meta.hatAdi], [L.kunye.dok, meta.dokumanNo], [L.kunye.rev, meta.revizyon],
@@ -670,6 +690,34 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     ${kpi(L.kpi.pratik, `${pratikTph.toFixed(0)}`, `%${((maks.dolulukTavani || 1) * 100).toFixed(0)} · ${L.altTph}`, INK)}
     ${kpi(L.kpi.uic, `%${uicDoluluk.toFixed(0)}`, (uicDoluluk <= 100 || sunum) ? L.altUygun : L.altIhlalK, (uicDoluluk <= 100 || sunum) ? "#0E7C57" : RED)}
   </div>`;
+
+  // ---- YÖNETİCİ ÖZETİ (kapaktan sonra, 1. bölümden önce; 1 sayfa karar özeti) ----
+  // Amaç: teknik detaya girmeden bir bakışta "hat ne taşır, neyle sınırlı, hedef uygun mu".
+  const ozetSec = (() => {
+    if (!maks.gecerli) return "";
+    const kmUz = line ? (line.length / 1000).toFixed(1) : "—";
+    const durakSayisi = rings.length + 1;
+    const verdictRenk = headwayUygun || sunum ? "#0E7C57" : RED;
+    const uygunMetni = headwayUygun
+      ? (en ? "within the limit this point allows" : "bu noktanın izin verdiği sınırın içindedir")
+      : (en ? "TIGHTER than this point allows — see the determining constraint" : "bu noktanın izin verdiğinden DAHA SIKIDIR — belirleyici kısıta bakınız");
+    const strip = `<div class="kpi-row">
+      ${kpi(en ? "Line length" : "Hat uzunluğu", `${kmUz} km`, en ? `${durakSayisi} stops` : `${durakSayisi} durak`, INK)}
+      ${kpi(surdurEt, `${maks.nSurdurulebilir}`, en ? "UIC 406 sustainable" : "UIC 406 sürdürülebilir", INK)}
+      ${kpi(minHwEt, `${s0(maks.hMin)}`, (maks.baglayanAd || "").slice(0, 22), verdictRenk)}
+      ${kpi(en ? "Planned fleet" : "Planlanan filo", `${filoGercek}`, en ? "trams in service" : "serviste tramvay", INK)}
+      ${kpi(L.kpi.pratik, `${pratikTph.toFixed(0)}`, L.altTph, INK)}
+      ${kpi(L.kpi.uic, `%${uicDoluluk.toFixed(0)}`, (uicDoluluk <= 100 || sunum) ? L.altUygun : L.altIhlalK, (uicDoluluk <= 100 || sunum) ? "#0E7C57" : RED)}
+    </div>`;
+    const verdict = en
+      ? `This <b>${kmUz} km</b> line (${durakSayisi} stops) carries a sustainable maximum of <b>${maks.nSurdurulebilir} trams</b> (theoretical ${maks.nTeorik}) under the UIC 406 blocking-time method. The determining constraint is <b>${esc(maks.baglayanAd || "—")}</b>, which sets the minimum interval between trams at <b>${Math.round(maks.hMin)} s</b>. The <b>${cfg.headway} s</b> design headway is <b style="color:${verdictRenk}">${uygunMetni}</b>. At the planned <b>${filoGercek}-tram</b> fleet the line runs at <b>%${uicDoluluk.toFixed(0)}</b> UIC 406 occupancy and passes about <b>${pratikTph.toFixed(0)} trams/hour</b> at a determining point.`
+      : `Bu <b>${kmUz} km</b>'lik hat (${durakSayisi} durak), UIC 406 blocking-time yöntemiyle sürdürülebilir olarak en fazla <b>${maks.nSurdurulebilir} tramvay</b> (teorik ${maks.nTeorik}) taşır. Belirleyici kısıt <b>${esc(maks.baglayanAd || "—")}</b> olup tramvaylar arasındaki en küçük aralığı <b>${Math.round(maks.hMin)} s</b> olarak belirler. Tasarım hedefi olan <b>${cfg.headway} s</b> sefer aralığı, <b style="color:${verdictRenk}">${uygunMetni}</b>. Planlanan <b>${filoGercek} araçlık</b> filoyla hat <b>%${uicDoluluk.toFixed(0)}</b> UIC 406 doluluğunda çalışır ve belirleyici noktadan saatte yaklaşık <b>${pratikTph.toFixed(0)} tramvay</b> geçer.`;
+    return `<section class="breakbefore">
+      <div class="banner"><span class="no">00</span>${en ? "Executive Summary" : "Yönetici Özeti"}</div>
+      ${strip}
+      <div class="gs" style="font-size:10.5pt;margin-top:10px">${verdict}</div>
+    </section>`;
+  })();
 
   // ---- Parametre tablosu ----
   const paramRows = PARAM_META.map((m) => [m.ad, `${paramGoster(cfg, m).toFixed(m.tur === "ivme" ? 1 : 0)} ${birim(m.tur)}`, m.etkiler]);
@@ -1288,6 +1336,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <section class="toc breakbefore">
     <div class="toc-h">${L.toc}</div>
     <ol class="toc-list">
+      <li><b>00</b>${en ? "Executive Summary" : "Yönetici Özeti"}</li>
       <li><b>01</b>${L.s1}</li>
       <li><b>02</b>${L.s2}<ul><li>2.1 ${en ? "Per-cell Constraint Analysis" : "Ring Bazında Kısıt Analizi"}</li></ul></li>
       <li><b>03</b>${en ? "Signalling — Signal Lamps (SG)" : "Sinyalizasyon — Sinyal Lambaları (SG)"}</li>
@@ -1308,6 +1357,9 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
       <li>${en ? "Fig. 4 — Sperrzeitentreppe" : "Şekil 4 — Sperrzeitentreppe"}</li>
       <li>${en ? "Fig. 5 — Blocking-time components" : "Şekil 5 — Blocking-time bileşenleri"}</li></ul></div>
   </section>
+
+  <!-- 0: Yönetici Özeti -->
+  ${ozetSec}
 
   <!-- 1 -->
   <div class="banner breakbefore"><span class="no">01</span>${L.s1}</div>
@@ -1336,6 +1388,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <p class="muted" style="font-size:11px;margin-top:6px">${L.kapNot}</p>
   <div class="gs" style="font-size:10pt">${kapYorum}</div>
   ${kisitFig}
+  ${kavsakDetayBlok}
   <h3 class="sub">${lang === "en" ? "Terminal Turnback Capacity" : "Terminal Turnback Kapasitesi"}</h3>
   ${turnbackTblStr}
   ${hemzeminFig}
