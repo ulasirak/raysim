@@ -30,8 +30,8 @@ import { blockingTimeRing } from "./blockingtime";
 import { loopToHat } from "./hatsim";
 import { simulate } from "./sim";
 import { computeEnergy } from "./energy";
-import { simulateSignalled, loopYorunge, type LoopYorunge } from "./signalling";
-import { sinyalKonumlari, hatOzellikleri } from "./network";
+import { loopYorunge, type LoopYorunge } from "./signalling";
+import { hatOzellikleri } from "./network";
 import type { Line } from "./types";
 
 const INK = "#0C2233";
@@ -617,7 +617,6 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const sinyalListe = ozellikler.filter((f) => f.kind === "sinyal");
   const sinyalSayisi = sinyalListe.length;
   const tersSinyalSayisi = sinyalListe.filter((f) => f.tersIsletme).length;
-  const sinyaller = sinyalKonumlari(rings, cfg); // giden non-ters = blok sınırları (canlı sim ile aynı)
   const filoGercek = filo > 0 ? Math.round(filo) : (siganTren || maks.nSurdurulebilir || 4);
 
   // Birleşik hat (loop → tek Line) → hız profili + Bildfahrplan grafikleri

@@ -210,7 +210,6 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       if (id) setPaylasimId(id);
       const hk = sp.get("hat");
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (hk) setHatKey(hk);
     } catch { /* sessiz */ }
   }, []);

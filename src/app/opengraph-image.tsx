@@ -25,8 +25,9 @@ export default function OpengraphImage() {
         {/* üst cetvel — resmî kırmızı */}
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 16, background: "#C8102E", display: "flex" }} />
 
-        {/* amblem */}
-        <img width={600} height={600} src={emblemDataUri()} style={{ marginBottom: 24 }} />
+        {/* amblem — ImageResponse (Satori) içinde next/image render edilmez; <img> zorunlu. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img width={600} height={600} src={emblemDataUri()} alt="RaySim amblemi" style={{ marginBottom: 24 }} />
 
         {/* kelime markası */}
         <div style={{ fontSize: 180, color: "#FFFFFF", fontWeight: 600, letterSpacing: 6, display: "flex" }}>

@@ -33,7 +33,7 @@ function polylineShp(pts: { x: number; y: number }[]): Uint8Array {
   dv.setInt32(24, total / 2, false);
   dv.setInt32(28, 1000, true);
   dv.setInt32(32, 3, true);               // PolyLine
-  let o = 100;
+  const o = 100;
   dv.setInt32(o, 1, false);               // record number
   dv.setInt32(o + 4, content / 2, false); // content length words
   let p = o + 8;

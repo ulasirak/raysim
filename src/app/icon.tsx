@@ -18,7 +18,9 @@ export default function Icon() {
           background: "#0C2233",
         }}
       >
-        <img width={56} height={56} src={emblemDataUri()} />
+        {/* ImageResponse (Satori) — next/image render edilmez; <img> zorunlu. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img width={56} height={56} src={emblemDataUri()} alt="RaySim amblemi" />
       </div>
     ),
     { ...size }

@@ -440,6 +440,8 @@ export function LiveNetwork({
   const upNow = up.map((tr) => { const r = sampleS(tr.points, t); return { tr, active: r.active, fp: r.s, up: true, v: r.v }; }).filter((x) => x.active);
   const downNow = down.map((tr) => { const r = sampleS(tr.points, t); return { tr, active: r.active, fp: L - r.s, up: false, v: r.v }; }).filter((x) => x.active);
   // DÖNGÜ modu: tek-tren yörüngesinde `count` treni eşit fazla (offset=headway) yerleştir.
+  // arizaTutRef gösterim-amaçlı okunur (zamanlayıcı otoritesi; her kare setT ile taze).
+  // eslint-disable-next-line react-hooks/refs
   const loopNow = loop ? Array.from({ length: loop.count }, (_, k) => {
     const dg = loop.dagitim?.[k];
     const trBase = { index: k, points: [], arr: 0, delay: 0 } as SignalTrain;
@@ -455,6 +457,8 @@ export function LiveNetwork({
     const fp = gidis ? Math.min(loop.L, r.s) : Math.max(0, loop.loopLen - r.s);
     // Arıza kuyruğunda TUTULAN tren fiilen DURUYOR: hızı yörüngeden değil 0 göster (faz
     // dondurulduğu için r.v o konumun yörünge hızını verirdi = yanıltıcı "40 km/h").
+    // arizaTutRef zamanlayıcıda güncellenir; her kare setT re-render tetiklediğinden gösterim
+    // tazedir — ref'i state'e aynalamak gereksiz çift kaynak olurdu (disable loopNow'da).
     if (arizaTutRef.current.has(k)) return { tr: trBase, fp, up: gidis, v: 0, durum: "dwell" as LoopDurum, ad: "arızalı blok arkasında güvenle bekliyor" };
     return { tr: trBase, fp, up: gidis, v: r.v, durum: r.durum, ad: r.ad };
   }) : [];
@@ -993,19 +997,24 @@ export function LiveNetwork({
 
       {/* Arıza aktif → FAIL-SAFE bilgi kartı: döngü İÇİNDE kuyruk (motor değişmez, sahne
           sıfırlanmaz). Kuyruktaki tren sayısı canlı sayılır (arizaTutRef her kare güncel). */}
-      {loop && faultBlocks.length > 0 && (
+      {/* arizaTutRef gösterim-amaçlı okunur (zamanlayıcı otoritesi; her kare setT ile taze). */}
+      {/* eslint-disable-next-line react-hooks/refs */}
+      {loop && faultBlocks.length > 0 && (() => {
+        const kuyruk = arizaTutRef.current.size;
+        return (
         <div className="mb-2 overflow-hidden rounded-md border-l-4 text-xs" style={{ background: CK.badBgSoft, borderColor: brand.red, color: brand.inkSoft }}>
           <div className="px-3 py-2">
             <b style={{ color: brand.red }}>⚠ Blok arızası ({faultBlocks.length} blok)</b> — arızalı bloğa tekrar dokununca kalkar.
           </div>
           <div className="px-3 py-2" style={{ background: DURUM_STIL.dwell.renk + "18", borderTop: `1px solid ${brand.border}` }}>
-            <b style={{ color: brand.ink }}>🛡️ Fail-safe:</b> {arizaTutRef.current.size > 0 ? (<><b>{arizaTutRef.current.size} tramvay</b> arızalı bloğun gerisinde <b>güvenle kuyrukta</b> — arkadan gelen önündekine <b>çarpmadı</b> (tren boyu aralığıyla durdu).</>) : (<>arızaya yaklaşan tramvay bloğun gerisinde <b>güvenle durur</b>, arkadan gelenler kuyruklanır.</>)} Bloğu <b>geçmiş</b> tramvaylar akmaya devam eder.
+            <b style={{ color: brand.ink }}>🛡️ Fail-safe:</b> {kuyruk > 0 ? (<><b>{kuyruk} tramvay</b> arızalı bloğun gerisinde <b>güvenle kuyrukta</b> — arkadan gelen önündekine <b>çarpmadı</b> (tren boyu aralığıyla durdu).</>) : (<>arızaya yaklaşan tramvay bloğun gerisinde <b>güvenle durur</b>, arkadan gelenler kuyruklanır.</>)} Bloğu <b>geçmiş</b> tramvaylar akmaya devam eder.
           </div>
           <div className="px-3 py-2" style={{ color: brand.muted, borderTop: `1px solid ${brand.border}` }}>
             Sahne sıfırlanmaz, tramvay ışınlanmaz; arıza kalkınca herkes <b>kaldığı yerden</b> sürer — gerçek sinyalizasyonun tek-nokta arızasına dayanıklılığı. (Arıza sürerken ters işletme etkileşimi duraklar.)
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* TERS İŞLETME MODU — SADECE istasyon makasları için geçerli. Aktivasyon:
           Kapalı / Sadece giden hat / Çift taraflı. Kalıcı (isletme.tersMod). */}

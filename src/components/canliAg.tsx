@@ -5,7 +5,7 @@
 // (ağ→rota→hat→gidiş/dönüş sim→döngü) context'ten hesaplar. CanliAgSayfa: QR'dan gelen
 // oturumsuz ziyaretçi için sade, MOBİL-uyumlu tam ekran sim (ters işletme KAPALI gelir).
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { RailNetwork, Route } from "@/lib/anaray/types";
 import { flattenRoute, ringlerdenSebeke, hemzeminDuruslari, duruslariEkle, kalkisEkle, hatOzellikleri } from "@/lib/anaray/network";
 import { simulate } from "@/lib/anaray/sim";

@@ -102,6 +102,8 @@ function StudioIc() {
   // Pop-up'ı BODY'ye portallamak için mount bekle (SSR'da document yok). Portal,
   // modal'ı dar/dönüştürülmüş atalardan çıkarır → daima ekranın ORTASINDA açılır.
   const [mounted, setMounted] = useState(false);
+  // SSR-güvenli mount kapısı (pop-up BODY'ye portallanır) — kabul edilen desen.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMounted(true); }, []);
 
   // Hemzemin geçit koruma duruşları (bekleme>0 karayolu geçitleri) — hem gidiş hem

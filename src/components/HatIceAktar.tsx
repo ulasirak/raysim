@@ -92,6 +92,9 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis }: {
   };
 
   useEffect(() => {
+    // Rota/feed değişince geçersiz kalan yön seçimini ilk geçerli yöne senkronla — türetilmiş
+    // state düzeltmesi (kullanıcı seçimini korur, yalnız geçersizse sıfırlar).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (yonler.length && !yonler.some((y) => y.dir === dir)) setDir(yonler[0].dir);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeId, feed]);

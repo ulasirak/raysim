@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { raporHTML } from "../rapor";
 import { hazirHatlar } from "@/lib/anaray/hazirHatlar";
-import { varsayilanConfig, varsayilanIsletme } from "@/lib/anaray/config";
+import { varsayilanConfig, varsayilanIsletme, varsayilanMeta } from "@/lib/anaray/config";
 import { varsayilanArac } from "@/lib/anaray/vehicles";
 
 describe("rapor Bildfahrplan (git-gel loop)", () => {
@@ -10,7 +10,7 @@ describe("rapor Bildfahrplan (git-gel loop)", () => {
     const cfg = { ...varsayilanConfig, ...(h.veri.cfg ?? {}) };
     const isletme = { ...varsayilanIsletme, ...(h.veri.isletme ?? {}) };
     const stock = h.veri.arac ?? varsayilanArac;
-    const html = raporHTML(h.veri.meta ?? { projeAdi: "T", hatAdi: h.ad } as any, cfg, h.veri.rings ?? [], stock, "tr", 15, isletme, "");
+    const html = raporHTML(h.veri.meta ?? { ...varsayilanMeta, projeAdi: "T", hatAdi: h.ad }, cfg, h.veri.rings ?? [], stock, "tr", 15, isletme, "");
     expect(html).toContain("Bildfahrplan");
     expect(html).toContain("git-gel döngü");     // yeni altyazı
     expect(html).toContain("<polyline");           // tren çizgileri çizildi
@@ -23,7 +23,7 @@ describe("rapor Bildfahrplan (git-gel loop)", () => {
     const cfg = { ...varsayilanConfig, ...(h.veri.cfg ?? {}) };
     const isletme = { ...varsayilanIsletme, ...(h.veri.isletme ?? {}) };
     const stock = h.veri.arac ?? varsayilanArac;
-    const html = raporHTML(h.veri.meta ?? { projeAdi: "T", hatAdi: h.ad } as any, cfg, h.veri.rings ?? [], stock, "tr", 15, isletme, "");
+    const html = raporHTML(h.veri.meta ?? { ...varsayilanMeta, projeAdi: "T", hatAdi: h.ad }, cfg, h.veri.rings ?? [], stock, "tr", 15, isletme, "");
     expect(html).toContain("Hız profili");                  // Şekil 3b
     expect(html).toContain("Yük profili");                  // Şekil 5b
     expect(html).toContain("Belirleyici kısıt");            // Şekil 2c

@@ -16,6 +16,8 @@ export function GrafikCerceve({ baslik, children }: { baslik: string; children: 
   const [tam, setTam] = useState(false);
   const [mounted, setMounted] = useState(false);
   const govdeRef = useRef<HTMLDivElement>(null);
+  // SSR-güvenli mount kapısı (createPortal document gerektirir) — kabul edilen desen.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
 
   // Tam ekranda SVG'leri EKRANI DOLDURMAYA zorla: preserveAspectRatio="none" (en-boy

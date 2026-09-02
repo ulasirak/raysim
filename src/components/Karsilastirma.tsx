@@ -55,6 +55,8 @@ export function Karsilastirma() {
     const eksik = [...secili].filter((id) => !cache[id]);
     if (eksik.length === 0) return;
     let iptal = false;
+    // Veri-çekme effect'i: eksik projeler yüklenirken "yükleniyor" durumu — meşru.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setYukleniyor(true); setHata(null);
     Promise.all(eksik.map(async (id) => [id, (await projeGetir(id)).veri] as const))
       .then((ciftler) => { if (!iptal) setCache((c) => ({ ...c, ...Object.fromEntries(ciftler) })); })
