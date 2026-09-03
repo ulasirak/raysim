@@ -28,7 +28,8 @@ import {
 } from "./ring";
 import { blockingTimeRing } from "./blockingtime";
 import { loopToHat } from "./hatsim";
-import { loopYorunge, type LoopYorunge } from "./signalling";
+import { loopYorunge, monteCarlo, type LoopYorunge, type MonteCarloResult } from "./signalling";
+import { sure } from "./format";
 import { hatOzellikleri } from "./network";
 import type { Line } from "./types";
 
@@ -540,6 +541,74 @@ function rDil(lang: RaporDil) {
   return lang === "en" ? en : tr;
 }
 
+// ————————————————————————————————————————————————
+// Monte-Carlo gecikme analizi — gömülü SVG (Studio ekranındaki iki grafiğin
+// rapor karşılığı). Motor aynı (signalling.monteCarlo); yalnız çizim string SVG.
+// ————————————————————————————————————————————————
+
+// 1) Gecikme DAĞILIMI histogramı — eşik altı (dakik, mavi) / üstü (geç, kırmızı);
+//    ortalama · P90 · eşik dikey işaretleri. Kuyruk riskini tek bakışta gösterir.
+function mcHistSvg(mc: MonteCarloResult, en = false): string {
+  const W = 820, H = 232, padL = 44, padR = 16, padT = 16, padB = 34;
+  const pw = W - padL - padR, ph = H - padT - padB;
+  const maxD = Math.max(1, mc.maxDelay);
+  const maxOran = Math.max(1, ...mc.histogram.map((h) => h.oran));
+  const px = (d: number) => padL + (Math.min(Math.max(d, 0), maxD) / maxD) * pw;
+  const py = (o: number) => padT + ph - (o / maxOran) * ph;
+  const eksenY = padT + ph;
+  const bw = pw / Math.max(1, mc.histogram.length);
+  const yIsaret = [0, 0.5, 1].map((f) => {
+    const o = f * maxOran, y = py(o);
+    return `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${padL + pw}" y2="${y.toFixed(1)}" stroke="${CK.grid}"/>${num(padL - 5, y + 2.5, `%${o.toFixed(0)}`, { anchor: "end", size: 9 })}`;
+  }).join("");
+  const cubuklar = mc.histogram.map((h, i) => {
+    const x = padL + i * bw + 1, y = py(h.oran), hgt = Math.max(0, eksenY - y), gec = h.alt >= mc.threshold;
+    return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${Math.max(0.5, bw - 2).toFixed(1)}" height="${hgt.toFixed(1)}" rx="3" fill="${gec ? CK.red : CK.blue}" fill-opacity="0.88"/>`;
+  }).join("");
+  const isaret = (d: number, ad: string, renk: string, yLabel: number) =>
+    `<line x1="${px(d).toFixed(1)}" y1="${padT}" x2="${px(d).toFixed(1)}" y2="${eksenY.toFixed(1)}" stroke="${renk}" stroke-width="1.4" stroke-dasharray="4 3"/>${num(px(d) + 3, yLabel, ad, { anchor: "start", size: 9, weight: 600, color: renk })}`;
+  const isaretler = isaret(mc.meanDelay, en ? "mean" : "ort", CK.ink2, padT + 10)
+    + isaret(mc.threshold, en ? "threshold" : "eşik", CK.amber, padT + 22)
+    + isaret(mc.p90Delay, "P90", CK.red, padT + 34);
+  const eksen = `<line x1="${padL}" y1="${eksenY.toFixed(1)}" x2="${padL + pw}" y2="${eksenY.toFixed(1)}" stroke="${CK.ink2}" stroke-width="0.8"/>`;
+  const altEksen = num(padL, H - 5, "0", { anchor: "start", size: 9, color: CK.muted })
+    + lab(padL + pw / 2, H - 5, en ? "arrival delay →" : "varış gecikmesi →", { anchor: "middle", size: 8.5, color: CK.muted })
+    + num(padL + pw, H - 5, sure(maxD), { anchor: "end", size: 9, color: CK.muted });
+  const leg = `<text x="${W - padR}" y="12" text-anchor="end" font-family="${CK.sans}" font-size="8.5"><tspan fill="${CK.blue}">▬ ${en ? "on-time (below threshold)" : "dakik (eşik altı)"}</tspan>  <tspan fill="${CK.red}">▬ ${en ? "late" : "geç"}</tspan></text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%">${yIsaret}${cubuklar}${isaretler}${eksen}${altEksen}${leg}</svg>`;
+}
+
+// 2) Tren SIRASINA göre yayılım — medyan (● + çizgi) + P90 bıyığı; birincil gecikmenin
+//    sonraki trenlere kademelenmesini gösterir.
+function mcYayilimSvg(mc: MonteCarloResult, en = false): string {
+  const n = mc.perTren.length;
+  if (n === 0) return "";
+  const W = 820, H = 168, padL = 44, padR = 16, padT = 14, padB = 26;
+  const pw = W - padL - padR, ph = H - padT - padB;
+  const maxY = Math.max(1, mc.threshold, ...mc.perTren.map((p) => p.p90));
+  const sx = (i: number) => padL + (n <= 1 ? pw / 2 : (i / (n - 1)) * pw);
+  const sy = (v: number) => padT + ph - (Math.min(Math.max(v, 0), maxY) / maxY) * ph;
+  const eksenY = padT + ph;
+  const yIsaret = [0, 0.5, 1].map((f) => {
+    const v = f * maxY, y = sy(v);
+    return `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${padL + pw}" y2="${y.toFixed(1)}" stroke="${CK.grid}"/>${num(padL - 5, y + 2.5, sure(v), { anchor: "end", size: 9 })}`;
+  }).join("");
+  const esik = `<line x1="${padL}" y1="${sy(mc.threshold).toFixed(1)}" x2="${padL + pw}" y2="${sy(mc.threshold).toFixed(1)}" stroke="${CK.amber}" stroke-width="1.4" stroke-dasharray="4 3"/>${num(padL + pw, sy(mc.threshold) - 3, en ? "threshold" : "eşik", { anchor: "end", size: 9, weight: 600, color: CK.amber })}`;
+  const trend = n > 1 ? `<polyline points="${mc.perTren.map((p, i) => `${sx(i).toFixed(1)},${sy(p.p50).toFixed(1)}`).join(" ")}" fill="none" stroke="${CK.blue}" stroke-width="2"/>` : "";
+  const noktalar = mc.perTren.map((p, i) => {
+    const x = sx(i);
+    return `<line x1="${x.toFixed(1)}" y1="${sy(p.p50).toFixed(1)}" x2="${x.toFixed(1)}" y2="${sy(p.p90).toFixed(1)}" stroke="${CK.blue}" stroke-width="2" opacity="0.3"/>`
+      + `<circle cx="${x.toFixed(1)}" cy="${sy(p.p90).toFixed(1)}" r="2.5" fill="${CK.blue}" opacity="0.5"/>`
+      + `<circle cx="${x.toFixed(1)}" cy="${sy(p.p50).toFixed(1)}" r="3.5" fill="${CK.blue}"/>`;
+  }).join("");
+  const eksen = `<line x1="${padL}" y1="${eksenY.toFixed(1)}" x2="${padL + pw}" y2="${eksenY.toFixed(1)}" stroke="${CK.ink2}" stroke-width="0.8"/>`;
+  const altEksen = num(padL, H - 4, en ? "train 1" : "tren 1", { anchor: "start", size: 9, color: CK.muted })
+    + lab(padL + pw / 2, H - 4, en ? "service order →" : "sefer sırası →", { anchor: "middle", size: 8.5, color: CK.muted })
+    + num(padL + pw, H - 4, `${en ? "train" : "tren"} ${n}`, { anchor: "end", size: 9, color: CK.muted });
+  const leg = `<text x="${W - padR}" y="11" text-anchor="end" font-family="${CK.sans}" font-size="8.5"><tspan fill="${CK.blue}">● ${en ? "median" : "medyan"}</tspan>  <tspan fill="${CK.blue}" opacity="0.5">| P90</tspan></text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%">${yIsaret}${esik}${trend}${noktalar}${eksen}${altEksen}${leg}</svg>`;
+}
+
 export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, lang: RaporDil = "tr", filo = 0, isletme: Isletme = varsayilanIsletme, qrUrl = ""): string {
   const L = rDil(lang);
   // Sunum modu: hat kesinleşmiş/onaylı bir tasarım olarak sunulur — challenge (risk/
@@ -637,6 +706,39 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
     ${kpi(L.kpi.pratik, `${pratikTph.toFixed(0)}`, `%${((maks.dolulukTavani || 1) * 100).toFixed(0)} · ${L.altTph}`, INK)}
     ${kpi(L.kpi.uic, `%${uicDoluluk.toFixed(0)}`, (uicDoluluk <= 100 || sunum) ? L.altUygun : L.altIhlalK, (uicDoluluk <= 100 || sunum) ? "#0E7C57" : RED)}
   </div>`;
+
+  // ---- Monte-Carlo gecikme / robustluk (kpi yardımcısı tanımlandıktan SONRA) ----
+  // Studio ekranıyla BİREBİR motor (signalling.monteCarlo) + kalıcı girdiler (isletme.mcMean*),
+  // eşik 120 s. Deneme sayısı rapora özel 40'a düşürülür: rapor SUNUCUDA senkron üretilir ve
+  // her denemede tüm filo × tam hat simüle edilir (en uzun hatta 150 deneme ~8 s CPU → maliyet/
+  // yavaşlık). 40 deneme rapordaki illüstratif figür için istatistiksel olarak yeterli
+  // (aggregate ~40×filo örnek; per-tren P90 dengeli) ve worst-case ~2 s. Ekrandaki interaktif
+  // keşif 150'de kalır. Altyazı fiili deneme sayısını yazar → tutarsızlık olmaz.
+  const MC_TRIALS = 40, MC_ESIK = 120;
+  const mc: MonteCarloResult | null = (line && filoGercek > 0 && bfHeadway > 0)
+    ? monteCarlo(line, stock,
+        { headway: bfHeadway, count: filoGercek, maxBlockLen: cfg.blokMaxUzunluk },
+        { trials: MC_TRIALS, meanEntry: isletme.mcMeanEntrySn, meanDwell: isletme.mcMeanDwellSn, threshold: MC_ESIK })
+    : null;
+  const mcBolum = mc ? (() => {
+    const dakikRenk = mc.onTimePct >= 90 ? "#0E7C57" : mc.onTimePct >= 75 ? GOLD : RED;
+    const mcKpi = `<div class="kpi-row">
+      ${kpi(en ? "Punctuality (≤2 min)" : "Dakiklik (≤2 dk)", `%${mc.onTimePct.toFixed(0)}`, `${mc.trials} ${en ? "trials" : "deneme"}`, dakikRenk)}
+      ${kpi(en ? "Mean delay" : "Ort. gecikme", sure(mc.meanDelay), en ? "across all trains" : "tüm trenler", INK)}
+      ${kpi("P90", sure(mc.p90Delay), en ? "90% below this" : "%90 bunun altında", INK)}
+      ${kpi(en ? "Worst case" : "En kötü", sure(mc.maxDelay), en ? "observed peak" : "gözlenen tepe", INK)}
+    </div>`;
+    const giris = Math.round(isletme.mcMeanEntrySn), durak = Math.round(isletme.mcMeanDwellSn);
+    const acik = en
+      ? `Over <b>${mc.trials}</b> simulated services, each train receives a random entry delay (mean ${giris} s) and per-stop dwell deviation (mean ${durak} s), drawn from an exponential distribution; the propagation of these primary delays to following trains is measured. <b>%${mc.onTimePct.toFixed(0)}</b> of arrivals stay within the ${Math.round(MC_ESIK / 60)}-minute threshold, with a mean delay of <b>${sure(mc.meanDelay)}</b> and a P90 of <b>${sure(mc.p90Delay)}</b>. The spread chart shows whether an early train's delay dampens or cascades down the service order — a rising median indicates a timetable with insufficient recovery margin.`
+      : `<b>${mc.trials}</b> simüle edilen seferde her tren, üstel dağılımdan çekilen rastgele bir giriş gecikmesi (ort. ${giris} s) ve durak başına bekleme sapması (ort. ${durak} s) alır; bu birincil gecikmelerin sonraki trenlere yayılımı ölçülür. Varışların <b>%${mc.onTimePct.toFixed(0)}</b>'i ${Math.round(MC_ESIK / 60)} dakikalık eşiğin içinde kalır; ortalama gecikme <b>${sure(mc.meanDelay)}</b>, P90 ise <b>${sure(mc.p90Delay)}</b>'dir. Yayılım grafiği, öndeki bir trenin gecikmesinin sefer sırası boyunca sönümlenip sönümlenmediğini gösterir — medyanın yükselmesi, tarifenin toparlanma payının yetersiz olduğuna işaret eder.`;
+    const n = mc.perTren.length;
+    return `<h3 class="sub" style="page-break-before:always">${en ? "4.1 Robustness — Monte-Carlo Delay Analysis" : "4.1 Robustluk — Monte-Carlo Gecikme Analizi"}</h3>
+      <div class="gs" style="font-size:10pt">${acik}</div>
+      ${mcKpi}
+      <div class="fig">${mcHistSvg(mc, en)}<div class="cap">${en ? `Figure 6 — Delay distribution: ${mc.trials} services × ${n} trains; blue = on-time (below threshold), red = late. Vertical marks: mean · threshold · P90.` : `Şekil 6 — Gecikme dağılımı: ${mc.trials} sefer × ${n} tren; mavi = dakik (eşik altı), kırmızı = geç. Dikey işaretler: ortalama · eşik · P90.`}</div></div>
+      <div class="fig">${mcYayilimSvg(mc, en)}<div class="cap">${en ? "Figure 7 — Propagation by service order: median (dot + line) with P90 whisker per train. A rising trend = delay cascading to later trains." : "Şekil 7 — Sefer sırasına göre yayılım: tren başına medyan (nokta + çizgi) ve P90 bıyığı. Yükselen eğilim = gecikmenin sonraki trenlere kademelenmesi."}</div></div>`;
+  })() : "";
 
   // ---- YÖNETİCİ ÖZETİ (kapaktan sonra, 1. bölümden önce; 1 sayfa karar özeti) ----
   // Amaç: teknik detaya girmeden bir bakışta "hat ne taşır, neyle sınırlı, hedef uygun mu".
@@ -1302,7 +1404,9 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
       <li>${en ? "Fig. 1 — Line schematic" : "Şekil 1 — Hat şeması"}</li>
       <li>${en ? "Fig. 3 — Time-distance (Bildfahrplan)" : "Şekil 3 — Zaman-mesafe (Bildfahrplan)"}</li>
       <li>${en ? "Fig. 4 — Sperrzeitentreppe" : "Şekil 4 — Sperrzeitentreppe"}</li>
-      <li>${en ? "Fig. 5 — Blocking-time components" : "Şekil 5 — Blocking-time bileşenleri"}</li></ul></div>
+      <li>${en ? "Fig. 5 — Blocking-time components" : "Şekil 5 — Blocking-time bileşenleri"}</li>
+      ${mc ? `<li>${en ? "Fig. 6 — Monte-Carlo delay distribution" : "Şekil 6 — Monte-Carlo gecikme dağılımı"}</li>
+      <li>${en ? "Fig. 7 — Delay propagation" : "Şekil 7 — Gecikme yayılımı"}</li>` : ""}</ul></div>
   </section>
 
   <!-- 0: Yönetici Özeti -->
@@ -1345,6 +1449,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <div class="fig">${blockingBarSvg(bt.bloklar, bt.kritikBlok, kritikRenk, en)}<div class="cap">${sunum ? (lang === "en" ? "Figure 5 — Per-block blocking-time component distribution (determining block highlighted)." : "Şekil 5 — Blok başına blocking-time bileşen dağılımı (belirleyici blok vurgulu).") : L.fig5}${bt.bloklar.length > 16 ? (lang === "en" ? ` (highest 16 of ${bt.bloklar.length} blocks; full list in the table below)` : ` (${bt.bloklar.length} bloktan en yüksek 16'sı; tümü aşağıdaki tabloda)`) : ""}</div></div>
   <div class="gs" style="font-size:9pt">${L.btTanim}</div>
   ${btTbl}
+  ${mcBolum}
 
   <!-- 5: İşletme & Talep Analizi (ters işletme) -->
   ${isletmeBolum}

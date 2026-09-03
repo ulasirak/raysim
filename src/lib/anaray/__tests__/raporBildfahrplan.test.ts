@@ -16,7 +16,7 @@ describe("rapor Bildfahrplan (git-gel loop)", () => {
     expect(html).toContain("<polyline");           // tren çizgileri çizildi
     // gidiş (mavi) + dönüş (turuncu) her ikisi de var
     expect(html).toContain("#2A78D6");             // CK.blue
-  });
+  }, 20000);
 
   it("yeni grafik/analiz figürleri raporda var", () => {
     const h = hazirHatlar().find((x) => x.key === "birlesik")!;
@@ -32,5 +32,10 @@ describe("rapor Bildfahrplan (git-gel loop)", () => {
     expect(html).toContain("Talep → Gereken Filo → Doluluk"); // talep zinciri
     expect(html).toContain("Sefer ↔ Ters İşletme (Entegre)"); // 5.6 entegre bölüm
     expect(html).toContain("Şekil 5c");                        // entegre konum diyagramı
-  });
+    // Monte-Carlo robustluk bölümü (A: analizi rapora taşı)
+    expect(html).toContain("Monte-Carlo Gecikme Analizi");     // 4.1 alt başlık
+    expect(html).toContain("Dakiklik");                        // KPI
+    expect(html).toContain("Şekil 6");                          // gecikme dağılımı histogramı
+    expect(html).toContain("Şekil 7");                          // gecikme yayılımı
+  }, 20000);
 });
