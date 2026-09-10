@@ -50,22 +50,28 @@ export function stepMotion(
   return { vNew: vAllowed, a: 0 };
 }
 
-/** Blok sınırları: istasyonlar + ELLE konan sinyaller + her kesimi maxBlockLen'i aşmayacak
- *  şekilde böl. `ekstra` = elle sinyal konumları (blok sınırı olur); boşsa eski davranış. */
-export function makeBlocks(line: Line, maxBlockLen: number, ekstra: number[] = []): number[] {
+/** Blok sınırları: gerçek sinyalizasyondaki gibi = İSTASYONLAR + kullanıcının koyduğu
+ *  SİNYAL LAMBALARI. Bir sinyal, bir bloğun girişini işaretler; blok bir sonraki
+ *  sinyale (veya istasyon home sinyaline) kadar uzanır. Sinyalsiz bir kesim TEK bloktur
+ *  (görerek sürüşte o kesimde aynı anda tek tren) → sinyal koydukça blok bölünür,
+ *  blocking-time kısalır, kapasite artar. (Eski yapay "her N metrede bir blok" bölmesi
+ *  KALDIRILDI: blok yapısını artık yalnızca gerçek sinyaller belirler.)
+ *  `sinyaller` = hat-boyu sinyal konumları (bkz. network.sinyalKonumlari). */
+export function makeBlocks(line: Line, sinyaller: number[] = []): number[] {
   // Sıfır/negatif uzunlukta en az iki sınır garantile → blockOf dejenere (-1) dönmesin.
   const L = Math.max(line.length, 1e-6);
   const set = new Set<number>([0, L]);
   for (const st of line.stations) set.add(st.position);
-  for (const p of ekstra) if (p > 1e-6 && p < L - 1e-6) set.add(p);
-  const bounds = Array.from(set).sort((a, c) => a - c);
-  const out: number[] = [bounds[0] ?? 0];
-  for (let i = 1; i < bounds.length; i++) {
-    const a = bounds[i - 1];
-    const c = bounds[i];
-    const n = Math.max(1, Math.ceil((c - a) / maxBlockLen - 1e-9));
-    for (let j = 1; j <= n; j++) out.push(a + ((c - a) * j) / n);
+  for (const p of sinyaller) if (p > 1e-6 && p < L - 1e-6) set.add(p);
+  const sorted = Array.from(set).sort((a, c) => a - c);
+  // Çok yakın sınırları (< 5 m: home sinyali istasyona bitişik, aynalamadan gelen ~1 m
+  // sapma) birleştir → dejenere sıfır-uzunluk blok üretme. Son sınır daima L kalır.
+  const out: number[] = [sorted[0]];
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i] - out[out.length - 1] >= 5) out.push(sorted[i]);
   }
+  if (out[out.length - 1] < L - 1e-6) out.push(L);
+  else out[out.length - 1] = L;
   return out;
 }
 
@@ -238,10 +244,10 @@ function runTrains(
 export function simulateSignalled(
   line: Line,
   stock: RollingStock,
-  opts: { headway: number; count: number; maxBlockLen: number; dt?: number; blocked?: number[]; origins?: number[]; sinyaller?: number[] }
+  opts: { headway: number; count: number; dt?: number; blocked?: number[]; origins?: number[]; sinyaller?: number[] }
 ): SignalResult {
   const dt = opts.dt ?? 0.5;
-  const bounds = makeBlocks(line, opts.maxBlockLen, opts.sinyaller ?? []);
+  const bounds = makeBlocks(line, opts.sinyaller ?? []);
   const baseTime = runTrains(line, stock, bounds, 1e9, 1, dt, 600)[0].arr;
 
   const blocked = opts.blocked && opts.blocked.length ? new Set(opts.blocked) : undefined;
@@ -431,11 +437,11 @@ export interface MonteCarloResult {
 export function monteCarlo(
   line: Line,
   stock: RollingStock,
-  opts: { headway: number; count: number; maxBlockLen: number; dt?: number },
+  opts: { headway: number; count: number; dt?: number; sinyaller?: number[] },
   cfg: { trials: number; meanEntry: number; meanDwell: number; threshold: number }
 ): MonteCarloResult {
   const dt = opts.dt ?? 0.5;
-  const bounds = makeBlocks(line, opts.maxBlockLen);
+  const bounds = makeBlocks(line, opts.sinyaller ?? []);
   const baseTime = runTrains(line, stock, bounds, 1e9, 1, dt, 600)[0].arr;
   const count = Math.min(200, Math.max(1, opts.count)); // motor koruması: aşırı tren sayısı donmasın
   const trials = Math.min(500, Math.max(1, cfg.trials)); // deneme sayısı üst sınırı

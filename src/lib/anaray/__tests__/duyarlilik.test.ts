@@ -15,9 +15,9 @@ const rings = h.veri.rings ?? [];
 describe("Duyarlılık analizi", () => {
   const s = duyarlilikAnaliz(rings, stock, cfg, isletme, "isletmeKap", 20);
 
-  it("taban = işletme kapasitesi (19)", () => expect(Math.round(s.taban)).toBe(19));
-  it("7 parametre, salınıma göre azalan sıralı", () => {
-    expect(s.satirlar).toHaveLength(7);
+  it("taban = işletme kapasitesi (14)", () => expect(Math.round(s.taban)).toBe(14));
+  it("6 parametre, salınıma göre azalan sıralı", () => {
+    expect(s.satirlar).toHaveLength(6);
     for (let i = 1; i < s.satirlar.length; i++) expect(s.satirlar[i - 1].salinim).toBeGreaterThanOrEqual(s.satirlar[i].salinim);
   });
   it("en güçlü kaldıraç sıfırdan büyük etkili", () => expect(s.satirlar[0].salinim).toBeGreaterThan(0));
@@ -27,14 +27,10 @@ describe("Duyarlılık analizi", () => {
     expect(d.yon).toBe(1);
     expect(d.salinim).toBeGreaterThan(0);
   });
-  it("blok uzunluğu ARTINCA kapasite azalır (yön −1)", () => {
-    const b = s.satirlar.find((x) => x.ad === "Blok uzunluğu")!;
-    expect(b.yon).toBe(-1);
-  });
 
   it("hedef nTeorik ise doluluk tavanının etkisi YOK (nTeorik doluluktan bağımsız)", () => {
     const n = duyarlilikAnaliz(rings, stock, cfg, isletme, "nTeorik", 20);
-    expect(Math.round(n.taban)).toBe(57);
+    expect(Math.round(n.taban)).toBe(42);
     expect(n.satirlar.find((x) => x.ad === "Doluluk tavanı")!.salinim).toBe(0);
   });
 });

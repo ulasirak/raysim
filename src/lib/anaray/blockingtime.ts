@@ -19,7 +19,7 @@ import { type SimConfig, VARSAYILAN_DOLULUK_TAVANI } from "./config";
 import { simulate } from "./sim";
 import { makeBlocks } from "./signalling";
 import { loopToHat, type HatModel } from "./hatsim";
-import { hemzeminDuruslari, duruslariEkle } from "./network";
+import { hemzeminDuruslari, duruslariEkle, sinyalKonumlari } from "./network";
 import { type DurakArasiRing } from "./ring";
 
 const T_SIGHTING = 4; // s — sürücü görme/reaksiyon (görerek sürüş kabulü)
@@ -85,7 +85,7 @@ export function blockingTimeHesap(
   sinyalSinirlari: number[] = [],
 ): BlockingSonuc {
   const line = model.line;
-  const bounds = makeBlocks(line, cfg.blokMaxUzunluk, sinyalSinirlari);
+  const bounds = makeBlocks(line, sinyalSinirlari);
   const res = simulate(line, stock, 0.5);
   const pts = res.points;
   const b = Math.max(0.1, stock.maxBraking); // 0 girilirse brakeDist=Infinity olmasın
@@ -171,8 +171,10 @@ export function blockingTimeRing(rings: DurakArasiRing[], stock: RollingStock, c
     ...modelBt.line.stations.filter((s) => s.tip === "gecit").map((s) => ({ pos: s.position, ek: Math.max(0, s.dwell) })),
   ];
   const ekstraResolver = (pos: number) => ekstraByPos.find((x) => Math.abs(x.pos - pos) < 1)?.ek ?? 0;
-  // maksimumTren'in blok kısıt hesabıyla BİREBİR: auto-bloklar + ekstra (sinyaller ayrı
-  // hSinyal kısıtıdır, blok tanımına girmez) → rapor/Sistem Merkezi min-headway'i Ringler
-  // kapasitesiyle tutarlı.
-  return blockingTimeHesap(modelBt, stock, cfg, ekstraResolver);
+  // maksimumTren'in blok kısıt hesabıyla BİREBİR: blok sınırları = istasyonlar + gerçek
+  // sinyal lambaları (network.sinyalKonumlari, ters işletme hariç) + ekstra işgal. Böylece
+  // rapor/Sistem Merkezi min-headway'i Ringler kapasitesiyle ve canlı sim blok düzeniyle
+  // tutarlı. (Aspect çevrimi ayrı hSinyal kısıtıdır; burada blok SINIRI olarak girer.)
+  const sinyalSinir = sinyalKonumlari(rings, cfg);
+  return blockingTimeHesap(modelBt, stock, cfg, ekstraResolver, 0, sinyalSinir);
 }

@@ -23,7 +23,7 @@ import { type SimConfig, type Isletme, type TerminalConfig, VARSAYILAN_DOLULUK_T
 import { blockingTimeHesap } from "./blockingtime";
 import { loopToHat } from "./hatsim";
 import { ringSenaryo, ringTimingEk, sinyalCevrimi, type DurakArasiRing } from "./ring";
-import { hemzeminDuruslari, duruslariEkle } from "./network";
+import { hemzeminDuruslari, duruslariEkle, sinyalKonumlari } from "./network";
 import { dwellUygulanmisRings } from "./yolcu";
 
 export type KisitAnahtar = "blok" | "terminal" | "tekhat" | "kavsak" | "sinyal";
@@ -135,7 +135,10 @@ export function maksimumTren(
     const hit = ekstraByPos.find((x) => Math.abs(x.pos - pos) < 1);
     return hit ? hit.ek : 0;
   };
-  const bt = blockingTimeHesap(modelBt, stock, cfg, ekstraResolver);
+  // Blok sınırları = istasyonlar + gerçek sinyal lambaları (ters işletme hariç). Sinyalsiz
+  // kesim tek bloktur; sinyal koydukça blok bölünür → kapasite artar. (500 m yapay bölme yok.)
+  const sinyalSinir = sinyalKonumlari(rings, cfg);
+  const bt = blockingTimeHesap(modelBt, stock, cfg, ekstraResolver, 0, sinyalSinir);
   const hBlok = bt.minHeadway;
   const kb = bt.bloklar[bt.kritikBlok];
   const kbMerkez = kb ? (kb.start + kb.end) / 2 : 0;

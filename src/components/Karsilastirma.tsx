@@ -22,12 +22,13 @@ import { getAuthInstance } from "@/lib/firebase";
 import { useCuzdan } from "@/components/CuzdanProvider";
 
 // —— What-if parametreleri (doluluk İLK: HER hatta sürdürülebilir/işletme kapasitesini
-// KESİN değiştirir → dinamikliği garanti eder; blok yalnız blok-bağlı hatlarda oynatır) ——
+// KESİN değiştirir → dinamikliği garanti eder) ——
 // etkin(v): motorun GERÇEKTEN kullandığı (kıskaçlanmış) değer — etiket bununla yazılır,
 // böylece alt/üst sınır dışı bir değer girilse de etiket ile hesap ASLA çelişmez.
+// NOT: Blok yapısı artık gerçek sinyal lambalarından türer (yapay "blok uzunluğu"
+// parametresi kaldırıldı) → what-if'te elle blok uzunluğu ayarı yoktur.
 const WHATIF = {
   dolulukTavani: { ad: "Doluluk tavanı", suffix: "%", varsayilan: [70, 80, 90], min: 40, max: 95, not: "UIC 406 doluluk tavanı — her hatta sürdürülebilir ve işletme kapasitesini doğrudan belirler (teorik tavan sabit). Geçerli 40–95%.", etkin: (v: number) => Math.round(Math.max(40, Math.min(95, v))), uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, dolulukTavani: Math.max(0.4, Math.min(0.95, v / 100)) }) },
-  blokMaxUzunluk: { ad: "Blok uzunluğu", suffix: "m", varsayilan: [500, 300, 150], min: 100, max: 1500, not: "Sinyal blok sıklığı — YALNIZ belirleyici kısıt blok ise kapasiteyi/min headway'i değiştirir. Geçerli 100–1500 m.", etkin: (v: number) => Math.max(100, Math.min(1500, Math.round(v))), uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, blokMaxUzunluk: Math.max(100, Math.min(1500, v)) }) },
   headway: { ad: "Hedef headway", suffix: "s", varsayilan: [240, 180, 120], min: 30, max: 600, not: "Sefer sıklığı hedefi — fiziksel kapasiteyi DEĞİL, yalnız UIC doluluk ve gereken tren sayısını etkiler. Geçerli 30–600 s.", etkin: (v: number) => Math.max(30, Math.min(600, Math.round(v))), uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, headway: Math.max(30, Math.min(600, v)) }) },
 } as const;
 type WhatifKey = keyof typeof WHATIF;
@@ -247,7 +248,7 @@ export function Karsilastirma() {
         <>
           {degismedi && (
             <div className="mt-6 rounded-md border-l-4 px-4 py-3 text-sm" style={{ borderColor: CK.amber, background: CK.amberBg, color: CK.amberInk }}>
-              ⚠ “{WHATIF[wparam].ad}” değişimi bu hatta metrikleri <b>oynatmadı</b> — bu hattın belirleyici kısıtı bu parametre değil (tablodaki <b>Belirleyici kısıt</b> satırına bak). <b>Doluluk tavanı</b> her hatta kapasiteyi değiştirir; <b>Blok</b> yalnız blok-bağlı hatta, <b>Headway</b> ise UIC doluluk / gereken tren'i.
+              ⚠ “{WHATIF[wparam].ad}” değişimi bu hatta metrikleri <b>oynatmadı</b> — bu hattın belirleyici kısıtı bu parametre değil (tablodaki <b>Belirleyici kısıt</b> satırına bak). <b>Doluluk tavanı</b> her hatta kapasiteyi değiştirir; <b>Headway</b> ise UIC doluluk / gereken tren'i etkiler.
             </div>
           )}
 

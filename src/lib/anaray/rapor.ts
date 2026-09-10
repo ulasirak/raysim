@@ -30,7 +30,7 @@ import { blockingTimeRing } from "./blockingtime";
 import { loopToHat } from "./hatsim";
 import { loopYorunge, monteCarlo, type LoopYorunge, type MonteCarloResult } from "./signalling";
 import { sure } from "./format";
-import { hatOzellikleri } from "./network";
+import { hatOzellikleri, sinyalKonumlari } from "./network";
 import type { Line } from "./types";
 
 const INK = "#0C2233";
@@ -717,7 +717,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   const MC_TRIALS = 40, MC_ESIK = 120;
   const mc: MonteCarloResult | null = (line && filoGercek > 0 && bfHeadway > 0)
     ? monteCarlo(line, stock,
-        { headway: bfHeadway, count: filoGercek, maxBlockLen: cfg.blokMaxUzunluk },
+        { headway: bfHeadway, count: filoGercek, sinyaller: sinyalKonumlari(rings, cfg) },
         { trials: MC_TRIALS, meanEntry: isletme.mcMeanEntrySn, meanDwell: isletme.mcMeanDwellSn, threshold: MC_ESIK })
     : null;
   const mcBolum = mc ? (() => {

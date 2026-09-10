@@ -20,14 +20,16 @@ interface Golden {
   nTeorik: number; nSurd: number; hMin: number; cevrim: number;
   baglayan: string; sinyal: number; gerekenFilo: number; tepeYuk: number;
 }
-// Doğrulanmış değerler. Makas dizilimi kullanıcı teyidiyle güncellendi (HAZIR_VERI_SURUM=11:
-// Alaattin 2S+1X, Adliye 1S, Ravza/Otogar/Betoncular 1S, Depo 2S) → kapasite çıktıları buna
-// göre yeniden kilitlendi (birleşik 57/40 — terminal makas modeli notuyla tutarlı). Kilit budur.
+// Doğrulanmış değerler. BLOK MODELİ DEĞİŞTİ: blok sınırları artık yapay "her N metrede bir"
+// bölmeyle değil, GERÇEK sinyal lambaları + istasyonlarla belirlenir (Sinyalizasyon Projesi
+// V0808 metrajı). Sinyalsiz kesim tek bloktur → kritik blok, hattın en uzun sinyalsiz açık
+// kesimidir; hMin buna göre yükseldi (yapay 500 m bölme kaldırıldığı için kapasite ~%15–25
+// düştü — dürüst sonuç). cevrim/sinyal/filo/tepe blok modelinden bağımsız → değişmedi. Kilit budur.
 const GOLDEN: Record<string, Golden> = {
-  mevcut:   { nTeorik: 15, nSurd: 10, hMin: 136, cevrim: 2068, baglayan: "Kritik blok — Hükümet",       sinyal: 23, gerekenFilo: 5,  tepeYuk: 1466 },
-  etap1:    { nTeorik: 27, nSurd: 19, hMin: 133, cevrim: 3626, baglayan: "Kritik blok — Ravza Camii",    sinyal: 30, gerekenFilo: 9,  tepeYuk: 1605 },
-  etap2:    { nTeorik: 23, nSurd: 16, hMin: 120, cevrim: 2861, baglayan: "Kritik blok — Barış Caddesi",  sinyal: 25, gerekenFilo: 6,  tepeYuk: 1405 },
-  birlesik: { nTeorik: 57, nSurd: 40, hMin: 136, cevrim: 7874, baglayan: "Kritik blok — Hükümet",        sinyal: 78, gerekenFilo: 15, tepeYuk: 1213 },
+  mevcut:   { nTeorik: 13, nSurd: 9,  hMin: 154, cevrim: 2068, baglayan: "Kritik blok — Mevlana Kültür Merkezi", sinyal: 23, gerekenFilo: 5,  tepeYuk: 1466 },
+  etap1:    { nTeorik: 20, nSurd: 14, hMin: 175, cevrim: 3626, baglayan: "Kritik blok — Gülistan Caddesi",       sinyal: 30, gerekenFilo: 9,  tepeYuk: 1605 },
+  etap2:    { nTeorik: 18, nSurd: 12, hMin: 157, cevrim: 2861, baglayan: "Kritik blok — TÜYAP",                  sinyal: 25, gerekenFilo: 6,  tepeYuk: 1405 },
+  birlesik: { nTeorik: 42, nSurd: 29, hMin: 185, cevrim: 7874, baglayan: "Kritik blok — Depo",                   sinyal: 78, gerekenFilo: 15, tepeYuk: 1213 },
 };
 
 const hatlar = hazirHatlar();

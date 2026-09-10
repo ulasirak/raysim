@@ -36,7 +36,6 @@ export function duyarlilikAnaliz(
 
   // Her parametre: (faktör) → değiştirilmiş {cfg,stock,isletme} üçlüsü.
   const PARAM: { ad: string; uy: (f: number) => { c: SimConfig; s: RollingStock; isl: Isletme } }[] = [
-    { ad: "Blok uzunluğu", uy: (f) => ({ c: { ...cfg, blokMaxUzunluk: clamp(cfg.blokMaxUzunluk * f, 100, 1500) }, s: stock, isl: isletme }) },
     { ad: "Doluluk tavanı", uy: (f) => ({ c: { ...cfg, dolulukTavani: clamp((cfg.dolulukTavani ?? 0.7) * f, 0.4, 0.95) }, s: stock, isl: isletme }) },
     { ad: "Azami hız", uy: (f) => ({ c: cfg, s: { ...stock, maxSpeed: clamp(stock.maxSpeed * f, 1, 150) }, isl: isletme }) },
     { ad: "Fren (ivme)", uy: (f) => ({ c: cfg, s: { ...stock, maxBraking: clamp(stock.maxBraking * f, 0.3, 5) }, isl: isletme }) },

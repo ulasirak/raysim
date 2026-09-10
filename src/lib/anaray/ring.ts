@@ -124,8 +124,9 @@ export interface DurakArasiRing {
   hemzeminler: Hemzemin[];
   tehlikeNoktalari: TehlikeNoktasi[];
   /** İstasyon başına yerleştirilen sinyal lambaları (yön + kilometraj + aspect süreleri).
-   *  Blok yapısını DEĞİŞTİRMEZ (bloklar yine azami uzunluktan); aspect süreleri
-   *  blocking-time'a headway tabanı olarak girer + canlı simde görünür. */
+   *  BLOK SINIRINI BELİRLER: ileri-yön (ters işletme hariç) sinyalleri istasyonlarla
+   *  birlikte blok sınırıdır (network.sinyalKonumlari) → blocking-time/kapasite bloklarını
+   *  ve canlı sim blok düzenini tanımlar. Ayrıca aspect çevrimi headway tabanına girer. */
   sinyaller?: SinyalLambasi[];
 }
 

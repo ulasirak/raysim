@@ -32,9 +32,10 @@ import { SeferTersEntegre } from "@/components/SeferTersEntegre";
 
 const KMH = 1 / 3.6;
 
-// MODEL KURALI: sinyal blok uzunluğu TEK KAYNAK = cfg.blokMaxUzunluk (Sistem Merkezi).
-// Canlı sim, grafikler ve kapasite/blocking AYNI blok düzenini kullanır → sinyaller
-// capacity ile birebir hizalı, kayma yok. Aralık ayarlanınca sinyaller sıklaşır/seyrelir.
+// MODEL KURALI: blok düzeni TEK KAYNAK = kullanıcının koyduğu SİNYAL LAMBALARI
+// (network.sinyalKonumlari) + istasyonlar. Canlı sim, grafikler ve kapasite/blocking
+// AYNI blok sınırlarını kullanır → sinyaller kapasite ile birebir hizalı, kayma yok.
+// Sinyal ekle/kaldır → blok bölünür/birleşir, kapasite ona göre değişir.
 
 // Proje hattı boşsa (kullanıcı Ringler'de tüm hücreleri sildiyse) motorlar çökmesin
 // diye geçerli ama boş bir iskelet; ekranda uyarı gösterilir.
@@ -57,9 +58,7 @@ export function Studio() {
 }
 
 function StudioIc() {
-  const { cfg, patch: patchCfg } = useSimConfig();
-  // Sinyal blok uzunluğu — canlı sim + kapasite + sinyaller tek kaynak.
-  const BLOK_MAXLEN = cfg.blokMaxUzunluk;
+  const { cfg } = useSimConfig();
   const { rings: ringsHam, meta } = useProje();
   // Araç ve işletme parametreleri KALICI (projeye kayıtlı) — tek kaynak, uçucu değil.
   const { arac: stock, patchArac, setArac } = useArac();
@@ -189,12 +188,12 @@ function StudioIc() {
     return Array.from({ length: filo }, (_, k) => depolar[k % depolar.length].position);
   }, [depotPlan, filo, isletme.parklanmaDagilim]);
   const canliGidis = useMemo(
-    () => simulateSignalled(line, stock, { headway: ulasilanHeadwaySn, count: filo, maxBlockLen: BLOK_MAXLEN, blocked: ariza, origins: gidisOrigins, sinyaller: sinyalSimKonum }),
-    [line, stock, ulasilanHeadwaySn, filo, gidisOrigins, ariza, BLOK_MAXLEN, sinyalSimKonum]
+    () => simulateSignalled(line, stock, { headway: ulasilanHeadwaySn, count: filo, blocked: ariza, origins: gidisOrigins, sinyaller: sinyalSimKonum }),
+    [line, stock, ulasilanHeadwaySn, filo, gidisOrigins, ariza, sinyalSimKonum]
   );
   const donusSim = useMemo(
-    () => simulateSignalled(reverseLine, stock, { headway: ulasilanHeadwaySn, count: filo, maxBlockLen: BLOK_MAXLEN, sinyaller: sinyalSimKonum.map((p) => reverseLine.length - p) }),
-    [reverseLine, stock, ulasilanHeadwaySn, filo, BLOK_MAXLEN, sinyalSimKonum]
+    () => simulateSignalled(reverseLine, stock, { headway: ulasilanHeadwaySn, count: filo, sinyaller: sinyalSimKonum.map((p) => reverseLine.length - p) }),
+    [reverseLine, stock, ulasilanHeadwaySn, filo, sinyalSimKonum]
   );
   // DÖNGÜ (git-gel): tek-tren tam tur yörüngesi — uçlarda turnback (peron işgali) + durum izleme.
   const peronBas = isletme.terminalBas.tip === "dongu" ? 0 : (isletme.terminalBas.peronIsgali || 0);
@@ -228,7 +227,7 @@ function StudioIc() {
     setTimeout(() => {
       const r = monteCarlo(
         line, stock,
-        { headway: ulasilanHeadwaySn, count: filo, maxBlockLen: BLOK_MAXLEN },
+        { headway: ulasilanHeadwaySn, count: filo, sinyaller: sinyalSimKonum },
         { trials: 150, meanEntry, meanDwell, threshold: 120 }
       );
       setMc(r);
@@ -524,17 +523,10 @@ function StudioIc() {
             <div className="mt-3 text-xs" style={{ color: brand.muted }}>Bu ikisi girilince simülasyon otomatik açılır — trenler parklanma alanından çıkıp döngüye girer.</div>
           </div>
         )}
-        {/* Otomatik blok bölme — elle sinyal KOYMADIĞIN açık kesimleri doldurur */}
+        {/* Blok yapısı = gerçek sinyal lambaları + istasyonlar (yapay blok bölme kaldırıldı) */}
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs" style={{ color: brand.inkSoft }}>
-          <span>▦ Otomatik blok bölme (boş kesim · sinyal değil)</span>
-          <button type="button" onClick={() => patchCfg({ blokMaxUzunluk: Math.max(100, Math.round((cfg.blokMaxUzunluk - 50) / 50) * 50) })}
-            className="flex h-5 w-5 items-center justify-center rounded border font-semibold" style={{ borderColor: brand.border, color: brand.ink }} title="Sıklaştır (kısa blok = daha çok sinyal)">−</button>
-          <input type="number" min={100} max={1500} step={50} value={Math.round(cfg.blokMaxUzunluk)}
-            onChange={(e) => patchCfg({ blokMaxUzunluk: Math.max(100, Math.min(1500, parseFloat(e.target.value) || 100)) })}
-            className="w-16 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} />
-          <button type="button" onClick={() => patchCfg({ blokMaxUzunluk: Math.min(1500, Math.round((cfg.blokMaxUzunluk + 50) / 50) * 50) })}
-            className="flex h-5 w-5 items-center justify-center rounded border font-semibold text-white" style={{ background: brand.ink, borderColor: brand.ink }} title="Seyrelt (uzun blok = az sinyal)">+</button>
-          <span style={{ color: brand.muted }}>m · <b>elle koyduğun sinyaller zaten blok sınırıdır</b> ({sinyalSimKonum.length} sinyal); bu aralık yalnız sinyalsiz açık kesimleri böler. Kapasite (h_min) bu bloklardan hesaplanır — sim ile birebir aynı.</span>
+          <span>▦ Blok sınırları = <b>istasyonlar + koyduğun sinyal lambaları</b> ({sinyalSimKonum.length} sinyal)</span>
+          <span style={{ color: brand.muted }}>Sinyalsiz kesim tek bloktur (o kesimde tek tren); <b>sinyal ekledikçe blok bölünür → kapasite (h_min) artar</b>. Kapasite bu bloklardan hesaplanır — sim ile birebir aynı.</span>
         </div>
         {/* Filo kaynağı + kapasite bağlantısı */}
         <div className="mt-2 text-xs" style={{ color: brand.inkSoft }}>

@@ -34,7 +34,6 @@ export function useCanliAgProps() {
   const { rings: ringsHam, meta } = useProje();
   const { arac: stock } = useArac();
   const { isletme, patchIsletme } = useIsletme();
-  const BLOK_MAXLEN = cfg.blokMaxUzunluk;
 
   const rings = useMemo(() => dwellUygulanmisRings(ringsHam, stock, isletme), [ringsHam, stock, isletme]);
   const proje = useMemo(() => ringlerdenSebeke(rings, cfg, meta.hatAdi || "Proje Hattı"), [rings, cfg, meta.hatAdi]);
@@ -87,12 +86,12 @@ export function useCanliAgProps() {
     return Array.from({ length: filo }, (_, k) => depolar[k % depolar.length].position);
   }, [depotPlan, filo, isletme.parklanmaDagilim]);
   const canliGidis = useMemo(
-    () => simulateSignalled(line, stock, { headway: ulasilanHeadwaySn, count: filo, maxBlockLen: BLOK_MAXLEN, blocked: ariza, origins: gidisOrigins, sinyaller: sinyalSimKonum }),
-    [line, stock, ulasilanHeadwaySn, filo, gidisOrigins, ariza, BLOK_MAXLEN, sinyalSimKonum],
+    () => simulateSignalled(line, stock, { headway: ulasilanHeadwaySn, count: filo, blocked: ariza, origins: gidisOrigins, sinyaller: sinyalSimKonum }),
+    [line, stock, ulasilanHeadwaySn, filo, gidisOrigins, ariza, sinyalSimKonum],
   );
   const donusSim = useMemo(
-    () => simulateSignalled(reverseLine, stock, { headway: ulasilanHeadwaySn, count: filo, maxBlockLen: BLOK_MAXLEN, sinyaller: sinyalSimKonum.map((p) => reverseLine.length - p) }),
-    [reverseLine, stock, ulasilanHeadwaySn, filo, BLOK_MAXLEN, sinyalSimKonum],
+    () => simulateSignalled(reverseLine, stock, { headway: ulasilanHeadwaySn, count: filo, sinyaller: sinyalSimKonum.map((p) => reverseLine.length - p) }),
+    [reverseLine, stock, ulasilanHeadwaySn, filo, sinyalSimKonum],
   );
   const peronBas = isletme.terminalBas.tip === "dongu" ? 0 : (isletme.terminalBas.peronIsgali || 0);
   const peronSon = isletme.terminalSon.tip === "dongu" ? 0 : (isletme.terminalSon.peronIsgali || 0);

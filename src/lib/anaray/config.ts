@@ -27,7 +27,6 @@ export interface SimConfig {
   makasAdimMax: number;
   // Blok / geometri (m)
   kisitGenisligi: number; // makas/geçit kısıt bölgesi genişliği
-  blokMaxUzunluk: number; // sinyal bloğu azami uzunluğu
   // Kapasite planlama
   dolulukTavani?: number; // UIC 406 önerilen doluluk tavanı (0..1) — pratik kapasite = teorik × tavan; varsayılan 0,70
 }
@@ -50,7 +49,6 @@ export const varsayilanConfig: SimConfig = {
   routeReleaseDepo: 8,
   makasAdimMax: 6,
   kisitGenisligi: 40,
-  blokMaxUzunluk: 500,
   dolulukTavani: 0.70,
 };
 
@@ -85,7 +83,6 @@ export const PARAM_META: ParamMeta[] = [
   { key: "routeReleaseDepo", ad: "Route release (depo)", grup: "Zamanlayıcılar", tur: "sure", kaynak: "Ek L", etkiler: "Depo manevra rota serbest bırakma", moduller: ["ringler"], min: 1, max: 30, step: 1 },
   { key: "makasAdimMax", ad: "Makas adım süresi", grup: "Zamanlayıcılar", tur: "sure", kaynak: "Ek Ö", etkiler: "Her makas hareketi süresi", moduller: ["ringler"], min: 1, max: 12, step: 1 },
   { key: "kisitGenisligi", ad: "Kısıt bölge genişliği", grup: "Blok", tur: "mesafe", kaynak: "türetme", etkiler: "Makas/geçit hız-kısıt bölgesi uzunluğu", moduller: ["ringler"], min: 10, max: 120, step: 5 },
-  { key: "blokMaxUzunluk", ad: "Sinyal bloğu azami", grup: "Blok", tur: "mesafe", kaynak: "2.1", etkiler: "Blok sayısı + gecikmesiz aralık", moduller: ["sefer"], min: 100, max: 1500, step: 50 },
   { key: "dolulukTavani", ad: "UIC 406 doluluk tavanı", grup: "Kapasite planlama", tur: "oran", kaynak: "UIC 406", etkiler: "İşletme (pratik) kapasite = teorik × tavan", moduller: ["sefer"], min: 40, max: 90, step: 5 },
 ];
 
