@@ -244,14 +244,16 @@ function runTrains(
 export function simulateSignalled(
   line: Line,
   stock: RollingStock,
-  opts: { headway: number; count: number; dt?: number; blocked?: number[]; origins?: number[]; sinyaller?: number[] }
+  opts: { headway: number; count: number; dt?: number; blocked?: number[]; origins?: number[]; sinyaller?: number[]; entry?: number[] }
 ): SignalResult {
   const dt = opts.dt ?? 0.5;
   const bounds = makeBlocks(line, opts.sinyaller ?? []);
   const baseTime = runTrains(line, stock, bounds, 1e9, 1, dt, 600)[0].arr;
 
   const blocked = opts.blocked && opts.blocked.length ? new Set(opts.blocked) : undefined;
-  const runs = runTrains(line, stock, bounds, opts.headway, Math.min(200, Math.max(1, opts.count)), dt, baseTime, undefined, blocked, opts.origins);
+  // Deterministik knock-on için tren başına giriş gecikmesi (entry) enjekte edilebilir.
+  const pert = opts.entry && opts.entry.some((e) => e > 0) ? { entry: opts.entry, dwell: [] as number[][] } : undefined;
+  const runs = runTrains(line, stock, bounds, opts.headway, Math.min(200, Math.max(1, opts.count)), dt, baseTime, pert, blocked, opts.origins);
   const trains = runs.map((tr) => ({ ...tr, delay: Math.max(0, tr.arr - (tr.index * opts.headway + baseTime)) }));
   const maxDelay = Math.max(0, ...trains.map((t) => t.delay));
   const tMax = Math.max(...trains.map((t) => t.arr));

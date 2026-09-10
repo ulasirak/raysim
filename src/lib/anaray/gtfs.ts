@@ -212,25 +212,85 @@ export interface GtfsDurakZaman {
   kalkisSn: number; // trip başından kalkış (s)
 }
 
-/** GTFS .zip baytları üretir (fflate). Zamanlar `baslangicSn`'den (vars. 06:00) başlar. */
+/** Dönüş yönü durak zamanlarını ileri yönden türetir: durak sırası tersine döner,
+ *  durak-arası seyir süreleri (ileri segment farkları) korunur, dwell'ler eşlenir.
+ *  Uç duraklarda dwell = 0. İki yön asimetrik hız/dwell varsayımı taşımaz (ayna). */
+function donusYonu(ileri: GtfsDurakZaman[]): GtfsDurakZaman[] {
+  const n = ileri.length;
+  if (n < 2) return [];
+  const seg = (j: number) => Math.max(0, ileri[j + 1].varisSn - ileri[j].kalkisSn); // durak j→j+1 seyir (s)
+  const out: GtfsDurakZaman[] = [];
+  let t = 0;
+  for (let i = 0; i < n; i++) {
+    const src = ileri[n - 1 - i];
+    if (i > 0) t += seg(n - 1 - i); // (n-i)→(n-1-i) seyir = ileri segment (n-1-i)
+    const dwell = (i === 0 || i === n - 1) ? 0 : Math.max(0, src.kalkisSn - src.varisSn);
+    out.push({ id: src.id, ad: src.ad, lat: src.lat, lon: src.lon, varisSn: t, kalkisSn: t + dwell });
+    t += dwell;
+  }
+  return out;
+}
+
+/**
+ * Tam GTFS .zip baytları üretir (fflate). İçerik:
+ *   agency · stops · routes · trips (çift yön, direction_id) · stop_times ·
+ *   calendar · feed_info · shapes (durak koordinatlarından) ·
+ *   frequencies (headwaySn > 0 ise — headway-tabanlı tam servis penceresi).
+ * `duraklar` ileri yön; dönüş yönü otomatik türetilir (ciftYon ≠ false).
+ * Zamanlar `baslangicSn`'den (vars. 06:00) başlar; servis penceresi bitisSn (vars. 24:00).
+ */
 export function gtfsIhrac(opts: {
   hatAdi: string;
   agency: string;
   duraklar: GtfsDurakZaman[];
   baslangicSn?: number;
+  bitisSn?: number;
+  headwaySn?: number;
+  ciftYon?: boolean;
 }): Uint8Array {
   const bas = opts.baslangicSn ?? 6 * 3600;
-  const agencyId = "A1", routeId = "R1", serviceId = "HAFTAICI", tripId = "T1";
+  const bit = Math.max(bas + 60, opts.bitisSn ?? 24 * 3600);
+  const hw = Math.max(0, Math.round(opts.headwaySn ?? 0));
+  const ciftYon = opts.ciftYon !== false && opts.duraklar.length > 1;
+  const agencyId = "A1", routeId = "R1", serviceId = "HAFTAICI";
   const ad = opts.hatAdi || "RaySim hattı";
+  const ileri = opts.duraklar;
+  const donus = ciftYon ? donusYonu(ileri) : [];
+
+  // Yön → { tripId, headsign, shapeId, dizi }
+  const yonler: { tripId: string; dir: 0 | 1; headsign: string; shapeId: string; dizi: GtfsDurakZaman[] }[] = [
+    { tripId: "T0", dir: 0, headsign: ileri[ileri.length - 1]?.ad ?? ad, shapeId: "shp_0", dizi: ileri },
+  ];
+  if (ciftYon) yonler.push({ tripId: "T1", dir: 1, headsign: donus[donus.length - 1]?.ad ?? ad, shapeId: "shp_1", dizi: donus });
+
+  const stopTimes = yonler.flatMap((y) =>
+    y.dizi.map((d, i) => `${y.tripId},${sn2hms(bas + d.varisSn)},${sn2hms(bas + d.kalkisSn)},${d.id},${i + 1}`)
+  ).join("\n");
+
+  const trips = yonler.map((y) => `${routeId},${serviceId},${y.tripId},${csvKac(y.headsign)},${y.dir},${y.shapeId}`).join("\n");
+
+  const shapes = yonler.flatMap((y) =>
+    y.dizi.map((d, i) => `${y.shapeId},${d.lat.toFixed(6)},${d.lon.toFixed(6)},${i + 1}`)
+  ).join("\n");
+
+  const tarih = new Date();
+  const ymd = `${tarih.getFullYear()}${String(tarih.getMonth() + 1).padStart(2, "0")}${String(tarih.getDate()).padStart(2, "0")}`;
+
   const files: Record<string, Uint8Array> = {
     "agency.txt": strToU8(`agency_id,agency_name,agency_url,agency_timezone,agency_lang\n${agencyId},${csvKac(opts.agency || "RaySim")},https://raysim.vercel.app,Europe/Istanbul,tr\n`),
     "stops.txt": strToU8("stop_id,stop_name,stop_lat,stop_lon\n" +
-      opts.duraklar.map((d) => `${d.id},${csvKac(d.ad)},${d.lat.toFixed(6)},${d.lon.toFixed(6)}`).join("\n") + "\n"),
+      ileri.map((d) => `${d.id},${csvKac(d.ad)},${d.lat.toFixed(6)},${d.lon.toFixed(6)}`).join("\n") + "\n"),
     "routes.txt": strToU8(`route_id,agency_id,route_short_name,route_long_name,route_type\n${routeId},${agencyId},${csvKac(ad.slice(0, 20))},${csvKac(ad)},0\n`),
-    "trips.txt": strToU8(`route_id,service_id,trip_id\n${routeId},${serviceId},${tripId}\n`),
-    "stop_times.txt": strToU8("trip_id,arrival_time,departure_time,stop_id,stop_sequence\n" +
-      opts.duraklar.map((d, i) => `${tripId},${sn2hms(bas + d.varisSn)},${sn2hms(bas + d.kalkisSn)},${d.id},${i + 1}`).join("\n") + "\n"),
+    "trips.txt": strToU8(`route_id,service_id,trip_id,trip_headsign,direction_id,shape_id\n${trips}\n`),
+    "stop_times.txt": strToU8("trip_id,arrival_time,departure_time,stop_id,stop_sequence\n" + stopTimes + "\n"),
     "calendar.txt": strToU8(`service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\n${serviceId},1,1,1,1,1,1,1,20260101,20261231\n`),
+    "shapes.txt": strToU8("shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence\n" + shapes + "\n"),
+    "feed_info.txt": strToU8(`feed_publisher_name,feed_publisher_url,feed_lang,feed_version\nRaySim,https://raysim.vercel.app,tr,${ymd}\n`),
   };
+  // Headway-tabanlı tam servis: her yön için pencere boyunca frequencies.
+  if (hw > 0) {
+    files["frequencies.txt"] = strToU8("trip_id,start_time,end_time,headway_secs,exact_times\n" +
+      yonler.map((y) => `${y.tripId},${sn2hms(bas)},${sn2hms(bit)},${hw},0`).join("\n") + "\n");
+  }
   return zipSync(files, { level: 6 });
 }

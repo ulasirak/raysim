@@ -18,7 +18,7 @@ import {
 } from "firebase/firestore";
 import { getDb, getAuthInstance } from "./firebase";
 import type { SimConfig, ProjeMeta, Isletme } from "./anaray/config";
-import type { DurakArasiRing } from "./anaray/ring";
+import type { DurakArasiRing, Sube } from "./anaray/ring";
 import type { RollingStock } from "./anaray/types";
 
 const COL = "projeler";
@@ -50,6 +50,8 @@ export interface ProjeVerisi {
   arac?: RollingStock;
   /** İşletme/sefer parametreleri (sefer sayısı, kruvasman, sinyal modu vb.). */
   isletme?: Isletme;
+  /** Şubeler / tali hatlar (dallanma, #1) — additive; yoksa hat tümüyle doğrusaldır. */
+  subeler?: Sube[];
 }
 
 /** Proje listesi satırı (ağır `veri` alanı olmadan). */

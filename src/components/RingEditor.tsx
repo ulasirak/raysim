@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { RollingStock } from "@/lib/anaray/types";
 import { useSimConfig, useProje, useArac, useIsletme, useHesap } from "@/components/SimConfigProvider";
 import { HatIceAktar, type IceAktarMod } from "@/components/HatIceAktar";
+import { SubeEditor } from "@/components/SubeEditor";
 import { etkinBogazIsgali, terminalDonusParalel, etkinPeronSayisi, terminalMakasSayilari, terminalSeriDonus, type SimConfig, type DonusTip, type TerminalConfig, type Isletme } from "@/lib/anaray/config";
 import { maksimumTren } from "@/lib/anaray/kapasite";
 import { yolcuAkisSuresi } from "@/lib/anaray/yolcu";
@@ -285,6 +286,9 @@ export function RingEditor() {
         <HatIceAktar onIceAktar={iceAktarUygula} disabled={!yazilabilir} mesgulDis={iceMesgul} />
       )}
 
+      {/* ŞUBE / TALİ HAT EDİTÖRÜ (dallanma, #1) — ana hattan ayrılan tali hatlar */}
+      {!yukleniyor && rings.length > 0 && <SubeEditor />}
+
       {/* railML DIŞA AKTARMA — hattı endüstri-standart railML 2.x XML olarak indir
           (OpenTrack/RailSys köprüsü). Salt-okunur görünümde de açık (veri değişmez). */}
       {!yukleniyor && rings.length > 0 && (
@@ -292,16 +296,20 @@ export function RingEditor() {
           <summary className="flex cursor-pointer select-none items-center gap-2 p-4">
             <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
             <span className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>Dışa Aktar</span>
-            <span className="ml-2 text-xs" style={{ color: brand.muted }}>railML 2.x (.xml) — istasyon + kilometraj</span>
+            <span className="ml-2 text-xs" style={{ color: brand.muted }}>railML 2.2 (altyapı + araç + çizelge) · GTFS (çift yön + servis)</span>
           </summary>
           <div className="border-t px-4 pb-4 pt-3" style={{ borderColor: brand.border }}>
             <p className="mb-3 text-xs" style={{ color: brand.muted }}>
-              Hattı standart formatlara indir. <b>railML</b> = altyapı (istasyon + kilometraj + <b>makas · sinyal · eğim</b>) → OpenTrack/RailSys köprüsü. <b>GTFS</b> = duraklar + <b>RaySim çizelgesi</b> (transit araçları).
+              Hattı standart formatlara indir. <b>railML 2.2</b> = altyapı (istasyon · kilometraj · <b>makas · sinyal · eğim</b>) + <b>araç (rollingstock)</b> + <b>çizelge (timetable, çift yön)</b> → OpenTrack/RailSys köprüsü. <b>GTFS</b> = duraklar + <b>çift yön çizelge</b> + <b>frequencies (servis penceresi)</b> + shapes (transit araçları).
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <button type="button"
                 onClick={() => {
-                  const xml = railmlIhrac(rings, meta.hatAdi || "RaySim hattı");
+                  const hhmm = (s?: string) => { const m = /^(\d{1,2}):(\d{2})$/.exec(s ?? ""); return m ? (+m[1]) * 3600 + (+m[2]) * 60 : undefined; };
+                  const xml = railmlIhrac(rings, meta.hatAdi || "RaySim hattı", {
+                    stock, cfg, headwaySn: cfg.headway,
+                    servisBasSn: hhmm(isletme.servisBas), servisBitSn: hhmm(isletme.servisBit),
+                  });
                   const ad = (meta.hatAdi || "raysim-hat").trim().replace(/[^\w.-]+/g, "_") || "raysim-hat";
                   indir(new Blob([xml], { type: "application/xml" }), `${ad}.railml.xml`);
                 }}
@@ -323,7 +331,15 @@ export function RingEditor() {
                     dz.push({ id: `S${i}`, ad: duraklar[i].ad, lat: k.lat, lon: k.lon, varisSn: varis, kalkisSn: kalkis });
                     if (i < rings.length) t = kalkis + ringSenaryo(rings[i], stock, cfg).nominalSeyir;
                   }
-                  const zip = gtfsIhrac({ hatAdi: meta.hatAdi || "RaySim hattı", agency: meta.idare || meta.sinyalizasyonFirmasi || "RaySim", duraklar: dz });
+                  const hhmm = (s?: string) => { const m = /^(\d{1,2}):(\d{2})$/.exec(s ?? ""); return m ? (+m[1]) * 3600 + (+m[2]) * 60 : undefined; };
+                  const zip = gtfsIhrac({
+                    hatAdi: meta.hatAdi || "RaySim hattı",
+                    agency: meta.idare || meta.sinyalizasyonFirmasi || "RaySim",
+                    duraklar: dz,
+                    headwaySn: cfg.headway,
+                    baslangicSn: hhmm(isletme.servisBas),
+                    bitisSn: hhmm(isletme.servisBit),
+                  });
                   const ad = (meta.hatAdi || "raysim-hat").trim().replace(/[^\w.-]+/g, "_") || "raysim-hat";
                   indir(new Blob([new Uint8Array(zip)], { type: "application/zip" }), `${ad}.gtfs.zip`);
                 }}

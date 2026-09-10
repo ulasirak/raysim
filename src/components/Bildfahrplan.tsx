@@ -30,7 +30,10 @@ function sampleS(orn: LoopYorunge["ornekler"], faz: number): number {
   return a.s + (b.s - a.s) * ((faz - a.t) / dt);
 }
 
-export function Bildfahrplan({ loop, line }: { loop: LoopVeri; line: Line }) {
+/** Çakışma işareti verisi (cakisma.ts'ten): gerçek-km span [0,L] + zaman (loopY periyodu içinde). */
+export type BildCakisma = { t: number; kmBas: number; kmSon: number; karsi: boolean };
+
+export function Bildfahrplan({ loop, line, cakismalar = [] }: { loop: LoopVeri; line: Line; cakismalar?: BildCakisma[] }) {
   const veri = useMemo(() => {
     const { periyot, L, loopLen, count } = loop;
     if (periyot <= 0 || L <= 0 || count < 1) return null;
@@ -121,6 +124,18 @@ export function Bildfahrplan({ loop, line }: { loop: LoopVeri; line: Line }) {
           {kesisim.map((c, i) => (
             <rect key={`k${i}`} x={X(c.t) - 2.4} y={Y(c.fp) - 2.4} width={4.8} height={4.8} transform={`rotate(45 ${X(c.t).toFixed(1)} ${Y(c.fp).toFixed(1)})`} fill={CK.amber} stroke="#fff" strokeWidth={0.5} />
           ))}
+          {/* ÇAKIŞMA işaretleri (#2) — tek-hat kesiminde aynı anda ≥2 tren: kırmızı dikey
+              bant (span boyu) + ✖. Karşı yön (meet) dolu, aynı yön (kuyruk) içi boş. */}
+          {cakismalar.slice(0, 120).map((c, i) => {
+            const x = X(c.t), y1 = Y(Math.min(L, c.kmSon)), y2 = Y(Math.max(0, c.kmBas)), ym = (y1 + y2) / 2;
+            return (
+              <g key={`ck${i}`}>
+                <line x1={x} y1={y1} x2={x} y2={y2} stroke={CK.red} strokeWidth={2.4} strokeOpacity={0.32} strokeLinecap="round" />
+                <path d={`M${(x - 3).toFixed(1)},${(ym - 3).toFixed(1)} l6,6 M${(x + 3).toFixed(1)},${(ym - 3).toFixed(1)} l-6,6`} stroke={CK.red} strokeWidth={1.4} fill="none" />
+                <circle cx={x} cy={ym} r={2.6} fill={c.karsi ? CK.red : "#fff"} stroke={CK.red} strokeWidth={1} />
+              </g>
+            );
+          })}
           {/* Referans trenin istasyon geçiş noktaları — dolu daire */}
           {istOlay.map((o, i) => (
             <circle key={`i${i}`} cx={X(o.t)} cy={Y(o.fp)} r={1.8} fill={o.yon === "g" ? CK.blue : CK.red} />
@@ -138,6 +153,7 @@ export function Bildfahrplan({ loop, line }: { loop: LoopVeri; line: Line }) {
           <span><span style={{ color: CK.red }}>▬</span> Dönüş yönü</span>
           <span>Kalın çizgi = referans tren (zaman etiketleri bu trenindir)</span>
           <span><span style={{ color: CK.amber }}>◆</span> karşılaşma (kesişim) noktası</span>
+          {cakismalar.length > 0 && <span><span style={{ color: CK.red }}>✖</span> tek-hat çakışması ({cakismalar.length})</span>}
           <span>Eğim = hız · yatay = duruş · çizgi aralığı = headway ({saat(loop.offset || 0)})</span>
         </div>
       </div>

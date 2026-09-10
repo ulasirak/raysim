@@ -31,12 +31,12 @@ const BOS_ROTA: Route = { id: "rota_bos", name: "—", edgeIds: ["bos_e"], start
 /** Studio'daki LiveNetwork boru hattının deterministik özü (tek kaynak: context). */
 export function useCanliAgProps() {
   const { cfg } = useSimConfig();
-  const { rings: ringsHam, meta } = useProje();
+  const { rings: ringsHam, meta, subeler } = useProje();
   const { arac: stock } = useArac();
   const { isletme, patchIsletme } = useIsletme();
 
   const rings = useMemo(() => dwellUygulanmisRings(ringsHam, stock, isletme), [ringsHam, stock, isletme]);
-  const proje = useMemo(() => ringlerdenSebeke(rings, cfg, meta.hatAdi || "Proje Hattı"), [rings, cfg, meta.hatAdi]);
+  const proje = useMemo(() => ringlerdenSebeke(rings, cfg, meta.hatAdi || "Proje Hattı", subeler), [rings, cfg, meta.hatAdi, subeler]);
   const network: RailNetwork = proje?.network ?? BOS_SEBEKE;
   const route: Route = proje?.route ?? BOS_ROTA;
 

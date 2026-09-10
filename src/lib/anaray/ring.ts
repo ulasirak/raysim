@@ -161,6 +161,23 @@ export interface Loop {
   kapali: boolean; // kapalı hat (ring hattı) mı?
 }
 
+/**
+ * ŞUBE / TALİ HAT (spur) — ADDITIVE dallanma (#1). Ana hat (trunk = DurakArasiRing[])
+ * AYNEN kalır; şube, ana hattın bir DURAĞINDAN (kavşak düğümü) ayrılan kendi durak-arası
+ * ring zinciridir. Şubesiz projeler (subeler yok/[]) tümüyle eskisi gibi davranır.
+ */
+export interface Sube {
+  id: string;
+  ad: string;               // şube adı (ör. "Havalimanı Şubesi", "Depo Bağlantısı")
+  atIndex: number;          // ana hat durak indeksi (0..rings.length) — şubenin ayrıldığı KAVŞAK
+  rings: DurakArasiRing[];  // şube kendi ring zinciri (kavşaktan itibaren, ana hattan bağımsız)
+}
+
+/** Yeni boş şube (kavşak indeksinde tek durak-arası ile başlar). */
+export function yeniSube(atIndex: number, ad = "Yeni Şube"): Sube {
+  return { id: yeniId("SUBE"), ad, atIndex: Math.max(0, Math.round(atIndex)), rings: [yeniRing("Kavşak", "Şube Ucu")] };
+}
+
 export type Mode = "nominal" | "worst" | "best";
 
 // ————————————————————————————————————————————————

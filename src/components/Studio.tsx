@@ -13,6 +13,8 @@ import { simulate } from "@/lib/anaray/sim";
 import { simulateSignalled, reverseRoute, monteCarlo, planDepotDispatch, loopYorunge, type MonteCarloResult } from "@/lib/anaray/signalling";
 import { tramvaylar } from "@/lib/anaray/vehicles";
 import { maksimumTren } from "@/lib/anaray/kapasite";
+import { cakismaTespit } from "@/lib/anaray/cakisma";
+import { gecikmeYayilim } from "@/lib/anaray/gecikmeYayilim";
 import { tersIsletmeAnaliz } from "@/lib/anaray/tersisletme";
 import { dwellUygulanmisRings, maxYolcuKapasitesi, netTabanAlani } from "@/lib/anaray/yolcu";
 import { kmh, km, sure } from "@/lib/anaray/format";
@@ -59,20 +61,31 @@ export function Studio() {
 
 function StudioIc() {
   const { cfg } = useSimConfig();
-  const { rings: ringsHam, meta } = useProje();
+  const { rings: ringsHam, meta, subeler } = useProje();
   // Araç ve işletme parametreleri KALICI (projeye kayıtlı) — tek kaynak, uçucu değil.
   const { arac: stock, patchArac, setArac } = useArac();
   const { isletme, patchIsletme } = useIsletme();
 
+  // Analiz edilen hat: ana hat (null) ya da bir şube (dallanma, #1). Şube seçilince
+  // tüm Studio analizi (kapasite/Bildfahrplan/çakışma/knock-on/canlı sim) o şubenin
+  // EFEKTİF ring zincirini kullanır: hat başı → kavşak (ana ring'ler) + şube ring'leri.
+  const [analizSubeId, setAnalizSubeId] = useState<string | null>(null);
+  const analizSube = useMemo(() => subeler.find((s) => s.id === analizSubeId) ?? null, [subeler, analizSubeId]);
   // Yolcu dinamiği: dwell OTO ringlerin dwell'i fiziksel akıştan hesaplanır → canlı
   // sim ve kapasite AYNI hesaplı dwell'i kullanır (tutarlı).
-  const rings = useMemo(() => dwellUygulanmisRings(ringsHam, stock, isletme), [ringsHam, stock, isletme]);
+  const rings = useMemo(() => {
+    if (!analizSube) return dwellUygulanmisRings(ringsHam, stock, isletme);
+    const at = Math.max(0, Math.min(ringsHam.length, Math.round(analizSube.atIndex)));
+    return dwellUygulanmisRings([...ringsHam.slice(0, at), ...analizSube.rings], stock, isletme);
+  }, [ringsHam, stock, isletme, analizSube]);
 
   // Sefer modülünün hattı = PAYLAŞILAN proje hattı (Ringler/Tam Hat/Belgeler ile
-  // aynı kaynak). Ring zinciri graf şebekesine çevrilir; ayrı örnek şebeke yok.
+  // aynı kaynak). Ring zinciri graf şebekesine çevrilir; şubeler (dallanma) dâhil.
+  // Ana hattayken şubeler grafikte spur olarak görünür; bir şube analiz edilirken
+  // `rings` zaten o şubenin efektif zinciridir → grafiğe şube TEKRAR eklenmez.
   const proje = useMemo(
-    () => ringlerdenSebeke(rings, cfg, meta.hatAdi || "Proje Hattı"),
-    [rings, cfg, meta.hatAdi]
+    () => ringlerdenSebeke(rings, cfg, meta.hatAdi || "Proje Hattı", analizSube ? [] : subeler),
+    [rings, cfg, meta.hatAdi, subeler, analizSube]
   );
 
   // Sefer artık hattı DÜZENLEMEZ — yalnız simüle eder. Ağ/rota doğrudan proje
@@ -99,6 +112,8 @@ function StudioIc() {
   const [mc, setMc] = useState<MonteCarloResult | null>(null);
   const [mcRunning, setMcRunning] = useState(false);
   const [talepPopup, setTalepPopup] = useState(false); // yolcu verisi yokken talep-öneri uyarısı
+  const [koHedef, setKoHedef] = useState(0);      // knock-on: birincil gecikme verilen tren
+  const [koGecikme, setKoGecikme] = useState(180); // knock-on: birincil gecikme (s)
   // Pop-up'ı BODY'ye portallamak için mount bekle (SSR'da document yok). Portal,
   // modal'ı dar/dönüştürülmüş atalardan çıkarır → daima ekranın ORTASINDA açılır.
   const [mounted, setMounted] = useState(false);
@@ -220,6 +235,16 @@ function StudioIc() {
     () => ({ ...loopY, count: filo, offset: loopY.periyot / Math.max(1, filo), dagitim }),
     [loopY, filo, dagitim]
   );
+  // Çizelge çakışma tespiti (#2) — tek-hat karşılaşmaları + sistemik headway<hMin.
+  const cakisma = useMemo(
+    () => cakismaTespit(rings, stock, cfg, loopY, filo, isletme),
+    [rings, stock, cfg, loopY, filo, isletme]
+  );
+  // Gecikme yayılımı / knock-on (#3) — hedef trene birincil gecikme → ardışık zincir.
+  const knockOn = useMemo(
+    () => gecikmeYayilim(line, stock, { headway: ulasilanHeadwaySn, count: filo, sinyaller: sinyalSimKonum }, koHedef, koGecikme),
+    [line, stock, ulasilanHeadwaySn, filo, sinyalSimKonum, koHedef, koGecikme]
+  );
 
   const monteCarloCalistir = () => {
     setMcRunning(true);
@@ -246,6 +271,20 @@ function StudioIc() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
+      {/* ANALİZ EDİLEN HAT SEÇİCİ (dallanma, #1) — ana hat ya da bir şube. Şube seçilince
+          tüm paneller (kapasite/Bildfahrplan/çakışma/knock-on/canlı sim) o şubenin
+          efektif zincirini (hat başı → kavşak + şube) analiz eder. Yalnız şube varsa görünür. */}
+      {subeler.length > 0 && (
+        <div className="mb-5 flex flex-wrap items-center gap-2 rounded-lg border px-4 py-3" style={{ borderColor: brand.borderStrong, background: "#fff" }}>
+          <span className="text-sm font-semibold" style={{ color: brand.ink }}>Analiz edilen hat:</span>
+          <select value={analizSubeId ?? ""} onChange={(e) => setAnalizSubeId(e.target.value || null)}
+            className="rounded border px-3 py-1.5 text-sm" style={{ borderColor: brand.border, color: brand.ink }}>
+            <option value="">Ana hat</option>
+            {subeler.map((s) => <option key={s.id} value={s.id}>Şube: {s.ad}</option>)}
+          </select>
+          {analizSube && <span className="text-xs" style={{ color: brand.muted }}>Hat başından kavşağa + şube ({analizSube.rings.length} durak) — tüm analiz bu rotaya göre.</span>}
+        </div>
+      )}
       {/* Talebe göre öneri için yolcu verisi gerekli — pop-up (tahmin YOK).
           BODY'ye portallanır → sayfanın neresinde olursak olalım ekranın tam
           ORTASINDA (viewport merkezinde) açılır, yukarıda takılı kalmaz. */}
@@ -564,8 +603,82 @@ function StudioIc() {
       {/* BİLDFAHRPLAN — canlı sim ile aynı loop yörüngesinden zaman-mesafe tren grafiği */}
       {simHazir && (
         <Panel baslik="Bildfahrplan — Zaman–Mesafe Grafiği" aciklama="Demiryolu mühendisliğinin klasik grafiği (Marey diyagramı): yatay = zaman (bir tam çevrim), dikey = mesafe (istasyonlar ızgara). Her tren bir çizgidir — eğim hızı, yatay kısım duruşu, gidiş↔dönüş çizgilerinin kesişimi karşılaşma noktasını gösterir. Çizgiler arası eşit dikey aralık düzenli headway'i, bozulması öbekleşmeyi (bunching) ortaya koyar. Veri canlı sim ile birebir aynıdır.">
-          <GrafikCerceve baslik="Bildfahrplan — Zaman–Mesafe Grafiği"><Bildfahrplan loop={loopVeri} line={line} /></GrafikCerceve>
+          <GrafikCerceve baslik="Bildfahrplan — Zaman–Mesafe Grafiği"><Bildfahrplan loop={loopVeri} line={line} cakismalar={cakisma.cakismalar} /></GrafikCerceve>
+          {/* Çakışma özeti (#2) — çakışma varsa uyarı + somut çözüm; yoksa yeşil onay. */}
+          <div className="mt-3 rounded-lg border px-4 py-3 text-sm" style={{
+            borderColor: cakisma.cakismaVar ? CK.red : "#B7E0C9",
+            background: cakisma.cakismaVar ? "#FDF2F2" : "#F0FBF5",
+            color: brand.ink,
+          }}>
+            <div className="font-semibold" style={{ color: cakisma.cakismaVar ? CK.red : "#0E7C57" }}>
+              {cakisma.cakismaVar ? "⚠ Çizelge çakışması" : "✓ Çakışmasız çizelge"}
+            </div>
+            <div className="mt-1" style={{ color: brand.inkSoft }}>{cakisma.ozet}</div>
+            {cakisma.sistemik && (
+              <div className="mt-2 text-xs" style={{ color: brand.inkSoft }}>{cakisma.sistemik.oneri}</div>
+            )}
+            {cakisma.spanOzet.map((o, i) => (
+              <div key={i} className="mt-2 text-xs" style={{ color: brand.inkSoft }}>
+                <b>{o.ad}</b> — {o.cakismaSayisi} karşılaşma/çevrim, maks {sure(o.maxOrtusme)}: {o.oneri}
+              </div>
+            ))}
+          </div>
           <VeriKaynaklari />
+        </Panel>
+      )}
+
+      {/* GECİKME YAYILIMI — knock-on zinciri (deterministik): hedef trene birincil gecikme */}
+      {simHazir && filo >= 2 && (
+        <Panel baslik="Gecikme Yayılımı — Knock-on Zinciri" aciklama="Bir trene birincil gecikme ver; sinyalizasyon simülasyonu bu gecikmenin ARDIŞIK trenlere ne kadar yansıdığını (ikincil/knock-on gecikme) ve tarifenin onu hangi trende yuttuğunu (sönümleme) deterministik olarak hesaplar. Monte-Carlo'nun ortalamada erittiği tek-olay zincirini yalıtır. Hedef treni ve gecikmeyi oynat.">
+          <div className="flex flex-wrap items-end gap-4 mb-3">
+            <label className="text-sm" style={{ color: brand.inkSoft }}>
+              Hedef tren
+              <select value={koHedef} onChange={(e) => setKoHedef(Math.min(filo - 1, Math.max(0, +e.target.value)))}
+                className="ml-2 rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }}>
+                {Array.from({ length: filo }, (_, k) => <option key={k} value={k}>{k + 1}. tren</option>)}
+              </select>
+            </label>
+            <label className="text-sm" style={{ color: brand.inkSoft }}>
+              Birincil gecikme: <b style={{ color: brand.ink }}>{koGecikme} s</b>
+              <input type="range" min={30} max={600} step={10} value={koGecikme}
+                onChange={(e) => setKoGecikme(+e.target.value)} className="ml-2 align-middle" style={{ accentColor: brand.red }} />
+            </label>
+          </div>
+          {/* Knock-on bar görselleştirmesi — tren başına ikincil gecikme (hedef koyu) */}
+          {(() => {
+            const bars = knockOn.zincir;
+            const maxV = Math.max(1, ...bars.map((b) => (b.tren === knockOn.hedefTren ? b.birincil : b.ikincil)));
+            return (
+              <div className="flex items-end gap-1 h-28 border-b" style={{ borderColor: brand.border }}>
+                {bars.map((b) => {
+                  const v = b.tren === knockOn.hedefTren ? b.birincil : b.ikincil;
+                  const renk = b.tren === knockOn.hedefTren ? brand.ink : (b.ikincil > 3 ? CK.red : "#C3CAD2");
+                  return (
+                    <div key={b.tren} className="flex flex-1 flex-col items-center justify-end" title={`${b.tren + 1}. tren: ${b.tren === knockOn.hedefTren ? `birincil ${b.birincil} s` : `knock-on ${b.ikincil} s`}`}>
+                      {v > 0 && <span className="text-[9px]" style={{ color: renk }}>{Math.round(v)}</span>}
+                      <div style={{ height: `${(v / maxV) * 92}px`, width: "70%", background: renk, borderRadius: "2px 2px 0 0" }} />
+                      <span className="mt-0.5 text-[9px]" style={{ color: brand.muted }}>{b.tren + 1}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+          <div className="mt-3 rounded-lg border px-4 py-3 text-sm" style={{
+            borderColor: knockOn.etkilenen === 0 ? "#B7E0C9" : (knockOn.etkilenen >= 3 ? CK.red : "#E4C97A"),
+            background: knockOn.etkilenen === 0 ? "#F0FBF5" : "#FDFaF2",
+            color: brand.ink,
+          }}>
+            <b style={{ color: knockOn.etkilenen === 0 ? "#0E7C57" : (knockOn.etkilenen >= 3 ? CK.red : "#8A6D1F") }}>
+              {knockOn.etkilenen === 0 ? "✓ Yayılım yok" : `⚠ ${knockOn.etkilenen} ardışık tren etkilenir`}
+            </b>
+            <div className="mt-1" style={{ color: brand.inkSoft }}>{knockOn.ozet}</div>
+            <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs" style={{ color: brand.inkSoft }}>
+              <span>En yüksek knock-on: <b>{sure(knockOn.maxIkincil)}</b></span>
+              <span>Toplam ikincil: <b>{sure(knockOn.toplamIkincil)}</b></span>
+              <span>Sönümleme: <b>{knockOn.sonumleme !== null ? `${knockOn.sonumleme - knockOn.hedefTren} tren sonra` : "pencere içinde sönmez"}</b></span>
+            </div>
+          </div>
         </Panel>
       )}
 

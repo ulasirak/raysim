@@ -7,7 +7,16 @@
 // Konumlar (pos, m) sıralanıp durak-arası mesafeler (pos farkı) ile ring zinciri kurulur.
 // Makas/sinyal detayı V1'de aktarılmaz (Ringler'de eklenir).
 
-import { yeniRing, ringDuraklari, MAKAS_TIP_AD, type DurakArasiRing } from "./ring";
+import { yeniRing, ringDuraklari, ringSenaryo, MAKAS_TIP_AD, BELGE, type DurakArasiRing } from "./ring";
+import type { RollingStock } from "./types";
+import type { SimConfig } from "./config";
+
+/** Saniye → "HH:MM:SS" (railML/GTFS uyumlu; 24h aşımını korur, ör. 25:10:00). */
+function sn2hms(sn: number): string {
+  const s = Math.max(0, Math.round(sn));
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`;
+}
 
 // —— Minimal XML: başlangıç etiketlerini + niteliklerini tarar (yapı ağacı gerekmez;
 // yalnız nitelik çıkarımı yapılır → railML 2.x sürüm farklarına dayanıklı). ——
@@ -94,8 +103,24 @@ function xmlKac(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-/** Ring zincirini railML 2.x altyapı XML string'ine çevirir (dışa aktarma, V2). */
-export function railmlIhrac(rings: DurakArasiRing[], hatAdi = "RaySim hattı"): string {
+/**
+ * Ring zincirini railML 2.2 XML string'ine çevirir (dışa aktarma).
+ * V2: altyapı (ocp · track · switch · signal · gradient).
+ * V3 (opts.stock verilirse): ek olarak <rollingstock> (araç + formation) ve
+ *     <timetable> (çift yön, hesaplanan çizelge; opts.headwaySn > 0 ise servis
+ *     penceresi boyunca headway aralığıyla çoğaltılır) → OpenTrack/RailSys tam köprü.
+ */
+export function railmlIhrac(
+  rings: DurakArasiRing[],
+  hatAdi = "RaySim hattı",
+  opts?: {
+    stock?: RollingStock;
+    cfg?: SimConfig;
+    headwaySn?: number;
+    servisBasSn?: number;
+    servisBitSn?: number;
+  },
+): string {
   const duraklar = ringDuraklari(rings); // {ad, konum}[] — kümülatif kilometraj (m)
   const toplam = duraklar.length ? Math.round(duraklar[duraklar.length - 1].konum) : 0;
   const id = (i: number) => `ocp_${i}`;
@@ -132,6 +157,111 @@ export function railmlIhrac(rings: DurakArasiRing[], hatAdi = "RaySim hattı"): 
     ? `        <ocsElements>\n${makaslar.length ? `          <switches>\n${makaslar.join("\n")}\n          </switches>\n` : ""}${sinyaller.length ? `          <signals>\n${sinyaller.join("\n")}\n          </signals>\n` : ""}        </ocsElements>\n`
     : "";
 
+  // ——— ROLLINGSTOCK + TIMETABLE (opts.stock verilirse) ———
+  const stock = opts?.stock;
+  const cfg = opts?.cfg ?? BELGE;
+  let rollingXml = "";
+  let ttXml = "";
+  if (stock && duraklar.length >= 2) {
+    // Araç: standart nitelikler (id/name/length/speed); tam fizik kayıpsız yorum bloğunda.
+    const hizKmh = Math.round(stock.maxSpeed * 3.6);
+    const boy = stock.length.toFixed(2);
+    rollingXml = `  <rollingstock>
+    <!-- RaySim araç fiziği (kayıpsız): kütle=${Math.round(stock.mass)} kg · dönen kütle ρ=${stock.rotatingMassFactor} · güç=${Math.round(stock.power)} W · kalkış çeki=${Math.round(stock.startingTractiveEffort)} N · servis freni=${stock.maxBraking} m/s² · Davis A=${stock.davisA} B=${stock.davisB} C=${stock.davisC} -->
+    <vehicles>
+      <vehicle id="veh_1" name="${xmlKac(stock.name)}" length="${boy}" speed="${hizKmh}" code="${xmlKac(stock.id)}"/>
+    </vehicles>
+    <formations>
+      <formation id="fo_1" name="${xmlKac(stock.name)}">
+        <trainOrder>
+          <vehicleRef vehicleRef="veh_1" orderNumber="1"/>
+        </trainOrder>
+      </formation>
+    </formations>
+  </rollingstock>
+`;
+
+    // İleri yön çizelgesi (trip başına göreli s): durak varış/kalkış.
+    // Seyir = ringSenaryo(...).nominalSeyir; dwell = varış durağının (to) ring.dwell'i.
+    const ileriZaman: { arr: number; dep: number }[] = [];
+    {
+      let t = 0;
+      for (let i = 0; i < duraklar.length; i++) {
+        const dwell = i === 0 ? 0 : Math.max(0, rings[i - 1]?.dwell ?? 0);
+        const arr = t;
+        const dep = arr + dwell;
+        ileriZaman.push({ arr, dep });
+        if (i < rings.length) t = dep + ringSenaryo(rings[i], stock, cfg).nominalSeyir;
+      }
+    }
+    const cevrim = ileriZaman[ileriZaman.length - 1]?.arr ?? 0; // tek yön süre (s)
+    // Dönüş yönü = ileri seyir deltalarının aynası; dwell'ler eşlenir, uçlar 0.
+    const donusZaman: { arr: number; dep: number }[] = [];
+    {
+      const n = duraklar.length;
+      let t = 0;
+      for (let i = 0; i < n; i++) {
+        if (i > 0) {
+          const j = n - 1 - i; // ileri segment j (durak j→j+1) = dönüş (j+1)→j seyir
+          t += (ileriZaman[j + 1].arr - ileriZaman[j].dep);
+        }
+        const src = n - 1 - i;
+        const dwell = (i === 0 || i === n - 1) ? 0 : Math.max(0, ileriZaman[src].dep - ileriZaman[src].arr);
+        donusZaman.push({ arr: t, dep: t + dwell });
+        t += dwell;
+      }
+    }
+
+    const bas = opts?.servisBasSn ?? 6 * 3600;
+    const bit = Math.max(bas + 60, opts?.servisBitSn ?? 24 * 3600);
+    const hw = Math.max(0, Math.round(opts?.headwaySn ?? 0));
+    // Sefer başlangıç zamanları: headway varsa pencere boyunca; yoksa tek temsil sefer.
+    const kalkislar: number[] = [];
+    if (hw > 0) { for (let d = bas; d <= bit; d += hw) kalkislar.push(d); }
+    else kalkislar.push(bas);
+    const MAKS = 400; // dosya şişmesin: yön başına üst sınır
+    const kalk = kalkislar.slice(0, MAKS);
+
+    const ocpTT = (dizi: { arr: number; dep: number }[], t0: number, ters: boolean) =>
+      dizi.map((z, i) => {
+        const ocpIdx = ters ? (duraklar.length - 1 - i) : i;
+        return `        <ocpTT ocpRef="${id(ocpIdx)}" ocpType="stop" sequence="${i + 1}"><times scope="scheduled" arrival="${sn2hms(t0 + z.arr)}" departure="${sn2hms(t0 + z.dep)}"/></ocpTT>`;
+      }).join("\n");
+
+    const parts: string[] = [];
+    const trains: string[] = [];
+    let tno = 1000;
+    kalk.forEach((t0, k) => {
+      // Gidiş (up)
+      parts.push(`      <trainPart id="tp_up_${k}" line="${xmlKac(hatAdi)}">
+        <formationTT formationRef="fo_1"/>
+        <ocpsTT>
+${ocpTT(ileriZaman, t0, false)}
+        </ocpsTT>
+      </trainPart>`);
+      trains.push(`      <train id="tr_up_${k}" type="operational" trainNumber="${++tno}"><trainPartSequence sequence="1"><trainPartRef ref="tp_up_${k}" position="1"/></trainPartSequence></train>`);
+      // Dönüş (down) — çevrim + dönüş bekleme kadar sonra kalkar (turnaround ihmal: çevrim)
+      const t0d = t0 + cevrim;
+      parts.push(`      <trainPart id="tp_dn_${k}" line="${xmlKac(hatAdi)}">
+        <formationTT formationRef="fo_1"/>
+        <ocpsTT>
+${ocpTT(donusZaman, t0d, true)}
+        </ocpsTT>
+      </trainPart>`);
+      trains.push(`      <train id="tr_dn_${k}" type="operational" trainNumber="${++tno}"><trainPartSequence sequence="1"><trainPartRef ref="tp_dn_${k}" position="1"/></trainPartSequence></train>`);
+    });
+
+    ttXml = `  <timetable id="tt_raysim">
+    <trainParts>
+${parts.join("\n")}
+    </trainParts>
+    <trains>
+${trains.join("\n")}
+    </trains>
+  </timetable>
+`;
+  }
+
   const tarih = new Date().toISOString();
   return `<?xml version="1.0" encoding="UTF-8"?>
 <railml xmlns="https://www.railml.org/schemas/2013" version="2.2">
@@ -158,6 +288,6 @@ ${csXml}
 ${ocsXml}      </track>
     </tracks>
   </infrastructure>
-</railml>
+${rollingXml}${ttXml}</railml>
 `;
 }

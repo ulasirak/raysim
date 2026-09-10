@@ -14,7 +14,7 @@ import type {
   TrackSegment,
 } from "./types";
 import type { SimConfig } from "./config";
-import { BELGE, ringToLine, type DurakArasiRing } from "./ring";
+import { BELGE, ringToLine, type DurakArasiRing, type Sube } from "./ring";
 
 export function flattenRoute(net: RailNetwork, route: Route): Line {
   const nodeById = new Map(net.nodes.map((n) => [n.id, n]));
@@ -127,8 +127,9 @@ export function routeEdgeSet(route: Route): Set<string> {
 export function ringlerdenSebeke(
   rings: DurakArasiRing[],
   cfg: SimConfig = BELGE,
-  hatAdi = "Proje Hattı"
-): { network: RailNetwork; route: Route } | null {
+  hatAdi = "Proje Hattı",
+  subeler: Sube[] = [],
+): { network: RailNetwork; route: Route; subeRotalar: { id: string; ad: string; route: Route }[] } | null {
   if (rings.length === 0) return null;
 
   const nodes: RailNode[] = [];
@@ -140,11 +141,11 @@ export function ringlerdenSebeke(
   // DEĞİL: komşu iki ring aynı durağı paylaşsa bile ayrı id taşıyabilir
   // (`yeniRing` her hücreye taze id verir) → id'ye güvenilirse zincir kopar.
   const dugumId = (i: number) => `dg${i}`;
+  const trunkX: number[] = [];
   const dugumEkle = (i: number, ad: string, dwell: number, konum: number, depot?: boolean, queued?: number) => {
-    nodes.push({
-      id: dugumId(i), name: ad, type: "istasyon",
-      x: X0 + (X1 - X0) * (toplam > 0 ? konum / toplam : 0), y: Y, dwell, depot, queued,
-    });
+    const x = X0 + (X1 - X0) * (toplam > 0 ? konum / toplam : 0);
+    trunkX[i] = x;
+    nodes.push({ id: dugumId(i), name: ad, type: "istasyon", x, y: Y, dwell, depot, queued });
   };
 
   // Başlangıç durağı deposu ilk ringde (fromDepot/fromQueued) taşınır — origin'in
@@ -166,14 +167,55 @@ export function ringlerdenSebeke(
 
   const ilk = rings[0].fromAd;
   const son = rings[rings.length - 1].toAd;
+  const trunkRoute: Route = {
+    id: "rota_proje",
+    name: `${ilk} → ${son}`,
+    edgeIds: edges.map((e) => e.id),
+    startNodeId: dugumId(0), // kapalı hatta uç-tahmini belirsizleşir
+  };
+
+  // ——— ŞUBELER (additive dallanma, #1) ———
+  // Her şube, ana hattın dg{atIndex} kavşağından ayrılan kendi ring zinciridir.
+  // Düğümleri kavşaktan sağa/aşağıya uzatılır (şematik). Şube rotası = hat başından
+  // kavşağa kadarki ana kenarlar + şube kenarları → tek Line'a düzleşir.
+  const subeRotalar: { id: string; ad: string; route: Route }[] = [];
+  subeler.forEach((sube, bi) => {
+    if (!sube.rings.length) return;
+    const at = Math.max(0, Math.min(rings.length, Math.round(sube.atIndex)));
+    const kavsakDugum = dugumId(at); // ana hattaki kavşak düğümü
+    const jx = trunkX[at] ?? X0;
+    const yOff = Y + 70 + bi * 60; // her şube ayrı şeritte
+    const subeToplam = sube.rings.reduce((a, r) => a + Math.max(1, r.uzunluk), 0);
+    let prevNode = kavsakDugum;
+    let sk = 0;
+    const subeEdgeIds: string[] = [];
+    sube.rings.forEach((ring, j) => {
+      const alt = ringToLine(ring, "nominal", cfg);
+      sk += Math.max(1, ring.uzunluk);
+      const nid = `sb_${bi}_${j + 1}`;
+      const x = jx + 90 * (subeToplam > 0 ? sk / subeToplam : (j + 1) / sube.rings.length);
+      nodes.push({ id: nid, name: ring.toAd, type: "istasyon", x, y: yOff, dwell: ring.dwell, depot: ring.depot, queued: ring.queued });
+      const eid = `se_${bi}_${j + 1}`;
+      edges.push({
+        id: eid, from: prevNode, to: nid, length: alt.length,
+        segments: alt.segments.map((s) => ({ start: s.start, end: s.end, vmax: s.vmax, gradient: s.gradient })),
+      });
+      subeEdgeIds.push(eid);
+      prevNode = nid;
+    });
+    // Şube rotası: hat başı → kavşak (ana kenarlar 1..at) + şube kenarları.
+    const trunkKisim = edges.slice(0, at).map((e) => e.id).filter((id) => id.startsWith("rg"));
+    subeRotalar.push({
+      id: sube.id,
+      ad: sube.ad || `Şube ${bi + 1}`,
+      route: { id: `rota_sube_${bi}`, name: `${ilk} → ${sube.rings[sube.rings.length - 1].toAd}`, edgeIds: [...trunkKisim, ...subeEdgeIds], startNodeId: dugumId(0) },
+    });
+  });
+
   return {
     network: { id: "sebeke_proje", name: hatAdi, nodes, edges },
-    route: {
-      id: "rota_proje",
-      name: `${ilk} → ${son}`,
-      edgeIds: edges.map((e) => e.id),
-      startNodeId: dugumId(0), // kapalı hatta uç-tahmini belirsizleşir
-    },
+    route: trunkRoute,
+    subeRotalar,
   };
 }
 

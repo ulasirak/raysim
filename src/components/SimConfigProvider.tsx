@@ -18,7 +18,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { varsayilanConfig, varsayilanMeta, varsayilanIsletme, VARSAYILAN_TERMINAL, type SimConfig, type ProjeMeta, type Isletme, type TerminalConfig } from "@/lib/anaray/config";
-import { type DurakArasiRing } from "@/lib/anaray/ring";
+import { type DurakArasiRing, type Sube } from "@/lib/anaray/ring";
 import { varsayilanArac } from "@/lib/anaray/vehicles";
 import type { RollingStock } from "@/lib/anaray/types";
 import { yoneticiMi } from "@/lib/anaray/yetki";
@@ -48,6 +48,8 @@ interface Ctx {
   rings: DurakArasiRing[];
   setRings: React.Dispatch<React.SetStateAction<DurakArasiRing[]>>;
   sifirlaRings: () => void;
+  subeler: Sube[];
+  setSubeler: React.Dispatch<React.SetStateAction<Sube[]>>;
   meta: ProjeMeta;
   patchMeta: (p: Partial<ProjeMeta>) => void;
   arac: RollingStock;
@@ -123,6 +125,7 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
   const [cfg, setCfg] = useState<SimConfig>(varsayilanConfig);
   // Başlangıç BOŞ: hiçbir hat, oturum çözülmeden ekrana düşmez.
   const [rings, setRingsRaw] = useState<DurakArasiRing[]>([]);
+  const [subeler, setSubelerRaw] = useState<Sube[]>([]); // şubeler/tali hatlar (#1)
   const [meta, setMeta] = useState<ProjeMeta>(varsayilanMeta);
   const [arac, setAracRaw] = useState<RollingStock>(varsayilanArac);
   const [isletme, setIsletmeRaw] = useState<Isletme>(varsayilanIsletme);
@@ -179,13 +182,14 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
     nIsletme.terminalBas = gocTerminal(v.isletme?.terminalBas);
     nIsletme.terminalSon = gocTerminal(v.isletme?.terminalSon);
     setRingsRaw(v.rings);
+    setSubelerRaw(v.subeler ?? []);
     setCfg(nCfg);
     setMeta(nMeta);
     setAracRaw(nArac);
     setIsletmeRaw(nIsletme);
     // İmza NORMALİZE edilmiş halden üretilir (otomatik-kayıtla birebir aynı sıra) →
     // eksik alanlı eski kayıt açılınca gereksiz "kaydediliyor" tetiklenmez.
-    imzaRef.current = JSON.stringify({ rings: v.rings, cfg: nCfg, meta: nMeta, arac: nArac, isletme: nIsletme });
+    imzaRef.current = JSON.stringify({ rings: v.rings, cfg: nCfg, meta: nMeta, arac: nArac, isletme: nIsletme, subeler: v.subeler ?? [] });
   }, []);
 
   // Paylaşım görünümünden çıkış. ADRESTEKİ `?proje=` DE SİLİNİR: aksi halde
@@ -362,7 +366,7 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
   // 3) Otomatik kayıt (geciktirmeli) — yalnız yazılabilir durumda ve gerçek değişimde
   useEffect(() => {
     if (!yazilabilir || !aktifId || durum === "yukleniyor") return;
-    const veri: ProjeVerisi = { rings, cfg, meta, arac, isletme };
+    const veri: ProjeVerisi = { rings, cfg, meta, arac, isletme, subeler };
     const imza = JSON.stringify(veri);
     if (imza === imzaRef.current) return;
 
@@ -397,7 +401,7 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
     }, 1200);
 
     return () => { if (zamanlayiciRef.current) clearTimeout(zamanlayiciRef.current); };
-  }, [rings, cfg, meta, arac, isletme, yazilabilir, aktifId, durum]);
+  }, [rings, cfg, meta, arac, isletme, subeler, yazilabilir, aktifId, durum]);
 
   // — yazma sarmalayıcıları —
   // Salt-okunur modda (demo / paylaşım linki) yazma SESSİZCE yok sayılır. Arayüz
@@ -406,6 +410,10 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
   const setRings: React.Dispatch<React.SetStateAction<DurakArasiRing[]>> = useCallback((v) => {
     if (!yazilabilir) return;
     setRingsRaw((eski) => (typeof v === "function" ? (v as (p: DurakArasiRing[]) => DurakArasiRing[])(eski) : v));
+  }, [yazilabilir]);
+  const setSubeler: React.Dispatch<React.SetStateAction<Sube[]>> = useCallback((v) => {
+    if (!yazilabilir) return;
+    setSubelerRaw((eski) => (typeof v === "function" ? (v as (p: Sube[]) => Sube[])(eski) : v));
   }, [yazilabilir]);
 
   const patch = useCallback((p: Partial<SimConfig>) => {
@@ -422,6 +430,7 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
   const sifirlaRings = useCallback(() => {
     if (!yazilabilir) return;
     setRingsRaw([]);
+    setSubelerRaw([]); // hat temizlenince şubeler de gider
   }, [yazilabilir]);
 
   const patchMeta = useCallback((p: Partial<ProjeMeta>) => {
@@ -559,13 +568,13 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
   }, [user, aktifId, islem]);
 
   const deger = useMemo<Ctx>(() => ({
-    cfg, patch, sifirla, rings, setRings, sifirlaRings, meta, patchMeta,
+    cfg, patch, sifirla, rings, setRings, sifirlaRings, subeler, setSubeler, meta, patchMeta,
     arac, patchArac, setArac, isletme, patchIsletme,
     yazilabilir, yonetici, demoMu, paylasimGorunumu, paylasimdanCik, durum, hataMetni,
     projeler, aktifId, aktifAd, paylasimAcik, kota, kotaDoldu,
     projeSec, projeYeni, projeSilmeIstegi, projeAdiGuncelle, paylasimDegistir,
   }), [
-    cfg, patch, sifirla, rings, setRings, sifirlaRings, meta, patchMeta,
+    cfg, patch, sifirla, rings, setRings, sifirlaRings, subeler, setSubeler, meta, patchMeta,
     arac, patchArac, setArac, isletme, patchIsletme,
     yazilabilir, yonetici, demoMu, paylasimGorunumu, paylasimdanCik, durum, hataMetni,
     projeler, aktifId, aktifAd, paylasimAcik, kota, kotaDoldu,
@@ -597,6 +606,8 @@ export function useProje(): {
   rings: DurakArasiRing[];
   setRings: React.Dispatch<React.SetStateAction<DurakArasiRing[]>>;
   sifirlaRings: () => void;
+  subeler: Sube[];
+  setSubeler: React.Dispatch<React.SetStateAction<Sube[]>>;
   meta: ProjeMeta;
   patchMeta: (p: Partial<ProjeMeta>) => void;
   yazilabilir: boolean;
@@ -604,8 +615,8 @@ export function useProje(): {
   /** Aktif hat verisi hâlâ yükleniyor mu? (rings=[] "boş hat" mı yoksa "henüz gelmedi" mi ayrımı) */
   yukleniyor: boolean;
 } {
-  const { rings, setRings, sifirlaRings, meta, patchMeta, yazilabilir, yonetici, durum } = useCtx();
-  return { rings, setRings, sifirlaRings, meta, patchMeta, yazilabilir, yonetici, yukleniyor: durum === "yukleniyor" };
+  const { rings, setRings, sifirlaRings, subeler, setSubeler, meta, patchMeta, yazilabilir, yonetici, durum } = useCtx();
+  return { rings, setRings, sifirlaRings, subeler, setSubeler, meta, patchMeta, yazilabilir, yonetici, yukleniyor: durum === "yukleniyor" };
 }
 
 /** Projenin çeken aracı — tek kaynak (Sefer/Ringler/Tam Hat/Sistem hepsi bunu okur). */
@@ -621,7 +632,7 @@ export function useIsletme(): { isletme: Isletme; patchIsletme: (p: Partial<Isle
 }
 
 /** Oturum + proje yönetimi (kabuk/başlık için). */
-export function useHesap(): Omit<Ctx, "cfg" | "patch" | "sifirla" | "rings" | "setRings" | "sifirlaRings" | "meta" | "patchMeta" | "arac" | "patchArac" | "setArac" | "isletme" | "patchIsletme"> {
+export function useHesap(): Omit<Ctx, "cfg" | "patch" | "sifirla" | "rings" | "setRings" | "sifirlaRings" | "subeler" | "setSubeler" | "meta" | "patchMeta" | "arac" | "patchArac" | "setArac" | "isletme" | "patchIsletme"> {
   const c = useCtx();
   return {
     yazilabilir: c.yazilabilir, yonetici: c.yonetici, demoMu: c.demoMu, paylasimGorunumu: c.paylasimGorunumu,

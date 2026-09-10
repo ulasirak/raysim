@@ -29,6 +29,8 @@ import {
 import { blockingTimeRing } from "./blockingtime";
 import { loopToHat } from "./hatsim";
 import { loopYorunge, monteCarlo, type LoopYorunge, type MonteCarloResult } from "./signalling";
+import { cakismaTespit } from "./cakisma";
+import { gecikmeYayilim } from "./gecikmeYayilim";
 import { sure } from "./format";
 import { hatOzellikleri, sinyalKonumlari } from "./network";
 import type { Line } from "./types";
@@ -639,12 +641,18 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
 
   // GERÇEK sinyalizasyon + filo — rapor simülasyonu canlı sistemle birebir olsun diye:
   //   sinyaller (giden, ters-değil) blok sınırıdır; filo = kullanıcının onayladığı gerçek
-  //   araç sayısı (verilmemişse öneriye düşer, sabit "4" DEĞİL).
+  //   araç sayısı (verilmemişse öneriye düşer, sabit "4" DEĞİL). SÜRDÜRÜLEBİLİR FİLO TAVANDIR:
+  //   rapordaki planlanan filo, sürdürülebilir maks'ı (UIC 406 tamponlu) aşamaz → daha çok
+  //   tramvay istense bile sürdürülebilire kırpılır. Kullanıcı DAHA AZ filo isterse o değer
+  //   aynen korunur (rapor daha az filoyla verilir).
   const ozellikler = hatOzellikleri(rings, cfg);
   const sinyalListe = ozellikler.filter((f) => f.kind === "sinyal");
   const sinyalSayisi = sinyalListe.length;
   const tersSinyalSayisi = sinyalListe.filter((f) => f.tersIsletme).length;
-  const filoGercek = filo > 0 ? Math.round(filo) : (siganTren || maks.nSurdurulebilir || 4);
+  const filoIstenen = filo > 0 ? Math.round(filo) : (siganTren || maks.nSurdurulebilir || 4);
+  const filoGercek = (maks.gecerli && maks.nSurdurulebilir > 0)
+    ? Math.min(filoIstenen, maks.nSurdurulebilir)
+    : filoIstenen;
 
   // Birleşik hat (loop → tek Line) → hız profili + Bildfahrplan grafikleri
   const line: Line | null = rings.length ? loopToHat(rings, true, cfg).line : null;
@@ -738,6 +746,84 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
       ${mcKpi}
       <div class="fig">${mcHistSvg(mc, en)}<div class="cap">${en ? `Figure 6 — Delay distribution: ${mc.trials} services × ${n} trains; blue = on-time (below threshold), red = late. Vertical marks: mean · threshold · P90.` : `Şekil 6 — Gecikme dağılımı: ${mc.trials} sefer × ${n} tren; mavi = dakik (eşik altı), kırmızı = geç. Dikey işaretler: ortalama · eşik · P90.`}</div></div>
       <div class="fig">${mcYayilimSvg(mc, en)}<div class="cap">${en ? "Figure 7 — Propagation by service order: median (dot + line) with P90 whisker per train. A rising trend = delay cascading to later trains." : "Şekil 7 — Sefer sırasına göre yayılım: tren başına medyan (nokta + çizgi) ve P90 bıyığı. Yükselen eğilim = gecikmenin sonraki trenlere kademelenmesi."}</div></div>`;
+  })() : "";
+
+  // ---- Çizelge çakışma analizi (#2) — tek-hat karşılaşmaları + sistemik headway<hMin ----
+  // Bildfahrplan ile birebir loopY + filo; çift hatta çakışma yok, tek-hat kesimlerde
+  // meet/pass çakışması ve ulaşılan aralık < min headway sistemik uyarısı raporlanır.
+  const cakismaBolum = (line && loopYbf && filoGercek > 0) ? (() => {
+    const ck = cakismaTespit(rings, stock, cfg, loopYbf, filoGercek, isletme);
+    const yesil = "#0E7C57";
+    const baslik = `<h3 class="sub" style="page-break-before:always">${en ? "4.2 Timetable Conflict Analysis" : "4.2 Çizelge Çakışma Analizi"}</h3>`;
+    if (!ck.cakismaVar) {
+      const metin = en
+        ? `At the planned ${filoGercek}-tram fleet (${bfHeadway}s achieved interval), the timetable is <b style="color:${yesil}">conflict-free</b>: ${ck.spanlar.length > 0 ? `the ${ck.spanlar.length} single-track section(s) are never occupied by two trams at once, and ` : "the line is fully double-track, and "}the achieved interval stays at or above the minimum headway the determining constraint allows.`
+        : `Planlanan <b>${filoGercek} tramvaylık</b> filoda (${bfHeadway} s ulaşılan aralık) çizelge <b style="color:${yesil}">çakışmasızdır</b>: ${ck.spanlar.length > 0 ? `${ck.spanlar.length} tek-hat kesimi aynı anda iki tramvayla asla işgal edilmez ve ` : "hat tümüyle çift hattır ve "}ulaşılan aralık, belirleyici kısıtın izin verdiği minimum headway'in altına düşmez.`;
+      return `${baslik}<div class="gs" style="font-size:10pt">${metin}</div>`;
+    }
+    const blok: string[] = [baslik];
+    const giris = en
+      ? `Conflict detection walks one full cycle of the round-trip trajectory with all ${filoGercek} trams (offset by the ${bfHeadway}s interval) and flags where two trams would demand the same single track at once, or where the achieved interval falls below the physical minimum. Each finding lists a concrete resolution.`
+      : `Çakışma tespiti, ${filoGercek} tramvayın (${bfHeadway} s aralıkla ötelenmiş) tam bir gidiş-dönüş çevrimini adım adım tarar; iki tramvayın aynı anda aynı tek hattı istediği ya da ulaşılan aralığın fiziksel minimumun altına düştüğü yerleri işaretler. Her bulguya somut bir çözüm eklenir.`;
+    blok.push(`<div class="gs" style="font-size:10pt">${giris}</div>`);
+    if (ck.sistemik) {
+      blok.push(`<div class="gs" style="font-size:10pt;border-left:3px solid ${RED};padding-left:10px"><b style="color:${RED}">${en ? "Systemic (block/headway)" : "Sistemik (blok/headway)"}:</b> ${esc(ck.sistemik.oneri)}</div>`);
+    }
+    if (ck.spanOzet.length) {
+      const head = en
+        ? ["Single-track section", "Meets/cycle", "Max overlap", "Type", "Resolution"]
+        : ["Tek-hat kesimi", "Karşılaşma/çevrim", "Maks örtüşme", "Tür", "Çözüm"];
+      const rows = ck.spanOzet.map((o) => [
+        esc(o.ad),
+        `${o.cakismaSayisi}`,
+        sure(o.maxOrtusme),
+        o.karsiYon ? (en ? "opposing (meet)" : "karşı yön (karşılaşma)") : (en ? "same dir (queue)" : "aynı yön (kuyruk)"),
+        esc(o.oneri),
+      ]);
+      blok.push(tbl(head, rows, { first: true }));
+    }
+    return blok.join("\n");
+  })() : "";
+
+  // ---- Gecikme yayılımı / knock-on (#3) — deterministik zincir ----
+  // İlk trene temsilî bir birincil gecikme enjekte edilir; ardışık trenlere yansıyan
+  // (ikincil) gecikme ve sönümleme (recovery) noktası ölçülür. Bildfahrplan headway'iyle
+  // birebir. En az 2 tren gerekir (tek trende yayılım tanımsız).
+  const knockOnBolum = (line && filoGercek >= 2 && bfHeadway > 0) ? (() => {
+    const birincil = Math.max(120, Math.round(bfHeadway * 0.75)); // temsilî birincil gecikme
+    const ko = gecikmeYayilim(line, stock, { headway: bfHeadway, count: filoGercek, sinyaller: sinyalKonumlari(rings, cfg) }, 0, birincil);
+    const baslik = `<h3 class="sub" style="page-break-before:always">${en ? "4.3 Delay Propagation (Knock-on)" : "4.3 Gecikme Yayılımı (Knock-on)"}</h3>`;
+    const giris = en
+      ? `A deterministic cascade: the lead train is given a representative <b>${birincil} s</b> primary delay, and the signalling simulation measures how much of it propagates to each following train (secondary delay) and where the timetable absorbs it (recovery). This isolates the single-incident chain that the aggregate Monte-Carlo (4.1) averages out.`
+      : `Deterministik zincir: baş trene temsilî <b>${birincil} s</b> birincil gecikme verilir; sinyalizasyon simülasyonu bu gecikmenin ardışık trenlere ne kadar yansıdığını (ikincil gecikme) ve tarifenin onu nerede yuttuğunu (sönümleme) ölçer. Bu, toplu Monte-Carlo'nun (4.1) ortalama içinde erittiği tek-olay zincirini yalıtır.`;
+    // Kompakt bar SVG — tren başına ikincil gecikme (birincil hariç; hedef vurgulu).
+    const bars = ko.zincir;
+    const maxV = Math.max(1, ...bars.map((b) => (b.tren === ko.hedefTren ? b.birincil : b.ikincil)));
+    const W = 720, H = 150, padL = 44, padB = 26, padT = 12, padR = 10;
+    const cw = W - padL - padR, ch = H - padT - padB;
+    const bw = cw / bars.length;
+    const barsXml = bars.map((b, i) => {
+      const v = b.tren === ko.hedefTren ? b.birincil : b.ikincil;
+      const h = (v / maxV) * ch;
+      const x = padL + i * bw + bw * 0.15, y = padT + ch - h, w = bw * 0.7;
+      const renk = b.tren === ko.hedefTren ? INK : (b.ikincil > 3 ? RED : "#B9C2CC");
+      const et = v > 0 ? `<text x="${(x + w / 2).toFixed(1)}" y="${(y - 2).toFixed(1)}" text-anchor="middle" font-size="7" fill="${renk}">${Math.round(v)}</text>` : "";
+      return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(0, h).toFixed(1)}" fill="${renk}"/>${et}<text x="${(x + w / 2).toFixed(1)}" y="${(padT + ch + 9).toFixed(1)}" text-anchor="middle" font-size="7" fill="#6B7480">${b.tren + 1}</text>`;
+    }).join("");
+    const recovX = ko.sonumleme !== null ? padL + (ko.sonumleme - 0) * bw + bw * 0.5 : -1;
+    const recovLine = recovX > 0 ? `<line x1="${recovX.toFixed(1)}" y1="${padT}" x2="${recovX.toFixed(1)}" y2="${padT + ch}" stroke="#0E7C57" stroke-width="1" stroke-dasharray="3 2"/><text x="${recovX.toFixed(1)}" y="${(padT + 8).toFixed(1)}" text-anchor="middle" font-size="6.5" fill="#0E7C57">${en ? "recovery" : "sönümleme"}</text>` : "";
+    const svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img"><line x1="${padL}" y1="${padT + ch}" x2="${W - padR}" y2="${padT + ch}" stroke="#C7CDD4" stroke-width="1"/><text x="${padL - 6}" y="${padT + 6}" text-anchor="end" font-size="7" fill="#6B7480">s</text>${barsXml}${recovLine}</svg>`;
+    const cap = en
+      ? `Figure 8 — Knock-on cascade: primary delay on train 1 (dark) and the secondary delay it induces on each following train (red = affected, grey = negligible). The dashed line marks where the delay is absorbed.`
+      : `Şekil 8 — Knock-on zinciri: 1. trendeki birincil gecikme (koyu) ve her ardışık trene yansıttığı ikincil gecikme (kırmızı = etkilenen, gri = ihmal edilebilir). Kesikli çizgi gecikmenin yutulduğu treni gösterir.`;
+    const kpiRenk = ko.etkilenen === 0 ? "#0E7C57" : (ko.etkilenen >= 3 ? RED : GOLD);
+    const kpis = `<div class="kpi-row">
+      ${kpi(en ? "Affected trains" : "Etkilenen tren", `${ko.etkilenen}`, en ? "downstream" : "ardışık", kpiRenk)}
+      ${kpi(en ? "Peak knock-on" : "En yüksek knock-on", sure(ko.maxIkincil), en ? "single train" : "tek tren", INK)}
+      ${kpi(en ? "Total secondary" : "Toplam ikincil", sure(ko.toplamIkincil), en ? "sum over fleet" : "filo toplamı", INK)}
+      ${kpi(en ? "Recovery" : "Sönümleme", ko.sonumleme !== null ? `${ko.sonumleme - ko.hedefTren} ${en ? "trains" : "tren"}` : (en ? "none" : "yok"), en ? "to absorb" : "sonra yutulur", ko.sonumleme !== null ? "#0E7C57" : RED)}
+    </div>`;
+    return `${baslik}<div class="gs" style="font-size:10pt">${giris}</div>${kpis}<div class="gs" style="font-size:10pt"><b>${esc(ko.ozet)}</b></div><div class="fig">${svg}<div class="cap">${cap}</div></div>`;
   })() : "";
 
   // ---- YÖNETİCİ ÖZETİ (kapaktan sonra, 1. bölümden önce; 1 sayfa karar özeti) ----
@@ -1450,6 +1536,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   <div class="gs" style="font-size:9pt">${L.btTanim}</div>
   ${btTbl}
   ${mcBolum}
+  ${cakismaBolum}
+  ${knockOnBolum}
 
   <!-- 5: İşletme & Talep Analizi (ters işletme) -->
   ${isletmeBolum}
