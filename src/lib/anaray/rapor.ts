@@ -66,7 +66,7 @@ function tbl(headers: string[], rows: (string | number)[][], opts: { first?: boo
 }
 
 // Durak-arası ring şeması (gömülü SVG): istasyon zinciri + makas/hemzemin işaretleri.
-function ringSemaSvg(rings: DurakArasiRing[]): string {
+function ringSemaSvg(rings: DurakArasiRing[], subeler: Sube[] = []): string {
   const n = rings.length;
   if (n === 0) return "";
   const adlar = [rings[0].fromAd, ...rings.map((r) => r.toAd)];
@@ -80,7 +80,13 @@ function ringSemaSvg(rings: DurakArasiRing[]): string {
   const maxLen = Math.max(1, ...adlar.map((a) => (a || "").length));
   const labH = cok ? Math.min(120, Math.round(maxLen * font * 0.56 + 6)) : 34;
   const y = cok ? labH + 12 : 74;
-  const H = cok ? y + 42 : 116;
+  // ŞUBE (dallanma, #1) — ana hattın ALTINA kırmızı çatal olarak çizilir. Her şube
+  // kavşak düğümünden diagonal + yatay kol; kolun ucundaki duraklar kırmızı düğüm.
+  const dallar = subeler.filter((s) => s.rings.length > 0);
+  const brGap = 56;
+  const brBaseY = y + (cok ? 30 : 42);
+  const branchesH = dallar.length ? dallar.length * brGap + 20 : 0;
+  const H = (cok ? y + 42 : 116) + branchesH;
   const line = `<line x1="${px(0).toFixed(1)}" y1="${y}" x2="${px(n).toFixed(1)}" y2="${y}" stroke="${CK.ink}" stroke-width="${cok ? 2.5 : 3.5}" stroke-linecap="round"/>`;
   const dots = adlar.map((_, i) => `<circle cx="${px(i).toFixed(1)}" cy="${y}" r="${cok ? 4 : 5.5}" fill="${CK.surface}" stroke="${CK.ink}" stroke-width="${cok ? 1.8 : 2.2}"/>`).join("");
   const labels = adlar.map((ad, i) => {
@@ -96,7 +102,33 @@ function ringSemaSvg(rings: DurakArasiRing[]): string {
     if (r.hemzeminler.length) s += lab(xm, y + (cok ? 28 : 35), `⊟ ${r.hemzeminler.length}`, { anchor: "middle", size: cok ? 7 : 9, color: CK.gold });
     return s;
   }).join("");
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%">${line}${marks}${dots}${labels}</svg>`;
+  // Şube çatalları
+  const branchSvg = dallar.map((s, bi) => {
+    const at = Math.max(0, Math.min(n, Math.round(s.atIndex)));
+    const jx = px(at), jy = y;
+    const yBr = brBaseY + bi * brGap;
+    const m = s.rings.length;
+    const brAd = s.rings.map((r) => r.toAd);
+    const bx0 = jx + step * 0.5;
+    const avail = Math.max(60, (W - pad) - bx0);
+    const brStep = Math.min(step, Math.max(34, avail / Math.max(1, m)));
+    const bpx = (k: number) => bx0 + (k - 1) * brStep; // k=1..m şube durakları
+    let out = "";
+    // Kavşak → ilk şube durağı: diagonal (ayrım makası burada)
+    out += `<line x1="${jx.toFixed(1)}" y1="${jy}" x2="${bpx(1).toFixed(1)}" y2="${yBr}" stroke="${CK.red}" stroke-width="2.4" stroke-linecap="round"/>`;
+    if (m > 1) out += `<line x1="${bpx(1).toFixed(1)}" y1="${yBr}" x2="${bpx(m).toFixed(1)}" y2="${yBr}" stroke="${CK.red}" stroke-width="2.4" stroke-linecap="round"/>`;
+    // Kavşak makası vurgusu (ana hat düğümünde)
+    out += `<circle cx="${jx.toFixed(1)}" cy="${jy}" r="${cok ? 4.5 : 6}" fill="${CK.red}" stroke="#fff" stroke-width="1.4"/>`;
+    // Şube adı — kolun ORTASINDA, çizginin üstünde (kavşak makası ⑂ işaretiyle çakışmaz)
+    const adX = (bpx(1) + bpx(m)) / 2;
+    out += `<text x="${adX.toFixed(1)}" y="${(yBr - 7).toFixed(1)}" text-anchor="middle" font-family="${CK.sans}" font-size="8" font-weight="700" fill="${CK.red}">${esc(s.ad)}</text>`;
+    for (let k = 1; k <= m; k++) {
+      out += `<circle cx="${bpx(k).toFixed(1)}" cy="${yBr}" r="4.5" fill="${CK.surface}" stroke="${CK.red}" stroke-width="2"/>`;
+      out += `<text x="${bpx(k).toFixed(1)}" y="${(yBr + 14).toFixed(1)}" text-anchor="middle" font-family="${CK.sans}" font-size="${cok ? 6.5 : 7.5}" font-weight="600" fill="${CK.ink2}">${esc(brAd[k - 1])}</text>`;
+    }
+    return out;
+  }).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%">${line}${marks}${dots}${labels}${branchSvg}</svg>`;
 }
 
 // Blocking-time bileşen barları (gömülü SVG): her blok için yığılı süre (ordinal mavi rampa).
@@ -1541,7 +1573,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   <!-- 2 -->
   <div class="banner"><span class="no">02</span>${L.s2}</div>
   <p>${L.s2i(rings.length, cfg.headway)}</p>
-  <div class="fig">${ringSemaSvg(rings)}<div class="cap">${L.fig1}</div></div>
+  <div class="fig">${ringSemaSvg(rings, subeler)}<div class="cap">${L.fig1}${subeler.length ? (en ? ` — with ${subeler.length} branch(es) diverging at junctions (red)` : ` — kavşaklardan ayrılan ${subeler.length} şube (kırmızı) dâhil`) : ""}</div></div>
   ${tbl(L.thRing, ringRows, { first: true })}
   <h3 class="sub" style="page-break-before:always">${sunum ? (lang === "en" ? "2.1 Per-cell Constraint Analysis" : "2.1 Ring Bazında Kısıt Analizi") : L.s21}</h3>
   ${ringDetay}
