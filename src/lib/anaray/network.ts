@@ -14,7 +14,7 @@ import type {
   TrackSegment,
 } from "./types";
 import type { SimConfig } from "./config";
-import { BELGE, ringToLine, type DurakArasiRing, type Sube } from "./ring";
+import { BELGE, ringToLine, yeniMakas, type DurakArasiRing, type Sube } from "./ring";
 
 export function flattenRoute(net: RailNetwork, route: Route): Line {
   const nodeById = new Map(net.nodes.map((n) => [n.id, n]));
@@ -217,6 +217,48 @@ export function ringlerdenSebeke(
     route: trunkRoute,
     subeRotalar,
   };
+}
+
+// ————————————————————————————————————————————————
+// ŞUBE KAVŞAK MAKASI (dallanma fiziği, #1-A)
+// ————————————————————————————————————————————————
+// Bir şube ana hattan FİZİKSEL bir makastan (turnout) ayrılır. Bu makas kalıcı ring
+// verisine YAZILMAZ (şube tanımından türer) — analiz anında eklenir. "karsilasmali"
+// tipindedir → kapasite.ts onu DÜZ KAVŞAK sayar (blocking-time/hKavsak) ve cakisma.ts
+// sistemik kontrolü (ulaşılan aralık < hMin) kavşağı bağlayıcı görürse çakışma bildirir.
+// Böylece dallanma "çizim" değil, gerçek işletme kısıtı olur.
+
+const KAVSAK_MAKAS_ORAN = 0.08;
+function kavsakMakasli(r: DurakArasiRing, subeAd: string, bas: boolean): DurakArasiRing {
+  const off = Math.min(Math.max(30, r.uzunluk * KAVSAK_MAKAS_ORAN), 120);
+  const konum = bas ? off : Math.max(0, r.uzunluk - off);
+  return { ...r, makaslar: [...r.makaslar, { ...yeniMakas("karsilasmali", konum), ad: `Kavşak — ${subeAd}` }] };
+}
+
+/** Ana hat ring'lerine her şube kavşağına birer "karsilasmali" makas ekler (türetilmiş).
+ *  Şubesizse rings AYNEN döner (geriye uyumlu). Ana hat kapasitesi, geçtiği kavşak
+ *  turnout'unu yansıtır. */
+export function kavsakliRingler(rings: DurakArasiRing[], subeler: Sube[] = []): DurakArasiRing[] {
+  if (!subeler.length || !rings.length) return rings;
+  const out = rings.map((r) => ({ ...r, makaslar: [...r.makaslar] }));
+  for (const s of subeler) {
+    if (!s.rings.length) continue;
+    const at = Math.max(0, Math.min(rings.length, Math.round(s.atIndex)));
+    // Kavşak durağı: ayrılan (leaving) ring başı varsa oraya, yoksa varan ring sonuna.
+    const idx = at < out.length ? at : out.length - 1;
+    out[idx] = kavsakMakasli(out[idx], s.ad, at < out.length);
+  }
+  return out;
+}
+
+/** Bir şubenin EFEKTİF ring zinciri: hat başı → kavşak (ana ring'ler) + şube ring'leri.
+ *  Ayrımda "karsilasmali" kavşak makası şubenin ilk ring'ine eklenir (turnout). Studio
+ *  ve rapor bu tek kaynaktan üretir → analiz birebir tutarlı. */
+export function subeEfektifRingler(rings: DurakArasiRing[], sube: Sube): DurakArasiRing[] {
+  const at = Math.max(0, Math.min(rings.length, Math.round(sube.atIndex)));
+  const govde = rings.slice(0, at).map((r) => ({ ...r, makaslar: [...r.makaslar] }));
+  const subeRings = sube.rings.map((r, i) => (i === 0 ? kavsakMakasli(r, sube.ad, true) : { ...r, makaslar: [...r.makaslar] }));
+  return [...govde, ...subeRings];
 }
 
 // ————————————————————————————————————————————————

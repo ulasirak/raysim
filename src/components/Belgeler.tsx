@@ -19,7 +19,7 @@ import { getAuthInstance } from "@/lib/firebase";
 
 export function Belgeler() {
   const { cfg } = useSimConfig();
-  const { rings: ringsHam, meta, patchMeta, yazilabilir } = useProje();
+  const { rings: ringsHam, meta, patchMeta, yazilabilir, subeler } = useProje();
   const { yenile } = useCuzdan();
   const { arac: stock } = useArac();
   const { isletme } = useIsletme();
@@ -82,7 +82,7 @@ export function Belgeler() {
     const yanit = await fetch("/api/rapor", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ veri: { rings, cfg, meta, arac: stock, turnaroundSn, filo: isletme.pikFilo, isletme, qrUrl }, dil }),
+      body: JSON.stringify({ veri: { rings, cfg, meta, arac: stock, turnaroundSn, filo: isletme.pikFilo, isletme, qrUrl, subeler }, dil }),
     });
     if (!yanit.ok) {
       const v = await yanit.json().catch(() => ({}));

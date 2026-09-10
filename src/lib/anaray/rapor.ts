@@ -24,7 +24,7 @@ import { duyarlilikAnaliz } from "./duyarlilik";
 import type { RollingStock } from "./types";
 import {
   ringSenaryo, ringChallenge, ringKisitDizisi, loopDenge,
-  type DurakArasiRing,
+  type DurakArasiRing, type Sube,
 } from "./ring";
 import { blockingTimeRing } from "./blockingtime";
 import { loopToHat } from "./hatsim";
@@ -32,7 +32,7 @@ import { loopYorunge, monteCarlo, type LoopYorunge, type MonteCarloResult } from
 import { cakismaTespit } from "./cakisma";
 import { gecikmeYayilim } from "./gecikmeYayilim";
 import { sure } from "./format";
-import { hatOzellikleri, sinyalKonumlari } from "./network";
+import { hatOzellikleri, sinyalKonumlari, kavsakliRingler, subeEfektifRingler } from "./network";
 import type { Line } from "./types";
 
 const INK = "#0C2233";
@@ -611,7 +611,10 @@ function mcYayilimSvg(mc: MonteCarloResult, en = false): string {
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%">${yIsaret}${esik}${trend}${noktalar}${eksen}${altEksen}${leg}</svg>`;
 }
 
-export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing[], stock: RollingStock, lang: RaporDil = "tr", filo = 0, isletme: Isletme = varsayilanIsletme, qrUrl = ""): string {
+export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakArasiRing[], stock: RollingStock, lang: RaporDil = "tr", filo = 0, isletme: Isletme = varsayilanIsletme, qrUrl = "", subeler: Sube[] = []): string {
+  // Dallanma (#1): şube varsa ana hat, geçtiği kavşak turnout'larını yansıtsın diye
+  // kavşak makalarıyla zenginleştirilir (şubesizse AYNEN kalır → geriye uyumlu).
+  const rings = subeler.length ? kavsakliRingler(ringsGiris, subeler) : ringsGiris;
   const L = rDil(lang);
   // Sunum modu: hat kesinleşmiş/onaylı bir tasarım olarak sunulur — challenge (risk/
   // uyarı) bayrakları, denge sapması ve "ihlal" işaretleri gösterilmez; göstergeler
@@ -824,6 +827,38 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
       ${kpi(en ? "Recovery" : "Sönümleme", ko.sonumleme !== null ? `${ko.sonumleme - ko.hedefTren} ${en ? "trains" : "tren"}` : (en ? "none" : "yok"), en ? "to absorb" : "sonra yutulur", ko.sonumleme !== null ? "#0E7C57" : RED)}
     </div>`;
     return `${baslik}<div class="gs" style="font-size:10pt">${giris}</div>${kpis}<div class="gs" style="font-size:10pt"><b>${esc(ko.ozet)}</b></div><div class="fig">${svg}<div class="cap">${cap}</div></div>`;
+  })() : "";
+
+  // ---- Şubeler / Dallanma (#1) — her şube rotasının kapasitesi + kavşak kısıtı ----
+  const subeBolum = subeler.length ? (() => {
+    const baslik = `<h3 class="sub" style="page-break-before:always">${en ? "4.4 Branches (Junctions)" : "4.4 Şubeler (Dallanma)"}</h3>`;
+    const giris = en
+      ? `The line has <b>${subeler.length}</b> branch(es) diverging from the trunk through a physical turnout (facing-point junction). Each branch route (line start → junction → branch) is analysed with the same UIC 406 core; the diverging junction contributes its own blocking-time, so the branch capacity reflects the real switch.`
+      : `Hat, ana hattan fiziksel bir makastan (yüz yüze kavşak turnout'u) ayrılan <b>${subeler.length}</b> şube taşır. Her şube rotası (hat başı → kavşak → şube) aynı UIC 406 çekirdeğiyle analiz edilir; ayrım makası kendi blocking-time'ını kattığından şube kapasitesi gerçek makası yansıtır.`;
+    const head = en
+      ? ["Branch", "Junction", "Branch length", "Route length", "Sustainable trams", "Min headway", "Determining constraint"]
+      : ["Şube", "Kavşak", "Şube uzunluğu", "Rota uzunluğu", "Sürdürülebilir tramvay", "Min headway", "Belirleyici kısıt"];
+    const rows = subeler.map((s) => {
+      const at = Math.max(0, Math.min(ringsGiris.length, Math.round(s.atIndex)));
+      const kavsakAd = at === 0 ? (ringsGiris[0]?.fromAd || "—") : (ringsGiris[at - 1]?.toAd || "—");
+      const ef = subeEfektifRingler(ringsGiris, s);
+      const m = maksimumTren(ef, stock, cfg, isletme);
+      const subeKm = s.rings.reduce((a, r) => a + Math.max(0, r.uzunluk), 0) / 1000;
+      const rotaKm = ef.reduce((a, r) => a + Math.max(0, r.uzunluk), 0) / 1000;
+      return [
+        esc(s.ad),
+        esc(kavsakAd),
+        `${subeKm.toFixed(1)} km`,
+        `${rotaKm.toFixed(1)} km`,
+        m.gecerli ? `${m.nSurdurulebilir}` : "—",
+        m.gecerli ? `${Math.round(m.hMin)} s` : "—",
+        m.gecerli ? esc(m.baglayanAd || "—") : "—",
+      ];
+    });
+    const not = en
+      ? `Note: the trunk section shared between the line start and each junction carries both trunk and branch trams; the combined load on that shared section is the governing operational limit (see the trunk capacity above).`
+      : `Not: hat başı ile her kavşak arasındaki ortak ana hat kesimi hem ana hat hem şube tramvaylarını taşır; o ortak kesimdeki birleşik yük belirleyici işletme sınırıdır (yukarıdaki ana hat kapasitesine bakınız).`;
+    return `${baslik}<div class="gs" style="font-size:10pt">${giris}</div>${tbl(head, rows, { first: true })}<div class="gs" style="font-size:9.5pt">${not}</div>`;
   })() : "";
 
   // ---- YÖNETİCİ ÖZETİ (kapaktan sonra, 1. bölümden önce; 1 sayfa karar özeti) ----
@@ -1538,6 +1573,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, rings: DurakArasiRing
   ${mcBolum}
   ${cakismaBolum}
   ${knockOnBolum}
+  ${subeBolum}
 
   <!-- 5: İşletme & Talep Analizi (ters işletme) -->
   ${isletmeBolum}

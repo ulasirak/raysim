@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { ringlerdenSebeke, flattenRoute } from "@/lib/anaray/network";
+import { ringlerdenSebeke, flattenRoute, kavsakliRingler, subeEfektifRingler } from "@/lib/anaray/network";
 import { yeniSube, yeniRing, type DurakArasiRing, type Sube } from "@/lib/anaray/ring";
+import { maksimumTren } from "@/lib/anaray/kapasite";
 import { hazirHatlar } from "@/lib/anaray/hazirHatlar";
+import { varsayilanConfig, varsayilanIsletme } from "@/lib/anaray/config";
 
 function trunk(): DurakArasiRing[] {
   // 4 ringli basit ana hat (A→B→C→D→E)
@@ -55,6 +57,34 @@ describe("#1 additive şube (dallanma)", () => {
     expect(rota.edgeIds.length).toBe(1); // sadece şube kenarı (trunk kısmı yok)
     const line = flattenRoute(s.network, rota);
     expect(Math.round(line.length)).toBe(500);
+  });
+
+  it("#1-A kavşak makası: şube efektif zinciri ayrımda karsilasmali makas taşır", () => {
+    const r = trunk();
+    const sube: Sube = { id: "s", ad: "Şube", atIndex: 2, rings: [
+      (() => { const x = yeniRing("C", "Ş1"); x.uzunluk = 800; return x; })(),
+    ] };
+    const ef = subeEfektifRingler(r, sube);
+    // Efektif zincir: 2 ana ring (A→B→C) + 1 şube ring = 3
+    expect(ef.length).toBe(3);
+    // Ayrım ring'i (ilk şube ring'i = index 2) bir karsilasmali kavşak makası kazanır
+    const ayrimRing = ef[2];
+    const kavsak = ayrimRing.makaslar.find((m) => m.tip === "karsilasmali" && (m.ad || "").includes("Kavşak"));
+    expect(kavsak).toBeTruthy();
+    // Kapasite bu kavşağı DÜZ KAVŞAK olarak görür (kavsakDetay üretilir)
+    const maks = maksimumTren(ef, hazirHatlar()[0].veri.arac!, varsayilanConfig, varsayilanIsletme);
+    expect(maks.gecerli).toBe(true);
+    expect(maks.kavsakDetay).not.toBeNull();
+  });
+
+  it("#1-A kavşaklıRingler: ana hatta her şube için kavşak makası ekler; şubesiz no-op", () => {
+    const r = trunk();
+    expect(kavsakliRingler(r, [])).toBe(r); // şubesiz: aynı referans (no-op)
+    const sube = yeniSube(2, "Ş");
+    const k = kavsakliRingler(r, [sube]);
+    const toplamMakas = k.reduce((n, x) => n + x.makaslar.length, 0);
+    expect(toplamMakas).toBe(1); // bir kavşak makası eklendi
+    expect(k.some((x) => x.makaslar.some((m) => m.tip === "karsilasmali"))).toBe(true);
   });
 
   it("yeniSube yardımcısı geçerli şube üretir", () => {

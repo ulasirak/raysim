@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import type { RailNetwork, Route } from "@/lib/anaray/types";
-import { flattenRoute, ringlerdenSebeke, hemzeminDuruslari, duruslariEkle, kalkisEkle, hatOzellikleri } from "@/lib/anaray/network";
+import { flattenRoute, ringlerdenSebeke, hemzeminDuruslari, duruslariEkle, kalkisEkle, hatOzellikleri, kavsakliRingler, subeEfektifRingler } from "@/lib/anaray/network";
 import { simulate } from "@/lib/anaray/sim";
 import { simulateSignalled, reverseRoute, monteCarlo, planDepotDispatch, loopYorunge, type MonteCarloResult } from "@/lib/anaray/signalling";
 import { tramvaylar } from "@/lib/anaray/vehicles";
@@ -73,11 +73,12 @@ function StudioIc() {
   const analizSube = useMemo(() => subeler.find((s) => s.id === analizSubeId) ?? null, [subeler, analizSubeId]);
   // Yolcu dinamiği: dwell OTO ringlerin dwell'i fiziksel akıştan hesaplanır → canlı
   // sim ve kapasite AYNI hesaplı dwell'i kullanır (tutarlı).
+  // Şube seçiliyse efektif zincir (hat başı→kavşak + şube), ana hattaysa kavşak
+  // makaslı ana hat (her şube ayrımına turnout eklenir → kapasite/çakışma gerçekçi).
   const rings = useMemo(() => {
-    if (!analizSube) return dwellUygulanmisRings(ringsHam, stock, isletme);
-    const at = Math.max(0, Math.min(ringsHam.length, Math.round(analizSube.atIndex)));
-    return dwellUygulanmisRings([...ringsHam.slice(0, at), ...analizSube.rings], stock, isletme);
-  }, [ringsHam, stock, isletme, analizSube]);
+    const taban = analizSube ? subeEfektifRingler(ringsHam, analizSube) : kavsakliRingler(ringsHam, subeler);
+    return dwellUygulanmisRings(taban, stock, isletme);
+  }, [ringsHam, subeler, stock, isletme, analizSube]);
 
   // Sefer modülünün hattı = PAYLAŞILAN proje hattı (Ringler/Tam Hat/Belgeler ile
   // aynı kaynak). Ring zinciri graf şebekesine çevrilir; şubeler (dallanma) dâhil.
