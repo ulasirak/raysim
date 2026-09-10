@@ -775,8 +775,10 @@ export function LiveNetwork({
           );
         })}
 
-        {/* OTOMATİK BLOK SINIRLARI — düz yeşil blok işareti (sinyal DEĞİL; gerçek sinyaller
-            elle metrajla konur). Doluluk kırmızı blok segmentiyle görünür. Arızalı = koyu kırmızı. */}
+        {/* BLOK SINIRI İŞARETLERİ — blok = istasyon + koyulan sinyal lambaları arası
+            (yapay metre bölmesi yok). Yeşil nokta blok başı; doluluk kırmızı blok
+            segmentiyle görünür. Arızalı = koyu kırmızı. Ayrı çizilen 3-aspect direkler
+            gerçek sinyal lambalarıdır. */}
         {Array.from({ length: nb }).map((_, i) => {
           const p = offsetAt(blocks[i], GAP + 6, UP_SIDE);
           const arizali = faultBlocks.includes(i);
@@ -785,7 +787,7 @@ export function LiveNetwork({
               fill={arizali ? "#7A0A1C" : ASPEKT.yesil} stroke="#fff" strokeWidth={0.9}
               style={{ cursor: onBlockClick ? "pointer" : "default" }}
               onClick={onBlockClick ? () => onBlockClick(i) : undefined}>
-              {onBlockClick && <title>{`Blok sınırı ${i} (otomatik bölme) — tıkla: arıza aç/kapat`}</title>}
+              {onBlockClick && <title>{`Blok sınırı ${i} (istasyon/sinyal) — tıkla: arıza aç/kapat`}</title>}
             </circle>
           );
         })}
@@ -1056,7 +1058,7 @@ export function LiveNetwork({
       </div>
       <p className="text-xs" style={{ color: brand.muted }}>
         <span style={{ color: DOWN }}>▬</span> Üst şerit: Dönüş (sağ→sol) · <span style={{ color: UP_COL }}>▬</span> Alt şerit: Gidiş (sol→sağ) · <span style={{ color: CK.red }}>▬</span> işgal edilen blok.
-        {" "}<span style={{ color: ASPEKT.yesil }}>●</span> otomatik blok sınırı (boş kesim bölme — sinyal değil, sadece blok işareti). GERÇEK sinyaller elle metrajla konur: 3-aspect direk sinyali <b>▶</b> giden / <b>◀</b> gelen yön, <span style={{ color: CK.amber }}>amber ↺</span> = ters işletme (turnback) sinyali (kırmızı/sarı/yeşil = önündeki blok işgaline göre yanar). Hat özellikleri: <span style={{ color: CK.blue }}>◉</span> yaya geçidi · <span style={{ color: CK.amber }}>⊞</span> karayolu geçidi · <span style={{ color: brand.ink }}>◆</span> makas — <b>S-makas</b> / <b>X-makas</b> (✕). İşgal edilen blok kırmızı segmentle görünür.
+        {" "}<span style={{ color: ASPEKT.yesil }}>●</span> blok sınırı işareti (blok = istasyon + koyulan sinyaller arası; sinyalsiz kesim tek blok). GERÇEK sinyaller elle metrajla konur: 3-aspect direk sinyali <b>▶</b> giden / <b>◀</b> gelen yön, <span style={{ color: CK.amber }}>amber ↺</span> = ters işletme (turnback) sinyali (kırmızı/sarı/yeşil = önündeki blok işgaline göre yanar). Hat özellikleri: <span style={{ color: CK.blue }}>◉</span> yaya geçidi · <span style={{ color: CK.amber }}>⊞</span> karayolu geçidi · <span style={{ color: brand.ink }}>◆</span> makas — <b>S-makas</b> / <b>X-makas</b> (✕). İşgal edilen blok kırmızı segmentle görünür.
         {depoToplam > 0 && <> · 🅿 <b>Depo (parklanma):</b> bekleyen trenler sırayla headway aralığıyla servise çıkar; kutudaki dolu kareler çıkışa hazır, soluk kareler çıkmış trenlerdir.</>}
         {tersMakaslar.length > 0 && tersMod !== "kapali" && <> · <span style={{ color: CK.amber }}>↺</span> <b>Ters işletme (istasyon makası):</b> {tersMod === "ciftYonlu" ? "giden ya da gelen" : "giden"} bir tren <b>istasyon</b> makasına ulaşınca süre durur ve onay istenir; onaylarsanız karşı hatta geçer ({tersMod === "ciftYonlu" ? "giden→başa döner, gelen→ileri gider" : "başa, sıranın en arkasına döner"}). Yalnız istasyon makasları için geçerlidir.</>}
         {(terminalBas || terminalSon) && <> · <b>Terminal dönüş biçimi:</b> hattın uçlarında dönüş tipine göre çizilir — <b>kör terminal</b> (tampon barı = çıkmaz, perondan ters döner) · <b>çift peron</b> (iki kol + X makas, biri dönerken diğeri girer) · <b>balon loop</b> (durmadan döner, dönüş beklemesi ≈ 0) · <b>makaslı geçiş</b> (uçta X-makas). Ringler → Dönüş tipi değişince şekil değişir.</>}
