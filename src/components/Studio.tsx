@@ -15,6 +15,7 @@ import { tramvaylar } from "@/lib/anaray/vehicles";
 import { maksimumTren } from "@/lib/anaray/kapasite";
 import { cakismaTespit } from "@/lib/anaray/cakisma";
 import { gecikmeYayilim } from "@/lib/anaray/gecikmeYayilim";
+import { ortakKesimAnaliz } from "@/lib/anaray/ortakKesim";
 import { tersIsletmeAnaliz } from "@/lib/anaray/tersisletme";
 import { dwellUygulanmisRings, maxYolcuKapasitesi, netTabanAlani } from "@/lib/anaray/yolcu";
 import { kmh, km, sure } from "@/lib/anaray/format";
@@ -246,6 +247,11 @@ function StudioIc() {
     () => gecikmeYayilim(line, stock, { headway: ulasilanHeadwaySn, count: filo, sinyaller: sinyalSimKonum }, koHedef, koGecikme),
     [line, stock, ulasilanHeadwaySn, filo, sinyalSimKonum, koHedef, koGecikme]
   );
+  // Ortak kesim yükü (#1-B/D) — ana hat görünümünde, şubeye servis treni girildiyse.
+  const ortakKesim = useMemo(
+    () => ortakKesimAnaliz(dwellUygulanmisRings(ringsHam, stock, isletme), subeler, stock, cfg, isletme, filo),
+    [ringsHam, subeler, stock, cfg, isletme, filo]
+  );
 
   const monteCarloCalistir = () => {
     setMcRunning(true);
@@ -284,6 +290,11 @@ function StudioIc() {
             {subeler.map((s) => <option key={s.id} value={s.id}>Şube: {s.ad}</option>)}
           </select>
           {analizSube && <span className="text-xs" style={{ color: brand.muted }}>Hat başından kavşağa + şube ({analizSube.rings.length} durak) — tüm analiz bu rotaya göre.</span>}
+          {!analizSube && ortakKesim.aktif && (
+            <span className="w-full text-xs" style={{ color: ortakKesim.uygun ? "#0E7C57" : CK.red }}>
+              {ortakKesim.uygun ? "✓ Ortak kesim yükü uygun" : "⚠ Ortak kesim aşırı yüklü"} — {ortakKesim.ozet}
+            </span>
+          )}
         </div>
       )}
       {/* Talebe göre öneri için yolcu verisi gerekli — pop-up (tahmin YOK).

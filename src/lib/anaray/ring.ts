@@ -171,6 +171,9 @@ export interface Sube {
   ad: string;               // şube adı (ör. "Havalimanı Şubesi", "Depo Bağlantısı")
   atIndex: number;          // ana hat durak indeksi (0..rings.length) — şubenin ayrıldığı KAVŞAK
   rings: DurakArasiRing[];  // şube kendi ring zinciri (kavşaktan itibaren, ana hattan bağımsız)
+  /** Bu kola giden tren sayısı (servis deseni, #1-D). Verilmezse/0 → şube kendi başına
+   *  analiz edilir; ORTAK KESİM yükü (ana hat + şube birlikte) HESAPLANMAZ (tahmin yok). */
+  servisTren?: number;
 }
 
 /** Yeni boş şube (kavşak indeksinde tek durak-arası ile başlar). */

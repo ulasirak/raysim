@@ -31,6 +31,7 @@ import { loopToHat } from "./hatsim";
 import { loopYorunge, monteCarlo, type LoopYorunge, type MonteCarloResult } from "./signalling";
 import { cakismaTespit } from "./cakisma";
 import { gecikmeYayilim } from "./gecikmeYayilim";
+import { ortakKesimAnaliz } from "./ortakKesim";
 import { sure } from "./format";
 import { hatOzellikleri, sinyalKonumlari, kavsakliRingler, subeEfektifRingler } from "./network";
 import type { Line } from "./types";
@@ -893,6 +894,31 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
     return `${baslik}<div class="gs" style="font-size:10pt">${giris}</div>${tbl(head, rows, { first: true })}<div class="gs" style="font-size:9.5pt">${not}</div>`;
   })() : "";
 
+  // ---- Ortak kesim yükü (#1-B/D) — şubeye servis treni girildiyse birleşik kapasite ----
+  const ortakKesimBolum = (subeler.length && subeler.some((s) => (s.servisTren ?? 0) > 0)) ? (() => {
+    const ok = ortakKesimAnaliz(ringsGiris, subeler, stock, cfg, isletme, filoGercek);
+    if (!ok.aktif || !ok.kesimler.length) return "";
+    const baslik = `<h3 class="sub" style="page-break-before:always">${en ? "4.5 Shared-Section Load (Branching)" : "4.5 Ortak Kesim Yükü (Dallanma)"}</h3>`;
+    const giris = en
+      ? `Where the trunk is shared between the line start and a junction, it carries BOTH the trunk service and every branch service diverging at or beyond that junction. The combined frequency there is the governing operational limit — higher than any single route's analysis. Each shared section's combined headway is checked against its physical minimum.`
+      : `Hat başı ile bir kavşak arasındaki ortak kesim, hem ana hat servisini HEM DE o kavşaktan/sonrasından ayrılan tüm şube servislerini taşır. Oradaki birleşik frekans, tek tek rotaların analizinden yüksektir ve gerçek işletme sınırıdır. Her ortak kesimin birleşik headway'i fiziksel minimumla karşılaştırılır.`;
+    const head = en
+      ? ["Shared section (→ junction)", "Length", "Trunk", "Branches", "Combined", "Combined headway", "Min headway", "Verdict"]
+      : ["Ortak kesim (→ kavşak)", "Uzunluk", "Ana hat", "Şube", "Birleşik", "Birleşik headway", "Min headway", "Sonuç"];
+    const rows = ok.kesimler.map((k) => [
+      esc(k.junctionAd),
+      `${k.paylasilanKm.toFixed(1)} km`,
+      `${k.anaFreq} ${en ? "tph" : "tr/sa"}`,
+      `${k.subeFreq} ${en ? "tph" : "tr/sa"}`,
+      `${k.birlesikFreq} ${en ? "tph" : "tr/sa"}`,
+      `${k.birlesikHeadway} s`,
+      `${k.minHeadway} s`,
+      k.uygun ? (en ? "OK" : "UYGUN") : (en ? "OVER" : "AŞIRI"),
+    ]);
+    const renk = ok.uygun ? "#0E7C57" : RED;
+    return `${baslik}<div class="gs" style="font-size:10pt">${giris}</div>${tbl(head, rows, { first: true })}<div class="gs" style="font-size:10pt;border-left:3px solid ${renk};padding-left:10px"><b style="color:${renk}">${ok.uygun ? (en ? "Shared sections OK" : "Ortak kesimler uygun") : (en ? "Shared section over capacity" : "Ortak kesim aşırı yüklü")}:</b> ${esc(ok.ozet)}</div>`;
+  })() : "";
+
   // ---- YÖNETİCİ ÖZETİ (kapaktan sonra, 1. bölümden önce; 1 sayfa karar özeti) ----
   // Amaç: teknik detaya girmeden bir bakışta "hat ne taşır, neyle sınırlı, hedef uygun mu".
   const ozetSec = (() => {
@@ -1606,6 +1632,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   ${cakismaBolum}
   ${knockOnBolum}
   ${subeBolum}
+  ${ortakKesimBolum}
 
   <!-- 5: İşletme & Talep Analizi (ters işletme) -->
   ${isletmeBolum}

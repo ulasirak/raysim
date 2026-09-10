@@ -74,6 +74,12 @@ export function SubeEditor() {
                     {duraklar.map((d, i) => <option key={i} value={i}>{i + 1}. {d.ad}</option>)}
                   </select>
                 </label>
+                <label className="text-xs" style={{ color: brand.inkSoft }} title="Bu kola giden tren sayısı. Girilirse ortak kesim (hat başı→kavşak) birleşik yükü hesaplanır. 0/boş = kapalı (tahmin yok).">
+                  Servis treni
+                  <input disabled={!yazilabilir} type="number" min={0} max={99} value={s.servisTren ?? 0}
+                    onChange={(e) => guncelle(s.id, { servisTren: Math.max(0, Math.min(99, +e.target.value || 0)) })}
+                    className={`${inp} ml-2 w-20`} style={inpStyle} />
+                </label>
                 <button disabled={!yazilabilir} onClick={() => subeSil(s.id)}
                   className="ml-auto rounded border px-3 py-1 text-xs font-semibold disabled:opacity-40"
                   style={{ borderColor: brand.red, color: brand.red }}>Şubeyi sil</button>
