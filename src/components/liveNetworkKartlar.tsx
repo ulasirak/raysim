@@ -5,6 +5,8 @@
 import { brand } from "@/lib/anaray/brand";
 import { CK, ASPEKT } from "@/lib/anaray/chartkit";
 import type { TersMod } from "@/lib/anaray/config";
+import { saat } from "@/lib/anaray/format";
+import type { LoopDurum, LoopYorunge } from "@/lib/anaray/signalling";
 import { DURUM_STIL, UP_COL, DOWN } from "./liveNetworkGeo";
 
 /** Arıza aktifken FAIL-SAFE bilgi kartı: döngü İÇİNDE kuyruk (motor değişmez, sahne
@@ -59,5 +61,54 @@ export function TersModSecici({ tersMod, disabled, tersMakasSayisi, onSec }: { t
           ))}
           <span style={{ color: brand.faint }}>— yalnız <b>istasyondaki</b> makaslar için geçerli ({tersMakasSayisi} istasyon)</span>
         </div>
+  );
+}
+
+/** DÖNGÜ — seçili tren detay kutusu: anlık durum + bir turda hangi nedene ne kadar
+ *  süre. Saf sunum; türetmeler (yüzde/sıralama) prop'lardan hesaplanır. */
+export function TrenDetayKutusu({ st, no, dokum, periyot, cakismaVar, onKapat }: {
+  st: { durum: LoopDurum; ad: string; v: number; fp: number; up: boolean };
+  no: number; dokum: LoopYorunge["dokum"]; periyot: number; cakismaVar: boolean; onKapat: () => void;
+}) {
+  const stil = DURUM_STIL[st.durum];
+  const topSn = Object.values(dokum).reduce((a, b) => a + b, 0) || 1;
+  const sirali = (Object.entries(dokum) as [LoopDurum, number][]).filter(([, v]) => v > 0.5).sort((a, b) => b[1] - a[1]);
+  // ÜRETKEN (hareket: seyir+hızlanma) ↔ DURUŞ/KISIT (dwell+dönüş+hız kısıtı) ayrımı —
+  // turun ne kadarı yol alıyor, ne kadarı durak/dönüş/kısıtta geçiyor.
+  const hareketSn = (dokum.seyir || 0) + (dokum.hizlanma || 0);
+  const duruklamaSn = (dokum.dwell || 0) + (dokum.donus || 0) + (dokum.kisit || 0);
+  const hareketPct = (hareketSn / topSn) * 100;
+  const legAd = st.up ? "gidiş (sol→sağ)" : "dönüş (sağ→sol)";
+  return (
+          <div className="mt-2 rounded-lg border p-3" style={{ borderColor: cakismaVar ? brand.red : brand.ink, background: brand.surface }}>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold" style={{ color: brand.ink }}>🚋 Tren {no} — şu an: <span style={{ color: cakismaVar ? brand.red : stil.renk }}>{cakismaVar ? "⚠ kavşak çakışması" : `${stil.ikon} ${st.ad}`}</span> · {Math.round(st.v * 3.6)} km/h</span>
+              <button onClick={onKapat} className="text-xs underline" style={{ color: brand.muted }}>kapat</button>
+            </div>
+            {/* Anlık durum: konum (km) + şerit + hareket/duruş özeti */}
+            <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs" style={{ color: brand.inkSoft }}>
+              <span>📍 <b>{(st.fp / 1000).toFixed(2)} km</b> · {legAd}</span>
+              <span>▶ hareket <b style={{ color: CK.good }}>{Math.round(hareketPct)}%</b></span>
+              <span>⏸ duruş/kısıt <b style={{ color: CK.amber }}>{Math.round(100 - hareketPct)}%</b> ({Math.round(duruklamaSn)} s/tur)</span>
+            </div>
+            {cakismaVar && (
+              <div className="mt-1.5 rounded border-l-2 px-2 py-1 text-xs" style={{ borderColor: brand.red, background: CK.badBgSoft, color: brand.inkSoft }}>
+                Bu tramvay, bir ters-işletme treninin geçtiği <b>crossover fouling bölgesinde</b> — gerçek interlocking&apos;de kavşak boşalana dek bekletilirdi.
+              </div>
+            )}
+            <div className="mt-2 text-xs" style={{ color: brand.inkSoft }}>Bir tam turda (çevrim {saat(periyot)}) hangi nedene ne kadar süre geçiriyor:</div>
+            <div className="mt-1 space-y-1">
+              {sirali.map(([d, v]) => {
+                const s = DURUM_STIL[d]; const yuzde = (v / topSn) * 100;
+                return (
+                  <div key={d} className="flex items-center gap-2 text-xs">
+                    <span className="w-32 shrink-0" style={{ color: s.renk }}>{s.ikon} {s.ad}</span>
+                    <div className="h-2 flex-1 overflow-hidden rounded" style={{ background: CK.track }}><div style={{ width: `${yuzde}%`, height: "100%", background: s.renk }} /></div>
+                    <span className="w-20 shrink-0 text-right tabular-nums" style={{ color: brand.inkSoft }}>{Math.round(v)} s · %{Math.round(yuzde)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
   );
 }
