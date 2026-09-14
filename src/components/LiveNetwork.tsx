@@ -125,6 +125,10 @@ export function LiveNetwork({
   // Işınlanma düzeltmesi: ters işletme biten tren, fazı "olması gereken" konuma
   // sıfırlanarak yeniden servise katılır (yoksa faz durmadan aktığından ileriye ışınlanırdı).
   const [fazKaydirma, setFazKaydirma] = useState<Record<number, number>>({});
+  // Arıza kuyruğundaki (tutulan) tren kümesinin RENDER-GÜVENLİ aynası. Otorite
+  // `arizaTutRef` (zamanlayıcı); bu state her karede ondan senkronlanır → render
+  // mutable ref OKUMAZ (React kuralı; #2). Referans eşitse setState atlanır.
+  const [tutulanIdx, setTutulanIdx] = useState<ReadonlySet<number>>(() => new Set());
   const raf = useRef<number | null>(null);
   const last = useRef(0);
   const tRef = useRef(0);                              // saatin otoritesi (zamanlayıcı sahibi)
@@ -317,6 +321,12 @@ export function LiveNetwork({
           });
         }
       }
+      // Render-güvenli ayna: tutulan tren kümesini state'e yansıt (render `arizaTutRef`
+      // okumasın). Değişmemişse aynı referansı döndür → React re-render'ı atlar.
+      setTutulanIdx((onceki) => {
+        if (onceki.size === tutMap.size && [...tutMap.keys()].every((k) => onceki.has(k))) return onceki;
+        return new Set(tutMap.keys());
+      });
     };
     // rAF görünürken pürüzsüz akıcılık sağlar; ama sekme gizliyken (arka plan,
     // odak dışı, headless) tarayıcı rAF'ı DURAKLATIR → saat donardı. setInterval
@@ -455,8 +465,6 @@ export function LiveNetwork({
   const upNow = up.map((tr) => { const r = sampleS(tr.points, t); return { tr, active: r.active, fp: r.s, up: true, v: r.v }; }).filter((x) => x.active);
   const downNow = down.map((tr) => { const r = sampleS(tr.points, t); return { tr, active: r.active, fp: L - r.s, up: false, v: r.v }; }).filter((x) => x.active);
   // DÖNGÜ modu: tek-tren yörüngesinde `count` treni eşit fazla (offset=headway) yerleştir.
-  // arizaTutRef gösterim-amaçlı okunur (zamanlayıcı otoritesi; her kare setT ile taze).
-  // eslint-disable-next-line react-hooks/refs
   const loopNow = loop ? Array.from({ length: loop.count }, (_, k) => {
     const dg = loop.dagitim?.[k];
     const trBase = { index: k, points: [], arr: 0, delay: 0 } as SignalTrain;
@@ -472,9 +480,9 @@ export function LiveNetwork({
     const fp = gidis ? Math.min(loop.L, r.s) : Math.max(0, loop.loopLen - r.s);
     // Arıza kuyruğunda TUTULAN tren fiilen DURUYOR: hızı yörüngeden değil 0 göster (faz
     // dondurulduğu için r.v o konumun yörünge hızını verirdi = yanıltıcı "40 km/h").
-    // arizaTutRef zamanlayıcıda güncellenir; her kare setT re-render tetiklediğinden gösterim
-    // tazedir — ref'i state'e aynalamak gereksiz çift kaynak olurdu (disable loopNow'da).
-    if (arizaTutRef.current.has(k)) return { tr: trBase, fp, up: gidis, v: 0, durum: "dwell" as LoopDurum, ad: "arızalı blok arkasında güvenle bekliyor" };
+    // Render-güvenli `tutulanIdx` STATE'inden okunur (mutable ref DEĞİL; her kare
+    // zamanlayıcıda arizaTutRef'ten senkronlanır) → #2 (render'da ref okuma) giderildi.
+    if (tutulanIdx.has(k)) return { tr: trBase, fp, up: gidis, v: 0, durum: "dwell" as LoopDurum, ad: "arızalı blok arkasında güvenle bekliyor" };
     return { tr: trBase, fp, up: gidis, v: r.v, durum: r.durum, ad: r.ad };
   }) : [];
   // Ters işletmeye geçmiş trenler normal döngüden çıkarılır (kendi overlay'iyle çizilir).
@@ -1013,11 +1021,9 @@ export function LiveNetwork({
       )}
 
       {/* Arıza aktif → FAIL-SAFE bilgi kartı: döngü İÇİNDE kuyruk (motor değişmez, sahne
-          sıfırlanmaz). Kuyruktaki tren sayısı canlı sayılır (arizaTutRef her kare güncel). */}
-      {/* arizaTutRef gösterim-amaçlı okunur (zamanlayıcı otoritesi; her kare setT ile taze). */}
-      {/* eslint-disable-next-line react-hooks/refs */}
+          sıfırlanmaz). Kuyruktaki tren sayısı render-güvenli `tutulanIdx` state'inden. */}
       {loop && faultBlocks.length > 0 && (() => {
-        const kuyruk = arizaTutRef.current.size;
+        const kuyruk = tutulanIdx.size;
         return (
         <div className="mb-2 overflow-hidden rounded-md border-l-4 text-xs" style={{ background: CK.badBgSoft, borderColor: brand.red, color: brand.inkSoft }}>
           <div className="px-3 py-2">
