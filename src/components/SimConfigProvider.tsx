@@ -17,7 +17,8 @@
 // hazır bulur; başka her hesap SIFIRDAN BOŞ hatla başlar ve kendi verisini girer.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { varsayilanConfig, varsayilanMeta, varsayilanIsletme, VARSAYILAN_TERMINAL, type SimConfig, type ProjeMeta, type Isletme, type TerminalConfig } from "@/lib/anaray/config";
+import { varsayilanConfig, varsayilanMeta, varsayilanIsletme, type SimConfig, type ProjeMeta, type Isletme } from "@/lib/anaray/config";
+import { migrate } from "@/lib/anaray/migrate";
 import { type DurakArasiRing, type Sube } from "@/lib/anaray/ring";
 import { varsayilanArac } from "@/lib/anaray/vehicles";
 import type { RollingStock } from "@/lib/anaray/types";
@@ -27,7 +28,7 @@ import { getAuthInstance } from "@/lib/firebase";
 import {
   projeleriListele, ilkProjeOlustur, projeGetir, projeKaydet, projeSil,
   projeAdiDegistir, paylasimAyarla, veriBoyutu, hazirHatlariSeed,
-  PROJE_KOTASI, VERI_BAYT_SINIRI, type ProjeOzet, type ProjeVerisi,
+  PROJE_KOTASI, VERI_BAYT_SINIRI, VERI_BAYT_UYARI, type ProjeOzet, type ProjeVerisi,
 } from "@/lib/projeler";
 import { HAZIR_VERI_SURUM, hazirHatlar } from "@/lib/anaray/hazirHatlar";
 import { maksimumTren } from "@/lib/anaray/kapasite";
@@ -159,37 +160,20 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
   const yazilabilir = Boolean(user) && !paylasimGorunumu && aktifId !== null;
 
   const veriUygula = useCallback((v: ProjeVerisi) => {
-    // Eksik alanlar (eski kayıt) varsayılanla doldurulur → geriye dönük güvenli.
-    const nCfg = { ...varsayilanConfig, ...v.cfg };
-    const nMeta = { ...varsayilanMeta, ...v.meta };
-    const nArac = v.arac ?? varsayilanArac;
-    const nIsletme = { ...varsayilanIsletme, ...v.isletme };
-    // Nested terminal config: derin-birleştir (yoksa undefined → motorda NaN). Eski
-    // (terminalDwell + donusSuresi) kayıtlar tek 'peronIsgali'ye göç ettirilir.
-    const gocTerminal = (t: Partial<TerminalConfig> & { terminalDwell?: number; donusSuresi?: number } = {}): TerminalConfig => {
-      const m = { ...VARSAYILAN_TERMINAL, ...t };
-      if (t.peronIsgali == null && (t.terminalDwell != null || t.donusSuresi != null)) {
-        m.peronIsgali = (t.terminalDwell ?? 30) + (t.donusSuresi ?? 180);
-      }
-      // Eski makasTipi ("s"/"x"/"sx") → sMakas/xMakas göçü (kayıtta sayı yoksa; VARSAYILAN
-      // sMakas:1'i tipten türetilene çevir).
-      if (t.sMakas == null && t.xMakas == null && t.makasTipi != null) {
-        m.sMakas = t.makasTipi === "x" ? 0 : 1;      // "x"→0S, "s"/"sx"→1S
-        m.xMakas = t.makasTipi === "x" || t.makasTipi === "sx" ? 1 : 0; // "x"/"sx"→1X
-      }
-      return m;
-    };
-    nIsletme.terminalBas = gocTerminal(v.isletme?.terminalBas);
-    nIsletme.terminalSon = gocTerminal(v.isletme?.terminalSon);
-    setRingsRaw(v.rings);
-    setSubelerRaw(v.subeler ?? []);
-    setCfg(nCfg);
-    setMeta(nMeta);
-    setAracRaw(nArac);
-    setIsletmeRaw(nIsletme);
-    // İmza NORMALİZE edilmiş halden üretilir (otomatik-kayıtla birebir aynı sıra) →
-    // eksik alanlı eski kayıt açılınca gereksiz "kaydediliyor" tetiklenmez.
-    imzaRef.current = JSON.stringify({ rings: v.rings, cfg: nCfg, meta: nMeta, arac: nArac, isletme: nIsletme, subeler: v.subeler ?? [] });
+    // TEK ve İDEMPOTENT normalleştirici (veri katmanı `projeGetir` ile paylaşılan) —
+    // eksik alan doldurma + eski-şema göçü (terminal, makas) + rings derin normalizasyon.
+    // Bkz. lib/anaray/migrate.ts. Buraya `projeGetir` DIŞI kaynaklar da düşer (?hat=
+    // önizleme, demo/boş) → hepsi aynı yoldan normalleşir.
+    const n = migrate(v);
+    setRingsRaw(n.rings);
+    setSubelerRaw(n.subeler ?? []);
+    setCfg(n.cfg);
+    setMeta(n.meta);
+    setAracRaw(n.arac ?? varsayilanArac);
+    setIsletmeRaw(n.isletme ?? varsayilanIsletme);
+    // İmza NORMALİZE edilmiş halden üretilir (otomatik-kayıtla birebir aynı alan sırası)
+    // → eksik alanlı eski kayıt açılınca gereksiz "kaydediliyor" tetiklenmez.
+    imzaRef.current = JSON.stringify({ rings: n.rings, cfg: n.cfg, meta: n.meta, arac: n.arac, isletme: n.isletme, subeler: n.subeler ?? [] });
   }, []);
 
   // Paylaşım görünümünden çıkış. ADRESTEKİ `?proje=` DE SİLİNİR: aksi halde
@@ -392,6 +376,13 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
         await projeKaydet(aktifId, veri);
         if (!guncelMi(jeton)) return;
         imzaRef.current = imza;
+        // Proaktif uyarı: sınırın %80'ini aştıysa kayıt yapıldı AMA erken uyar
+        // (duvara toslamadan hattı bölme fırsatı). Altındaysa varsa eski uyarı temizlenir.
+        setHataMetni(
+          bayt > VERI_BAYT_UYARI
+            ? `Uyarı: hat verisi büyüyor (${Math.round(bayt / 1024)} KB / ${Math.round(VERI_BAYT_SINIRI / 1024)} KB). Sınıra yaklaşınca hattı ikiye bölmeyi düşünün.`
+            : null,
+        );
         setDurum("kaydedildi");
       } catch (e) {
         if (!guncelMi(jeton)) return;

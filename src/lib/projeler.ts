@@ -20,6 +20,7 @@ import { getDb, getAuthInstance } from "./firebase";
 import type { SimConfig, ProjeMeta, Isletme } from "./anaray/config";
 import type { DurakArasiRing, Sube } from "./anaray/ring";
 import type { RollingStock } from "./anaray/types";
+import { migrate, VERI_SURUM } from "./anaray/migrate";
 
 const COL = "projeler";
 
@@ -33,6 +34,10 @@ export const PROJE_KOTASI = 10;
 
 /** Tek projenin JSON boyutu üst sınırı — firestore.rules'daki değerle AYNI olmalı. */
 export const VERI_BAYT_SINIRI = 900_000;
+
+/** Proaktif uyarı eşiği (sert sınırın %80'i). Bunun üstünde kayıt YİNE yapılır ama
+ *  kullanıcı erken uyarılır → duvara toslamadan hattı bölme fırsatı bulur. */
+export const VERI_BAYT_UYARI = Math.round(VERI_BAYT_SINIRI * 0.8);
 
 /** `veri` alanının Firestore'a gidecek gerçek boyutu (bayt). */
 export function veriBoyutu(json: string): number {
@@ -149,12 +154,17 @@ export async function projeGetir(id: string): Promise<ProjeKaydi> {
   const snap = await getDoc(doc(db(), COL, id));
   if (!snap.exists()) throw new Error("Proje bulunamadı.");
   const d = snap.data() as Record<string, unknown>;
-  return { ...ozetle(snap.id, d), veri: JSON.parse(d.veri as string) as ProjeVerisi };
+  // Kayıtlı JSON GÜNCEL şemaya normalleştirilir (eksik alan doldurma + eski-şema göçü,
+  // rings dahil derin) — ham cast yerine. İdempotent; bkz. anaray/migrate.ts.
+  let ham: unknown = {};
+  try { ham = JSON.parse((d.veri as string) ?? "{}"); } catch { /* bozuk JSON → boş → varsayılanlar */ }
+  return { ...ozetle(snap.id, d), veri: migrate(ham) };
 }
 
 export async function projeKaydet(id: string, veri: ProjeVerisi, ad?: string): Promise<void> {
   await updateDoc(doc(db(), COL, id), {
     veri: JSON.stringify(veri),
+    veriSurum: VERI_SURUM, // doküman düzeyinde şema sürümü (bkz. migrate.ts)
     ...(ad ? { ad } : {}),
     guncelleme: serverTimestamp(),
   });
