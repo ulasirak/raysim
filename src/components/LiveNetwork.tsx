@@ -211,7 +211,19 @@ export function LiveNetwork({
                 const key = `${k}:${yon}:${Math.round(m.pos)}:${lap}`;
                 if (!sorulan.current.has(key)) {
                   sorulan.current.add(key);
-                  setKarar({ trainIdx: k, no: k + 1, makasPos: m.pos, makasAd: m.ad, crossover: m.crossover || "s", yon, key });
+                  // Bellek freni: uzun oturumda `sorulan` tur (lap) başına birikir. `lap`
+                  // yalnız ARTTIĞINDAN eski turların anahtarları bir daha oluşmaz → en
+                  // eskileri (ekleme sırası korunur) budamak %100 güvenli.
+                  if (sorulan.current.size > 4000) {
+                    const eski = [...sorulan.current].slice(0, sorulan.current.size - 2000);
+                    for (const e of eski) sorulan.current.delete(e);
+                  }
+                  const yeniKarar = { trainIdx: k, no: k + 1, makasPos: m.pos, makasAd: m.ad, crossover: m.crossover || "s", yon, key } as const;
+                  // Guard'ı SENKRON set et: öteki zamanlayıcı (rAF/interval) bu render
+                  // commit olmadan bir daha ilerlet çalıştırırsa `!kararRef.current` ile
+                  // hemen bloke olur → başka trenin kararı bunun üstüne YAZILMAZ.
+                  kararRef.current = yeniKarar;
+                  setKarar(yeniKarar);
                   setOynat(false);
                   sordu = true;
                   break;
@@ -311,7 +323,10 @@ export function LiveNetwork({
     // görünürlükten bağımsız çalışıp ilerlemeyi her koşulda garanti eder.
     const tick = () => { ilerlet(); raf.current = requestAnimationFrame(tick); };
     raf.current = requestAnimationFrame(tick);
-    const id = window.setInterval(ilerlet, 1000 / 30);
+    // rAF sekme GÖRÜNÜRKEN akıcılığı sağlar. Interval yalnız sekme GİZLİYKEN (rAF
+    // duraklamışken) devreye girer → görünürken çift `ilerlet` (2× tespit taraması)
+    // önlenir. Delta-tabanlı saat sayesinde geçiş kesintisizdir.
+    const id = window.setInterval(() => { if (document.hidden) ilerlet(); }, 1000 / 30);
     return () => {
       durdu = true;
       window.clearInterval(id);
