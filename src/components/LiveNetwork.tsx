@@ -16,7 +16,7 @@ import { brand } from "@/lib/anaray/brand";
 import { CK, ASPEKT } from "@/lib/anaray/chartkit";
 
 import { VBW, vbhHesap, HIZLAR, UP_COL, DOWN, GAP, UP_SIDE, DOWN_SIDE, UST, DURUM_STIL, sampleS, sampleLoop, fazAtS } from "./liveNetworkGeo";
-import { FailSafeKart, LiveNetworkLegend } from "./liveNetworkKartlar";
+import { FailSafeKart, LiveNetworkLegend, TersModSecici } from "./liveNetworkKartlar";
 
 export function LiveNetwork({
   network, route, line, blocks, up = [], down = [], tMax, trainLen = 40, faultBlocks = [], onBlockClick, depots = [], features = [], loop, terminalBas, terminalSon,
@@ -958,22 +958,12 @@ export function LiveNetwork({
       {/* TERS İŞLETME MODU — SADECE istasyon makasları için geçerli. Aktivasyon:
           Kapalı / Sadece giden hat / Çift taraflı. Kalıcı (isletme.tersMod). */}
       {loop && (
-        <div className="mb-2 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-xs" style={{ borderColor: brand.border, background: CK.track }}>
-          <span className="flex items-center gap-1 font-semibold" style={{ color: brand.ink }}><span style={{ color: CK.amber }}>↺</span> Ters işletme:</span>
-          {([
-            { m: "kapali" as TersMod, ad: "Kapalı", ip: "İstasyon makasında kısa dönüş sorulmaz — trenler kesintisiz döner." },
-            { m: "gidenHat" as TersMod, ad: "Sadece giden hat", ip: "Yalnız GİDEN trenler istasyon makasından kısa dönüş yapabilir (karşı/dönüş şeride geçip başa döner)." },
-            { m: "ciftYonlu" as TersMod, ad: "Çift taraflı", ip: "Giden + GELEN trenler istasyon makasından geçebilir; dönüş treni de gidiş hattına girip ileri gidebilir." },
-          ]).map(({ m, ad, ip }) => (
-            <button key={m} title={ip} disabled={!onTersMod}
-              onClick={() => { if (m !== tersMod) { onTersMod?.(m); if (m === "kapali") { setKarar(null); } } }}
-              className="rounded px-2.5 py-1 font-medium transition disabled:opacity-50"
-              style={tersMod === m ? { background: brand.ink, color: "#fff" } : { background: brand.surface, color: brand.inkSoft, border: `1px solid ${brand.border}` }}>
-              {ad}
-            </button>
-          ))}
-          <span style={{ color: brand.faint }}>— yalnız <b>istasyondaki</b> makaslar için geçerli ({tersMakaslar.length} istasyon)</span>
-        </div>
+        <TersModSecici
+          tersMod={tersMod}
+          disabled={!onTersMod}
+          tersMakasSayisi={tersMakaslar.length}
+          onSec={(m) => { if (m !== tersMod) { onTersMod?.(m); if (m === "kapali") { setKarar(null); } } }}
+        />
       )}
 
       {/* Kontroller */}

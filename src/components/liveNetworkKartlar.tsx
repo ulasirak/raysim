@@ -38,3 +38,26 @@ export function LiveNetworkLegend({ depoVar, tersMakasVar, tersMod, terminalVar 
       </p>
   );
 }
+
+/** Ters işletme MOD seçici (Kapalı / Sadece giden hat / Çift taraflı). Saf sunum;
+ *  seçim mantığı (guard + setKarar) parent'ta kalır, buraya `onSec` ile iner. */
+export function TersModSecici({ tersMod, disabled, tersMakasSayisi, onSec }: { tersMod: TersMod; disabled: boolean; tersMakasSayisi: number; onSec: (m: TersMod) => void }) {
+  return (
+        <div className="mb-2 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-xs" style={{ borderColor: brand.border, background: CK.track }}>
+          <span className="flex items-center gap-1 font-semibold" style={{ color: brand.ink }}><span style={{ color: CK.amber }}>↺</span> Ters işletme:</span>
+          {([
+            { m: "kapali" as TersMod, ad: "Kapalı", ip: "İstasyon makasında kısa dönüş sorulmaz — trenler kesintisiz döner." },
+            { m: "gidenHat" as TersMod, ad: "Sadece giden hat", ip: "Yalnız GİDEN trenler istasyon makasından kısa dönüş yapabilir (karşı/dönüş şeride geçip başa döner)." },
+            { m: "ciftYonlu" as TersMod, ad: "Çift taraflı", ip: "Giden + GELEN trenler istasyon makasından geçebilir; dönüş treni de gidiş hattına girip ileri gidebilir." },
+          ]).map(({ m, ad, ip }) => (
+            <button key={m} title={ip} disabled={disabled}
+              onClick={() => onSec(m)}
+              className="rounded px-2.5 py-1 font-medium transition disabled:opacity-50"
+              style={tersMod === m ? { background: brand.ink, color: "#fff" } : { background: brand.surface, color: brand.inkSoft, border: `1px solid ${brand.border}` }}>
+              {ad}
+            </button>
+          ))}
+          <span style={{ color: brand.faint }}>— yalnız <b>istasyondaki</b> makaslar için geçerli ({tersMakasSayisi} istasyon)</span>
+        </div>
+  );
+}
