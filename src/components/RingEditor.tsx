@@ -7,6 +7,7 @@
 // darboğazı anında yeniden hesaplanır. Hücreler bir loop (kapalı hat) oluşturur.
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
 import type { RollingStock } from "@/lib/anaray/types";
 import { useSimConfig, useProje, useArac, useIsletme, useHesap } from "@/components/SimConfigProvider";
 import { HatIceAktar, type IceAktarMod } from "@/components/HatIceAktar";
@@ -903,6 +904,8 @@ function RingKart(p: KartProps) {
   const [sigYon, setSigYon] = useState<"giden" | "gelen">("giden");
   // Kurp: "ölçüden yarıçap" (kiriş + orta dikme) paneli — kurp id → {C, M} ölçüleri.
   const [kurpOlcu, setKurpOlcu] = useState<Record<string, { C: number; M: number }>>({});
+  // Kurp: "nasıl çalışır?" bilgi pop-up'ı (hız ↔ fren/ivme bağı) açık mı?
+  const [kurpBilgi, setKurpBilgi] = useState(false);
   const [sigKonum, setSigKonum] = useState(() => Math.round(ring.uzunluk * 0.9));
   const eksik = useMemo(() => ringDogrula(ring, cfg), [ring, cfg]);
   // Senaryo (worst/headway) HESAPLI dwell'le: dwellOto ringde dwell yolcu akışından.
@@ -1176,9 +1179,29 @@ function RingKart(p: KartProps) {
           {/* Kurplar (kavisler) — yatay yarıçaptan türeyen hız kısıtı */}
           <div className="mt-4 border-t pt-3" style={{ borderColor: brand.border }}>
             <div className="mb-2 flex items-center justify-between">
-              <SubBaslik>Kurplar (Kavisler)</SubBaslik>
+              <div className="flex items-center gap-2">
+                <SubBaslik>Kurplar (Kavisler)</SubBaslik>
+                <button type="button" onClick={() => setKurpBilgi((v) => !v)}
+                  className="rounded-full border px-1.5 text-[0.7rem] font-bold leading-5"
+                  style={kurpBilgi ? { background: brand.ink, color: "#fff", borderColor: brand.ink } : { borderColor: brand.border, color: brand.inkSoft }}
+                  title="Kurp hızı ile fren/ivme nasıl bağlanır?">ⓘ nasıl çalışır?</button>
+              </div>
               <button onClick={() => p.onKurpEkle()} className="rounded px-2 py-1 text-xs font-medium" style={{ background: CK.track, color: brand.inkSoft }}>＋ ekle</button>
             </div>
+            {kurpBilgi && (
+              <div className="mb-2 rounded-md border p-3 text-xs leading-relaxed" style={{ borderColor: brand.ink, background: "#F7F9FB", color: brand.ink }}>
+                <b>Kurp hızı ↔ fren (b) ↔ ivme (a) birbirine bağlıdır:</b>
+                <ol className="mt-1 list-decimal pl-4">
+                  <li><b>Kurp hızı</b> = trenin bu kavisten geçebileceği <b>azami hız</b> (yarıçaptan: v=√(R·(a<sub>yanal</sub>+g·dever/ekartman))). Bu, bölgenin hız limiti olur — <b>per-kurp</b>.</li>
+                  <li><b>Bu hıza inme (yavaşlama)</b> = <b>Servis freni (b)</b> ile — tren kurptan önce bu fren oranıyla yavaşlar. <b>Global/araç</b> ayarı, kurpa özel değil.</li>
+                  <li><b>Kurptan çıkışta hızlanma</b> = <b>Kalkış ivme tavanı (a)</b> + aracın çekiş/güç/kütlesi. Daha hızlı kalkış için aracın çekişini artır.</li>
+                </ol>
+                <div className="mt-1.5 flex flex-wrap gap-2">
+                  <Link href="/sistem" className="rounded px-2 py-1 font-semibold text-white" style={{ background: brand.ink }}>→ Sistem Merkezi (a / b ayarı)</Link>
+                  <span style={{ color: brand.muted }}>Araç çekişi/gücü: Studio → <b>Çeken Araç</b>.</span>
+                </div>
+              </div>
+            )}
             <p className="mb-2 text-xs" style={{ color: brand.muted }}>
               Yatay kavis. <b>Yarıçap (R)</b> girince hız otomatik: <b>v = √(R·(a<sub>yanal</sub> + g·dever/ekartman))</b> — a<sub>yanal</sub>={cfg.aYanalKonfor} m/s², ekartman={Math.round(cfg.ekartman * 1000)} mm (Sistem Merkezi). Dilersen <b>hızı elle</b> gir. Düşey eğimden (ring eğimi) bağımsızdır.
             </p>
