@@ -317,6 +317,69 @@ export function kurpYanalIvme(k: Kurp, cfg: SimConfig = BELGE): number {
   return v * v / R - g * (h / s);
 }
 
+/** Bir hedef yanal ivme (aT) için kurpta önerilen azami hız (km/h). */
+function kurpOneriHiz(k: Kurp, cfg: SimConfig, aT: number): number {
+  const g = 9.81;
+  const R = Math.max(1, k.yaricap || 0);
+  const s = cfg.ekartman > 0 ? cfg.ekartman : 1.435;
+  const h = Math.max(0, k.dever || 0);
+  return Math.round(Math.sqrt(R * (Math.max(0.05, aT) + g * (h / s))) * 3.6);
+}
+
+export type KurpKonforSeviye = "ok" | "kalabalik" | "asim";
+
+export interface KurpKonforSatir {
+  ringId: string; ringAd: string; kurpId: string; kurpAd: string;
+  kmMutlak: number;   // m — hat başından kurp merkezinin mutlak kilometrajı
+  yaricap: number;    // m
+  dever: number;      // m
+  vKmh: number;       // efektif hız
+  aYanal: number;     // m/s²
+  doluluk: number | null; // ring doluluğu (0..1) verildiyse
+  seviye: KurpKonforSeviye;
+  oneriVKmh: number | null; // asim/kalabalik → önerilen ≤ hız
+  mesaj: string;
+}
+
+/** Kurp yanal-ivme / konfor değerlendirmesi. `dolulukByRing` (ring.id → 0..1) verilirse
+ *  kalabalık uyarısı GERÇEK doluluğa bağlanır (eşik üstü → "kalabalik"); verilmezse konfor-
+ *  bandındaki kurplar da (doluluk bilinmiyor) gösterilir. "asim" = hız geometri için fazla
+ *  (yanal ivme tasarım tavanını aşıyor — genelde elle hız). DÜRÜSTLÜK: yanal ivme yolcu
+ *  sayısından bağımsız; doluluk yalnız AYAKTA yolcu eşiğini (KALABALIK_YANAL) devreye alır. */
+export function kurpKonforAnaliz(
+  rings: DurakArasiRing[], cfg: SimConfig = BELGE, dolulukByRing?: Record<string, number>, kalabalikEsik = 0.85,
+): KurpKonforSatir[] {
+  const out: KurpKonforSatir[] = [];
+  let off = 0;
+  for (const r of rings) {
+    const dol = dolulukByRing ? (dolulukByRing[r.id] ?? null) : null;
+    for (const k of r.kurplar ?? []) {
+      const a = kurpYanalIvme(k, cfg);
+      const v = kurpHizi(k, cfg);
+      const asim = a > cfg.aYanalKonfor + 0.03;
+      const konforBandi = !asim && a > KALABALIK_YANAL + 0.03;
+      const kalabalik = konforBandi && (dol == null || dol >= kalabalikEsik);
+      const seviye: KurpKonforSeviye = asim ? "asim" : kalabalik ? "kalabalik" : "ok";
+      const oneriVKmh = asim ? kurpOneriHiz(k, cfg, cfg.aYanalKonfor)
+        : kalabalik ? kurpOneriHiz(k, cfg, KALABALIK_YANAL) : null;
+      const ad = k.ad || `R${Math.round(k.yaricap || 0)}`;
+      const mesaj = asim
+        ? `Yanal ivme ${a.toFixed(2)} m/s² konfor tavanını (${cfg.aYanalKonfor.toFixed(2)}) aşıyor → hızı ≤ ${oneriVKmh} km/h yap.`
+        : kalabalik
+          ? `Tasarım içinde ama ${dol != null ? `doluluk %${Math.round(dol * 100)}` : "yoğun saatte"} → ayakta yolcu konforu için ≤ ${oneriVKmh} km/h önerilir.`
+          : `Yanal ivme ${a.toFixed(2)} m/s² — konfor içinde.`;
+      out.push({
+        ringId: r.id, ringAd: `${r.fromAd} → ${r.toAd}`, kurpId: k.id, kurpAd: ad,
+        kmMutlak: off + Math.max(0, Math.min(r.uzunluk, k.konum)),
+        yaricap: k.yaricap || 0, dever: k.dever || 0, vKmh: Math.round(v * 3.6),
+        aYanal: a, doluluk: dol, seviye, oneriVKmh, mesaj,
+      });
+    }
+    off += r.uzunluk;
+  }
+  return out;
+}
+
 // ————————————————————————————————————————————————
 // Senaryo hesabı (worst / best / nominal + timing)
 // ————————————————————————————————————————————————

@@ -18,7 +18,7 @@ import { maksimumTren } from "./kapasite";
 import { tarifeUret } from "./tarife";
 import { duyarlilikAnaliz } from "./duyarlilik";
 import type { RollingStock, Line } from "./types";
-import { ringSenaryo, ringChallenge, ringKisitDizisi, loopDenge, type DurakArasiRing, type Sube } from "./ring";
+import { ringSenaryo, ringChallenge, ringKisitDizisi, loopDenge, kurpKonforAnaliz, type DurakArasiRing, type Sube } from "./ring";
 import { blockingTimeRing } from "./blockingtime";
 import { loopToHat } from "./hatsim";
 import { loopYorunge, monteCarlo, type LoopYorunge, type MonteCarloResult } from "./signalling";
@@ -522,6 +522,32 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   // MOD = "toplam" — Ters İşletme sayfasının VARSAYILAN modu (birebir aynı çıktı için).
   // Böylece rapordaki filo/öneri/tepe yük değerleri canlı Ters İşletme ekranıyla eşleşir.
   const tia = rings.length >= 2 ? tersIsletmeAnaliz(rings, stock, isletme, cfg, "toplam") : null;
+
+  // ---- 2.2 Kurp geometrisi & yanal konfor (doluluğa duyarlı öneriler) ----
+  const dolulukByRing: Record<string, number> = {};
+  if (tia) rings.forEach((r, i) => { const d = tia.duraklar[i]; if (d) dolulukByRing[r.id] = d.doluluk; });
+  const kurpSatir = kurpKonforAnaliz(rings, cfg, tia ? dolulukByRing : undefined);
+  const kurpKonforBol = kurpSatir.length ? (() => {
+    const th = en
+      ? ["Section", "Chainage", "R (m)", "Cant (mm)", "Speed (km/h)", "Lateral (m/s²)", "Assessment"]
+      : ["Durak Arası", "Kilometraj", "R (m)", "Dever (mm)", "Hız (km/h)", "Yanal (m/s²)", "Değerlendirme"];
+    const rows = kurpSatir.map((k) => [
+      esc(k.ringAd), kmFmt(k.kmMutlak), `${Math.round(k.yaricap)}`, `${Math.round(k.dever * 1000)}`,
+      `${k.vKmh}`, k.aYanal.toFixed(2),
+      sunum ? (en ? "OK" : "Uygun")
+        : k.seviye === "asim" ? `⚠ ${esc(k.mesaj)}`
+          : k.seviye === "kalabalik" ? `● ${esc(k.mesaj)}`
+            : (en ? "OK" : "Uygun"),
+    ]);
+    const oneriler = kurpSatir.filter((k) => k.seviye !== "ok");
+    const not = sunum
+      ? (en ? `Curve speeds are derived from the radius (v = √(R·(a + g·cant/gauge))), lateral acceleration held at the comfort ceiling ${cfg.aYanalKonfor.toFixed(2)} m/s².` : `Kurp hızları yarıçaptan türetilir (v = √(R·(a + g·dever/ekartman))); yanal ivme konfor tavanı ${cfg.aYanalKonfor.toFixed(2)} m/s²'de tutulur.`)
+      : oneriler.length
+        ? (en ? `${oneriler.length} curve(s) flagged — over-speed (lateral acceleration above the ${cfg.aYanalKonfor.toFixed(2)} m/s² comfort ceiling) or, at high occupancy, tight for standing passengers; recommended speeds are given. Lateral acceleration is independent of passenger count — occupancy only tightens the standing-passenger comfort threshold (${(0.65).toFixed(2)} m/s²).` : `${oneriler.length} kurp işaretlendi — hız fazlası (yanal ivme ${cfg.aYanalKonfor.toFixed(2)} m/s² konfor tavanı üstü) ya da yüksek dolulukta ayakta yolcu için sıkı; önerilen hızlar verildi. Yanal ivme yolcu sayısından bağımsızdır — doluluk yalnız ayakta-yolcu konfor eşiğini (${(0.65).toFixed(2)} m/s²) devreye alır.`)
+        : (en ? `All ${kurpSatir.length} curve(s) are within the comfort ceiling (${cfg.aYanalKonfor.toFixed(2)} m/s²).` : `${kurpSatir.length} kurpun tamamı konfor tavanı (${cfg.aYanalKonfor.toFixed(2)} m/s²) içinde.`);
+    const baslik = en ? "2.2 Curve Geometry & Lateral Comfort" : "2.2 Kurp Geometrisi ve Yanal Konfor";
+    return `<h3 class="sub">${baslik}</h3>${tbl(th, rows, { first: true })}<div class="gs" style="font-size:9.5pt">${not}</div>`;
+  })() : "";
   // Gerekçe kutusu — insan dilinde: önce sonuç, sonra "bu böyle çıktı çünkü şu girdiyi
   // verdin / şu değerler harmanlandı". Esas/Sonuç etiketi ve çıplak formül YOK; akıcı paragraf.
   const gsNot = (metin: string) => `<div class="gs">${metin}</div>`;
@@ -1067,6 +1093,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   ${tbl(L.thRing, ringRows, { first: true })}
   <h3 class="sub" style="page-break-before:always">${sunum ? (lang === "en" ? "2.1 Per-cell Constraint Analysis" : "2.1 Ring Bazında Kısıt Analizi") : L.s21}</h3>
   ${ringDetay}
+  ${kurpKonforBol}
 
   <!-- 3: Sinyalizasyon -->
   ${sinyalBolum}

@@ -6,7 +6,8 @@
 // varsayılan kalır (kullanıcı Ringler'de ekler).
 
 import { unzipSync, strFromU8, zipSync, strToU8 } from "fflate";
-import { yeniRing, type DurakArasiRing } from "./ring";
+import { yeniRing, yeniKurp, kurpHizi, type DurakArasiRing } from "./ring";
+import { kurplariBul } from "./kurpBul";
 
 // —— Minimal CSV (RFC-4180: tırnaklı alan + kaçışlı çift tırnak) ——
 function csvSatirlar(metin: string): string[][] {
@@ -178,6 +179,26 @@ export function gtfsHatKur(feed: GtfsFeed, routeId: string, dir: string): GtfsHa
     r.dwell = dwell;
     rings.push(r);
   }
+  // Yatay KURPLAR: shape (gerçek güzergâh) varsa geometriden otomatik çıkar → ilgili ringe ekle.
+  if (shape && stopKum && shape.length >= 3) {
+    const d2r = Math.PI / 180, Re = 6371000, lat0 = shape[0].lat * d2r, lon0 = shape[0].lon;
+    const proj = shape.map((pt) => ({ x: (pt.lon - lon0) * d2r * Re * Math.cos(lat0), y: (pt.lat - shape[0].lat) * d2r * Re }));
+    let kurpEklenen = 0;
+    for (const c of kurplariBul(proj)) {
+      let ri = -1;
+      for (let i = 0; i < rings.length; i++) {
+        if (c.kmMerkez >= stopKum[i] - 1e-6 && c.kmMerkez < stopKum[i + 1] + 1e-6) { ri = i; break; }
+      }
+      if (ri < 0) continue;
+      const r = rings[ri];
+      const konum = Math.max(0, Math.min(r.uzunluk, Math.round(c.kmMerkez - stopKum[ri])));
+      const uz = Math.max(10, Math.min(r.uzunluk, Math.round(c.uzunluk)));
+      const kurp = { ...yeniKurp(konum), uzunluk: uz, yaricap: Math.round(c.yaricap) };
+      if (kurpHizi(kurp) < r.vmax - 1e-6) { r.kurplar = [...(r.kurplar ?? []), kurp]; kurpEklenen++; }
+    }
+    if (kurpEklenen > 0) uyarilar.push(`${kurpEklenen} kavis (kurp) güzergâh geometrisinden (shapes.txt) otomatik çıkarıldı; hızları yarıçaptan hesaplandı — Ringler'de kontrol/rötuş yapabilirsin.`);
+  }
+
   uyarilar.push(sekilKullanildi
     ? "Mesafeler gerçek güzergâh geometrisinden (shapes.txt) hesaplandı — viraj dâhil, ray uzunluğuna yakın."
     : "Mesafeler kuş-uçuşu (haversine) enlem-boylamdan hesaplandı; gerçek ray uzunluğundan bir miktar kısa olabilir — Ringler'de düzeltebilirsiniz.");

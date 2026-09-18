@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { varsayilanConfig } from "@/lib/anaray/config";
 import { varsayilanArac } from "@/lib/anaray/vehicles";
-import { kurpYanalIvme, ringChallenge, yeniRing, yeniKurp, type Kurp } from "@/lib/anaray/ring";
+import { kurpYanalIvme, kurpKonforAnaliz, ringChallenge, yeniRing, yeniKurp, type Kurp } from "@/lib/anaray/ring";
 
 describe("kurp konfor / yanal ivme", () => {
   const cfg = varsayilanConfig; // aYanalKonfor = 0.85
@@ -28,5 +28,21 @@ describe("kurp konfor / yanal ivme", () => {
     const ring = { ...yeniRing("A", "B"), uzunluk: 600, kurplar: [{ ...yeniKurp(300), yaricap: 150 }] as Kurp[] };
     const flags = ringChallenge(ring, varsayilanArac, cfg);
     expect(flags.some((f) => f.tur === "kurp-konfor")).toBe(false);
+  });
+
+  it("kurpKonforAnaliz: doluluk kalabalık uyarısını devreye alır/kapatır", () => {
+    const ring = { ...yeniRing("A", "B"), uzunluk: 600, kurplar: [{ ...yeniKurp(300), yaricap: 120 }] as Kurp[] };
+    const dusuk = kurpKonforAnaliz([ring], cfg, { [ring.id]: 0.4 }); // tasarım a=0.85 ama doluluk düşük
+    expect(dusuk[0].seviye).toBe("ok");
+    const yuksek = kurpKonforAnaliz([ring], cfg, { [ring.id]: 0.95 }); // kalabalık → ayakta yolcu için sıkı
+    expect(yuksek[0].seviye).toBe("kalabalik");
+    expect(yuksek[0].oneriVKmh).toBeGreaterThan(0);
+  });
+
+  it("kurpKonforAnaliz: elle aşım → 'asim' + öneri hız", () => {
+    const ring = { ...yeniRing("A", "B"), uzunluk: 600, kurplar: [{ ...yeniKurp(300), yaricap: 50, hizManuel: 40 / 3.6 }] as Kurp[] };
+    const s = kurpKonforAnaliz([ring], cfg, { [ring.id]: 0.3 });
+    expect(s[0].seviye).toBe("asim");
+    expect(s[0].oneriVKmh).toBeLessThan(40);
   });
 });
