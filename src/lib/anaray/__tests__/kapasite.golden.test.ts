@@ -27,9 +27,9 @@ interface Golden {
 // düştü — dürüst sonuç). cevrim/sinyal/filo/tepe blok modelinden bağımsız → değişmedi. Kilit budur.
 const GOLDEN: Record<string, Golden> = {
   mevcut:   { nTeorik: 13, nSurd: 9,  hMin: 154, cevrim: 2068, baglayan: "Kritik blok — Mevlana Kültür Merkezi", sinyal: 23, gerekenFilo: 5,  tepeYuk: 1466 },
-  etap1:    { nTeorik: 20, nSurd: 14, hMin: 175, cevrim: 3626, baglayan: "Kritik blok — Gülistan Caddesi",       sinyal: 30, gerekenFilo: 9,  tepeYuk: 1605 },
+  etap1:    { nTeorik: 20, nSurd: 14, hMin: 175, cevrim: 3666, baglayan: "Kritik blok — Gülistan Caddesi",       sinyal: 30, gerekenFilo: 9,  tepeYuk: 1605 },
   etap2:    { nTeorik: 18, nSurd: 12, hMin: 157, cevrim: 2861, baglayan: "Kritik blok — TÜYAP",                  sinyal: 25, gerekenFilo: 6,  tepeYuk: 1405 },
-  birlesik: { nTeorik: 42, nSurd: 29, hMin: 185, cevrim: 7874, baglayan: "Kritik blok — Depo",                   sinyal: 78, gerekenFilo: 15, tepeYuk: 1213 },
+  birlesik: { nTeorik: 42, nSurd: 29, hMin: 185, cevrim: 7904, baglayan: "Kritik blok — Depo",                   sinyal: 78, gerekenFilo: 15, tepeYuk: 1213 },
 };
 
 const hatlar = hazirHatlar();

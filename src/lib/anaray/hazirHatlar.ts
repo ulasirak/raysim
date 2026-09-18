@@ -19,7 +19,7 @@
 // kesimlerde hemzemin karayolu geçidi.
 
 import {
-  yeniRing, yeniMakas, yeniHemzemin, yeniSinyal,
+  yeniRing, yeniMakas, yeniHemzemin, yeniSinyal, yeniKurp,
   type DurakArasiRing, type MakasTip, type HemzeminTip,
 } from "./ring";
 import { varsayilanConfig, varsayilanMeta, varsayilanIsletme, VARSAYILAN_TERMINAL, type ProjeMeta, type TerminalConfig } from "./config";
@@ -201,6 +201,36 @@ function sinyalYerlestir(rings: DurakArasiRing[], kmListesi: number[]): void {
   });
 }
 
+/** Kurpları (kavisleri) MUTLAK km'ye yerleştirir — sinyalYerlestir ile aynı desen.
+ *  `kmR` = [mutlakKm, yarıçapM] listesi. Yarıçaplar GERÇEK CAD verisinden (Civil3D
+ *  TT_EM_SERİT eksen katmanı, güzergah DXF); konumlar eksene projeksiyondan yaklaşık
+ *  (kullanıcı Ring editöründe rötuş yapabilir). Uzunluk şehir-içi tipik 60 m varsayılır. */
+function kurpYerlestir(rings: DurakArasiRing[], kmR: [number, number][]): void {
+  if (rings.length === 0) return;
+  const baslangic: number[] = [];
+  let acc = 0;
+  for (const r of rings) { baslangic.push(acc); acc += r.uzunluk; }
+  const toplamUz = acc;
+  for (const [km, R] of kmR) {
+    if (km < -1 || km > toplamUz + 1) continue;
+    let ri = 0;
+    for (let k = 0; k < rings.length; k++) { if (km >= baslangic[k] - 1e-6) ri = k; }
+    const konum = Math.max(0, Math.min(rings[ri].uzunluk, Math.round(km - baslangic[ri])));
+    const uz = Math.max(20, Math.min(rings[ri].uzunluk, 60));
+    (rings[ri].kurplar ??= []).push({ ...yeniKurp(konum), uzunluk: uz, yaricap: R });
+  }
+}
+
+// Etap1 tramvay ana-hat kurpları — GERÇEK CAD (1.Etap Güzergah Planı → accoreconsole DXF →
+// TT_EM_SERİT eksen katmanı). Yarıçaplar KESİN (Civil3D yay verisi); konumlar eksene
+// projeksiyondan yaklaşık. [mutlakKm, yarıçapM].
+const KURP_ETAP1: [number, number][] = [
+  [38, 70], [4198, 80], [4265, 400], [4479, 499], [5502, 501], [6098, 739], [6675, 511],
+  [6796, 639], [7148, 639], [7994, 129], [8024, 169], [8091, 126], [8136, 91], [8509, 150],
+  [8757, 73], [8896, 150], [9077, 58], [9107, 753], [9285, 737], [9967, 511], [9977, 292],
+  [10736, 56], [11653, 67],
+];
+
 // ————————————————————————————————————————————————
 // ① MEVCUT HAT — Alaaddin – Adliye koridoru (GERÇEK CAD kilometrajı)
 // ————————————————————————————————————————————————
@@ -294,7 +324,7 @@ const ETAP2_MESAFE = [413, 762, 880, 853, 1011, 1446, 1137, 1062, 1057];
 // v7: sinyalizasyon firması = Aslan Sinyalizasyon (üç hatta da).
 // v8: 4. hat — Bütünleşik Hat (Alaaddin–Stadyum), üç etap tek sürekli hatta birleşik.
 // v9: makas S/X crossover geometrisi + terminal makas sayıları (gerçek CAD/kullanıcı verisi).
-export const HAZIR_VERI_SURUM = 11; // v11: makas dizilimi kullanıcı teyidiyle güncellendi (Alaattin 2S+1X, Adliye 1S, Ravza/Otogar/Betoncular 1S, Depo 2S) → kayıtlı projeler yeniden seed'lenir
+export const HAZIR_VERI_SURUM = 12; // v12: Etap1 hattına GERÇEK CAD kurpları (TT_EM_SERİT eksen, güzergah DXF) eklendi → kayıtlı projeler yeniden seed'lenir
 // NOT (model): makasSayisi = MAKAS ADEDİ (S/X), makas MOTORU değil. Her makas ya S-makas (2 motor)
 // ya X-makas (4 motor); motor sayısı içseldir, raporda gösterilmez. CAD'den okurken yakın 2 motor
 // = 1 S-makas, yakın 4 motor = 1 X-makas.
@@ -354,6 +384,7 @@ export function hazirHatlar(): HazirHat[] {
   const etap1Rings = hatKur(ETAP1_DURAK, ETAP1_MESAFE, etap1Ek);
   // Etap1 = Aslım(8621)→Adliye; MUTLAK km'yi Aslım offset'iyle yerele çevir (İst10–İst22 + SG22).
   sinyalYerlestir(etap1Rings, SG_ETAP_KM.filter((km) => km >= ASLIM_KM - 200).map((km) => km - ASLIM_KM));
+  kurpYerlestir(etap1Rings, KURP_ETAP1); // gerçek CAD kurpları (TT_EM_SERİT)
   const etap1: HazirHat = {
     key: "etap1",
     ad: "Konya Tramvay 1. Etap — Aslım Sanayi–Şehir Hastanesi (CAD)",
