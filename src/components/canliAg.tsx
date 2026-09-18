@@ -13,6 +13,7 @@ import { simulateSignalled, reverseRoute, planDepotDispatch, loopYorunge } from 
 import { maksimumTren } from "@/lib/anaray/kapasite";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import type { TersMod } from "@/lib/anaray/config";
+import { etkinArac } from "@/lib/anaray/config";
 import { brand } from "@/lib/anaray/brand";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { LiveNetwork } from "@/components/LiveNetwork";
@@ -34,6 +35,8 @@ export function useCanliAgProps() {
   const { rings: ringsHam, meta, subeler } = useProje();
   const { arac: stock } = useArac();
   const { isletme, patchIsletme } = useIsletme();
+  // Canlı sim/çizim için config dinamik tavanları (ivme/servis freni) araca bağlanır.
+  const stockSim = useMemo(() => etkinArac(stock, cfg), [stock, cfg]);
 
   const rings = useMemo(() => dwellUygulanmisRings(ringsHam, stock, isletme), [ringsHam, stock, isletme]);
   const proje = useMemo(() => ringlerdenSebeke(rings, cfg, meta.hatAdi || "Proje Hattı", subeler), [rings, cfg, meta.hatAdi, subeler]);
@@ -50,9 +53,9 @@ export function useCanliAgProps() {
   const kalkisSu = isletme.kalkisOluZamaniSn;
   const line = useMemo(() => {
     const l = kalkisEkle(duruslariEkle(flattenRoute(network, route), gecitDuruslari, false), kalkisSu);
-    simulate(l, stock, 0.5); // hat modelini ısıt (Studio ile birebir)
+    simulate(l, stockSim, 0.5); // hat modelini ısıt (Studio ile birebir)
     return l;
-  }, [network, stock, route, gecitDuruslari, kalkisSu]);
+  }, [network, stockSim, route, gecitDuruslari, kalkisSu]);
   const reverseLine = useMemo(
     () => kalkisEkle(duruslariEkle(flattenRoute(network, reverseRoute(route)), gecitDuruslari, true), kalkisSu),
     [network, route, gecitDuruslari, kalkisSu],
@@ -86,16 +89,16 @@ export function useCanliAgProps() {
     return Array.from({ length: filo }, (_, k) => depolar[k % depolar.length].position);
   }, [depotPlan, filo, isletme.parklanmaDagilim]);
   const canliGidis = useMemo(
-    () => simulateSignalled(line, stock, { headway: ulasilanHeadwaySn, count: filo, blocked: ariza, origins: gidisOrigins, sinyaller: sinyalSimKonum }),
-    [line, stock, ulasilanHeadwaySn, filo, gidisOrigins, ariza, sinyalSimKonum],
+    () => simulateSignalled(line, stockSim, { headway: ulasilanHeadwaySn, count: filo, blocked: ariza, origins: gidisOrigins, sinyaller: sinyalSimKonum }),
+    [line, stockSim, ulasilanHeadwaySn, filo, gidisOrigins, ariza, sinyalSimKonum],
   );
   const donusSim = useMemo(
-    () => simulateSignalled(reverseLine, stock, { headway: ulasilanHeadwaySn, count: filo, sinyaller: sinyalSimKonum.map((p) => reverseLine.length - p) }),
-    [reverseLine, stock, ulasilanHeadwaySn, filo, sinyalSimKonum],
+    () => simulateSignalled(reverseLine, stockSim, { headway: ulasilanHeadwaySn, count: filo, sinyaller: sinyalSimKonum.map((p) => reverseLine.length - p) }),
+    [reverseLine, stockSim, ulasilanHeadwaySn, filo, sinyalSimKonum],
   );
   const peronBas = isletme.terminalBas.tip === "dongu" ? 0 : (isletme.terminalBas.peronIsgali || 0);
   const peronSon = isletme.terminalSon.tip === "dongu" ? 0 : (isletme.terminalSon.peronIsgali || 0);
-  const loopY = useMemo(() => loopYorunge(line, reverseLine, stock, { peronIsgaliBas: peronBas, peronIsgaliSon: peronSon }), [line, reverseLine, stock, peronBas, peronSon]);
+  const loopY = useMemo(() => loopYorunge(line, reverseLine, stockSim, { peronIsgaliBas: peronBas, peronIsgaliSon: peronSon }), [line, reverseLine, stockSim, peronBas, peronSon]);
   const dagitim = useMemo(() => {
     const orn = loopY.ornekler;
     const sToT = (hedefS: number) => { let en = 0, bd = Infinity; for (const o of orn) { const dd = Math.abs(o.s - hedefS); if (dd < bd) { bd = dd; en = o.t; } } return en; };

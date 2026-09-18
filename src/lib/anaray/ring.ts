@@ -13,7 +13,7 @@
 
 import type { Line, RollingStock, Station, TrackSegment } from "./types";
 import { simulate } from "./sim";
-import { varsayilanConfig, type SimConfig } from "./config";
+import { varsayilanConfig, etkinArac, type SimConfig } from "./config";
 
 /** Belge kabulleri = paylaşılan simülasyon config'inin varsayılanı. Aşağıdaki
  *  fonksiyonlar canlı `cfg` alır; verilmezse bu varsayılanı kullanır. */
@@ -269,7 +269,8 @@ function egim(ring: DurakArasiRing): number {
 
 /** Ringin salt seyir süresi (durak beklemesi hariç), verilen mod için (s). */
 export function ringSeyirSuresi(ring: DurakArasiRing, stock: RollingStock, mode: Mode, cfg: SimConfig = BELGE): number {
-  return simulate(ringToLine(ring, mode, cfg), stock, 0.5).totalTime;
+  // Config dinamik tavanları (ivme/servis freni) araca bağlanır → sim tek fizik kaynağı.
+  return simulate(ringToLine(ring, mode, cfg), etkinArac(stock, cfg), 0.5).totalTime;
 }
 
 /** Makas tanzimi + rota serbest bırakma kaynaklı worst-case ek süre (s). */

@@ -66,6 +66,10 @@ export interface RollingStock {
   power: number;
   /** Servis freni azami yavaşlaması (m/s²). */
   maxBraking: number;
+  /** Kalkış ivme TAVANI (m/s²) — konfor/işletme sınırı. Verilirse hareket motoru
+   *  fizikten türeyen ivmeyi bu değere sınırlar (a = min(fizik, aCap)); verilmezse
+   *  sınır yok (yalnız çekiş fiziği). `etkinArac(stock, cfg)` bunu cfg.ivme'den doldurur. */
+  aCap?: number;
   /** Davis direnç katsayıları: R(v) = A + B·v + C·v²  (N). */
   davisA: number;
   davisB: number;

@@ -17,6 +17,7 @@ import type { DurakArasiRing } from "./ring";
 import { ringDuraklari } from "./ring";
 import type { RollingStock } from "./types";
 import type { Isletme, SimConfig } from "./config";
+import { etkinArac } from "./config";
 import { maksimumTren } from "./kapasite";
 
 export interface DurakTalep {
@@ -156,6 +157,7 @@ export function tersIsletmeAnaliz(
   cfg: SimConfig,
   mod: "toplam" | "istasyon" = "toplam",
 ): TersIsletmeRapor | null {
+  stock = etkinArac(stock, cfg); // config dinamik tavanları (ivme/servis freni) araca bağlı
   const duraklar = ringDuraklari(rings);
   const N = duraklar.length;
   if (N < 2) return null;

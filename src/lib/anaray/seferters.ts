@@ -12,6 +12,7 @@
 import type { DurakArasiRing } from "./ring";
 import type { RollingStock, Line } from "./types";
 import type { SimConfig, Isletme } from "./config";
+import { etkinArac } from "./config";
 import { loopToHat } from "./hatsim";
 import { loopYorunge, type LoopYorunge } from "./signalling";
 import { tersIsletmeAnaliz } from "./tersisletme";
@@ -119,6 +120,7 @@ export function seferTersEntegre(
 ): SeferTersSonuc {
   const bos: SeferTersSonuc = { gecerli: false, headwaySn, filo: 0, cevrimSn: 0, L: 0, anSn, araclar: [], cizilenArac: 0, aracKirpildi: false, oneriler: [], makaslar: [], filoIhtiyac: null, bilgi: [] };
   if (rings.length < 2 || headwaySn <= 0) return bos;
+  stock = etkinArac(stock, cfg); // config dinamik tavanları (ivme/servis freni) araca bağlı
 
   const line: Line = loopToHat(rings, true, cfg).line;
   const rev: Line = {

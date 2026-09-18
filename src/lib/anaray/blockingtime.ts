@@ -15,7 +15,7 @@
 // uyarlanır: düz bloklarda setup/release ~0, makas bloklarında config'ten gelir.
 
 import type { RollingStock } from "./types";
-import { type SimConfig, VARSAYILAN_DOLULUK_TAVANI } from "./config";
+import { type SimConfig, VARSAYILAN_DOLULUK_TAVANI, etkinArac } from "./config";
 import { simulate } from "./sim";
 import { makeBlocks } from "./signalling";
 import { loopToHat, type HatModel } from "./hatsim";
@@ -84,6 +84,7 @@ export function blockingTimeHesap(
   sinyalTaban = 0,
   sinyalSinirlari: number[] = [],
 ): BlockingSonuc {
+  stock = etkinArac(stock, cfg); // config dinamik tavanları (ivme/servis freni) araca bağlı
   const line = model.line;
   const bounds = makeBlocks(line, sinyalSinirlari);
   const res = simulate(line, stock, 0.5);

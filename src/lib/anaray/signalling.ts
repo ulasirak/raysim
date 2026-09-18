@@ -31,7 +31,8 @@ export function allowedSpeed(line: Line, stock: RollingStock, s: number, stopTar
 /**
  * Ortak hareket adımı — v → vNew (+ ivme a). TÜM motorlar bunu kullanır (tek kaynak
  * fizik): çekiş Ftr=min(ST, P/max(v,0.5)); direnç R=davisA+B·v+C·v²; eğim
- * Fg=m·g·grad/1000; a=(Ftr−R−Fg)/meff. Fren rejiminde vNew=max(0, v−b·dt) (a=−b),
+ * Fg=m·g·grad/1000; a=(Ftr−R−Fg)/meff, ardından varsa konfor tavanı a=min(a, stock.aCap).
+ * Fren rejiminde vNew=max(0, v−b·dt) (a=−b),
  * seyirde vNew=vAllowed (a=0). vNew her zaman [0, vAllowed] aralığında.
  * Not: net kuvvet negatifse (dik yokuş/yetersiz güç) sahte ivme eklenmez — tren
  * denge hızına oturur ya da (kalkışta) durur (kalkış-stall coreRun'da yakalanır).
@@ -44,7 +45,10 @@ export function stepMotion(
     const Ftr = Math.min(stock.startingTractiveEffort, stock.power / Math.max(v, 0.5));
     const R = stock.davisA + stock.davisB * v + stock.davisC * v * v;
     const Fg = stock.mass * G * (gradient / 1000);
-    const a = (Ftr - R - Fg) / meff;
+    let a = (Ftr - R - Fg) / meff;
+    // Konfor/işletme ivme tavanı: fizik daha yüksek ivme verse de kalkış bununla
+    // sınırlanır (yalnız pozitif ivmeyi kırpar; fren rejimi yukarıda ayrı ele alındı).
+    if (stock.aCap != null && stock.aCap > 0 && a > stock.aCap) a = stock.aCap;
     return { vNew: Math.max(0, Math.min(v + a * dt, vAllowed)), a };
   }
   return { vNew: vAllowed, a: 0 };

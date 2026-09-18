@@ -34,8 +34,13 @@ import {
   type SinyalLambasi, type Sube, type MakasTip, type HemzeminTip,
 } from "./ring";
 
-/** Kalıcı proje ŞEMA (yapı) sürümü. Doküman düzeyinde `veriSurum`e yazılır. */
-export const VERI_SURUM = 1;
+/** Kalıcı proje ŞEMA (yapı) sürümü. Doküman düzeyinde `veriSurum`e yazılır.
+ *  v2: cfg.ivme / cfg.yavaslama artık simülasyona BAĞLI (kalkış ivme tavanı + servis
+ *  freni). Önceki sürümlerde bu iki alan EYLEMSİZDİ (hiçbir motor okumuyordu), bu yüzden
+ *  eski kayıtlardaki değerleri (genelde 1,0) yeni anlamda kullanmak mevcut saatleri
+ *  bozardı → v2 altındaki kayıtlarda bu iki alan yeni varsayılana (mevcut davranışı
+ *  koruyan, bağlamayan 1,2) çekilir. Bkz. migrate() içindeki sürüm-kapılı adım. */
+export const VERI_SURUM = 2;
 
 // ————————————————————————————————————————————————
 // Tip-güvenli zorlayıcılar (bilinmeyen JSON → beklenen tip)
@@ -228,6 +233,15 @@ const SURUM_ADIMLARI: ((v: Record<string, unknown>) => Record<string, unknown>)[
 export function migrate(raw: unknown): ProjeVerisi {
   let r = obj(raw);
   for (const adim of SURUM_ADIMLARI) r = adim(r); // ileride yıkıcı adımlar
+  // v2 göçü (anlam değişimi): eskiden EYLEMSİZ olan cfg.ivme/yavaslama artık sim'e bağlı.
+  // Sürüm 2 altındaki (veya sürümsüz) kayıtlarda bu iki alanı yeni varsayılana çek →
+  // kaydedilmiş eski değerler (ör. 1,0) yeni anlamda saatleri bozmaz. İdempotent:
+  // yeniden kayıtta veriSurum=2 olur ve adım atlanır. Kullanıcının v2 sonrası bilerek
+  // girdiği değerler korunur (doküman veriSurum=2 taşır).
+  if (veriSurumu(r.veriSurum) < 2 && isObj(r.cfg)) {
+    (r.cfg as Record<string, unknown>).ivme = varsayilanConfig.ivme;
+    (r.cfg as Record<string, unknown>).yavaslama = varsayilanConfig.yavaslama;
+  }
   return {
     rings: arr(r.rings).map(normRing),
     cfg: normConfig(r.cfg),

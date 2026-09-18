@@ -5,6 +5,8 @@
 // Sistem) bu config'i okur; Sistem modülünden değiştirilince simülasyon her
 // yerde canlı güncellenir. Birimler SI (hız m/s, süre s, mesafe m, ivme m/s²).
 
+import type { RollingStock } from "./types";
+
 const KMH = 1 / 3.6;
 
 export interface SimConfig {
@@ -40,8 +42,14 @@ export const varsayilanConfig: SimConfig = {
   vMakas: 15 * KMH,
   vHemzemin: 25 * KMH,
   vAcil: 10 * KMH,
-  ivme: 1.0,
-  yavaslama: 1.0,
+  // Dinamik TAVANLAR (m/s²) — hareket motoruna `etkinArac()` üzerinden bağlanır.
+  //   ivme     = kalkış ivme tavanı: a_etkin = min(çekiş fiziği, ivme).
+  //   yavaslama = servis fren oranı:  b_etkin = min(yavaslama, araç.maxBraking).
+  // Varsayılan 1,2: tramvay filosunun fiziksel kalkışı (~1,0) ve servis freni (1,2)
+  // ALTINDA KALMAZ → varsayılanda hiçbir aracı bağlamaz (mevcut saatler korunur);
+  // kullanıcı düşürünce dinamik yumuşar, süreler uzar.
+  ivme: 1.2,
+  yavaslama: 1.2,
   headway: 240,
   ortalamaDurakArasi: 800,
   enUzunHeadwayMesafesi: 1500,
@@ -74,8 +82,8 @@ export const PARAM_META: ParamMeta[] = [
   { key: "vMakas", ad: "Makas geçiş hızı", grup: "Hızlar", tur: "hiz", kaynak: "3.4.8.2", etkiler: "Makas bölgesi geçiş hızı", moduller: ["ringler"], min: 5, max: 30, step: 1 },
   { key: "vHemzemin", ad: "Hemzemin/yaya hızı", grup: "Hızlar", tur: "hiz", kaynak: "4.3", etkiler: "Geçit yavaşlama hızı", moduller: ["ringler"], min: 10, max: 40, step: 1 },
   { key: "vAcil", ad: "Acil frenleme hızı", grup: "Hızlar", tur: "hiz", kaynak: "worst-case", etkiler: "Tehlike/acil frenleme noktasında worst-case hız", moduller: ["ringler"], min: 0, max: 25, step: 1 },
-  { key: "ivme", ad: "Hızlanma ivmesi (a)", grup: "Dinamik", tur: "ivme", kaynak: "4.3", etkiler: "Kalkış / seyir süresi", moduller: ["ringler", "sefer"], min: 0.3, max: 1.5, step: 0.1 },
-  { key: "yavaslama", ad: "Yavaşlama (b)", grup: "Dinamik", tur: "ivme", kaynak: "4.3", etkiler: "Fren eğrisi / duruş süresi", moduller: ["ringler", "sefer"], min: 0.3, max: 1.5, step: 0.1 },
+  { key: "ivme", ad: "Kalkış ivme tavanı (a)", grup: "Dinamik", tur: "ivme", kaynak: "4.3", etkiler: "Kalkış ivmesi ÜST sınırı (konfor); düşürülürse kalkış yumuşar, seyir süresi uzar", moduller: ["ringler", "sefer"], min: 0.3, max: 1.5, step: 0.1 },
+  { key: "yavaslama", ad: "Servis freni (b)", grup: "Dinamik", tur: "ivme", kaynak: "4.3", etkiler: "Servis fren oranı; düşürülürse fren yumuşar, duruş uzar (araç fren kapasitesini aşamaz)", moduller: ["ringler", "sefer"], min: 0.3, max: 1.5, step: 0.1 },
   { key: "headway", ad: "Hedef headway", grup: "Headway & Mesafe", tur: "sure", kaynak: "4.3 · sözleşme", etkiler: "Sefer sıklığı hedefi + ring uygunluk eşiği", moduller: ["sefer", "ringler"], min: 60, max: 600, step: 10 },
   { key: "ortalamaDurakArasi", ad: "Ortalama durak arası", grup: "Headway & Mesafe", tur: "mesafe", kaynak: "4.3", etkiler: "Yeni ring nominal mesafesi", moduller: ["ringler"], min: 200, max: 2000, step: 50 },
   { key: "enUzunHeadwayMesafesi", ad: "Worst-case mesafe", grup: "Headway & Mesafe", tur: "mesafe", kaynak: "4.3", etkiler: "Ring worst-case referans mesafesi", moduller: ["ringler"], min: 500, max: 2500, step: 50 },
@@ -98,6 +106,22 @@ export function paramSI(m: ParamMeta, gosterim: number): number {
 
 export function birim(tur: ParamTur): string {
   return tur === "hiz" ? "km/h" : tur === "ivme" ? "m/s²" : tur === "sure" ? "s" : tur === "oran" ? "%" : "m";
+}
+
+/**
+ * Config'in dinamik TAVANLARINI araca bağlayan tek kaynak. Hareket motoru (stepMotion)
+ * yalnız `stock`'u görür; hız/ivme/fren fiziği oradan çıkar. Bu yardımcı, config'teki
+ * global işletme tavanlarını araca gömer:
+ *   • fren  = min(araç.maxBraking, cfg.yavaslama)  → servis freni, aracın kapasitesini aşamaz
+ *   • aCap  = cfg.ivme                             → kalkış ivme tavanı (motor a=min(fizik,aCap) uygular)
+ * İDEMPOTENT: etkinArac(etkinArac(s,c),c) == etkinArac(s,c) — hem lib hem bileşen
+ * katmanında güvenle (çift) uygulanabilir. cfg değeri ≤0 ise ilgili sınır uygulanmaz.
+ */
+export function etkinArac(stock: RollingStock, cfg: SimConfig): RollingStock {
+  const fren = cfg.yavaslama > 0 ? Math.min(stock.maxBraking, cfg.yavaslama) : stock.maxBraking;
+  const aCap = cfg.ivme > 0 ? cfg.ivme : stock.aCap;
+  if (fren === stock.maxBraking && aCap === stock.aCap) return stock; // değişmiyorsa kimlik korunur
+  return { ...stock, maxBraking: fren, aCap };
 }
 
 // ————————————————————————————————————————————————

@@ -11,7 +11,7 @@
 import { emblemSvg } from "@/lib/emblem";
 import { aslsLogoSvg, firmaAslsMi } from "./aslsLogo";
 import { CK } from "./chartkit";
-import { type SimConfig, type ProjeMeta, type Isletme, PARAM_META, paramGoster, birim, varsayilanIsletme } from "./config";
+import { type SimConfig, type ProjeMeta, type Isletme, PARAM_META, paramGoster, birim, varsayilanIsletme, etkinArac } from "./config";
 import { tersIsletmeAnaliz } from "./tersisletme";
 import { seferTersEntegre } from "./seferters";
 import { maksimumTren } from "./kapasite";
@@ -108,6 +108,7 @@ function rDil(lang: RaporDil) {
 
 
 export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakArasiRing[], stock: RollingStock, lang: RaporDil = "tr", filo = 0, isletme: Isletme = varsayilanIsletme, qrUrl = "", subeler: Sube[] = []): string {
+  stock = etkinArac(stock, cfg); // config dinamik tavanları (ivme/servis freni) araca bağlı — rapordaki tüm sim/kapasite tutarlı
   // Dallanma (#1): şube varsa ana hat, geçtiği kavşak turnout'larını yansıtsın diye
   // kavşak makalarıyla zenginleştirilir (şubesizse AYNEN kalır → geriye uyumlu).
   const rings = subeler.length ? kavsakliRingler(ringsGiris, subeler) : ringsGiris;

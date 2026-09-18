@@ -13,6 +13,7 @@ import { simulate } from "@/lib/anaray/sim";
 import { simulateSignalled, reverseRoute, monteCarlo, planDepotDispatch, loopYorunge, type MonteCarloResult } from "@/lib/anaray/signalling";
 import { tramvaylar } from "@/lib/anaray/vehicles";
 import { maksimumTren } from "@/lib/anaray/kapasite";
+import { etkinArac } from "@/lib/anaray/config";
 import { cakismaTespit } from "@/lib/anaray/cakisma";
 import { gecikmeYayilim } from "@/lib/anaray/gecikmeYayilim";
 import { ortakKesimAnaliz } from "@/lib/anaray/ortakKesim";
@@ -66,6 +67,9 @@ function StudioIc() {
   // Araç ve işletme parametreleri KALICI (projeye kayıtlı) — tek kaynak, uçucu değil.
   const { arac: stock, patchArac, setArac } = useArac();
   const { isletme, patchIsletme } = useIsletme();
+  // Canlı sim/çizim için config dinamik tavanları (ivme/servis freni) araca bağlanır.
+  // `stock` HAM kalır (araç editörü + patchArac onu düzenler); `stockSim` yalnız motorlara.
+  const stockSim = useMemo(() => etkinArac(stock, cfg), [stock, cfg]);
 
   // Analiz edilen hat: ana hat (null) ya da bir şube (dallanma, #1). Şube seçilince
   // tüm Studio analizi (kapasite/Bildfahrplan/çakışma/knock-on/canlı sim) o şubenin
@@ -133,8 +137,8 @@ function StudioIc() {
   const kalkisSu = isletme.kalkisOluZamaniSn; // canlı simde kalkış ölü zamanı (tutarlılık)
   const { line, result } = useMemo(() => {
     const l = kalkisEkle(duruslariEkle(flattenRoute(network, route), gecitDuruslari, false), kalkisSu);
-    return { line: l, result: simulate(l, stock, 0.5) };
-  }, [network, stock, route, gecitDuruslari, kalkisSu]);
+    return { line: l, result: simulate(l, stockSim, 0.5) };
+  }, [network, stockSim, route, gecitDuruslari, kalkisSu]);
 
   const reverseLine = useMemo(
     () => kalkisEkle(duruslariEkle(flattenRoute(network, reverseRoute(route)), gecitDuruslari, true), kalkisSu),
@@ -205,19 +209,19 @@ function StudioIc() {
     return Array.from({ length: filo }, (_, k) => depolar[k % depolar.length].position);
   }, [depotPlan, filo, isletme.parklanmaDagilim]);
   const canliGidis = useMemo(
-    () => simulateSignalled(line, stock, { headway: ulasilanHeadwaySn, count: filo, blocked: ariza, origins: gidisOrigins, sinyaller: sinyalSimKonum }),
-    [line, stock, ulasilanHeadwaySn, filo, gidisOrigins, ariza, sinyalSimKonum]
+    () => simulateSignalled(line, stockSim, { headway: ulasilanHeadwaySn, count: filo, blocked: ariza, origins: gidisOrigins, sinyaller: sinyalSimKonum }),
+    [line, stockSim, ulasilanHeadwaySn, filo, gidisOrigins, ariza, sinyalSimKonum]
   );
   const donusSim = useMemo(
-    () => simulateSignalled(reverseLine, stock, { headway: ulasilanHeadwaySn, count: filo, sinyaller: sinyalSimKonum.map((p) => reverseLine.length - p) }),
-    [reverseLine, stock, ulasilanHeadwaySn, filo, sinyalSimKonum]
+    () => simulateSignalled(reverseLine, stockSim, { headway: ulasilanHeadwaySn, count: filo, sinyaller: sinyalSimKonum.map((p) => reverseLine.length - p) }),
+    [reverseLine, stockSim, ulasilanHeadwaySn, filo, sinyalSimKonum]
   );
   // DÖNGÜ (git-gel): tek-tren tam tur yörüngesi — uçlarda turnback (peron işgali) + durum izleme.
   const peronBas = isletme.terminalBas.tip === "dongu" ? 0 : (isletme.terminalBas.peronIsgali || 0);
   const peronSon = isletme.terminalSon.tip === "dongu" ? 0 : (isletme.terminalSon.peronIsgali || 0);
   const loopY = useMemo(
-    () => loopYorunge(line, reverseLine, stock, { peronIsgaliBas: peronBas, peronIsgaliSon: peronSon }),
-    [line, reverseLine, stock, peronBas, peronSon]
+    () => loopYorunge(line, reverseLine, stockSim, { peronIsgaliBas: peronBas, peronIsgaliSon: peronSon }),
+    [line, reverseLine, stockSim, peronBas, peronSon]
   );
   // Depo dağıtımı — SADE ve TEK TİP: bütün tramvaylar AYNI başlangıç noktasından
   // (depo/başlangıç terminali), AYNI yönde (gidiş, alt şerit), SIRAYLA (headway aralığı)
@@ -244,8 +248,8 @@ function StudioIc() {
   );
   // Gecikme yayılımı / knock-on (#3) — hedef trene birincil gecikme → ardışık zincir.
   const knockOn = useMemo(
-    () => gecikmeYayilim(line, stock, { headway: ulasilanHeadwaySn, count: filo, sinyaller: sinyalSimKonum }, koHedef, koGecikme),
-    [line, stock, ulasilanHeadwaySn, filo, sinyalSimKonum, koHedef, koGecikme]
+    () => gecikmeYayilim(line, stockSim, { headway: ulasilanHeadwaySn, count: filo, sinyaller: sinyalSimKonum }, koHedef, koGecikme),
+    [line, stockSim, ulasilanHeadwaySn, filo, sinyalSimKonum, koHedef, koGecikme]
   );
   // Ortak kesim yükü (#1-B/D) — ana hat görünümünde, şubeye servis treni girildiyse.
   const ortakKesim = useMemo(
@@ -258,7 +262,7 @@ function StudioIc() {
     // Ağır hesap; "hesaplanıyor" görünsün diye bir sonraki tik'e ertele.
     setTimeout(() => {
       const r = monteCarlo(
-        line, stock,
+        line, stockSim,
         { headway: ulasilanHeadwaySn, count: filo, sinyaller: sinyalSimKonum },
         { trials: 150, meanEntry, meanDwell, threshold: 120 }
       );

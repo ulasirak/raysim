@@ -19,7 +19,7 @@
 // güvenli günlük değer.
 
 import type { RollingStock } from "./types";
-import { type SimConfig, type Isletme, type TerminalConfig, VARSAYILAN_DOLULUK_TAVANI, etkinBogazIsgali, terminalDonusParalel, terminalSeriDonus } from "./config";
+import { type SimConfig, type Isletme, type TerminalConfig, VARSAYILAN_DOLULUK_TAVANI, etkinBogazIsgali, terminalDonusParalel, terminalSeriDonus, etkinArac } from "./config";
 import { blockingTimeHesap } from "./blockingtime";
 import { loopToHat } from "./hatsim";
 import { ringSenaryo, ringTimingEk, sinyalCevrimi, type DurakArasiRing } from "./ring";
@@ -105,6 +105,7 @@ export function kavsakSperr(
 export function maksimumTren(
   ringsGiris: DurakArasiRing[], stock: RollingStock, cfg: SimConfig, isletme: Isletme,
 ): MaksimumTrenSonuc {
+  stock = etkinArac(stock, cfg); // config dinamik tavanları (ivme/servis freni) araca bağlı
   // Yolcu dinamiği: dwell OTO ringlerin dwell'i fiziksel akıştan hesaplanır → RTT'ye girer.
   const rings = dwellUygulanmisRings(ringsGiris, stock, isletme);
   const dolulukTavani = cfg.dolulukTavani ?? VARSAYILAN_DOLULUK_TAVANI;
