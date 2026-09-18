@@ -38,7 +38,11 @@ export function duyarlilikAnaliz(
   const PARAM: { ad: string; uy: (f: number) => { c: SimConfig; s: RollingStock; isl: Isletme } }[] = [
     { ad: "Doluluk tavanı", uy: (f) => ({ c: { ...cfg, dolulukTavani: clamp((cfg.dolulukTavani ?? 0.7) * f, 0.4, 0.95) }, s: stock, isl: isletme }) },
     { ad: "Azami hız", uy: (f) => ({ c: cfg, s: { ...stock, maxSpeed: clamp(stock.maxSpeed * f, 1, 150) }, isl: isletme }) },
-    { ad: "Fren (ivme)", uy: (f) => ({ c: cfg, s: { ...stock, maxBraking: clamp(stock.maxBraking * f, 0.3, 5) }, isl: isletme }) },
+    // Servis freni = EFEKTİF fren (min(araç.maxBraking, cfg.yavaslama)). İkisini birlikte
+    // ölçekle ki tavan +yönü kırpmasın → gerçek fren duyarlılığı simetrik ölçülür.
+    { ad: "Servis freni", uy: (f) => ({ c: { ...cfg, yavaslama: clamp(cfg.yavaslama * f, 0.3, 5) }, s: { ...stock, maxBraking: clamp(stock.maxBraking * f, 0.3, 5) }, isl: isletme }) },
+    // Kalkış ivme tavanı (cfg.ivme): fizikten türeyen kalkış ivmesinin üst sınırı.
+    { ad: "Kalkış ivme tavanı", uy: (f) => ({ c: { ...cfg, ivme: clamp(cfg.ivme * f, 0.3, 3) }, s: stock, isl: isletme }) },
     { ad: "Tren boyu", uy: (f) => ({ c: cfg, s: { ...stock, length: clamp(stock.length * f, 5, 1000) }, isl: isletme }) },
     { ad: "Kalkış ölü zamanı", uy: (f) => ({ c: cfg, s: stock, isl: { ...isletme, kalkisOluZamaniSn: clamp((isletme.kalkisOluZamaniSn || 0) * f, 0, 60) } }) },
     { ad: "Min duruş süresi", uy: (f) => ({ c: cfg, s: stock, isl: { ...isletme, minDurusSuresi: clamp((isletme.minDurusSuresi || 0) * f, 0, 300) } }) },

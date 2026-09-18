@@ -10,6 +10,7 @@
 import { yeniRing, ringDuraklari, ringSenaryo, MAKAS_TIP_AD, BELGE, type DurakArasiRing } from "./ring";
 import type { RollingStock } from "./types";
 import type { SimConfig } from "./config";
+import { etkinArac } from "./config";
 
 /** Saniye → "HH:MM:SS" (railML/GTFS uyumlu; 24h aşımını korur, ör. 25:10:00). */
 function sn2hms(sn: number): string {
@@ -164,10 +165,14 @@ export function railmlIhrac(
   let ttXml = "";
   if (stock && duraklar.length >= 2) {
     // Araç: standart nitelikler (id/name/length/speed); tam fizik kayıpsız yorum bloğunda.
+    // Çizelge EFEKTİF dinamikle (config ivme/servis freni tavanları) hesaplandığından,
+    // araç açıklamasında da efektif değerler yazılır → export kendi içinde tutarlı.
+    const arac = etkinArac(stock, cfg);
+    const ivmeTavanNot = arac.aCap != null && arac.aCap > 0 ? ` · kalkış ivme tavanı=${arac.aCap} m/s²` : "";
     const hizKmh = Math.round(stock.maxSpeed * 3.6);
     const boy = stock.length.toFixed(2);
     rollingXml = `  <rollingstock>
-    <!-- RaySim araç fiziği (kayıpsız): kütle=${Math.round(stock.mass)} kg · dönen kütle ρ=${stock.rotatingMassFactor} · güç=${Math.round(stock.power)} W · kalkış çeki=${Math.round(stock.startingTractiveEffort)} N · servis freni=${stock.maxBraking} m/s² · Davis A=${stock.davisA} B=${stock.davisB} C=${stock.davisC} -->
+    <!-- RaySim araç fiziği (kayıpsız): kütle=${Math.round(stock.mass)} kg · dönen kütle ρ=${stock.rotatingMassFactor} · güç=${Math.round(stock.power)} W · kalkış çeki=${Math.round(stock.startingTractiveEffort)} N · servis freni=${arac.maxBraking} m/s²${ivmeTavanNot} · Davis A=${stock.davisA} B=${stock.davisB} C=${stock.davisC} -->
     <vehicles>
       <vehicle id="veh_1" name="${xmlKac(stock.name)}" length="${boy}" speed="${hizKmh}" code="${xmlKac(stock.id)}"/>
     </vehicles>

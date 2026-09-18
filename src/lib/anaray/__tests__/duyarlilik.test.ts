@@ -17,7 +17,7 @@ describe("Duyarlılık analizi", () => {
 
   it("taban = işletme kapasitesi (14)", () => expect(Math.round(s.taban)).toBe(14));
   it("6 parametre, salınıma göre azalan sıralı", () => {
-    expect(s.satirlar).toHaveLength(6);
+    expect(s.satirlar).toHaveLength(7);
     for (let i = 1; i < s.satirlar.length; i++) expect(s.satirlar[i - 1].salinim).toBeGreaterThanOrEqual(s.satirlar[i].salinim);
   });
   it("en güçlü kaldıraç sıfırdan büyük etkili", () => expect(s.satirlar[0].salinim).toBeGreaterThan(0));
