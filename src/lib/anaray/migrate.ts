@@ -31,7 +31,7 @@ import type { RollingStock } from "./types";
 import {
   tccGerekli,
   type DurakArasiRing, type MakasBolgesi, type Hemzemin, type TehlikeNoktasi,
-  type SinyalLambasi, type Sube, type MakasTip, type HemzeminTip,
+  type Kurp, type SinyalLambasi, type Sube, type MakasTip, type HemzeminTip,
 } from "./ring";
 
 /** Kalıcı proje ŞEMA (yapı) sürümü. Doküman düzeyinde `veriSurum`e yazılır.
@@ -112,6 +112,20 @@ function normTehlike(raw: unknown): TehlikeNoktasi {
   };
 }
 
+function normKurp(raw: unknown): Kurp {
+  const r = obj(raw);
+  const out: Kurp = {
+    id: str(r.id) || yeniKimlik("KRP"),
+    ad: str(r.ad),
+    konum: num(r.konum, 0),
+    uzunluk: num(r.uzunluk, 50),
+    yaricap: num(r.yaricap, 100),
+    dever: num(r.dever, 0),
+  };
+  if (typeof r.hizManuel === "number" && Number.isFinite(r.hizManuel)) out.hizManuel = r.hizManuel;
+  return out;
+}
+
 function normSinyal(raw: unknown): SinyalLambasi {
   const r = obj(raw);
   return {
@@ -144,6 +158,7 @@ function normRing(raw: unknown): DurakArasiRing {
     makaslar: arr(r.makaslar).map(normMakas),
     hemzeminler: arr(r.hemzeminler).map(normHemzemin),
     tehlikeNoktalari: arr(r.tehlikeNoktalari).map(normTehlike),
+    kurplar: arr(r.kurplar).map(normKurp),
   };
   // Opsiyonel sayısal alanlar — yalnız varsa taşınır (yoksa tüketici varsayılanı kullanır).
   const sayiOpt: (keyof DurakArasiRing)[] = ["kapiAcma", "yolcuDegisimi", "kapiKapama", "kalkisOlu", "inenYolcu", "binenYolcu", "queued", "fromQueued"];

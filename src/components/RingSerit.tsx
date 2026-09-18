@@ -37,8 +37,9 @@ const KISIT_RENK: Record<KisitTur | "durak", string> = {
   makas: SERI.makasBlok,
   hemzemin: SERI.duzBlok,
   tehlike: brand.red,
+  kurp: "#7A5AA6",
 };
-const KISIT_IKON: Record<KisitTur | "durak", string> = { durak: "◉", makas: "⑂", hemzemin: "⊞", tehlike: "▲" };
+const KISIT_IKON: Record<KisitTur | "durak", string> = { durak: "◉", makas: "⑂", hemzemin: "⊞", tehlike: "▲", kurp: "◜" };
 
 /**
  * Görsel zaman/mesafe şeridi: ring boyunca kısıtları (makas/hemzemin/tehlike)

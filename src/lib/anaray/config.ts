@@ -29,6 +29,9 @@ export interface SimConfig {
   makasAdimMax: number;
   // Blok / geometri (m)
   kisitGenisligi: number; // makas/geçit kısıt bölgesi genişliği
+  // Kurp (kavis) & konfor
+  aYanalKonfor: number; // m/s² — kurpta izin verilen dengelenmemiş yanal ivme (konfor tavanı)
+  ekartman: number;     // m — ray ekartmanı (dever hesabı için; standart 1,435)
   // Kapasite planlama
   dolulukTavani?: number; // UIC 406 önerilen doluluk tavanı (0..1) — pratik kapasite = teorik × tavan; varsayılan 0,70
 }
@@ -57,6 +60,8 @@ export const varsayilanConfig: SimConfig = {
   routeReleaseDepo: 8,
   makasAdimMax: 6,
   kisitGenisligi: 40,
+  aYanalKonfor: 0.85,
+  ekartman: 1.435,
   dolulukTavani: 0.70,
 };
 
@@ -91,6 +96,8 @@ export const PARAM_META: ParamMeta[] = [
   { key: "routeReleaseDepo", ad: "Route release (depo)", grup: "Zamanlayıcılar", tur: "sure", kaynak: "Ek L", etkiler: "Depo manevra rota serbest bırakma", moduller: ["ringler"], min: 1, max: 30, step: 1 },
   { key: "makasAdimMax", ad: "Makas adım süresi", grup: "Zamanlayıcılar", tur: "sure", kaynak: "Ek Ö", etkiler: "Her makas hareketi süresi", moduller: ["ringler"], min: 1, max: 12, step: 1 },
   { key: "kisitGenisligi", ad: "Kısıt bölge genişliği", grup: "Blok", tur: "mesafe", kaynak: "türetme", etkiler: "Makas/geçit hız-kısıt bölgesi uzunluğu", moduller: ["ringler"], min: 10, max: 120, step: 5 },
+  { key: "aYanalKonfor", ad: "Yanal ivme tavanı (kurp)", grup: "Kurp & Konfor", tur: "ivme", kaynak: "EN 13803 / konfor", etkiler: "Kurpta yarıçaptan hız türetimi: v=√(R·(a+g·dever/ekartman))", moduller: ["ringler"], min: 0.4, max: 1.3, step: 0.05 },
+  { key: "ekartman", ad: "Ray ekartmanı", grup: "Kurp & Konfor", tur: "mesafe", kaynak: "hat standardı", etkiler: "Kurpta dever (kanto) katkısının hesabı", moduller: ["ringler"], min: 1, max: 1.7, step: 0.005 },
   { key: "dolulukTavani", ad: "UIC 406 doluluk tavanı", grup: "Kapasite planlama", tur: "oran", kaynak: "UIC 406", etkiler: "İşletme (pratik) kapasite = teorik × tavan", moduller: ["sefer"], min: 40, max: 90, step: 5 },
 ];
 

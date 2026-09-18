@@ -30,6 +30,8 @@ import {
   yeniHemzemin,
   yeniMakas,
   yeniTehlike,
+  yeniKurp,
+  kurpHizi,
   yeniSinyal,
   ringDuraklari,
   durakAdiDegistir,
@@ -43,6 +45,7 @@ import {
   type HemzeminTip,
   type KisitTur,
   type MakasTip,
+  type Kurp,
 } from "@/lib/anaray/ring";
 import { Num, Rozet, SubBaslik, MiniStat, Panel } from "@/components/RingUI";
 import { KisitSeridi, EkleFormu, SeritEkleBtn, KisitRozet, MakasEkleMenu, type EkleTur } from "@/components/RingSerit";
@@ -190,6 +193,8 @@ export function RingEditor() {
     setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, hemzeminler: r.hemzeminler.map((h) => (h.id === hid ? { ...h, ...p } : h)) } : r)));
   const patchTn = (rid: string, tid: string, p: Partial<DurakArasiRing["tehlikeNoktalari"][number]>) =>
     setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, tehlikeNoktalari: r.tehlikeNoktalari.map((t) => (t.id === tid ? { ...t, ...p } : t)) } : r)));
+  const patchKurp = (rid: string, kid: string, p: Partial<Kurp>) =>
+    setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, kurplar: (r.kurplar ?? []).map((k) => (k.id === kid ? { ...k, ...p } : k)) } : r)));
 
   const ringSil = (id: string) => silHatirla((rs) => rs.filter((r) => r.id !== id));
   const sifirla = () => {
@@ -244,6 +249,10 @@ export function RingEditor() {
     setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, tehlikeNoktalari: [...r.tehlikeNoktalari, { ...yeniTehlike(konum ?? Math.round(r.uzunluk * 0.7)), ...ekstra }] } : r)));
   const tnSil = (rid: string, tid: string) =>
     setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, tehlikeNoktalari: r.tehlikeNoktalari.filter((t) => t.id !== tid) } : r)));
+  const kurpEkle = (rid: string, konum?: number, ekstra?: Partial<Kurp>) =>
+    setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, kurplar: [...(r.kurplar ?? []), { ...yeniKurp(konum ?? Math.round(r.uzunluk * 0.5)), ...ekstra }] } : r)));
+  const kurpSil = (rid: string, kid: string) =>
+    setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, kurplar: (r.kurplar ?? []).filter((k) => k.id !== kid) } : r)));
   const sinyalEkle = (rid: string, yon: "giden" | "gelen", konum: number, tersIsletme: boolean) =>
     setRings((rs) => rs.map((r) => (r.id === rid ? { ...r, sinyaller: [...(r.sinyaller ?? []), yeniSinyal(yon, Math.max(0, Math.min(r.uzunluk, Math.round(konum))), tersIsletme)] } : r)));
   const patchSinyal = (rid: string, sid: string, p: Partial<SinyalLambasi>) =>
@@ -812,6 +821,9 @@ export function RingEditor() {
             onTnEkle={(konum, ekstra) => tnEkle(r.id, konum, ekstra)}
             onTnSil={(tid) => tnSil(r.id, tid)}
             onTnPatch={(tid, p) => patchTn(r.id, tid, p)}
+            onKurpEkle={(konum, ekstra) => kurpEkle(r.id, konum, ekstra)}
+            onKurpSil={(kid) => kurpSil(r.id, kid)}
+            onKurpPatch={(kid, pp) => patchKurp(r.id, kid, pp)}
             onSinyalEkle={(yon, konum, ters) => sinyalEkle(r.id, yon, konum, ters)}
             onSinyalSil={(sid) => sinyalSil(r.id, sid)}
             onSinyalPatch={(sid, pp) => patchSinyal(r.id, sid, pp)}
@@ -875,6 +887,9 @@ interface KartProps {
   onTnEkle: (konum?: number, ekstra?: Partial<DurakArasiRing["tehlikeNoktalari"][number]>) => void;
   onTnSil: (tid: string) => void;
   onTnPatch: (tid: string, p: Partial<DurakArasiRing["tehlikeNoktalari"][number]>) => void;
+  onKurpEkle: (konum?: number, ekstra?: Partial<Kurp>) => void;
+  onKurpSil: (kid: string) => void;
+  onKurpPatch: (kid: string, p: Partial<Kurp>) => void;
   onSinyalEkle: (yon: "giden" | "gelen", konum: number, ters: boolean) => void;
   onSinyalSil: (sid: string) => void;
   onSinyalPatch: (sid: string, p: Partial<SinyalLambasi>) => void;
@@ -912,6 +927,7 @@ function RingKart(p: KartProps) {
     if (!p.duzenlenebilir) return; // salt-okunur: sürükle-taşı kapalı
     if (tur === "makas") p.onMakasPatch(id, { konum });
     else if (tur === "hemzemin") p.onHzPatch(id, { konum });
+    else if (tur === "kurp") p.onKurpPatch(id, { konum });
     else p.onTnPatch(id, { konum });
   };
   const seritEkle = (konum: number) => {
@@ -1148,6 +1164,50 @@ function RingKart(p: KartProps) {
                     <button onClick={() => p.onTnSil(t.id)} className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* Kurplar (kavisler) — yatay yarıçaptan türeyen hız kısıtı */}
+          <div className="mt-4 border-t pt-3" style={{ borderColor: brand.border }}>
+            <div className="mb-2 flex items-center justify-between">
+              <SubBaslik>Kurplar (Kavisler)</SubBaslik>
+              <button onClick={() => p.onKurpEkle()} className="rounded px-2 py-1 text-xs font-medium" style={{ background: CK.track, color: brand.inkSoft }}>＋ ekle</button>
+            </div>
+            <p className="mb-2 text-xs" style={{ color: brand.muted }}>
+              Yatay kavis. <b>Yarıçap (R)</b> girince hız otomatik: <b>v = √(R·(a<sub>yanal</sub> + g·dever/ekartman))</b> — a<sub>yanal</sub>={cfg.aYanalKonfor} m/s², ekartman={Math.round(cfg.ekartman * 1000)} mm (Sistem Merkezi). Dilersen <b>hızı elle</b> gir. Düşey eğimden (ring eğimi) bağımsızdır.
+            </p>
+            {(ring.kurplar ?? []).length === 0 ? (
+              <p className="text-xs" style={{ color: brand.faint }}>Kurp yok.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {(ring.kurplar ?? []).map((k) => {
+                  const manuel = k.hizManuel != null;
+                  const vHesap = kurpHizi(k, cfg);
+                  return (
+                    <div key={k.id} className="flex flex-wrap items-center gap-2 rounded border p-2" style={{ borderColor: brand.border }}>
+                      <span className="rounded px-1.5 py-0.5 text-[0.65rem] font-medium" style={{ background: "#F0EBF7", color: "#5B4184" }}>kurp</span>
+                      <input value={k.ad} placeholder="ad" onChange={(e) => p.onKurpPatch(k.id, { ad: e.target.value })}
+                        className="w-24 rounded border px-1.5 py-1 text-xs" style={{ borderColor: brand.border, color: brand.ink }} />
+                      <div className="w-20"><Num label="Konum" suffix="m" step={10} value={k.konum} onChange={(v) => p.onKurpPatch(k.id, { konum: v })} hata={k.konum < 0 || k.konum > ring.uzunluk} /></div>
+                      <div className="w-20"><Num label="Uzunluk" suffix="m" step={5} value={k.uzunluk} onChange={(v) => p.onKurpPatch(k.id, { uzunluk: Math.max(1, v) })} hata={!(k.uzunluk > 0)} /></div>
+                      {manuel ? (
+                        <div className="w-20"><Num label="Hız (elle)" suffix="km/h" step={1} value={Math.round(kmh(k.hizManuel ?? 0))} onChange={(v) => p.onKurpPatch(k.id, { hizManuel: Math.max(0, v) * KMH })} hata={!(k.hizManuel! > 0)} /></div>
+                      ) : (
+                        <>
+                          <div className="w-20"><Num label="Yarıçap R" suffix="m" step={10} value={k.yaricap} onChange={(v) => p.onKurpPatch(k.id, { yaricap: Math.max(1, v) })} hata={!(k.yaricap > 0)} /></div>
+                          <div className="w-20"><Num label="Dever" suffix="mm" step={5} value={Math.round((k.dever ?? 0) * 1000)} onChange={(v) => p.onKurpPatch(k.id, { dever: Math.max(0, v) / 1000 })} /></div>
+                          <span className="rounded px-2 py-1 text-xs font-semibold" style={{ background: "#EEF6EE", color: "#2E7D32" }}>≈ {Math.round(kmh(vHesap))} km/h</span>
+                        </>
+                      )}
+                      <button onClick={() => p.onKurpPatch(k.id, manuel ? { hizManuel: undefined } : { hizManuel: vHesap })}
+                        className="rounded border px-2 py-1 text-[0.7rem] font-medium" style={{ borderColor: brand.border, color: brand.inkSoft }}>
+                        {manuel ? "↺ yarıçaptan" : "✎ hızı elle gir"}
+                      </button>
+                      <button onClick={() => p.onKurpSil(k.id)} className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

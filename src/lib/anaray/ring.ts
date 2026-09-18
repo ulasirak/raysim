@@ -81,6 +81,20 @@ export interface TehlikeNoktasi {
   aciklama: string;
 }
 
+/** Yatay KURP (kavis) — yarıçaptan türeyen hız kısıt bölgesi. Kurpta konforlu/güvenli
+ *  hız yarıçapla sınırlıdır: v = √(R · (a_yanal + g·dever/ekartman)). Deversiz (dever=0)
+ *  hâl muhafazakârdır. `hizManuel` verilirse yarıçap yerine bu hız kullanılır (elle giriş).
+ *  DÜŞEY eğimden (ring.egim) BAĞIMSIZDIR — kurp yataydır. */
+export interface Kurp {
+  id: string;
+  ad: string;
+  konum: number;      // m — kurp MERKEZİ (ring başından kilometraj)
+  uzunluk: number;    // m — kurp boyu (hız kısıt bölgesi bu uzunlukta)
+  yaricap: number;    // m — kurp yarıçapı R
+  dever: number;      // m — uygulanan dever/süperelevasyon (kanto); varsayılan 0
+  hizManuel?: number; // m/s — verilirse R yerine bu hız kullanılır (elle giriş modu)
+}
+
 export interface DurakArasiRing {
   id: string;
   ad: string;
@@ -123,6 +137,9 @@ export interface DurakArasiRing {
   makaslar: MakasBolgesi[];
   hemzeminler: Hemzemin[];
   tehlikeNoktalari: TehlikeNoktasi[];
+  /** Yatay kurplar (kavisler) — yarıçaptan türeyen hız kısıtı. Eski projelerde yok →
+   *  migrate [] doldurur. */
+  kurplar?: Kurp[];
   /** İstasyon başına yerleştirilen sinyal lambaları (yön + kilometraj + aspect süreleri).
    *  BLOK SINIRINI BELİRLER: ileri-yön (ters işletme hariç) sinyalleri istasyonlarla
    *  birlikte blok sınırıdır (network.sinyalKonumlari) → blocking-time/kapasite bloklarını
@@ -242,6 +259,13 @@ export function ringToLine(ring: DurakArasiRing, mode: Mode, cfg: SimConfig = BE
     const c = clamp(h.konum * scale, 0, L);
     kisitlar.push({ start: Math.max(0, c - W / 2), end: Math.min(L, c + W / 2), vmax: h.hiz });
   }
+  // Yatay kurplar: fiziksel geometri → TÜM modlarda (worst/best/nominal) uygulanır.
+  // Bölge genişliği kurpun KENDİ uzunluğu (kisitGenisligi değil).
+  for (const k of ring.kurplar ?? []) {
+    const c = clamp(k.konum * scale, 0, L);
+    const half = Math.max(1, (k.uzunluk || 0) * scale) / 2;
+    kisitlar.push({ start: Math.max(0, c - half), end: Math.min(L, c + half), vmax: kurpHizi(k, cfg) });
+  }
   // Acil frenleme / tehlike noktaları: worst-case ve nominal senaryoda uygulanır;
   // best-case (idealize yakın mesafe) köşesinde uygulanmaz.
   if (mode !== "best") {
@@ -261,6 +285,19 @@ export function ringToLine(ring: DurakArasiRing, mode: Mode, cfg: SimConfig = BE
 
 function egim(ring: DurakArasiRing): number {
   return ring.egim || 0;
+}
+
+/** Kurpta konforlu/güvenli azami hız (m/s). Elle hız verildiyse onu döndürür; yoksa
+ *  yarıçaptan: v = √(R · (a_yanal + g·dever/ekartman)). g=9,81; dever & ekartman SI (m).
+ *  Deversiz (dever=0) hâl muhafazakârdır (dengeleme deveri yokmuş gibi). */
+export function kurpHizi(k: Kurp, cfg: SimConfig = BELGE): number {
+  if (k.hizManuel != null && k.hizManuel > 0) return k.hizManuel;
+  const g = 9.81;
+  const R = Math.max(1, k.yaricap || 0);
+  const aLim = cfg.aYanalKonfor > 0 ? cfg.aYanalKonfor : 0.85;
+  const s = cfg.ekartman > 0 ? cfg.ekartman : 1.435; // m — ray ekartmanı (standart 1,435)
+  const h = Math.max(0, k.dever || 0);               // m — uygulanan dever
+  return Math.sqrt(R * (aLim + g * (h / s)));
 }
 
 // ————————————————————————————————————————————————
@@ -428,6 +465,14 @@ export function ringDogrula(ring: DurakArasiRing, cfg: SimConfig = BELGE): Eksik
     if (!(tn.hiz >= 0)) push(`tn.${tn.id}.hiz`, `${et}: acil frenleme hızı girilmeli (≥ 0)`);
   });
 
+  (ring.kurplar ?? []).forEach((k, i) => {
+    const et = `Kurp #${i + 1} (${k.ad || "adsız"})`;
+    if (k.konum < 0 || k.konum > ring.uzunluk) push(`krp.${k.id}.konum`, `${et}: konum ring içinde olmalı`);
+    if (!(k.uzunluk > 0)) push(`krp.${k.id}.uzunluk`, `${et}: kurp uzunluğu girilmeli (> 0)`);
+    if (k.hizManuel == null && !(k.yaricap > 0)) push(`krp.${k.id}.yaricap`, `${et}: yarıçap girilmeli (> 0) ya da hız elle verilmeli`);
+    if (k.hizManuel != null && !(k.hizManuel > 0)) push(`krp.${k.id}.hiz`, `${et}: elle hız > 0 olmalı`);
+  });
+
   return e;
 }
 
@@ -435,7 +480,7 @@ export function ringDogrula(ring: DurakArasiRing, cfg: SimConfig = BELGE): Eksik
 // Kısıtlar arası mesafe ("şartları arası mesafeleri")
 // ————————————————————————————————————————————————
 
-export type KisitTur = "makas" | "hemzemin" | "tehlike";
+export type KisitTur = "makas" | "hemzemin" | "tehlike" | "kurp";
 
 export interface Kisitlik {
   tur: KisitTur;
@@ -451,6 +496,7 @@ export function ringKisitDizisi(ring: DurakArasiRing): Kisitlik[] {
     ...ring.makaslar.map((m) => ({ tur: "makas" as const, id: m.id, ad: m.ad || MAKAS_TIP_AD[m.tip], konum: m.konum, detay: `${Math.round(m.gecisHizi * 3.6)} km/h · ${MAKAS_TIP_AD[m.tip]}` })),
     ...ring.hemzeminler.map((h) => ({ tur: "hemzemin" as const, id: h.id, ad: h.ad || h.tip, konum: h.konum, detay: `${Math.round(h.hiz * 3.6)} km/h · ${h.tip}` })),
     ...ring.tehlikeNoktalari.map((t) => ({ tur: "tehlike" as const, id: t.id, ad: t.ad || "acil frenleme", konum: t.konum, detay: `${Math.round(t.hiz * 3.6)} km/h · acil frenleme` })),
+    ...(ring.kurplar ?? []).map((k) => ({ tur: "kurp" as const, id: k.id, ad: k.ad || "kurp", konum: k.konum, detay: `${Math.round(kurpHizi(k) * 3.6)} km/h · R${Math.round(k.yaricap)} m` })),
   ];
   return list.sort((a, b) => a.konum - b.konum);
 }
@@ -709,6 +755,11 @@ export function yeniTehlike(konum: number): TehlikeNoktasi {
   return { id: yeniId("TN"), ad: "", konum, hiz: BELGE.vAcil, aciklama: "" };
 }
 
+/** Yeni kurp — tipik şehir-içi değerler (R=100 m, 50 m boy, deversiz). */
+export function yeniKurp(konum: number): Kurp {
+  return { id: yeniId("KRP"), ad: "", konum, uzunluk: 50, yaricap: 100, dever: 0 };
+}
+
 export function yeniRing(fromAd: string, toAd: string): DurakArasiRing {
   const id = yeniId("RING");
   return {
@@ -727,6 +778,7 @@ export function yeniRing(fromAd: string, toAd: string): DurakArasiRing {
     makaslar: [],
     hemzeminler: [],
     tehlikeNoktalari: [],
+    kurplar: [],
     sinyaller: [],
   };
 }
