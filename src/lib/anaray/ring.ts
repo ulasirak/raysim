@@ -300,6 +300,23 @@ export function kurpHizi(k: Kurp, cfg: SimConfig = BELGE): number {
   return Math.sqrt(R * (aLim + g * (h / s)));
 }
 
+/** Ayakta yolcu (crush/kalabalık) için önerilen dengelenmemiş yanal ivme tavanı (m/s²).
+ *  Merkezkaç İVMESİ yolcu sayısından bağımsızdır; bu düşük eşik, kalabalıkta AYAKTA
+ *  yolcunun dengesi/konforu içindir (ergonomi), araç dinamiği değil. */
+export const KALABALIK_YANAL = 0.65;
+
+/** Kurpta trenin EFEKTİF hızında oluşan dengelenmemiş yanal ivme (m/s²):
+ *  a = v²/R − g·dever/ekartman. v = kurpHizi (elle hız verildiyse o). Yarıçaptan türeyen
+ *  hızda a = aYanalKonfor'a eşittir (tasarım); elle hız fazlaysa a onu AŞAR. */
+export function kurpYanalIvme(k: Kurp, cfg: SimConfig = BELGE): number {
+  const g = 9.81;
+  const R = Math.max(1, k.yaricap || 0);
+  const s = cfg.ekartman > 0 ? cfg.ekartman : 1.435;
+  const h = Math.max(0, k.dever || 0);
+  const v = kurpHizi(k, cfg);
+  return v * v / R - g * (h / s);
+}
+
 // ————————————————————————————————————————————————
 // Senaryo hesabı (worst / best / nominal + timing)
 // ————————————————————————————————————————————————
@@ -518,7 +535,7 @@ export function enKisaKisitAralik(ring: DurakArasiRing): { mesafe: number; a: Ki
 // Challenge (karşılaşılabilecek zorluk) analizi
 // ————————————————————————————————————————————————
 
-export type ChallengeTur = "headway" | "acil-frenleme" | "makas-kuyruk" | "kisit-yakinlik";
+export type ChallengeTur = "headway" | "acil-frenleme" | "makas-kuyruk" | "kisit-yakinlik" | "kurp-konfor";
 export type ChallengeSeviye = "bilgi" | "uyari" | "kritik";
 
 export interface ChallengeBayrak {
@@ -574,6 +591,23 @@ export function ringChallenge(ring: DurakArasiRing, stock: RollingStock, cfg: Si
       baslik: "Kısıtlar çok yakın",
       mesaj: `"${yakin.a.ad}" ile "${yakin.b.ad}" yalnız ${Math.round(yakin.mesafe)} m arayla — art arda yavaşlama (challenge).`,
     });
+  }
+
+  // 5) Kurp yanal ivme AŞIMI — elle girilen hız yarıçap/dever için fazlaysa (gerçek risk).
+  //    Yarıçaptan türeyen hızda a = aYanalKonfor'dur (tasarım) → burada bayrak çıkmaz;
+  //    yalnız hızın geometriye göre fazla olduğu (genelde elle hız) durumlar işaretlenir.
+  for (const k of ring.kurplar ?? []) {
+    const a = kurpYanalIvme(k, cfg);
+    if (a > cfg.aYanalKonfor + 0.03) {
+      const R = Math.max(1, k.yaricap || 0), s = cfg.ekartman > 0 ? cfg.ekartman : 1.435, h = Math.max(0, k.dever || 0);
+      const vOner = Math.round(Math.sqrt(R * (cfg.aYanalKonfor + 9.81 * (h / s))) * 3.6);
+      c.push({
+        tur: "kurp-konfor",
+        seviye: a > cfg.aYanalKonfor * 1.5 ? "kritik" : "uyari",
+        baslik: "Kurpta yüksek yanal ivme",
+        mesaj: `Kurp ${k.ad || `R${Math.round(R)}`}: ${Math.round(kurpHizi(k, cfg) * 3.6)} km/h'de yanal ivme ${a.toFixed(2)} m/s² — konfor tavanını (${cfg.aYanalKonfor.toFixed(2)}) aşıyor. Öneri ≤ ${vOner} km/h.`,
+      });
+    }
   }
 
   return c;

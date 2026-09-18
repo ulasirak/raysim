@@ -32,6 +32,8 @@ import {
   yeniTehlike,
   yeniKurp,
   kurpHizi,
+  kurpYanalIvme,
+  KALABALIK_YANAL,
   yeniSinyal,
   ringDuraklari,
   durakAdiDegistir,
@@ -1187,6 +1189,11 @@ function RingKart(p: KartProps) {
                 {(ring.kurplar ?? []).map((k) => {
                   const manuel = k.hizManuel != null;
                   const vHesap = kurpHizi(k, cfg);
+                  const aYanal = kurpYanalIvme(k, cfg);
+                  const asim = aYanal > cfg.aYanalKonfor + 0.03;
+                  const kalabalik = aYanal > KALABALIK_YANAL + 0.03;
+                  const Rk = Math.max(1, k.yaricap || 0), hK = Math.max(0, k.dever ?? 0);
+                  const vKalabalik = Math.round(kmh(Math.sqrt(Rk * (KALABALIK_YANAL + 9.81 * (hK / (cfg.ekartman || 1.435))))));
                   const olcu = kurpOlcu[k.id];
                   return (
                     <div key={k.id} className="rounded border p-2" style={{ borderColor: brand.border }}>
@@ -1196,24 +1203,25 @@ function RingKart(p: KartProps) {
                           className="w-24 rounded border px-1.5 py-1 text-xs" style={{ borderColor: brand.border, color: brand.ink }} />
                         <div className="w-20"><Num label="Konum" suffix="m" step={10} value={k.konum} onChange={(v) => p.onKurpPatch(k.id, { konum: v })} hata={k.konum < 0 || k.konum > ring.uzunluk} /></div>
                         <div className="w-20"><Num label="Uzunluk" suffix="m" step={5} value={k.uzunluk} onChange={(v) => p.onKurpPatch(k.id, { uzunluk: Math.max(1, v) })} hata={!(k.uzunluk > 0)} /></div>
-                        {manuel ? (
+                        <div className="w-20"><Num label="Yarıçap R" suffix="m" step={10} value={k.yaricap} onChange={(v) => p.onKurpPatch(k.id, { yaricap: Math.max(1, v) })} hata={!(k.yaricap > 0)} /></div>
+                        <div className="w-20"><Num label="Dever" suffix="mm" step={5} value={Math.round((k.dever ?? 0) * 1000)} onChange={(v) => p.onKurpPatch(k.id, { dever: Math.max(0, v) / 1000 })} /></div>
+                        {manuel && (
                           <div className="w-20"><Num label="Hız (elle)" suffix="km/h" step={1} value={Math.round(kmh(k.hizManuel ?? 0))} onChange={(v) => p.onKurpPatch(k.id, { hizManuel: Math.max(0, v) * KMH })} hata={!(k.hizManuel! > 0)} /></div>
-                        ) : (
-                          <>
-                            <div className="w-20"><Num label="Yarıçap R" suffix="m" step={10} value={k.yaricap} onChange={(v) => p.onKurpPatch(k.id, { yaricap: Math.max(1, v) })} hata={!(k.yaricap > 0)} /></div>
-                            <div className="w-20"><Num label="Dever" suffix="mm" step={5} value={Math.round((k.dever ?? 0) * 1000)} onChange={(v) => p.onKurpPatch(k.id, { dever: Math.max(0, v) / 1000 })} /></div>
-                            <span className="rounded px-2 py-1 text-xs font-semibold" style={{ background: "#EEF6EE", color: "#2E7D32" }}>≈ {Math.round(kmh(vHesap))} km/h</span>
-                            <button type="button" onClick={() => setKurpOlcu((s) => (s[k.id] ? (() => { const n = { ...s }; delete n[k.id]; return n; })() : { ...s, [k.id]: { C: 0, M: 0 } }))}
-                              className="rounded border px-2 py-1 text-[0.7rem] font-medium" style={{ borderColor: brand.border, color: brand.inkSoft }} title="Pafta/haritadan ölçüyle yarıçap hesapla">◠ ölçüden R</button>
-                          </>
                         )}
+                        <span className="rounded px-2 py-1 text-xs font-semibold" style={{ background: "#EEF6EE", color: "#2E7D32" }}>≈ {Math.round(kmh(vHesap))} km/h</span>
+                        <span title="dengelenmemiş yanal ivme = v²/R − g·dever/ekartman" className="rounded px-2 py-1 text-xs font-semibold"
+                          style={asim ? { background: "#FBEAEA", color: brand.red } : { background: "#EEF1F6", color: brand.inkSoft }}>
+                          yanal {aYanal.toFixed(2)} m/s²{asim ? " ⚠" : kalabalik ? ` · kalabalıkta ≤ ${vKalabalik} km/h` : ""}
+                        </span>
+                        <button type="button" onClick={() => setKurpOlcu((s) => (s[k.id] ? (() => { const n = { ...s }; delete n[k.id]; return n; })() : { ...s, [k.id]: { C: 0, M: 0 } }))}
+                          className="rounded border px-2 py-1 text-[0.7rem] font-medium" style={{ borderColor: brand.border, color: brand.inkSoft }} title="Pafta/haritadan ölçüyle yarıçap hesapla">◠ ölçüden R</button>
                         <button onClick={() => p.onKurpPatch(k.id, manuel ? { hizManuel: undefined } : { hizManuel: vHesap })}
                           className="rounded border px-2 py-1 text-[0.7rem] font-medium" style={{ borderColor: brand.border, color: brand.inkSoft }}>
                           {manuel ? "↺ yarıçaptan" : "✎ hızı elle gir"}
                         </button>
                         <button onClick={() => p.onKurpSil(k.id)} className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
                       </div>
-                      {!manuel && olcu && (
+                      {olcu && (
                         <div className="mt-2 flex flex-wrap items-end gap-2 rounded p-2" style={{ background: "#F7F9FA" }}>
                           <span className="text-[0.7rem]" style={{ color: brand.muted }}>Pafta/harita ölçüsü → R = C²/(8·M):</span>
                           <div className="w-24"><Num label="Kiriş C" suffix="m" step={1} value={olcu.C} onChange={(v) => setKurpOlcu((s) => ({ ...s, [k.id]: { ...s[k.id], C: Math.max(0, v) } }))} /></div>
