@@ -34,6 +34,48 @@ const INSUNITS_METRE: Record<number, number> = {
   9: 0.0000254,
 };
 
+const D2R = Math.PI / 180;
+
+/** Bir yayı ~her `adimDeg` derecede bir noktaya açar (a0→a1 radyan, işaretli süpürme). */
+function yayAc(cx: number, cy: number, R: number, a0: number, a1: number, adimDeg = 6): DxfNokta[] {
+  const sweep = a1 - a0;
+  const n = Math.max(1, Math.ceil(Math.abs(sweep) / (adimDeg * D2R)));
+  const out: DxfNokta[] = [];
+  for (let s = 0; s <= n; s++) { const a = a0 + sweep * (s / n); out.push({ x: cx + R * Math.cos(a), y: cy + R * Math.sin(a) }); }
+  return out;
+}
+
+/** LWPOLYLINE/POLYLINE bulge'lu segmenti (p1→p2) yay noktalarına açar — p1 HARİÇ, p2 DAHİL.
+ *  Düz (|bulge|~0) segmentte yalnız p2 döner. bulge = tan(θ/4); yayın yarıçapı ve merkezi
+ *  buradan kesin çıkar → tesselasyon yayın ÜZERİNDE (kavis yarıçabı birebir korunur). */
+function bulgeYay(p1: DxfNokta, p2: DxfNokta, bulge: number): DxfNokta[] {
+  if (!Number.isFinite(bulge) || Math.abs(bulge) < 1e-6) return [p2];
+  const dx = p2.x - p1.x, dy = p2.y - p1.y;
+  const c = Math.hypot(dx, dy);
+  if (c < 1e-9) return [p2];
+  const theta = 4 * Math.atan(bulge);                 // işaretli süpürme açısı (CCW +)
+  const R = c / (2 * Math.sin(Math.abs(theta) / 2));
+  const apo = R * Math.cos(Math.abs(theta) / 2);       // apothem (major yayda cos<0 → işaret döner)
+  const mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2;
+  const nx = -dy / c, ny = dx / c;                     // p1→p2'nin sol dik birimi
+  const sgn = Math.sign(bulge);
+  const cx = mx + nx * apo * sgn, cy = my + ny * apo * sgn;
+  const a0 = Math.atan2(p1.y - cy, p1.x - cx);
+  const pts = yayAc(cx, cy, R, a0, a0 + theta);
+  pts.shift();                                          // p1'i at (polyline'da zaten var)
+  if (pts.length) pts[pts.length - 1] = { x: p2.x, y: p2.y };
+  return pts.length ? pts : [p2];
+}
+
+/** Bulge'lu ham köşe dizisinden yoğunlaştırılmış nokta dizisi (yaylar açılmış). */
+function bulgePts(raw: { x: number; y: number; bulge: number }[], kapali: boolean): DxfNokta[] {
+  if (raw.length === 0) return [];
+  const pts: DxfNokta[] = [{ x: raw[0].x, y: raw[0].y }];
+  for (let i = 0; i < raw.length - 1; i++) pts.push(...bulgeYay(raw[i], raw[i + 1], raw[i].bulge));
+  if (kapali && raw.length >= 2) pts.push(...bulgeYay(raw[raw.length - 1], raw[0], raw[raw.length - 1].bulge));
+  return pts;
+}
+
 /** DXF metnini (code,value) çiftlerine böl. DXF satırları: tek satır kod, tek satır değer. */
 function ciftler(metin: string): { code: number; val: string }[] {
   // \r\n ve \n ikisini de destekle; baş/son boşlukları at.
@@ -93,31 +135,43 @@ export function dxfAyristir(metin: string): DxfCizim {
       const x1 = num(g(10) ?? ""), y1 = num(g(20) ?? ""), x2 = num(g(11) ?? ""), y2 = num(g(21) ?? "");
       if ([x1, y1, x2, y2].every(Number.isFinite)) polylines.push({ layer, kapali: false, pts: [{ x: x1, y: y1 }, { x: x2, y: y2 }] });
     } else if (tip === "LWPOLYLINE") {
-      // Vertexler blok içinde 10/20 çiftleri olarak sırayla gelir.
-      const pts: DxfNokta[] = [];
+      // Vertexler blok içinde 10/20 çiftleri; her vertexin ardından opsiyonel bulge (42).
+      const raw: { x: number; y: number; bulge: number }[] = [];
       let cx: number | null = null;
       for (const b of blok) {
         if (b.code === 10) { cx = num(b.val); }
-        else if (b.code === 20 && cx !== null) { const y = num(b.val); if (Number.isFinite(cx) && Number.isFinite(y)) pts.push({ x: cx, y }); cx = null; }
+        else if (b.code === 20 && cx !== null) { const y = num(b.val); if (Number.isFinite(cx) && Number.isFinite(y)) raw.push({ x: cx, y, bulge: 0 }); cx = null; }
+        else if (b.code === 42 && raw.length > 0) { const bl = num(b.val); if (Number.isFinite(bl)) raw[raw.length - 1].bulge = bl; }
       }
       const kapali = (parseInt(g(70) ?? "0", 10) & 1) === 1;
+      const pts = bulgePts(raw, kapali); // bulge yayları noktalara açılır (kavis yarıçabı korunur)
       if (pts.length >= 2) polylines.push({ layer, kapali, pts });
     } else if (tip === "POLYLINE") {
-      // Eski tip: vertexler ayrı VERTEX varlıkları (SEQEND'e kadar).
+      // Eski tip: vertexler ayrı VERTEX varlıkları (SEQEND'e kadar); her vertexte bulge (42) olabilir.
       const kapali = (parseInt(g(70) ?? "0", 10) & 1) === 1;
-      const pts: DxfNokta[] = [];
+      const raw: { x: number; y: number; bulge: number }[] = [];
       let k = j; // POLYLINE bloğu bitti; şimdi VERTEX'ler geliyor
       while (k < son && cp[k].code === 0 && cp[k].val.trim().toUpperCase() === "VERTEX") {
         let m = k + 1; const vb: { code: number; val: string }[] = [];
         while (m < son && cp[m].code !== 0) { vb.push(cp[m]); m++; }
         const vx = num(vb.find((b) => b.code === 10)?.val ?? ""), vy = num(vb.find((b) => b.code === 20)?.val ?? "");
-        if (Number.isFinite(vx) && Number.isFinite(vy)) pts.push({ x: vx, y: vy });
+        const vb42 = num(vb.find((b) => b.code === 42)?.val ?? "0");
+        if (Number.isFinite(vx) && Number.isFinite(vy)) raw.push({ x: vx, y: vy, bulge: Number.isFinite(vb42) ? vb42 : 0 });
         k = m;
       }
       // SEQEND'i atla
       if (k < son && cp[k].code === 0 && cp[k].val.trim().toUpperCase() === "SEQEND") { let m = k + 1; while (m < son && cp[m].code !== 0) m++; k = m; }
+      const pts = bulgePts(raw, kapali);
       if (pts.length >= 2) polylines.push({ layer, kapali, pts });
       j = k; // ana döngü buradan devam etsin
+    } else if (tip === "ARC") {
+      // Bağımsız yay: merkez (10,20) + yarıçap (40) + başlangıç/bitiş açısı (50,51, derece, CCW).
+      const acx = num(g(10) ?? ""), acy = num(g(20) ?? ""), R = num(g(40) ?? ""), a0 = num(g(50) ?? ""), a1 = num(g(51) ?? "");
+      if ([acx, acy, R, a0, a1].every(Number.isFinite) && R > 0) {
+        const s0 = a0; let s1 = a1; while (s1 < s0) s1 += 360; // CCW: bitiş < başlangıç ise +360
+        const pts = yayAc(acx, acy, R, s0 * D2R, s1 * D2R);
+        if (pts.length >= 2) polylines.push({ layer, kapali: false, pts });
+      }
     } else if (tip === "POINT") {
       const x = num(g(10) ?? ""), y = num(g(20) ?? "");
       if (Number.isFinite(x) && Number.isFinite(y)) points.push({ layer, x, y });
