@@ -14,6 +14,7 @@ import { HatIceAktar, type IceAktarMod } from "@/components/HatIceAktar";
 import { SubeEditor } from "@/components/SubeEditor";
 import { etkinBogazIsgali, terminalDonusParalel, etkinPeronSayisi, terminalMakasSayilari, terminalSeriDonus, type SimConfig, type DonusTip, type TerminalConfig, type Isletme } from "@/lib/anaray/config";
 import { maksimumTren } from "@/lib/anaray/kapasite";
+import { tersIsletmeAnaliz } from "@/lib/anaray/tersisletme";
 import { yolcuAkisSuresi } from "@/lib/anaray/yolcu";
 import { brand } from "@/lib/anaray/brand";
 import { CK, SERI } from "@/lib/anaray/chartkit";
@@ -33,8 +34,8 @@ import {
   yeniTehlike,
   yeniKurp,
   kurpHizi,
-  kurpYanalIvme,
-  KALABALIK_YANAL,
+  kurpKonforAnaliz,
+  type KurpKonforSatir,
   yeniSinyal,
   ringDuraklari,
   durakAdiDegistir,
@@ -104,6 +105,13 @@ export function RingEditor() {
   };
   // Canlı maksimum tramvay kapasitesi (bottleneck) — inputların hemen altında geri besleme.
   const maks = useMemo(() => maksimumTren(rings, stock, cfg, isletme), [rings, stock, cfg, isletme]);
+  // Kurp konfor uyarısını GERÇEK per-ring doluluğa bağlamak için (PDF 2.2 ile birebir).
+  const dolulukByRing = useMemo(() => {
+    const out: Record<string, number> = {};
+    const tia = rings.length >= 2 ? tersIsletmeAnaliz(rings, stock, isletme, cfg, "toplam") : null;
+    if (tia) rings.forEach((r, i) => { const d = tia.duraklar[i]; if (d) out[r.id] = d.doluluk; });
+    return out;
+  }, [rings, stock, isletme, cfg]);
   const [acik, setAcik] = useState<Record<string, boolean>>(() => (rings[0] ? { [rings[0].id]: true } : {}));
   // Silme GERİ AL: silmeden ÖNCEKİ ring dizisini tutar; kullanıcı yanlışlıkla durak/
   // ring silerse tek tıkla geri döner. Zaman aşımında (araç çubuğu kalabalıklaşmasın)
@@ -811,6 +819,7 @@ export function RingEditor() {
             acik={!!acik[r.id]}
             cfg={cfg}
             isletme={isletme}
+            doluluk={dolulukByRing[r.id]}
             sunum={!!meta.sunumModu}
             duzenlenebilir={yazilabilir}
             onToggle={() => setAcik((a) => ({ ...a, [r.id]: !a[r.id] }))}
@@ -875,6 +884,8 @@ interface KartProps {
   acik: boolean;
   cfg: SimConfig;
   isletme: Isletme;
+  /** Bu ringin gerçek doluluğu (0..1) — kurp konfor uyarısını doluluğa bağlar. */
+  doluluk?: number;
   /** Sunum modu: ring kartındaki "Challenge (zorluk senaryosu)" listesi gizlenir. */
   sunum: boolean;
   onToggle: () => void;
@@ -901,6 +912,12 @@ interface KartProps {
 
 function RingKart(p: KartProps) {
   const { ring, index, stock, cfg, isletme, sunum } = p;
+  // Kurp konfor değerlendirmesi — GERÇEK doluluğa bağlı (PDF 2.2 ile aynı fonksiyon).
+  const konforByKurp = useMemo(() => {
+    const map: Record<string, KurpKonforSatir> = {};
+    for (const s of kurpKonforAnaliz([ring], cfg, p.doluluk != null ? { [ring.id]: p.doluluk } : undefined)) map[s.kurpId] = s;
+    return map;
+  }, [ring, cfg, p.doluluk]);
   const [sigYon, setSigYon] = useState<"giden" | "gelen">("giden");
   // Kurp: "ölçüden yarıçap" (kiriş + orta dikme) paneli — kurp id → {C, M} ölçüleri.
   const [kurpOlcu, setKurpOlcu] = useState<Record<string, { C: number; M: number }>>({});
@@ -1212,11 +1229,12 @@ function RingKart(p: KartProps) {
                 {(ring.kurplar ?? []).map((k) => {
                   const manuel = k.hizManuel != null;
                   const vHesap = kurpHizi(k, cfg);
-                  const aYanal = kurpYanalIvme(k, cfg);
-                  const asim = aYanal > cfg.aYanalKonfor + 0.03;
-                  const kalabalik = aYanal > KALABALIK_YANAL + 0.03;
-                  const Rk = Math.max(1, k.yaricap || 0), hK = Math.max(0, k.dever ?? 0);
-                  const vKalabalik = Math.round(kmh(Math.sqrt(Rk * (KALABALIK_YANAL + 9.81 * (hK / (cfg.ekartman || 1.435))))));
+                  const kk = konforByKurp[k.id];
+                  const aYanal = kk?.aYanal ?? 0;
+                  const asim = kk?.seviye === "asim";
+                  const kalabalik = kk?.seviye === "kalabalik";
+                  const vKalabalik = kk?.oneriVKmh ?? 0;
+                  const dolText = kk?.doluluk != null ? ` (doluluk %${Math.round(kk.doluluk * 100)})` : "";
                   const olcu = kurpOlcu[k.id];
                   return (
                     <div key={k.id} className="rounded border p-2" style={{ borderColor: brand.border }}>
@@ -1234,7 +1252,7 @@ function RingKart(p: KartProps) {
                         <span className="rounded px-2 py-1 text-xs font-semibold" style={{ background: "#EEF6EE", color: "#2E7D32" }}>≈ {Math.round(kmh(vHesap))} km/h</span>
                         <span title="dengelenmemiş yanal ivme = v²/R − g·dever/ekartman" className="rounded px-2 py-1 text-xs font-semibold"
                           style={asim ? { background: "#FBEAEA", color: brand.red } : { background: "#EEF1F6", color: brand.inkSoft }}>
-                          yanal {aYanal.toFixed(2)} m/s²{asim ? " ⚠" : kalabalik ? ` · kalabalıkta ≤ ${vKalabalik} km/h` : ""}
+                          yanal {aYanal.toFixed(2)} m/s²{asim ? " ⚠" : kalabalik ? ` · kalabalıkta ≤ ${vKalabalik} km/h${dolText}` : ""}
                         </span>
                         <button type="button" onClick={() => setKurpOlcu((s) => (s[k.id] ? (() => { const n = { ...s }; delete n[k.id]; return n; })() : { ...s, [k.id]: { C: 0, M: 0 } }))}
                           className="rounded border px-2 py-1 text-[0.7rem] font-medium" style={{ borderColor: brand.border, color: brand.inkSoft }} title="Pafta/haritadan ölçüyle yarıçap hesapla">◠ ölçüden R</button>
