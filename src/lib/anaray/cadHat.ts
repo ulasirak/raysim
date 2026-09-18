@@ -8,7 +8,8 @@
 //
 // Makas/sinyal ÇIKARILMAZ (karar: kapsam = güzergâh + duraklar); kullanıcı Ringler'de ekler.
 
-import { yeniRing, type DurakArasiRing } from "./ring";
+import { yeniRing, yeniKurp, kurpHizi, type DurakArasiRing } from "./ring";
+import { kurplariBul } from "./kurpBul";
 
 export interface CadNokta { x: number; y: number }
 export interface CadPolyline { layer: string; pts: CadNokta[] }
@@ -213,6 +214,27 @@ export function cadHatKur(geo: CadGeometri, esle: CadEsleme, ad: string): CadHat
     rings.push(r);
   }
   if (kisaSayi > 0) uyarilar.push(`${kisaSayi} durak arası mesafe ölçülemedi/çok kısaydı → varsayılan 600 m kullanıldı.`);
+
+  // 5) Yatay KURPLAR: dikilmiş yolun geometrisinden yerel yarıçapı çıkar → ilgili ringe ekle.
+  //    Hız yarıçaptan (kurpHizi) türetilir; yalnız ringin sahasal hızını GERÇEKTEN düşüren
+  //    (gevşek olmayan) kurplar eklenir. Kullanıcı Ringler'de rötuş/silme yapabilir.
+  const yolM = yol.map((p) => ({ x: p.x * olc, y: p.y * olc }));
+  const durakKm = dz.map((d) => d.kmBirim * olc); // yol başından her durağın kilometrajı (m)
+  let kurpEklenen = 0;
+  for (const c of kurplariBul(yolM)) {
+    let ri = -1;
+    for (let i = 0; i < rings.length; i++) {
+      if (c.kmMerkez >= durakKm[i] - 1e-6 && c.kmMerkez < durakKm[i + 1] + 1e-6) { ri = i; break; }
+    }
+    if (ri < 0) continue; // ilk duraktan önce / son duraktan sonra düşen kurp → atla
+    const r = rings[ri];
+    const konum = Math.max(0, Math.min(r.uzunluk, Math.round(c.kmMerkez - durakKm[ri])));
+    const uz = Math.max(10, Math.min(r.uzunluk, Math.round(c.uzunluk)));
+    const kurp = { ...yeniKurp(konum), uzunluk: uz, yaricap: Math.round(c.yaricap) };
+    if (kurpHizi(kurp) < r.vmax - 1e-6) { r.kurplar = [...(r.kurplar ?? []), kurp]; kurpEklenen++; }
+  }
+  if (kurpEklenen > 0)
+    uyarilar.push(`${kurpEklenen} kavis (kurp) güzergâh geometrisinden otomatik çıkarıldı; hızları yarıçaptan hesaplandı — Ringler'de kontrol/rötuş yapabilirsin.`);
 
   uyarilar.push("Mesafeler güzergâh geometrisinden (viraj dâhil) hesaplandı — gerçek ray uzunluğuna yakın.");
   // KARAR gereği: makas/sinyal içe aktarılmaz — zorunlu hatırlatma.

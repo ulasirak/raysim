@@ -49,6 +49,7 @@ import {
 } from "@/lib/anaray/ring";
 import { Num, Rozet, SubBaslik, MiniStat, Panel } from "@/components/RingUI";
 import { KisitSeridi, EkleFormu, SeritEkleBtn, KisitRozet, MakasEkleMenu, type EkleTur } from "@/components/RingSerit";
+import { yaricapKirisVersine } from "@/lib/anaray/kurpBul";
 
 const KMH = 1 / 3.6;
 const OK = CK.good;
@@ -898,6 +899,8 @@ interface KartProps {
 function RingKart(p: KartProps) {
   const { ring, index, stock, cfg, isletme, sunum } = p;
   const [sigYon, setSigYon] = useState<"giden" | "gelen">("giden");
+  // Kurp: "ölçüden yarıçap" (kiriş + orta dikme) paneli — kurp id → {C, M} ölçüleri.
+  const [kurpOlcu, setKurpOlcu] = useState<Record<string, { C: number; M: number }>>({});
   const [sigKonum, setSigKonum] = useState(() => Math.round(ring.uzunluk * 0.9));
   const eksik = useMemo(() => ringDogrula(ring, cfg), [ring, cfg]);
   // Senaryo (worst/headway) HESAPLI dwell'le: dwellOto ringde dwell yolcu akışından.
@@ -1184,27 +1187,43 @@ function RingKart(p: KartProps) {
                 {(ring.kurplar ?? []).map((k) => {
                   const manuel = k.hizManuel != null;
                   const vHesap = kurpHizi(k, cfg);
+                  const olcu = kurpOlcu[k.id];
                   return (
-                    <div key={k.id} className="flex flex-wrap items-center gap-2 rounded border p-2" style={{ borderColor: brand.border }}>
-                      <span className="rounded px-1.5 py-0.5 text-[0.65rem] font-medium" style={{ background: "#F0EBF7", color: "#5B4184" }}>kurp</span>
-                      <input value={k.ad} placeholder="ad" onChange={(e) => p.onKurpPatch(k.id, { ad: e.target.value })}
-                        className="w-24 rounded border px-1.5 py-1 text-xs" style={{ borderColor: brand.border, color: brand.ink }} />
-                      <div className="w-20"><Num label="Konum" suffix="m" step={10} value={k.konum} onChange={(v) => p.onKurpPatch(k.id, { konum: v })} hata={k.konum < 0 || k.konum > ring.uzunluk} /></div>
-                      <div className="w-20"><Num label="Uzunluk" suffix="m" step={5} value={k.uzunluk} onChange={(v) => p.onKurpPatch(k.id, { uzunluk: Math.max(1, v) })} hata={!(k.uzunluk > 0)} /></div>
-                      {manuel ? (
-                        <div className="w-20"><Num label="Hız (elle)" suffix="km/h" step={1} value={Math.round(kmh(k.hizManuel ?? 0))} onChange={(v) => p.onKurpPatch(k.id, { hizManuel: Math.max(0, v) * KMH })} hata={!(k.hizManuel! > 0)} /></div>
-                      ) : (
-                        <>
-                          <div className="w-20"><Num label="Yarıçap R" suffix="m" step={10} value={k.yaricap} onChange={(v) => p.onKurpPatch(k.id, { yaricap: Math.max(1, v) })} hata={!(k.yaricap > 0)} /></div>
-                          <div className="w-20"><Num label="Dever" suffix="mm" step={5} value={Math.round((k.dever ?? 0) * 1000)} onChange={(v) => p.onKurpPatch(k.id, { dever: Math.max(0, v) / 1000 })} /></div>
-                          <span className="rounded px-2 py-1 text-xs font-semibold" style={{ background: "#EEF6EE", color: "#2E7D32" }}>≈ {Math.round(kmh(vHesap))} km/h</span>
-                        </>
+                    <div key={k.id} className="rounded border p-2" style={{ borderColor: brand.border }}>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded px-1.5 py-0.5 text-[0.65rem] font-medium" style={{ background: "#F0EBF7", color: "#5B4184" }}>kurp</span>
+                        <input value={k.ad} placeholder="ad" onChange={(e) => p.onKurpPatch(k.id, { ad: e.target.value })}
+                          className="w-24 rounded border px-1.5 py-1 text-xs" style={{ borderColor: brand.border, color: brand.ink }} />
+                        <div className="w-20"><Num label="Konum" suffix="m" step={10} value={k.konum} onChange={(v) => p.onKurpPatch(k.id, { konum: v })} hata={k.konum < 0 || k.konum > ring.uzunluk} /></div>
+                        <div className="w-20"><Num label="Uzunluk" suffix="m" step={5} value={k.uzunluk} onChange={(v) => p.onKurpPatch(k.id, { uzunluk: Math.max(1, v) })} hata={!(k.uzunluk > 0)} /></div>
+                        {manuel ? (
+                          <div className="w-20"><Num label="Hız (elle)" suffix="km/h" step={1} value={Math.round(kmh(k.hizManuel ?? 0))} onChange={(v) => p.onKurpPatch(k.id, { hizManuel: Math.max(0, v) * KMH })} hata={!(k.hizManuel! > 0)} /></div>
+                        ) : (
+                          <>
+                            <div className="w-20"><Num label="Yarıçap R" suffix="m" step={10} value={k.yaricap} onChange={(v) => p.onKurpPatch(k.id, { yaricap: Math.max(1, v) })} hata={!(k.yaricap > 0)} /></div>
+                            <div className="w-20"><Num label="Dever" suffix="mm" step={5} value={Math.round((k.dever ?? 0) * 1000)} onChange={(v) => p.onKurpPatch(k.id, { dever: Math.max(0, v) / 1000 })} /></div>
+                            <span className="rounded px-2 py-1 text-xs font-semibold" style={{ background: "#EEF6EE", color: "#2E7D32" }}>≈ {Math.round(kmh(vHesap))} km/h</span>
+                            <button type="button" onClick={() => setKurpOlcu((s) => (s[k.id] ? (() => { const n = { ...s }; delete n[k.id]; return n; })() : { ...s, [k.id]: { C: 0, M: 0 } }))}
+                              className="rounded border px-2 py-1 text-[0.7rem] font-medium" style={{ borderColor: brand.border, color: brand.inkSoft }} title="Pafta/haritadan ölçüyle yarıçap hesapla">◠ ölçüden R</button>
+                          </>
+                        )}
+                        <button onClick={() => p.onKurpPatch(k.id, manuel ? { hizManuel: undefined } : { hizManuel: vHesap })}
+                          className="rounded border px-2 py-1 text-[0.7rem] font-medium" style={{ borderColor: brand.border, color: brand.inkSoft }}>
+                          {manuel ? "↺ yarıçaptan" : "✎ hızı elle gir"}
+                        </button>
+                        <button onClick={() => p.onKurpSil(k.id)} className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
+                      </div>
+                      {!manuel && olcu && (
+                        <div className="mt-2 flex flex-wrap items-end gap-2 rounded p-2" style={{ background: "#F7F9FA" }}>
+                          <span className="text-[0.7rem]" style={{ color: brand.muted }}>Pafta/harita ölçüsü → R = C²/(8·M):</span>
+                          <div className="w-24"><Num label="Kiriş C" suffix="m" step={1} value={olcu.C} onChange={(v) => setKurpOlcu((s) => ({ ...s, [k.id]: { ...s[k.id], C: Math.max(0, v) } }))} /></div>
+                          <div className="w-24"><Num label="Orta dikme M" suffix="m" step={0.1} value={olcu.M} onChange={(v) => setKurpOlcu((s) => ({ ...s, [k.id]: { ...s[k.id], M: Math.max(0, v) } }))} /></div>
+                          <span className="rounded px-2 py-1 text-xs font-semibold" style={{ background: "#EEF1F6", color: brand.ink }}>R ≈ {olcu.C > 0 && olcu.M > 0 ? Math.round(yaricapKirisVersine(olcu.C, olcu.M)) : "—"} m</span>
+                          <button type="button" disabled={!(olcu.C > 0 && olcu.M > 0)}
+                            onClick={() => { p.onKurpPatch(k.id, { yaricap: Math.round(yaricapKirisVersine(olcu.C, olcu.M)) }); setKurpOlcu((s) => { const n = { ...s }; delete n[k.id]; return n; }); }}
+                            className="rounded px-2 py-1 text-xs font-semibold text-white disabled:opacity-40" style={{ background: brand.ink }}>uygula</button>
+                        </div>
                       )}
-                      <button onClick={() => p.onKurpPatch(k.id, manuel ? { hizManuel: undefined } : { hizManuel: vHesap })}
-                        className="rounded border px-2 py-1 text-[0.7rem] font-medium" style={{ borderColor: brand.border, color: brand.inkSoft }}>
-                        {manuel ? "↺ yarıçaptan" : "✎ hızı elle gir"}
-                      </button>
-                      <button onClick={() => p.onKurpSil(k.id)} className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
                     </div>
                   );
                 })}
