@@ -24,6 +24,9 @@ import {
 } from "./ring";
 import { varsayilanConfig, varsayilanMeta, varsayilanIsletme, VARSAYILAN_TERMINAL, type ProjeMeta, type TerminalConfig } from "./config";
 import type { RollingStock } from "./types";
+// GERÇEK CAD kurpları (yarıçaplar) AYRI VERİ DOSYASINDA — kaynak koda gömülü değil.
+// Üretim: güzergah DWG → accoreconsole DXF → TT_EM_SERİT/TT_KBT-HAT ekseni → scripts/kurp_cikar.py.
+import kurpVeri from "./kurpVeri.json";
 import type { ProjeVerisi } from "../projeler";
 
 const KMH = 1 / 3.6;
@@ -221,16 +224,6 @@ function kurpYerlestir(rings: DurakArasiRing[], kmR: [number, number][]): void {
   }
 }
 
-// Etap1 tramvay ana-hat kurpları — GERÇEK CAD (1.Etap Güzergah Planı → accoreconsole DXF →
-// TT_EM_SERİT eksen katmanı). Yarıçaplar KESİN (Civil3D yay verisi); konumlar eksene
-// projeksiyondan yaklaşık. [mutlakKm, yarıçapM].
-const KURP_ETAP1: [number, number][] = [
-  [38, 70], [4198, 80], [4265, 400], [4479, 499], [5502, 501], [6098, 739], [6675, 511],
-  [6796, 639], [7148, 639], [7994, 129], [8024, 169], [8091, 126], [8136, 91], [8509, 150],
-  [8757, 73], [8896, 150], [9077, 58], [9107, 753], [9285, 737], [9967, 511], [9977, 292],
-  [10736, 56], [11653, 67],
-];
-
 // ————————————————————————————————————————————————
 // ① MEVCUT HAT — Alaaddin – Adliye koridoru (GERÇEK CAD kilometrajı)
 // ————————————————————————————————————————————————
@@ -324,7 +317,7 @@ const ETAP2_MESAFE = [413, 762, 880, 853, 1011, 1446, 1137, 1062, 1057];
 // v7: sinyalizasyon firması = Aslan Sinyalizasyon (üç hatta da).
 // v8: 4. hat — Bütünleşik Hat (Alaaddin–Stadyum), üç etap tek sürekli hatta birleşik.
 // v9: makas S/X crossover geometrisi + terminal makas sayıları (gerçek CAD/kullanıcı verisi).
-export const HAZIR_VERI_SURUM = 12; // v12: Etap1 hattına GERÇEK CAD kurpları (TT_EM_SERİT eksen, güzergah DXF) eklendi → kayıtlı projeler yeniden seed'lenir
+export const HAZIR_VERI_SURUM = 13; // v13: kurplar AYRI VERİ DOSYASINA (kurpVeri.json) taşındı + Etap2 gerçek CAD kurpları eklendi (Etap1+Etap2; Mevcut eşleşen CAD yok) → yeniden seed
 // NOT (model): makasSayisi = MAKAS ADEDİ (S/X), makas MOTORU değil. Her makas ya S-makas (2 motor)
 // ya X-makas (4 motor); motor sayısı içseldir, raporda gösterilmez. CAD'den okurken yakın 2 motor
 // = 1 S-makas, yakın 4 motor = 1 X-makas.
@@ -384,7 +377,7 @@ export function hazirHatlar(): HazirHat[] {
   const etap1Rings = hatKur(ETAP1_DURAK, ETAP1_MESAFE, etap1Ek);
   // Etap1 = Aslım(8621)→Adliye; MUTLAK km'yi Aslım offset'iyle yerele çevir (İst10–İst22 + SG22).
   sinyalYerlestir(etap1Rings, SG_ETAP_KM.filter((km) => km >= ASLIM_KM - 200).map((km) => km - ASLIM_KM));
-  kurpYerlestir(etap1Rings, KURP_ETAP1); // gerçek CAD kurpları (TT_EM_SERİT)
+  kurpYerlestir(etap1Rings, kurpVeri.etap1 as [number, number][]); // gerçek CAD kurpları (veri dosyası)
   const etap1: HazirHat = {
     key: "etap1",
     ad: "Konya Tramvay 1. Etap — Aslım Sanayi–Şehir Hastanesi (CAD)",
@@ -430,6 +423,7 @@ export function hazirHatlar(): HazirHat[] {
   const etap2Rings = hatKur(ETAP2_DURAK, ETAP2_MESAFE, etap2Ek);
   // Etap2 = Stadyum(0)→Aslım(8621); MUTLAK km = yerel (İst1–İst10).
   sinyalYerlestir(etap2Rings, SG_ETAP_KM.filter((km) => km <= 8750));
+  kurpYerlestir(etap2Rings, kurpVeri.etap2 as [number, number][]); // gerçek CAD kurpları (veri dosyası)
   const etap2: HazirHat = {
     key: "etap2",
     ad: "Konya Tramvay 2. Etap — Stadyum–Aslım Sanayi (CAD)",
