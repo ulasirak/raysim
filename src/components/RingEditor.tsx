@@ -112,6 +112,8 @@ export function RingEditor() {
     if (tia) rings.forEach((r, i) => { const d = tia.duraklar[i]; if (d) out[r.id] = d.doluluk; });
     return out;
   }, [rings, stock, isletme, cfg]);
+  // Her ringin hat başından kümülatif başlangıç kilometrajı (kurp mutlak km gösterimi için).
+  const ringBasiKm = useMemo(() => { const o: number[] = []; let a = 0; for (const r of rings) { o.push(a); a += r.uzunluk; } return o; }, [rings]);
   const [acik, setAcik] = useState<Record<string, boolean>>(() => (rings[0] ? { [rings[0].id]: true } : {}));
   // Silme GERİ AL: silmeden ÖNCEKİ ring dizisini tutar; kullanıcı yanlışlıkla durak/
   // ring silerse tek tıkla geri döner. Zaman aşımında (araç çubuğu kalabalıklaşmasın)
@@ -820,6 +822,7 @@ export function RingEditor() {
             cfg={cfg}
             isletme={isletme}
             doluluk={dolulukByRing[r.id]}
+            ringBasiKm={ringBasiKm[i]}
             sunum={!!meta.sunumModu}
             duzenlenebilir={yazilabilir}
             onToggle={() => setAcik((a) => ({ ...a, [r.id]: !a[r.id] }))}
@@ -886,6 +889,8 @@ interface KartProps {
   isletme: Isletme;
   /** Bu ringin gerçek doluluğu (0..1) — kurp konfor uyarısını doluluğa bağlar. */
   doluluk?: number;
+  /** Bu ringin hat başından kümülatif başlangıç kilometrajı (m) — kurp mutlak km gösterimi. */
+  ringBasiKm?: number;
   /** Sunum modu: ring kartındaki "Challenge (zorluk senaryosu)" listesi gizlenir. */
   sunum: boolean;
   onToggle: () => void;
@@ -1243,6 +1248,16 @@ function RingKart(p: KartProps) {
                         <input value={k.ad} placeholder="ad" onChange={(e) => p.onKurpPatch(k.id, { ad: e.target.value })}
                           className="w-24 rounded border px-1.5 py-1 text-xs" style={{ borderColor: brand.border, color: brand.ink }} />
                         <div className="w-20"><Num label="Konum" suffix="m" step={10} value={k.konum} onChange={(v) => p.onKurpPatch(k.id, { konum: v })} hata={k.konum < 0 || k.konum > ring.uzunluk} /></div>
+                        {(() => {
+                          const mutlak = (p.ringBasiKm ?? 0) + Math.max(0, Math.min(ring.uzunluk, k.konum));
+                          const kmStr = `${Math.floor(mutlak / 1000)}+${String(Math.round(mutlak % 1000)).padStart(3, "0")}`;
+                          return (
+                            <span className="rounded px-2 py-1 text-[0.7rem] leading-tight" style={{ background: "#EEF1F6", color: brand.inkSoft }}
+                              title="Kurbun hat başından mutlak kilometrajı ve üst duraktan mesafesi — iki istasyon ARASINDAKİ konum">
+                              📍 km {kmStr} · <b>{ring.fromAd}</b>+{Math.round(k.konum)}m
+                            </span>
+                          );
+                        })()}
                         <div className="w-20"><Num label="Uzunluk" suffix="m" step={5} value={k.uzunluk} onChange={(v) => p.onKurpPatch(k.id, { uzunluk: Math.max(1, v) })} hata={!(k.uzunluk > 0)} /></div>
                         <div className="w-20"><Num label="Yarıçap R" suffix="m" step={10} value={k.yaricap} onChange={(v) => p.onKurpPatch(k.id, { yaricap: Math.max(1, v) })} hata={!(k.yaricap > 0)} /></div>
                         <div className="w-20"><Num label="Dever" suffix="mm" step={5} value={Math.round((k.dever ?? 0) * 1000)} onChange={(v) => p.onKurpPatch(k.id, { dever: Math.max(0, v) / 1000 })} /></div>
