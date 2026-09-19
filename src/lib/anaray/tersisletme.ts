@@ -14,7 +14,7 @@
 // ring'e gerçek iniş/biniş (inenYolcu/binenYolcu) girilirse otomatik ona döner.
 
 import type { DurakArasiRing } from "./ring";
-import { ringDuraklari } from "./ring";
+import { ringDuraklari, kurpKonforAnaliz } from "./ring";
 import type { RollingStock } from "./types";
 import type { Isletme, SimConfig } from "./config";
 import { etkinArac } from "./config";
@@ -359,5 +359,78 @@ export function tersIsletmeAnaliz(
       gidis: depoGidis, donus: depoDonus,
       aciklama: `Servis başında ${pikFilo} tramvay tek depodan çıkar: yaklaşık ${depoGidis} tanesi kendi yönünde (gidiş), ${depoDonus} tanesi ilk makastan karşı şeride geçip ters (dönüş) yönde işe başlar; böylece iki yön eşzamanlı dolar.`,
     },
+  };
+}
+
+// ————————————————————————————————————————————————
+// TAVSİYE EDİLEN TRAMVAY SAYISI (dinamik, konfor + talep + kurp + tüm parametreler)
+// ————————————————————————————————————————————————
+export interface TavsiyeFilo {
+  tavsiye: number;              // önerilen tramvay sayısı (manşet)
+  surucu: "talep" | "frekans" | "kapasiteTavan"; // öneriyi belirleyen kısıt
+  talepArac: number;           // pik talebi hedef dolulukla karşılayan filo (kurp dâhil çevrim)
+  frekansArac: number;         // hedef headway'i tutan filo tabanı (⌈çevrim ÷ hedef headway⌉)
+  maksTavan: number;           // sürdürülebilir (UIC 406) tavan
+  mevcutPik: number;           // mevcut pik filo
+  ulasilanHeadwaySn: number;   // tavsiyede ulaşılan sefer aralığı
+  ulasilanDoluluk: number;     // tavsiyede tepe doluluk (0..1)
+  cevrimSn: number;
+  tepeYuk: number;             // yolcu/saat (tek yön tepe)
+  kapasite: number;
+  dolulukHedefi: number;
+  kurpAdet: number;            // hattaki toplam kurp
+  kurpUyariMevcut: number;     // mevcut filoda kurp konfor uyarısı (kalabalık) sayısı
+  kurpUyariTavsiye: number;    // tavsiye edilen filoda kalan kurp konfor uyarısı
+  gercekVeri: boolean;
+  gerekce: string;
+}
+
+/** Hat için DİNAMİK tavsiye edilen tramvay sayısı: durak inen/binen talebi + kurp konfor
+ *  analizi + tüm parametreler (çevrim [kurplar dâhil], kapasite, hedef doluluk, hedef
+ *  headway, sürdürülebilir tavan) birlikte değerlendirilir. Tavsiye = max(talep, frekans)
+ *  tabanı, kapasite tavanıyla sınırlı. Kurp konforu geri-beslemeli: daha çok tramvay →
+ *  düşük doluluk → kalabalık kurplarda ayakta yolcu konforu düzelir. */
+export function tavsiyeTramvaySayisi(
+  rings: DurakArasiRing[], stock: RollingStock, isletme: Isletme, cfg: SimConfig,
+  mod: "toplam" | "istasyon" = "toplam",
+): TavsiyeFilo | null {
+  const tia = tersIsletmeAnaliz(rings, stock, isletme, cfg, mod);
+  if (!tia) return null;
+  const cevrimSn = Math.max(1, tia.cevrimSn);
+  const hedefHeadway = Math.max(1, cfg.headway || 240);
+  const talepArac = Math.max(1, tia.filo.gerekenArac);
+  const frekansArac = Math.max(1, Math.ceil(cevrimSn / hedefHeadway));
+  const maksTavan = Math.max(1, tia.maksSurdurulebilir);
+  const ham = Math.max(talepArac, frekansArac);
+  const tavsiye = Math.min(maksTavan, ham);
+  const surucu: TavsiyeFilo["surucu"] =
+    ham > maksTavan ? "kapasiteTavan" : (talepArac >= frekansArac ? "talep" : "frekans");
+  const ulasilanHeadwaySn = cevrimSn / Math.max(1, tavsiye);
+  const frekansTav = tavsiye * 3600 / cevrimSn; // tramvay/saat
+  const ulasilanDoluluk = frekansTav > 0 ? tia.tepeYuk / (frekansTav * tia.aracKapasite) : 0;
+
+  // Kurp konfor geri-beslemesi: ring doluluğu filoyla ters orantılı ölçeklenir.
+  const kurplarToplam = rings.reduce((n, r) => n + (r.kurplar?.length ?? 0), 0);
+  const olcek = (hedefFilo: number) => {
+    if (kurplarToplam === 0) return 0;
+    const dol: Record<string, number> = {};
+    const k = tia.filo.mevcutPik > 0 ? tia.filo.mevcutPik / Math.max(1, hedefFilo) : 1;
+    rings.forEach((r, i) => { const d = tia.duraklar[i]; if (d) dol[r.id] = Math.max(0, d.doluluk * k); });
+    return kurpKonforAnaliz(rings, cfg, dol).filter((s) => s.seviye !== "ok").length;
+  };
+  const kurpUyariMevcut = olcek(tia.filo.mevcutPik);
+  const kurpUyariTavsiye = olcek(tavsiye);
+
+  const hedefY = Math.round(tia.filo.gerekenArac === talepArac ? isletme.dolulukHedefi * 100 : isletme.dolulukHedefi * 100);
+  const surucuAd = surucu === "talep" ? "yolcu talebi" : surucu === "frekans" ? "hedef sefer aralığı" : "sürdürülebilir kapasite tavanı";
+  const gerekce = surucu === "kapasiteTavan"
+    ? `Talep/${frekansArac > talepArac ? "sıklık" : "talep"} için ${ham} tramvay ideal olurdu ama hattın sürdürülebilir tavanı ${maksTavan}; tavsiye ${tavsiye} ile sınırlı — daha fazlası için kısa dönüş / blok-terminal iyileştirmesi gerekir.`
+    : `${tavsiye} tramvay öneriliyor (belirleyen: ${surucuAd}). Pik tepe yük ${tia.tepeYuk} yolcu/saat; ${tavsiye} araçla sefer aralığı ~${Math.round(ulasilanHeadwaySn)} s, tepe doluluk %${Math.round(ulasilanDoluluk * 100)} (hedef %${hedefY}).${kurplarToplam ? ` ${kurplarToplam} kurpun ${kurpUyariMevcut}'inde konfor uyarısı vardı; bu filoda ${kurpUyariTavsiye}'e iniyor.` : ""} Çevrim ${Math.round(cevrimSn)} s (kurplar dâhil).`;
+
+  return {
+    tavsiye, surucu, talepArac, frekansArac, maksTavan, mevcutPik: tia.filo.mevcutPik,
+    ulasilanHeadwaySn, ulasilanDoluluk, cevrimSn, tepeYuk: tia.tepeYuk, kapasite: tia.aracKapasite,
+    dolulukHedefi: isletme.dolulukHedefi, kurpAdet: kurplarToplam, kurpUyariMevcut, kurpUyariTavsiye,
+    gercekVeri: tia.gercekVeri, gerekce,
   };
 }

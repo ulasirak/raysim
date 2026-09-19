@@ -12,7 +12,7 @@ import { emblemSvg } from "@/lib/emblem";
 import { aslsLogoSvg, firmaAslsMi } from "./aslsLogo";
 import { CK } from "./chartkit";
 import { type SimConfig, type ProjeMeta, type Isletme, PARAM_META, paramGoster, birim, varsayilanIsletme, etkinArac } from "./config";
-import { tersIsletmeAnaliz } from "./tersisletme";
+import { tersIsletmeAnaliz, tavsiyeTramvaySayisi } from "./tersisletme";
 import { seferTersEntegre } from "./seferters";
 import { maksimumTren } from "./kapasite";
 import { tarifeUret } from "./tarife";
@@ -638,7 +638,16 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
         ...(tia.filo.kisaDonusTasarruf > 0 ? [[en ? "Required with short-turn" : "Kısa dönüşle gereken", `${tia.filo.gerekenAracKisaDonusle} (−${tia.filo.kisaDonusTasarruf})`]] : []),
         [en ? "Sustainable ceiling (UIC 406)" : "Sürdürülebilir tavan (UIC 406)", `${tia.maksSurdurulebilir}`],
       ], { first: true })}
-      <p class="muted" style="font-size:9.5pt;margin-top:4px">${ozetSatir}</p>`;
+      <p class="muted" style="font-size:9.5pt;margin-top:4px">${ozetSatir}</p>
+      ${(() => {
+        const tv = tavsiyeTramvaySayisi(rings, stock, isletme, cfg, "toplam");
+        if (!tv) return "";
+        const drv = tv.surucu === "talep" ? (en ? "passenger demand" : "yolcu talebi") : tv.surucu === "frekans" ? (en ? "target headway" : "hedef sefer aralığı") : (en ? "capacity ceiling" : "kapasite tavanı");
+        const kurpSat = tv.kurpAdet > 0
+          ? (en ? ` Of ${tv.kurpAdet} curves, ${tv.kurpUyariMevcut} flagged standee-comfort at the current fleet, dropping to ${tv.kurpUyariTavsiye} at the recommended count.` : ` ${tv.kurpAdet} kurptan ${tv.kurpUyariMevcut}'inde mevcut filoda ayakta-yolcu konfor uyarısı vardı; tavsiye edilen sayıda ${tv.kurpUyariTavsiye}'e iniyor.`)
+          : "";
+        return `<div class="gs" style="border-left:3px solid ${INK};padding-left:10px;margin-top:6px"><b>${en ? "Recommended tram count" : "Tavsiye Edilen Tramvay Sayısı"}: ${tv.tavsiye}</b> — ${en ? `determined by ${drv}; at this fleet the interval is ~${Math.round(tv.ulasilanHeadwaySn)} s and peak occupancy ${Math.round(tv.ulasilanDoluluk * 100)}%. Demand driver ${tv.talepArac}, frequency floor ${tv.frekansArac}, sustainable ceiling ${tv.maksTavan}.${kurpSat}` : `belirleyen ${drv}; bu filoda sefer aralığı ~${Math.round(tv.ulasilanHeadwaySn)} s, tepe doluluk %${Math.round(tv.ulasilanDoluluk * 100)}. Talep sürücüsü ${tv.talepArac}, sefer-sıklığı tabanı ${tv.frekansArac}, sürdürülebilir tavan ${tv.maksTavan}.${kurpSat}`}</div>`;
+      })()}`;
 
     // 5.6 Sefer ↔ Ters İşletme (entegre): temsili sefer aralığında araç konumları +
     // makasa yaklaşan araca bağlanan kısa dönüş önerileri (canlı sim ile aynı yörünge).

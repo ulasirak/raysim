@@ -7,7 +7,7 @@
 import { useMemo, useState } from "react";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
-import { tersIsletmeAnaliz } from "@/lib/anaray/tersisletme";
+import { tersIsletmeAnaliz, tavsiyeTramvaySayisi } from "@/lib/anaray/tersisletme";
 import { Num, SubBaslik } from "@/components/RingUI";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
@@ -53,6 +53,7 @@ export function TersIsletme() {
   const hepsi = (v: boolean) => setAcik({ girdi: v, depo: v, donus: v, makas: v, profil: v });
 
   const rapor = useMemo(() => tersIsletmeAnaliz(rings, stock, isletme, cfg, mod), [rings, stock, isletme, cfg, mod]);
+  const tavsiye = useMemo(() => tavsiyeTramvaySayisi(rings, stock, isletme, cfg, mod), [rings, stock, isletme, cfg, mod]);
 
   if (rings.length < 2 || !rapor) {
     return (
@@ -104,6 +105,45 @@ export function TersIsletme() {
         )}
         <p className="mt-1 text-xs" style={{ color: brand.muted }}>Tepe yük: <b>{rapor.tepeDurak}</b> {rapor.tepeYuk} yolcu/saat · çevrim {Math.round(rapor.cevrimSn / 60)} dk · frekans {rapor.mevcutFrekans.toFixed(1)} tren/sa · araç {rapor.aracKapasite} kişi.</p>
       </div>
+
+      {/* TAVSİYE EDİLEN TRAMVAY SAYISI — dinamik, talep + kurp konforu + tüm parametreler */}
+      {tavsiye && (
+        <div className="rounded-lg border-2 p-4" style={{ borderColor: brand.ink, background: "#F7F9FB" }}>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wide" style={{ color: brand.ink }}>Tavsiye Edilen Tramvay Sayısı</span>
+            <span className="text-xs" style={{ color: brand.muted }}>
+              belirleyen: {tavsiye.surucu === "talep" ? "yolcu talebi" : tavsiye.surucu === "frekans" ? "hedef sefer aralığı" : "kapasite tavanı"}
+            </span>
+          </div>
+          <div className="mt-1 flex items-baseline gap-3">
+            <span className="text-4xl font-bold tabular-nums" style={{ color: brand.ink }}>{tavsiye.tavsiye}</span>
+            <span className="text-sm" style={{ color: brand.inkSoft }}>
+              tramvay · aralık ~{Math.round(tavsiye.ulasilanHeadwaySn)} s · tepe doluluk %{Math.round(tavsiye.ulasilanDoluluk * 100)}
+            </span>
+          </div>
+          {/* Sürücü kırılımı */}
+          <div className="mt-2 grid grid-cols-3 gap-2 text-center text-xs">
+            <div className="rounded p-1.5" style={{ background: "#EEF6EE" }}>
+              <div className="font-bold tabular-nums" style={{ color: "#2E7D32" }}>{tavsiye.talepArac}</div>
+              <div style={{ color: brand.muted }}>talep (%{Math.round(tavsiye.dolulukHedefi * 100)} doluluk)</div>
+            </div>
+            <div className="rounded p-1.5" style={{ background: "#EEF1F6" }}>
+              <div className="font-bold tabular-nums" style={{ color: brand.ink }}>{tavsiye.frekansArac}</div>
+              <div style={{ color: brand.muted }}>sefer sıklığı (hedef {cfg.headway}s)</div>
+            </div>
+            <div className="rounded p-1.5" style={{ background: "#FBF6EA" }}>
+              <div className="font-bold tabular-nums" style={{ color: "#8a6d1a" }}>{tavsiye.maksTavan}</div>
+              <div style={{ color: brand.muted }}>sürdürülebilir tavan</div>
+            </div>
+          </div>
+          {tavsiye.kurpAdet > 0 && (
+            <p className="mt-2 text-xs" style={{ color: tavsiye.kurpUyariTavsiye < tavsiye.kurpUyariMevcut ? "#2E7D32" : brand.muted }}>
+              🛤 Kurp konforu: {tavsiye.kurpAdet} kurptan {tavsiye.kurpUyariMevcut}'inde ayakta-yolcu uyarısı vardı; bu filoda <b>{tavsiye.kurpUyariTavsiye}</b>'e iniyor{tavsiye.kurpUyariTavsiye < tavsiye.kurpUyariMevcut ? " (düşük doluluk → kurplarda konfor düzeliyor)" : ""}.
+            </p>
+          )}
+          <p className="mt-1 text-sm" style={{ color: brand.inkSoft }}>{tavsiye.gerekce}</p>
+        </div>
+      )}
 
       {/* GİRDİ — Toplam / Her İstasyon sekmeleri (çekmece) */}
       <Cekmece baslik="Talep Girdileri" acik={acik.girdi} onToggle={() => topla("girdi")}
