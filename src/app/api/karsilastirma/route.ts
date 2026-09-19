@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     muaf = yoneticiUidMi(k.uid) || (k.emailDogrulandi && yoneticiMi(k.email));
   } catch { return NextResponse.json({ hata: "Kimlik doğrulanamadı." }, { status: 401 }); }
 
-  const hiz = await hizSiniri(`kars:${uid}`, 20, 300);
+  const hiz = await hizSiniri(`kars:${uid}`, 20, 300, true); // ücretli+ağır → fail-closed
   if (!hiz.izin) return NextResponse.json({ hata: "Çok fazla istek — lütfen biraz bekleyin.", sifirlaSn: hiz.sifirlaSn }, { status: 429 });
 
   let govde: { senaryolar?: { ad?: string; rings?: DurakArasiRing[]; cfg?: Partial<SimConfig>; arac?: RollingStock; isletme?: Partial<Isletme> }[]; meta?: Partial<ProjeMeta>; altBaslik?: string };

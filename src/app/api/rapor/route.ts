@@ -43,7 +43,7 @@ export async function POST(req: Request) {
   catch { return NextResponse.json({ hata: "Kimlik doğrulanamadı." }, { status: 401 }); }
 
   // Kötüye kullanım freni: pahalı rapor üretimini kullanıcı başına sınırla.
-  const hiz = await hizSiniri(`rapor:${uid}`, 20, 300);
+  const hiz = await hizSiniri(`rapor:${uid}`, 20, 300, true); // ücretli+ağır → fail-closed
   if (!hiz.izin) {
     return NextResponse.json(
       { hata: "Çok fazla rapor isteği — lütfen biraz bekleyin.", sifirlaSn: hiz.sifirlaSn },

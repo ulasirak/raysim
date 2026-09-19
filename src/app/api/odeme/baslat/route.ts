@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   catch { return NextResponse.json({ hata: "Kimlik doğrulanamadı." }, { status: 401 }); }
 
   // Kötüye kullanım freni: ödeme başlatmayı (örhan kayıt üretir) kullanıcı başına sınırla.
-  const hiz = await hizSiniri(`odeme:${uid}`, 10, 300);
+  const hiz = await hizSiniri(`odeme:${uid}`, 10, 300, true); // ödeme → fail-closed
   if (!hiz.izin) {
     return NextResponse.json(
       { hata: "Çok fazla ödeme denemesi — lütfen biraz bekleyin.", sifirlaSn: hiz.sifirlaSn },

@@ -28,9 +28,14 @@ export interface HizSonuc {
 /**
  * `anahtar` için oran sınırını uygular ve sonucu döndürür. `anahtar` çağrı yerine
  * özgü olmalı (ör. `rapor:<uid>`) ki farklı uçlar birbirini tüketmesin.
- * Altyapı hatasında izin verir (fail-open) — sınır bir fren, güvenlik değil.
+ *
+ * `guvenliKapali` (fail-closed): PAHALI/ÜCRETLİ uçlarda `true` verilir. Firestore
+ * altyapı hatasında sayaç okunamazsa fail-OPEN (izin) bir saldırganın Firestore
+ * hatası tetikleyerek limiti aşmasına kapı açar; bu uçlarda bunun yerine KISA
+ * beklemeyle REDDEDİLİR (meşru kullanıcı ~5 s sonra yeniden dener). Ucuz/kritik
+ * olmayan uçlarda `false` (varsayılan) → geçici kesinti meşru kullanıcıyı bloklamaz.
  */
-export async function hizSiniri(anahtar: string, limit: number, pencereSn: number): Promise<HizSonuc> {
+export async function hizSiniri(anahtar: string, limit: number, pencereSn: number, guvenliKapali = false): Promise<HizSonuc> {
   const pencereMs = pencereSn * 1000;
   const simdi = Date.now();
   try {
@@ -54,8 +59,10 @@ export async function hizSiniri(anahtar: string, limit: number, pencereSn: numbe
       return { izin, kalan: Math.max(0, limit - sayac), sifirlaSn };
     });
   } catch (e) {
-    // FAIL-OPEN: sayaç okunamadı/yazılamadı → meşru kullanıcıyı bloklama.
     console.warn(`[hizSiniri] atlandı (${anahtar}):`, e instanceof Error ? e.message : e);
+    // Pahalı/ücretli uçta FAIL-CLOSED: altyapı hatasında kısa beklemeyle REDDET
+    // (saldırgan Firestore hatası tetikleyip limiti aşamaz). Aksi halde FAIL-OPEN.
+    if (guvenliKapali) return { izin: false, kalan: 0, sifirlaSn: 5 };
     return { izin: true, kalan: limit, sifirlaSn: 0 };
   }
 }

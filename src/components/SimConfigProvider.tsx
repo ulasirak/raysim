@@ -358,9 +358,11 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
     // aksi halde eski hattın verisi yenisinin üstüne giderdi.
     const jeton = yuklemeRef.current;
 
-    if (zamanlayiciRef.current) clearTimeout(zamanlayiciRef.current);
-    zamanlayiciRef.current = setTimeout(async () => {
-      if (!guncelMi(jeton)) return;
+    // Asıl kayıt (debounce ya da flush çağırır). Tek sefer koşması için bayrak.
+    let kaydedildi = false;
+    const kaydet = async () => {
+      if (kaydedildi || !guncelMi(jeton)) return;
+      kaydedildi = true;
       // Firestore kuralı 900 000 baytta reddediyor; ham "permission-denied"
       // yerine ne olduğunu söyleyen bir mesaj göster.
       const bayt = veriBoyutu(imza);
@@ -389,9 +391,27 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
         setHataMetni(e instanceof Error ? e.message : String(e));
         setDurum("hata");
       }
-    }, 1200);
+    };
 
-    return () => { if (zamanlayiciRef.current) clearTimeout(zamanlayiciRef.current); };
+    if (zamanlayiciRef.current) clearTimeout(zamanlayiciRef.current);
+    zamanlayiciRef.current = setTimeout(kaydet, 1200);
+
+    // FLUSH: sekme kapanmadan / gizlenmeden önce bekleyen değişikliği hemen yaz. 1200 ms
+    // debounce içinde kapatılırsa değişiklik sessizce kaybolurdu (M4). beforeunload'da ayrıca
+    // tarayıcı "sayfadan ayrıl?" uyarısını tetikleyip async yazmaya şans tanırız.
+    const gizlenince = () => { if (document.visibilityState === "hidden") kaydet(); };
+    const ayrilirken = (e: BeforeUnloadEvent) => {
+      if (kaydedildi || !guncelMi(jeton)) return; // zaten yazıldı/eskidi → uyarı gösterme
+      kaydet(); e.preventDefault(); e.returnValue = "";
+    };
+    document.addEventListener("visibilitychange", gizlenince);
+    window.addEventListener("beforeunload", ayrilirken);
+
+    return () => {
+      if (zamanlayiciRef.current) clearTimeout(zamanlayiciRef.current);
+      document.removeEventListener("visibilitychange", gizlenince);
+      window.removeEventListener("beforeunload", ayrilirken);
+    };
   }, [rings, cfg, meta, arac, isletme, subeler, yazilabilir, aktifId, durum]);
 
   // — yazma sarmalayıcıları —
