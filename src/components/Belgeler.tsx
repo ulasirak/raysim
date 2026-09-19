@@ -107,16 +107,29 @@ export function Belgeler() {
 
   const raporUret = async () => {
     setMesgul("rapor"); setDurum(null);
-    // Pencereyi TIKLAMA jesti içinde aç (popup engeline takılmasın); içeriği
-    // sunucudan gelince doldur.
+    // Pencereyi TIKLAMA jesti içinde aç (popup engeline takılmasın). Popup engelliyse
+    // dürüstçe uyar (aksi halde sessizce hiçbir şey açılmaz).
     const w = window.open("", "_blank", "width=920,height=1000");
+    if (!w) {
+      setDurum({ tip: "err", metin: "Açılır pencere engellendi — tarayıcı pop-up iznini bu site için açıp tekrar deneyin." });
+      setMesgul(""); return;
+    }
+    // Yükleniyor göstergesi — kullanıcı boş (about:blank) sekme görmesin.
+    try { w.document.title = "Rapor hazırlanıyor…"; w.document.body && (w.document.body.innerHTML = '<p style="font-family:system-ui,sans-serif;padding:2rem;color:#334">Rapor hazırlanıyor…</p>'); } catch { /* cross-origin değil ama garantiye al */ }
     try {
       const html = await raporAl();
-      if (!html) { w?.close(); return; }
-      if (w) { w.document.open(); w.document.write(html); w.document.close(); }
+      if (!html) { w.close(); return; }
+      // about:blank tuzağı: document.write ile büyük (gömülü SVG/font/data-URI'li) HTML
+      // bazı tarayıcılarda BOŞ render eder. Bunun yerine gerçek bir Blob URL'ine gidip
+      // sayfayı normal navigasyonla yükle → her varyasyonda güvenilir + yazdırılabilir.
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      w.location.href = url;
+      // Belge yüklendikten sonra URL'i serbest bırak (yüklenen doküman bellekte kalır).
+      window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
       setDurum({ tip: "ok", metin: "Rapor yeni sekmede açıldı — yazdırma diyalogunda “Hedef: PDF olarak kaydet”i seçin." });
     } catch (e) {
-      w?.close();
+      try { w.close(); } catch { /* yok say */ }
       setDurum({ tip: "err", metin: `Rapor açılamadı: ${e instanceof Error ? e.message : String(e)}` });
     } finally { setMesgul(""); }
   };
@@ -260,7 +273,7 @@ export function Belgeler() {
         <div className="mb-3 rounded-md border p-3" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
           <div className="mb-2 flex items-center justify-between">
             <span className="field-label">Rapor Bölümleri — dâhil etmek istediklerini seç</span>
-            <span className="text-xs" style={{ color: brand.muted }}>Taban (kapak+künye+içindekiler) {RAPOR_TABAN_KREDI} kredi</span>
+            <span className="text-xs" style={{ color: brand.muted }}>Taban {RAPOR_TABAN_KREDI} kredi — kapak + künye + içindekiler + Girdi Parametreleri + Sinyalizasyon (SG) daima dâhil</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {RAPOR_BOLUMLER.map((b) => {
