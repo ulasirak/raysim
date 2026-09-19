@@ -57,6 +57,9 @@ export interface ProjeVerisi {
   isletme?: Isletme;
   /** Şubeler / tali hatlar (dallanma, #1) — additive; yoksa hat tümüyle doğrusaldır. */
   subeler?: Sube[];
+  /** Şema sürümü — migrate çıktısına damgalanır (yeniden-migrate idempotentliği). Kayıtta
+   *  ayrıca doküman kardeş alanı `veriSurum` de yazılır (sorgu/okuma için). Bkz. migrate.ts. */
+  veriSurum?: number;
 }
 
 /** Proje listesi satırı (ağır `veri` alanı olmadan). */
@@ -158,7 +161,9 @@ export async function projeGetir(id: string): Promise<ProjeKaydi> {
   // rings dahil derin) — ham cast yerine. İdempotent; bkz. anaray/migrate.ts.
   let ham: unknown = {};
   try { ham = JSON.parse((d.veri as string) ?? "{}"); } catch { /* bozuk JSON → boş → varsayılanlar */ }
-  return { ...ozetle(snap.id, d), veri: migrate(ham) };
+  // Doküman düzeyindeki `veriSurum` (kardeş alan) migrate'e AKTARILIR — aksi halde v2
+  // göçü gelen sürümü göremez ve ivme/yavaslama'yı her okumada sıfırlar (bkz. migrate.ts).
+  return { ...ozetle(snap.id, d), veri: migrate(ham, d.veriSurum) };
 }
 
 export async function projeKaydet(id: string, veri: ProjeVerisi, ad?: string): Promise<void> {

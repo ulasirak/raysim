@@ -245,15 +245,20 @@ const SURUM_ADIMLARI: ((v: Record<string, unknown>) => Record<string, unknown>)[
  * idempotenttir; her okumada güvenle çağrılır. `arac` ve `isletme` DAİMA tanımlı,
  * `subeler` daima dizi (şubesiz projede []) döner.
  */
-export function migrate(raw: unknown): ProjeVerisi {
+export function migrate(raw: unknown, docSurum?: unknown): ProjeVerisi {
   let r = obj(raw);
   for (const adim of SURUM_ADIMLARI) r = adim(r); // ileride yıkıcı adımlar
+  // GELEN sürüm: doküman düzeyindeki `veriSurum` (projeGetir sibling alanı) ÖNCELİKLİ;
+  // yoksa verinin İÇİNE damgalanmış `veriSurum` (bu migrate'in kendi çıktısı — yeniden
+  // migrate'te idempotentlik). İkisi de yoksa 0 (eski/sürümsüz). ÖNEMLİ: `veriSurum`
+  // eskiden yalnız doküman kardeş alanıydı, `veri` JSON'unda değildi → migrate onu HİÇ
+  // göremiyordu → v2 sıfırlaması HER yüklemede çalışıp ivme/yavaslama'yı eziyordu (bug).
+  const gelenSurum = veriSurumu(docSurum ?? (r as Record<string, unknown>).veriSurum);
   // v2 göçü (anlam değişimi): eskiden EYLEMSİZ olan cfg.ivme/yavaslama artık sim'e bağlı.
   // Sürüm 2 altındaki (veya sürümsüz) kayıtlarda bu iki alanı yeni varsayılana çek →
-  // kaydedilmiş eski değerler (ör. 1,0) yeni anlamda saatleri bozmaz. İdempotent:
-  // yeniden kayıtta veriSurum=2 olur ve adım atlanır. Kullanıcının v2 sonrası bilerek
-  // girdiği değerler korunur (doküman veriSurum=2 taşır).
-  if (veriSurumu(r.veriSurum) < 2 && isObj(r.cfg)) {
+  // kaydedilmiş eski dekoratif değerler yeni anlamda saatleri bozmaz. v2 SONRASI bilerek
+  // girilen değerler KORUNUR (gelenSurum ≥ 2).
+  if (gelenSurum < 2 && isObj(r.cfg)) {
     (r.cfg as Record<string, unknown>).ivme = varsayilanConfig.ivme;
     (r.cfg as Record<string, unknown>).yavaslama = varsayilanConfig.yavaslama;
   }
@@ -264,6 +269,9 @@ export function migrate(raw: unknown): ProjeVerisi {
     arac: normArac(r.arac),
     isletme: normIsletme(r.isletme),
     subeler: arr(r.subeler).map(normSube),
+    // Çıktıya GÜNCEL sürümü damgala → veriUygula(migrate(...)) yeniden migrate ederken
+    // sürümü verinin içinden okur; sıfırlama yalnız gerçekten eski veride bir kez koşar.
+    veriSurum: VERI_SURUM,
   };
 }
 

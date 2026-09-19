@@ -10,12 +10,16 @@ import { hizSiniri } from "@/lib/rateLimit";
 import { KREDI_BEDELI } from "@/lib/cuzdan";
 import { yoneticiMi, yoneticiUidMi } from "@/lib/anaray/yetki";
 import { karsilastirmaHTML, type KarsSenaryo } from "@/lib/anaray/karsilastirma";
-import { varsayilanArac } from "@/lib/anaray/vehicles";
-import { varsayilanConfig, varsayilanMeta, varsayilanIsletme, type SimConfig, type ProjeMeta, type Isletme } from "@/lib/anaray/config";
+import { saglamArac, saglamCfg, saglamIsletme } from "@/lib/anaray/saglamGirdi";
+import { varsayilanMeta, type SimConfig, type ProjeMeta, type Isletme } from "@/lib/anaray/config";
 import type { DurakArasiRing } from "@/lib/anaray/ring";
 import type { RollingStock } from "@/lib/anaray/types";
 
 export const runtime = "nodejs";
+// Patolojik istemci girdisine karşı sert üst sınır: tek rapor isteği fonksiyon
+// penceresini (varsayılan 300 s) tüketemesin (DoS freni; motor içi iterasyon
+// kapları + saglamGirdi kıskacı ile birlikte savunma katmanı).
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   if (!isAdminConfigured()) return NextResponse.json({ hata: "Sunucu yapılandırılmadı." }, { status: 503 });
@@ -40,9 +44,9 @@ export async function POST(req: Request) {
   const senaryolar: KarsSenaryo[] = gelen.map((s, i) => ({
     ad: typeof s.ad === "string" && s.ad ? s.ad.slice(0, 60) : `Senaryo ${i + 1}`,
     rings: Array.isArray(s.rings) ? s.rings : [],
-    cfg: { ...varsayilanConfig, ...(s.cfg ?? {}) },
+    cfg: saglamCfg(s.cfg),
     stock: saglamArac(s.arac),
-    isletme: { ...varsayilanIsletme, ...(s.isletme ?? {}) },
+    isletme: saglamIsletme(s.isletme),
   }));
   if (senaryolar.some((s) => s.rings.length > 1000)) {
     return NextResponse.json({ hata: "Hat verisi çok büyük (senaryo başına en çok 1000 ring)." }, { status: 413 });
@@ -76,27 +80,4 @@ export async function POST(req: Request) {
   }
 
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
-}
-
-/** İstemciden gelen araç verisini güvenli aralığa kıskaçlar (bkz. /api/rapor). */
-function saglamArac(a: Partial<RollingStock> | undefined): RollingStock {
-  const d = varsayilanArac;
-  const n = (v: unknown, def: number, lo: number, hi: number) => {
-    const x = Number(v);
-    return Number.isFinite(x) ? Math.min(hi, Math.max(lo, x)) : def;
-  };
-  return {
-    id: typeof a?.id === "string" ? a.id : d.id,
-    name: typeof a?.name === "string" ? a.name : d.name,
-    mass: n(a?.mass, d.mass, 1_000, 2_000_000),
-    rotatingMassFactor: n(a?.rotatingMassFactor, d.rotatingMassFactor, 0, 0.5),
-    length: n(a?.length, d.length, 1, 1_000),
-    maxSpeed: n(a?.maxSpeed, d.maxSpeed, 1, 150),
-    startingTractiveEffort: n(a?.startingTractiveEffort, d.startingTractiveEffort, 1, 5_000_000),
-    power: n(a?.power, d.power, 1_000, 50_000_000),
-    maxBraking: n(a?.maxBraking, d.maxBraking, 0.1, 5),
-    davisA: n(a?.davisA, d.davisA, 0, 1e7),
-    davisB: n(a?.davisB, d.davisB, 0, 1e6),
-    davisC: n(a?.davisC, d.davisC, 0, 1e5),
-  };
 }

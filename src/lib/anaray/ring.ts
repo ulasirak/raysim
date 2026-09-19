@@ -244,20 +244,24 @@ function segmentle(L: number, base: number, kisitlar: Kisit[], egim: number): Tr
 
 /** Bir ringi verilen mod (worst/best/nominal) için düz Line'a çevirir. */
 export function ringToLine(ring: DurakArasiRing, mode: Mode, cfg: SimConfig = BELGE): Line {
+  // NaN/0/negatif-güvenli pozitif: x geçerli+pozitifse x, değilse varsayılan. İstemciden
+  // gelen bozuk hız/genişlik (0 → sonsuz stall; NaN → rapora NaN sızması) fail-safe'lenir.
+  const poz = (x: number, def: number) => (Number.isFinite(x) && x > 0 ? x : def);
   const L = ringUzunluk(ring, mode);
-  const base = ring.vmax > 0 ? ring.vmax : cfg.vSahasal;
+  // Segment tabanı ASLA 0/NaN olmamalı: 0-hız bandı loopYorunge'ü sonsuza kilitler (C1).
+  const base = poz(ring.vmax, poz(cfg.vSahasal, 8.33)); // varsayılan ~30 km/h taban
   const scale = ring.uzunluk > 0 ? L / ring.uzunluk : 1;
-  const W = cfg.kisitGenisligi;
+  const W = poz(cfg.kisitGenisligi, 20); // kısıt bölge genişliği (m) — NaN → 20
 
   const kisitlar: Kisit[] = [];
   // best-case: yakın mesafe köşesi — makas/geçit fiziği yine mevcut (kaldırılmaz).
   for (const m of ring.makaslar) {
     const c = clamp(m.konum * scale, 0, L);
-    kisitlar.push({ start: Math.max(0, c - W / 2), end: Math.min(L, c + W / 2), vmax: m.gecisHizi });
+    kisitlar.push({ start: Math.max(0, c - W / 2), end: Math.min(L, c + W / 2), vmax: poz(m.gecisHizi, 0.1) });
   }
   for (const h of ring.hemzeminler) {
     const c = clamp(h.konum * scale, 0, L);
-    kisitlar.push({ start: Math.max(0, c - W / 2), end: Math.min(L, c + W / 2), vmax: h.hiz });
+    kisitlar.push({ start: Math.max(0, c - W / 2), end: Math.min(L, c + W / 2), vmax: poz(h.hiz, 0.1) });
   }
   // Yatay kurplar: fiziksel geometri → TÜM modlarda (worst/best/nominal) uygulanır.
   // Bölge genişliği kurpun KENDİ uzunluğu (kisitGenisligi değil).

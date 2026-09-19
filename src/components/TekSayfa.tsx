@@ -23,6 +23,7 @@ import { SistemMerkezi } from "@/components/SistemMerkezi";
 import { Belgeler } from "@/components/Belgeler";
 import { Karsilastirma } from "@/components/Karsilastirma";
 import { SaltOkunurKalkan } from "@/components/SaltOkunurKalkan";
+import { HataSiniri } from "@/components/HataSiniri";
 import { brand } from "@/lib/anaray/brand";
 
 /** Bölüm ankorları — AppShell navigasyonu ve scroll-spy ile ORTAK kaynak. */
@@ -75,7 +76,8 @@ export function TekSayfa() {
                 ? { contentVisibility: "auto", containIntrinsicSize: "auto 1400px" }
                 : undefined}
             >
-              {b.el}
+              {/* Her bölüm YALITILIR: biri çökse diğerleri + kaydetme çalışmaya devam eder. */}
+              <HataSiniri ad={b.faz?.ad ?? b.slug}>{b.el}</HataSiniri>
             </section>
           </div>
         ))}

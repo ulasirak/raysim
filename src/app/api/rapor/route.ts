@@ -15,12 +15,16 @@ import { hizSiniri } from "@/lib/rateLimit";
 import { raporKredi, RAPOR_BOLUMLER, type RaporSecim } from "@/lib/raporFiyat";
 import { yoneticiMi, yoneticiUidMi } from "@/lib/anaray/yetki";
 import { raporHTML, type RaporDil } from "@/lib/anaray/rapor";
-import { varsayilanArac } from "@/lib/anaray/vehicles";
-import { varsayilanConfig, varsayilanMeta, varsayilanIsletme, type SimConfig, type ProjeMeta, type Isletme } from "@/lib/anaray/config";
+import { saglamArac, saglamCfg, saglamIsletme } from "@/lib/anaray/saglamGirdi";
+import { varsayilanMeta, type SimConfig, type ProjeMeta, type Isletme } from "@/lib/anaray/config";
 import type { DurakArasiRing, Sube } from "@/lib/anaray/ring";
 import type { RollingStock } from "@/lib/anaray/types";
 
 export const runtime = "nodejs";
+// Patolojik istemci girdisine karşı sert üst sınır: tek rapor isteği fonksiyon
+// penceresini (varsayılan 300 s) tüketemesin (DoS freni; motor içi iterasyon
+// kapları + saglamGirdi kıskacı ile birlikte savunma katmanı).
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   if (!isAdminConfigured()) {
@@ -59,7 +63,10 @@ export async function POST(req: Request) {
   if (rings.length > 1000) {
     return NextResponse.json({ hata: "Hat verisi çok büyük (en çok 1000 ring)." }, { status: 413 });
   }
-  const cfg: SimConfig = { ...varsayilanConfig, ...(govde.veri?.cfg ?? {}) };
+  // cfg İSTEMCİDEN gelir → sayısal alanları güvenli aralığa kıskaçla (araç gibi). Bozuk/
+  // NaN/negatif cfg değeri simülasyonu kilitleyebilir (0-hız stall) ya da rapora NaN/negatif
+  // sayı yazabilir. Fail-safe: her sayısal alan finite'e, hızlar/genişlikler > 0'a çekilir.
+  const cfg: SimConfig = saglamCfg(govde.veri?.cfg);
   const meta: ProjeMeta = { ...varsayilanMeta, ...(govde.veri?.meta ?? {}) };
   // Araç girdisi İSTEMCİDEN gelir → güvenli aralığa kıskaçla: bozuk/negatif/NaN
   // alanlar simülasyonu kilitleyebilir (stall) veya rapora NaN yazabilir. Fail-safe.
@@ -72,7 +79,7 @@ export async function POST(req: Request) {
   // İşletme (talep/filo/doluluk girdileri) → ters işletme & talep analizi. Varsayılandan
   // başla, istemci alanlarını üstüne yaz (tersIsletmeAnaliz içi kıskaçlar/guard'lar bozuk
   // sayıyı zaten nötrler).
-  const isletme: Isletme = { ...varsayilanIsletme, ...(govde.veri?.isletme ?? {}) };
+  const isletme: Isletme = saglamIsletme(govde.veri?.isletme);
   // QR DEEP-LINK: istemcinin ürettiği bu projenin salt-okunur paylaşım linki
   // (<site>/?proje=<id>). Yalnız güvenli https + makul uzunluk kabul edilir; aksi
   // halde boş bırakılır (rapor QR'ı ana sayfaya düşer). İçerik yalnız QR'a kodlanır.
@@ -124,31 +131,4 @@ export async function POST(req: Request) {
 
   // 3) HTML'i döndür (istemci yeni sekmede açıp yazdırır).
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
-}
-
-/**
- * İstemciden gelen araç verisini GÜVENLİ aralığa kıskaçlar. Varsayılandan başlar,
- * her sayısal alanı `Number.isFinite` + makul alt/üst sınırla değiştirir. Böylece
- * bozuk/negatif/NaN girdi ne simülasyonu kilitler ne de rapora NaN yazar.
- */
-function saglamArac(a: Partial<RollingStock> | undefined): RollingStock {
-  const d = varsayilanArac;
-  const n = (v: unknown, def: number, lo: number, hi: number) => {
-    const x = Number(v);
-    return Number.isFinite(x) ? Math.min(hi, Math.max(lo, x)) : def;
-  };
-  return {
-    id: typeof a?.id === "string" ? a.id : d.id,
-    name: typeof a?.name === "string" ? a.name : d.name,
-    mass: n(a?.mass, d.mass, 1_000, 2_000_000),                       // kg
-    rotatingMassFactor: n(a?.rotatingMassFactor, d.rotatingMassFactor, 0, 0.5),
-    length: n(a?.length, d.length, 1, 1_000),                        // m
-    maxSpeed: n(a?.maxSpeed, d.maxSpeed, 1, 150),                    // m/s (taban 1 → stall yok)
-    startingTractiveEffort: n(a?.startingTractiveEffort, d.startingTractiveEffort, 1, 5_000_000), // N
-    power: n(a?.power, d.power, 1_000, 50_000_000),                  // W
-    maxBraking: n(a?.maxBraking, d.maxBraking, 0.1, 5),              // m/s²
-    davisA: n(a?.davisA, d.davisA, 0, 1e7),
-    davisB: n(a?.davisB, d.davisB, 0, 1e6),
-    davisC: n(a?.davisC, d.davisC, 0, 1e5),
-  };
 }

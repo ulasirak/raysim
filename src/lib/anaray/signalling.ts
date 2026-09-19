@@ -262,11 +262,15 @@ export function simulateSignalled(
   const maxDelay = Math.max(0, ...trains.map((t) => t.delay));
   const tMax = Math.max(...trains.map((t) => t.arr));
 
-  // gecikmesiz en sık aralık (kaba arama, 3 tren)
-  let minHeadway = Math.max(15, Math.round(baseTime));
-  for (let h = 15; h <= baseTime; h += 15) {
-    const r = runTrains(line, stock, bounds, h, 3, dt, baseTime);
-    const d = r[2].arr - (2 * h + baseTime);
+  // gecikmesiz en sık aralık (kaba arama, 3 tren). ARAMA TAVANI sınırlı: gerçek headway'ler
+  // ≤ 3600 s; baseTime patolojik büyükse (yavaş/bozuk hat) döngü baseTime/15 = milyarlarca
+  // adıma çıkıp hang yapardı → ust = min(baseTime, 3600) ile ≤ 240 iterasyona kısıtla (C2).
+  const bt0 = Number.isFinite(baseTime) && baseTime > 0 ? baseTime : 3600;
+  let minHeadway = Math.max(15, Math.round(bt0));
+  const aramaUst = Math.min(bt0, 3600);
+  for (let h = 15; h <= aramaUst; h += 15) {
+    const r = runTrains(line, stock, bounds, h, 3, dt, bt0);
+    const d = r[2].arr - (2 * h + bt0);
     if (d <= 2) { minHeadway = h; break; }
   }
 
@@ -361,10 +365,21 @@ export function loopYorunge(
   let s = 0, v = 0, t = 0;
   let ni = 0; // sonraki durak indeksi
   const HARD = 2_000_000; let it = 0;
+  let stall = 0; // ardışık ilerlemesiz adım sayacı (CANLILIK koruması — sonsuz dönmeyi engeller)
+  const DWELL_ADIM = 20_000; // tek duruşta en çok örnek (aşırı dwell → dev dizi/CPU koruması)
 
   const push = (durum: LoopDurum, ad: string) => {
     ornekler.push({ t, s, durum, ad });
     dokum[durum] += dt;
+  };
+  // Durağa varış + dwell (canlılık zorlamasında da kullanılır) — dwell adımı sınırlı.
+  const durVeDwell = (d: (typeof duraklar)[number]) => {
+    s = d.pos; v = 0;
+    const durum: LoopDurum = d.tur === "ara" ? "dwell" : "donus";
+    const ad = d.tur === "ara" ? "istasyon duruşu (yolcu)" : d.tur === "son" ? "bitiş terminali dönüşü (turnback)" : "başlangıç terminali dönüşü (turnback)";
+    let kalan = d.dwell, dwellIt = 0;
+    while (kalan > 1e-6 && dwellIt++ < DWELL_ADIM && it++ < HARD) { push(durum, ad); kalan -= dt; t += dt; }
+    ni++; stall = 0;
   };
 
   while (ni < duraklar.length && it++ < HARD) {
@@ -375,15 +390,14 @@ export function loopYorunge(
     const vNew = step.vNew;
     const sNew = s + ((v + vNew) / 2) * dt;
     if (sNew >= d.pos - 1e-6) {
-      // vardı → dur + dwell
-      s = d.pos; v = 0;
-      const durum: LoopDurum = d.tur === "ara" ? "dwell" : "donus";
-      const ad = d.tur === "ara" ? "istasyon duruşu (yolcu)" : d.tur === "son" ? "bitiş terminali dönüşü (turnback)" : "başlangıç terminali dönüşü (turnback)";
-      let kalan = d.dwell;
-      while (kalan > 1e-6 && it++ < HARD) { push(durum, ad); kalan -= dt; t += dt; }
-      ni++;
+      durVeDwell(d); // vardı → dur + dwell
       continue;
     }
+    // CANLILIK KORUMASI: ilerleme ihmal edilebilirse (0-hız bandı / stall) say; eşik aşılınca
+    // treni bir sonraki durağa ZORLA ilerlet → 2M iterasyonluk hang + dev dizi engellenir (C1).
+    if (sNew - s < 1e-4) {
+      if (++stall > 4000) { durVeDwell(d); continue; }
+    } else stall = 0;
     // Hareket — durum sınıflandır
     let durum: LoopDurum; let ad: string;
     if (vNew > v + 0.02) { durum = "hizlanma"; ad = "hızlanıyor (kalkış/ivme)"; }
@@ -417,7 +431,7 @@ export function reverseRoute(route: Route): Route {
 // sonraki trenlere nasıl yayıldığı ölçülür.
 
 function expRand(mean: number): number {
-  if (mean <= 0) return 0;
+  if (!(mean > 0)) return 0; // NaN/≤0 → 0 ('NaN <= 0' false olduğundan '<= 0' NaN'i kaçırırdı)
   return -mean * Math.log(1 - Math.random());
 }
 
