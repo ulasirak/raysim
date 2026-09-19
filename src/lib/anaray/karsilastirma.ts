@@ -32,7 +32,7 @@ export function metrikHesapla(ad: string, ringsHam: DurakArasiRing[], stock: Rol
   const isletmeKap = teorikKap * (m.dolulukTavani || 1);
   const uic = (m.hMin > 0 && cfg.headway > 0) ? (m.hMin / cfg.headway) * 100 : 0;
   const siganTren = m.gecerli ? Math.ceil(m.cevrimSuresi / Math.max(1, cfg.headway)) : 0;
-  const tia = rings.length >= 2 ? tersIsletmeAnaliz(rings, stock, isletme, cfg, "toplam") : null;
+  const tia = rings.length >= 2 ? tersIsletmeAnaliz(rings, stock, isletme, cfg) : null;
   return {
     ad, gecerli: m.gecerli,
     uzunlukKm: line ? line.length / 1000 : 0,

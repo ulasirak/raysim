@@ -159,7 +159,7 @@ export function seferTersEntegre(
 
   // 2) Talep analizi → makas yük dengesizlikleri (kısa dönüş adayları)
   const yolcuVar = !!isletme.istasyonYolcu && Object.keys(isletme.istasyonYolcu).length > 0;
-  const tia = tersIsletmeAnaliz(rings, stock, isletme, cfg, yolcuVar ? "istasyon" : "toplam");
+  const tia = tersIsletmeAnaliz(rings, stock, isletme, cfg);
   if (!tia) return { gecerli: true, headwaySn, filo, cevrimSn: periyot, L, anSn: an, araclar, cizilenArac: cizFilo, aracKirpildi, oneriler: [], makaslar: [], filoIhtiyac: null, bilgi: ["Talep analizi üretilemedi (yetersiz veri)."] };
 
   // 3) Her kısa-dönüş adayı makas için: makasa GİDİŞ yönünde en yakın (arkadaki) aracı bul,

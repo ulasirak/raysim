@@ -176,7 +176,7 @@ function StudioIc() {
   const ulasilanHeadwaySn = maks.gecerli ? maks.cevrimSuresi / Math.max(1, filo) : hedefHeadwaySn;
   // Yolcu (talep) verisi girili mi? Girilmişse öneri/tıkanma ona göre; değilse pop-up.
   const yolcuVeriVar = !!isletme.istasyonYolcu && Object.keys(isletme.istasyonYolcu).length > 0;
-  const tersRapor = useMemo(() => tersIsletmeAnaliz(rings, stock, isletme, cfg, yolcuVeriVar ? "istasyon" : "toplam"), [rings, stock, isletme, cfg, yolcuVeriVar]);
+  const tersRapor = useMemo(() => tersIsletmeAnaliz(rings, stock, isletme, cfg), [rings, stock, isletme, cfg]);
   const talepFilosu = yolcuVeriVar && tersRapor ? tersRapor.filo.gerekenArac : 0;
   // Önerilen tramvay = ⌈RTT ÷ hedef headway⌉ (kural); yolcu girildiyse talep de artırabilir.
   const oneriTramvay = maks.gecerli ? Math.max(1, Math.ceil(maks.cevrimSuresi / hedefHeadwaySn), talepFilosu) : 0;

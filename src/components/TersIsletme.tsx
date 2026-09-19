@@ -5,6 +5,7 @@
 // iniş/biniş → kümülatif yük). Sonuçlar çekmece (drawer) yapısında — az yer kaplar.
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import { tersIsletmeAnaliz, tavsiyeTramvaySayisi } from "@/lib/anaray/tersisletme";
@@ -51,9 +52,11 @@ export function TersIsletme() {
   const [acik, setAcik] = useState<Record<DrawerId, boolean>>({ girdi: true, depo: false, donus: false, makas: false, profil: false });
   const topla = (id: DrawerId) => setAcik((a) => ({ ...a, [id]: !a[id] }));
   const hepsi = (v: boolean) => setAcik({ girdi: v, depo: v, donus: v, makas: v, profil: v });
+  // Tavsiye kartından "etkileyen girdi"ye yönlendirme: talep çekmecesini aç + kaydır.
+  const acGirdi = () => { setAcik((a) => ({ ...a, girdi: true })); requestAnimationFrame(() => document.getElementById("talep-girdileri")?.scrollIntoView({ behavior: "smooth", block: "start" })); };
 
-  const rapor = useMemo(() => tersIsletmeAnaliz(rings, stock, isletme, cfg, mod), [rings, stock, isletme, cfg, mod]);
-  const tavsiye = useMemo(() => tavsiyeTramvaySayisi(rings, stock, isletme, cfg, mod), [rings, stock, isletme, cfg, mod]);
+  const rapor = useMemo(() => tersIsletmeAnaliz(rings, stock, isletme, cfg), [rings, stock, isletme, cfg]);
+  const tavsiye = useMemo(() => tavsiyeTramvaySayisi(rings, stock, isletme, cfg), [rings, stock, isletme, cfg]);
 
   if (rings.length < 2 || !rapor) {
     return (
@@ -68,6 +71,8 @@ export function TersIsletme() {
   const renk = FILO_RENK[f.oneri];
   const pct = (x: number) => `%${Math.round(x * 100)}`;
   const hedef = isletme.dolulukHedefi || 0.85;
+  const gercekVar = rapor.gercekVeri; // durak-başı gerçek iniş/biniş girildi mi
+  const toplamBinen = rapor.duraklar.reduce((s, d) => s + d.binen, 0); // girili/etkin toplam biniş (yolcu/sa)
 
   const setIstYolcu = (ad: string, alan: "binen" | "inen", v: number) => {
     const cur = isletme.istasyonYolcu ?? {};
@@ -142,12 +147,23 @@ export function TersIsletme() {
             </p>
           )}
           <p className="mt-1 text-sm" style={{ color: brand.inkSoft }}>{tavsiye.gerekce}</p>
+          {/* Etkileyen girdilere yönlendirme */}
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t pt-2 text-[0.72rem]" style={{ borderColor: brand.border }}>
+            <span style={{ color: brand.muted }}>Etkileyen girdiler →</span>
+            <button type="button" onClick={acGirdi} className="rounded border px-2 py-0.5 font-medium" style={{ borderColor: brand.border, color: brand.ink }}
+              title="Durak yolcu talebi + araç kapasitesi + doluluk hedefi (bu sayfada)">📊 Talep · kapasite · doluluk</button>
+            <Link href="/ringler" className="rounded border px-2 py-0.5 font-medium" style={{ borderColor: brand.border, color: brand.ink }}
+              title="Kurplar (çevrimi ve konforu etkiler) + sahasal hız — Ringler">🛤 Kurplar & hız</Link>
+            <Link href="/sistem" className="rounded border px-2 py-0.5 font-medium" style={{ borderColor: brand.border, color: brand.ink }}
+              title="Hedef sefer aralığı (headway) + yanal ivme/konfor tavanı + ivme/fren — Sistem Merkezi">⚙ Hedef aralık · konfor</Link>
+          </div>
         </div>
       )}
 
       {/* GİRDİ — Toplam / Her İstasyon sekmeleri (çekmece) */}
+      <div id="talep-girdileri" className="scroll-mt-24">
       <Cekmece baslik="Talep Girdileri" acik={acik.girdi} onToggle={() => topla("girdi")}
-        ozet={<span>{mod === "istasyon" ? "her istasyon" : "toplam"}</span>}>
+        ozet={<span>{mod === "istasyon" ? "her istasyon" : "toplam"} · {toplamBinen}/sa</span>}>
         <div className="mb-2 flex gap-1">
           {([["toplam", "Toplam Talep"], ["istasyon", "Her İstasyon"]] as const).map(([m, ad]) => (
             <button key={m} type="button" onClick={() => setMod(m)}
@@ -157,22 +173,21 @@ export function TersIsletme() {
             </button>
           ))}
         </div>
-        {/* Ortak kapasite girdileri */}
+        {/* ORTAK GİRDİLER — her iki görünümde de aynı; görünüm seçimi SONUCU DEĞİŞTİRMEZ */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {mod === "toplam" && (
-            <div><Num label="Pik saat yolcu" suffix="yolcu/sa" step={100} value={isletme.pikYolcuSaat}
-              onChange={(v) => patchIsletme({ pikYolcuSaat: Math.max(0, Math.round(v)) })} /><Kucuk>pik saatte toplam biniş (tek yön talep tabanı)</Kucuk></div>
-          )}
+          <div><Num label="Pik saat yolcu (toplam)" suffix="yolcu/sa" step={100} value={isletme.pikYolcuSaat}
+            onChange={(v) => patchIsletme({ pikYolcuSaat: Math.max(0, Math.round(v)) })} /><Kucuk>toplam talep tabanı — rolden duraklara dağıtılır{gercekVar ? ` · girili toplam ≈ ${toplamBinen} biniş/sa` : ""}</Kucuk></div>
           <div><Num label="Araç yolcu kapasitesi" suffix="kişi" step={10} value={isletme.aracYolcuKapasite}
             onChange={(v) => patchIsletme({ aracYolcuKapasite: Math.max(1, Math.round(v)) })} /><Kucuk>tıkanmadan taşınan (Škoda 28T ~220 / 364 crush)</Kucuk></div>
           <div><Num label="Doluluk hedefi" suffix="%" step={5} value={Math.round(hedef * 100)}
             onChange={(v) => patchIsletme({ dolulukHedefi: Math.min(1, Math.max(0.3, v / 100)) })} /><Kucuk>bu oranın üstü "tıkanma"</Kucuk></div>
         </div>
-        {mod === "toplam" ? (
-          <p className="mt-2 text-xs" style={{ color: brand.muted }}>ℹ️ Talep istasyon rolünden tahmin (hastane/aktarma/stadyum/merkez = yoğun). Durak-başı gerçek veriyle çalışmak için "Her İstasyon" sekmesine geç.</p>
-        ) : (
+        <p className="mt-2 text-xs" style={{ color: brand.muted }}>
+          ℹ️ <b>İki görünüm de AYNI modeli besler</b> — sekme değiştirmek sonucu değiştirmez. <b>Toplam Talep</b>: tek sayı girersin, rolden (hastane/aktarma/stadyum/merkez=yoğun) duraklara dağıtılır. <b>Her İstasyon</b>: durak-başı gerçek iniş/biniş girersin (girilenler tahmini EZER). Girdiğin durak-başı değerler her iki görünümde de geçerlidir.
+        </p>
+        {mod === "istasyon" && (
           <div className="mt-2">
-            <p className="mb-1 text-xs" style={{ color: brand.muted }}>Her durakta pik saat iniş/biniş (yolcu/saat). Tablo rolden tahminle DOLU gelir — düzenlediğin değer kalıcı kaydolur. Yük <b>kümülatif</b> hesaplanır (Σbinen − Σinen). Dwell/kapasiteyi etkilemez.</p>
+            <p className="mb-1 text-xs" style={{ color: brand.muted }}>Her durakta pik saat iniş/biniş (yolcu/saat). Tablo, üstteki toplamdan rol-tahminiyle DOLU gelir — düzenlediğin değer kalıcı kaydolur ve tahmini ezer. Yük <b>kümülatif</b> hesaplanır (Σbinen − Σinen). Dwell/kapasiteyi etkilemez. {gercekVar ? <>Girili toplam biniş: <b>{toplamBinen}/sa</b>.</> : "Henüz elle giriş yok — hepsi tahmin."}</p>
             <div className="overflow-x-auto">
               <table className="w-full text-xs" style={{ color: brand.inkSoft }}>
                 <thead><tr style={{ color: brand.muted }}>
@@ -198,6 +213,7 @@ export function TersIsletme() {
           </div>
         )}
       </Cekmece>
+      </div>
 
       {/* DEPO DAĞILIMI */}
       <Cekmece baslik="Depo Çıkışı — Tek Depodan İki Yön" acik={acik.depo} onToggle={() => topla("depo")}

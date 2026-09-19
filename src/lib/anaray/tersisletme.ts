@@ -155,7 +155,6 @@ export function tersIsletmeAnaliz(
   stock: RollingStock,
   isletme: Isletme,
   cfg: SimConfig,
-  mod: "toplam" | "istasyon" = "toplam",
 ): TersIsletmeRapor | null {
   stock = etkinArac(stock, cfg); // config dinamik tavanları (ivme/servis freni) araca bağlı
   const duraklar = ringDuraklari(rings);
@@ -205,32 +204,20 @@ export function tersIsletmeAnaliz(
     });
   }
 
-  // Rol ağırlıkları + OD-lite tahmini (her modda hesaplanır — istasyon modunda
-  // girilmemiş durakların VARSAYILANI bu tahmindir).
+  // Rol ağırlıkları + OD-lite tahmini (girilmemiş durakların VARSAYILANI bu tahmindir;
+  // toplam talep pikYolcuSaat'tan role göre dağıtılır).
   const wGidis = duraklar.map((d) => isletme.talepAgirliklari?.[d.ad] ?? durakAgirlik(d.ad));
   const estGidis = yonYuk(wGidis, B);
-  const estDonusR = yonYuk([...wGidis].reverse(), B);
-  const estDonusYuk = [...estDonusR.yuk].reverse();
-  const estDonusBinen = [...estDonusR.binen].reverse();
-  const estDonusInen = [...estDonusR.inen].reverse();
 
-  // Kullanılan binen/inen ve iki yön yük profili — moda göre.
-  let binenArr: number[], inenArr: number[], yukGidisArr: number[], yukDonusArr: number[];
-  const gercekVeri = mod === "istasyon";
-  if (mod === "istasyon") {
-    // Durak-başı girilen (yoksa tahminle dolu) iniş/biniş → KÜMÜLATİF yük.
-    binenArr = duraklar.map((d, i) => isletme.istasyonYolcu?.[d.ad]?.binen ?? Math.round(estGidis.binen[i]));
-    inenArr = duraklar.map((d, i) => isletme.istasyonYolcu?.[d.ad]?.inen ?? Math.round(estGidis.inen[i]));
-    yukGidisArr = kumulatifYuk(binenArr, inenArr);
-    // Dönüş yönü: binen↔inen yer değiştirir (gidişte inen, dönüşte biner), ters sıra.
-    yukDonusArr = [...kumulatifYuk([...inenArr].reverse(), [...binenArr].reverse())].reverse();
-  } else {
-    // Toplam: rol-tahmini OD yükü (iki yön).
-    yukGidisArr = estGidis.yuk;
-    yukDonusArr = estDonusYuk;
-    binenArr = duraklar.map((_, i) => Math.round(estGidis.binen[i] + estDonusBinen[i]));
-    inenArr = duraklar.map((_, i) => Math.round(estGidis.inen[i] + estDonusInen[i]));
-  }
+  // TEK ORTAK MODEL — "Toplam" ve "Her İstasyon" görünümleri AYNI modeli besler; görünüm
+  // seçimi SONUCU DEĞİŞTİRMEZ (yalnız düzenleme/gösterim farkı). Her durakta binen/inen =
+  // kullanıcının girdiği (istasyonYolcu) VARSA o, yoksa toplamdan rol-tahmini. Yük her iki
+  // yönde KÜMÜLATİF (Σbinen−Σinen); dönüş = gidişin aynası. gercekVeri = gerçek girdi var mı.
+  const gercekVeri = !!isletme.istasyonYolcu && Object.keys(isletme.istasyonYolcu).length > 0;
+  const binenArr = duraklar.map((d, i) => isletme.istasyonYolcu?.[d.ad]?.binen ?? Math.round(estGidis.binen[i]));
+  const inenArr = duraklar.map((d, i) => isletme.istasyonYolcu?.[d.ad]?.inen ?? Math.round(estGidis.inen[i]));
+  const yukGidisArr = kumulatifYuk(binenArr, inenArr);
+  const yukDonusArr = [...kumulatifYuk([...inenArr].reverse(), [...binenArr].reverse())].reverse();
 
   const arzKisiSaat = mevcutFrekans * C; // kişi/saat (bir yön)
   const duraklarT: DurakTalep[] = duraklar.map((d, i) => {
@@ -392,9 +379,8 @@ export interface TavsiyeFilo {
  *  düşük doluluk → kalabalık kurplarda ayakta yolcu konforu düzelir. */
 export function tavsiyeTramvaySayisi(
   rings: DurakArasiRing[], stock: RollingStock, isletme: Isletme, cfg: SimConfig,
-  mod: "toplam" | "istasyon" = "toplam",
 ): TavsiyeFilo | null {
-  const tia = tersIsletmeAnaliz(rings, stock, isletme, cfg, mod);
+  const tia = tersIsletmeAnaliz(rings, stock, isletme, cfg);
   if (!tia) return null;
   const cevrimSn = Math.max(1, tia.cevrimSn);
   const hedefHeadway = Math.max(1, cfg.headway || 240);

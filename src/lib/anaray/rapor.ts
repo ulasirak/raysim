@@ -521,7 +521,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   // "Siz şu girdiyi verdiniz → bu sonuç çıktı" biçiminde; iç formül/algoritma (sır) açığa çıkmaz.
   // MOD = "toplam" — Ters İşletme sayfasının VARSAYILAN modu (birebir aynı çıktı için).
   // Böylece rapordaki filo/öneri/tepe yük değerleri canlı Ters İşletme ekranıyla eşleşir.
-  const tia = rings.length >= 2 ? tersIsletmeAnaliz(rings, stock, isletme, cfg, "toplam") : null;
+  const tia = rings.length >= 2 ? tersIsletmeAnaliz(rings, stock, isletme, cfg) : null;
 
   // ---- 2.2 Kurp geometrisi & yanal konfor (doluluğa duyarlı öneriler) ----
   const dolulukByRing: Record<string, number> = {};
@@ -640,7 +640,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
       ], { first: true })}
       <p class="muted" style="font-size:9.5pt;margin-top:4px">${ozetSatir}</p>
       ${(() => {
-        const tv = tavsiyeTramvaySayisi(rings, stock, isletme, cfg, "toplam");
+        const tv = tavsiyeTramvaySayisi(rings, stock, isletme, cfg);
         if (!tv) return "";
         const drv = tv.surucu === "talep" ? (en ? "passenger demand" : "yolcu talebi") : tv.surucu === "frekans" ? (en ? "target headway" : "hedef sefer aralığı") : (en ? "capacity ceiling" : "kapasite tavanı");
         const kurpSat = tv.kurpAdet > 0

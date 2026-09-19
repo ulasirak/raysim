@@ -108,7 +108,7 @@ export function RingEditor() {
   // Kurp konfor uyarısını GERÇEK per-ring doluluğa bağlamak için (PDF 2.2 ile birebir).
   const dolulukByRing = useMemo(() => {
     const out: Record<string, number> = {};
-    const tia = rings.length >= 2 ? tersIsletmeAnaliz(rings, stock, isletme, cfg, "toplam") : null;
+    const tia = rings.length >= 2 ? tersIsletmeAnaliz(rings, stock, isletme, cfg) : null;
     if (tia) rings.forEach((r, i) => { const d = tia.duraklar[i]; if (d) out[r.id] = d.doluluk; });
     return out;
   }, [rings, stock, isletme, cfg]);

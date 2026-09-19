@@ -26,10 +26,10 @@ interface Golden {
 // kesimidir; hMin buna göre yükseldi (yapay 500 m bölme kaldırıldığı için kapasite ~%15–25
 // düştü — dürüst sonuç). cevrim/sinyal/filo/tepe blok modelinden bağımsız → değişmedi. Kilit budur.
 const GOLDEN: Record<string, Golden> = {
-  mevcut:   { nTeorik: 13, nSurd: 9,  hMin: 154, cevrim: 2068, baglayan: "Kritik blok — Mevlana Kültür Merkezi", sinyal: 23, gerekenFilo: 5,  tepeYuk: 1466 },
-  etap1:    { nTeorik: 20, nSurd: 14, hMin: 175, cevrim: 3666, baglayan: "Kritik blok — Gülistan Caddesi",       sinyal: 30, gerekenFilo: 9,  tepeYuk: 1605 },
-  etap2:    { nTeorik: 18, nSurd: 12, hMin: 157, cevrim: 2900, baglayan: "Kritik blok — TÜYAP",                  sinyal: 25, gerekenFilo: 7,  tepeYuk: 1405 },
-  birlesik: { nTeorik: 42, nSurd: 30, hMin: 185, cevrim: 7947, baglayan: "Kritik blok — Depo",                   sinyal: 78, gerekenFilo: 15, tepeYuk: 1213 },
+  mevcut:   { nTeorik: 13, nSurd: 9,  hMin: 154, cevrim: 2068, baglayan: "Kritik blok — Mevlana Kültür Merkezi", sinyal: 23, gerekenFilo: 5,  tepeYuk: 1391 },
+  etap1:    { nTeorik: 20, nSurd: 14, hMin: 175, cevrim: 3666, baglayan: "Kritik blok — Gülistan Caddesi",       sinyal: 30, gerekenFilo: 9,  tepeYuk: 1607 },
+  etap2:    { nTeorik: 18, nSurd: 12, hMin: 157, cevrim: 2900, baglayan: "Kritik blok — TÜYAP",                  sinyal: 25, gerekenFilo: 6,  tepeYuk: 1372 },
+  birlesik: { nTeorik: 42, nSurd: 30, hMin: 185, cevrim: 7947, baglayan: "Kritik blok — Depo",                   sinyal: 78, gerekenFilo: 15, tepeYuk: 1206 },
 };
 
 const hatlar = hazirHatlar();
@@ -45,7 +45,7 @@ describe("Kapasite motoru — golden-master (4 Konya hattı)", () => {
       const rings = dwellUygulanmisRings(h.veri.rings ?? [], stock, isletme);
       const m = maksimumTren(rings, stock, cfg, isletme);
       const bt = blockingTimeRing(rings, stock, cfg, isletme.kalkisOluZamaniSn);
-      const tia = tersIsletmeAnaliz(rings, stock, isletme, cfg, "toplam");
+      const tia = tersIsletmeAnaliz(rings, stock, isletme, cfg);
       const sinyal = hatOzellikleri(rings, cfg).filter((f) => f.kind === "sinyal").length;
 
       it("hesap geçerli", () => expect(m.gecerli).toBe(true));
