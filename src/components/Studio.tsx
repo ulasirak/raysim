@@ -349,14 +349,16 @@ function StudioIc() {
               ? "✓ Yolcu verisi girili — öneri talebe göre de kontrol edildi (tıkanma/dönüş ihtiyacı aşağıda)."
               : <>Öneri hedef headway kuralından ({Math.round(hedefHeadwaySn)} s = tasarım). Talebe göre (tıkanma/dönüş ihtiyacı) kontrol için <button type="button" className="font-semibold underline" style={{ color: brand.ink }} onClick={() => setTalepPopup(true)}>yolcu verisi gir</button>.</>}
           </div>
-          {/* Önerilen (ihtiyaç) vs sürdürülebilir (tavan) — basit ayrım + işletme kapasitesi ilişkisi */}
+          {/* Önerilen (ihtiyaç) vs sürdürülebilir vs fiziksel tavan — ÜÇ ayrı kavram */}
           <div className="mt-2 rounded border-l-2 pl-2 text-[0.7rem] leading-relaxed" style={{ borderColor: CK.good, color: brand.muted }}>
-            <b style={{ color: brand.ink }}>Önerilen {oneriTramvay} — sürdürülebilir {maks.nSurdurulebilir}?</b>{" "}
-            <b>Önerilen = ihtiyaç</b> (hedef sıklığın için kaç tren çalıştırmalısın). <b>Sürdürülebilir = tavan</b> (bu hatta aynı anda güvenle en fazla kaç tramvay sığar).{" "}
+            <b style={{ color: brand.ink }}>Önerilen {oneriTramvay} · sürdürülebilir {maks.nSurdurulebilir} · fiziksel tavan {maks.nTeorik}.</b>{" "}
+            <b>Önerilen = ihtiyaç</b> (hedef {Math.round(hedefHeadwaySn)} s aralığın için gereken tren). <b>Sürdürülebilir</b> = toparlanma paylı, her gün rahat çalışan sayı (UIC 406). <b>Fiziksel tavan</b> = darboğazın izin verdiği en fazla tren (sıfır pay).{" "}
             {oneriTramvay <= maks.nSurdurulebilir
-              ? <>Öneri tavanın <b>altında</b> — {maks.nSurdurulebilir - oneriTramvay} araç pay var, istediğin sıklık rahat sağlanır.</>
-              : <>Öneri tavanı <b>aşıyor</b> — bu sıklık hatta sığmaz, aralığı büyütmen gerekir.</>}{" "}
-            <span style={{ color: brand.faint }}>İşletme kapasitesi = aynı tavanın <i>saatlik akış</i> hâli (~{(3600 / Math.max(1, maks.hMin) * (maks.dolulukTavani || 1)).toFixed(0)} tren/saat): {maks.nSurdurulebilir} “aynı anda kaç araç”, işletme kapasitesi “saatte kaç tren geçer”.</span>
+              ? <>Öneri sürdürülebilirin <b>altında</b> — {maks.nSurdurulebilir - oneriTramvay} araç pay var; istediğin sıklık rahat ve dayanıklı sağlanır.</>
+              : oneriTramvay <= maks.nTeorik
+                ? <>Öneri sürdürülebilir seviyeyi ({maks.nSurdurulebilir}) <b>aşıyor</b> ama fiziksel tavana ({maks.nTeorik}) <b>sığıyor</b> → çalışır, fakat toparlanma payı dar (küçük gecikmeler zincirlenebilir). Dayanıklı işletme için ya aralığı biraz büyüt ya da darboğazı iyileştir.</>
+                : <>Öneri fiziksel tavanı ({maks.nTeorik}) da <b>aşıyor</b> — bu sıklık hatta <b>sığmaz</b>; aralığı büyütmen ya da darboğazı iyileştirmen şart.</>}{" "}
+            <span style={{ color: brand.faint }}>İşletme kapasitesi (~{(3600 / Math.max(1, maks.hMin) * (maks.dolulukTavani || 1)).toFixed(0)} tren/saat) = sürdürülebilir sayının <i>akış</i> karşılığı: {maks.nSurdurulebilir} = “aynı anda hatta kaç tramvay” (stok), tren/saat = “bir noktadan saatte kaç tren geçer” (akış). İkisi çevrimle bağlıdır (stok ≈ akış × çevrim).</span>
           </div>
         </div>
 
