@@ -30,7 +30,7 @@ describe("Duyarlılık analizi", () => {
 
   it("hedef nTeorik ise doluluk tavanının etkisi YOK (nTeorik doluluktan bağımsız)", () => {
     const n = duyarlilikAnaliz(rings, stock, cfg, isletme, "nTeorik", 20);
-    expect(Math.round(n.taban)).toBe(42);
+    expect(Math.round(n.taban)).toBe(43); // Mevcut kurpları eklendi (v14): birlesik nTeorik 42→43
     expect(n.satirlar.find((x) => x.ad === "Doluluk tavanı")!.salinim).toBe(0);
   });
 });

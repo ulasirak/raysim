@@ -317,7 +317,7 @@ const ETAP2_MESAFE = [413, 762, 880, 853, 1011, 1446, 1137, 1062, 1057];
 // v7: sinyalizasyon firması = Aslan Sinyalizasyon (üç hatta da).
 // v8: 4. hat — Bütünleşik Hat (Alaaddin–Stadyum), üç etap tek sürekli hatta birleşik.
 // v9: makas S/X crossover geometrisi + terminal makas sayıları (gerçek CAD/kullanıcı verisi).
-export const HAZIR_VERI_SURUM = 13; // v13: kurplar AYRI VERİ DOSYASINA (kurpVeri.json) taşındı + Etap2 gerçek CAD kurpları eklendi (Etap1+Etap2; Mevcut eşleşen CAD yok) → yeniden seed
+export const HAZIR_VERI_SURUM = 14; // v14: Mevcut hat gerçek CAD kurpları eklendi (HAT1 katmanı, Alaaddin-Etap1-2-depo_v11 DWG → 9 bağlayıcı kurp) → yeniden seed
 // NOT (model): makasSayisi = MAKAS ADEDİ (S/X), makas MOTORU değil. Her makas ya S-makas (2 motor)
 // ya X-makas (4 motor); motor sayısı içseldir, raporda gösterilmez. CAD'den okurken yakın 2 motor
 // = 1 S-makas, yakın 4 motor = 1 X-makas.
@@ -334,6 +334,7 @@ export function hazirHatlar(): HazirHat[] {
   // ① Mevcut Hat
   const mevcutRings = hatKur(T1_DURAK, T1_MESAFE, T1_EK);
   sinyalYerlestir(mevcutRings, SG_MEVCUT_KM); // SG1–24 (V0808)
+  kurpYerlestir(mevcutRings, kurpVeri.mevcut as [number, number][]); // gerçek CAD kurpları (HAT1 katmanı)
   const mevcut: HazirHat = {
     key: "mevcut",
     ad: "Konya Mevcut Hat — Alaaddin–Adliye (CAD)",
