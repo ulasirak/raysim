@@ -13,6 +13,7 @@ import { aslsLogoSvg, firmaAslsMi } from "./aslsLogo";
 import { CK } from "./chartkit";
 import { type SimConfig, type ProjeMeta, type Isletme, PARAM_META, paramGoster, birim, varsayilanIsletme, etkinArac } from "./config";
 import { tersIsletmeAnaliz, tavsiyeTramvaySayisi } from "./tersisletme";
+import { bolumDahil, type RaporSecim } from "@/lib/raporFiyat";
 import { seferTersEntegre } from "./seferters";
 import { maksimumTren } from "./kapasite";
 import { tarifeUret } from "./tarife";
@@ -107,8 +108,10 @@ function rDil(lang: RaporDil) {
 // ————————————————————————————————————————————————
 
 
-export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakArasiRing[], stock: RollingStock, lang: RaporDil = "tr", filo = 0, isletme: Isletme = varsayilanIsletme, qrUrl = "", subeler: Sube[] = []): string {
+export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakArasiRing[], stock: RollingStock, lang: RaporDil = "tr", filo = 0, isletme: Isletme = varsayilanIsletme, qrUrl = "", subeler: Sube[] = [], secim?: RaporSecim): string {
   stock = etkinArac(stock, cfg); // config dinamik tavanları (ivme/servis freni) araca bağlı — rapordaki tüm sim/kapasite tutarlı
+  // Bölüm seçimi (kullanıcı hangi bölümleri istediğini seçer; yoksa hepsi). `dahil(b)` kısayolu.
+  const dahil = (b: Parameters<typeof bolumDahil>[1]) => bolumDahil(secim, b);
   // Dallanma (#1): şube varsa ana hat, geçtiği kavşak turnout'larını yansıtsın diye
   // kavşak makalarıyla zenginleştirilir (şubesizse AYNEN kalır → geriye uyumlu).
   const rings = subeler.length ? kavsakliRingler(ringsGiris, subeler) : ringsGiris;
@@ -1064,19 +1067,19 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   <section class="toc breakbefore">
     <div class="toc-h">${L.toc}</div>
     <ol class="toc-list">
-      <li><b>00</b>${en ? "Executive Summary" : "Yönetici Özeti"}</li>
-      <li><b>01</b>${L.s1}</li>
-      <li><b>02</b>${L.s2}<ul><li>2.1 ${en ? "Per-cell Constraint Analysis" : "Ring Bazında Kısıt Analizi"}</li></ul></li>
-      <li><b>03</b>${en ? "Signalling — Signal Lamps (SG)" : "Sinyalizasyon — Sinyal Lambaları (SG)"}</li>
-      <li><b>04</b>${L.s4}<ul><li>4.1 Blocking-Time (Sperrzeitentreppe)</li></ul></li>
-      <li><b>05</b>${en ? "Operations & Demand Analysis" : "İşletme & Talep Analizi"}<ul>
+      ${dahil("ozet") ? `<li><b>00</b>${en ? "Executive Summary" : "Yönetici Özeti"}</li>` : ""}
+      ${dahil("girdi") ? `<li><b>01</b>${L.s1}</li>` : ""}
+      ${(dahil("hat") || dahil("kurpKonfor")) ? `<li><b>02</b>${L.s2}<ul>${dahil("hat") ? `<li>2.1 ${en ? "Per-cell Constraint Analysis" : "Ring Bazında Kısıt Analizi"}</li>` : ""}${dahil("kurpKonfor") ? `<li>2.2 ${en ? "Curve & Lateral Comfort" : "Kurp & Yanal Konfor"}</li>` : ""}</ul></li>` : ""}
+      ${dahil("sinyal") ? `<li><b>03</b>${en ? "Signalling — Signal Lamps (SG)" : "Sinyalizasyon — Sinyal Lambaları (SG)"}</li>` : ""}
+      ${dahil("kapasite") ? `<li><b>04</b>${L.s4}<ul><li>4.1 Blocking-Time (Sperrzeitentreppe)</li></ul></li>` : ""}
+      ${dahil("isletme") ? `<li><b>05</b>${en ? "Operations & Demand Analysis" : "İşletme & Talep Analizi"}<ul>
         <li>5.1 ${en ? "Passenger Load Profiles" : "Yolcu Yük Profilleri"}</li>
         <li>5.2 ${en ? "Depot Dispatch" : "Depo Çıkışı"}</li>
         <li>5.3 ${en ? "Stops Needing Turnback" : "Dönüşe İhtiyaç Duyan Duraklar"}</li>
         <li>5.4 ${en ? "Reverse-Running Variations" : "Ters İşletme Varyasyonları"}</li>
-        <li>5.5 ${en ? "Fleet & Recommendation" : "Filo & Öneri"}</li></ul></li>
-      <li><b>06</b>${en ? "Timetable (Service Schedule)" : "Tarife (Zaman Çizelgesi)"}<ul><li>6.1 ${en ? "First Departures" : "İlk Kalkışlar"}</li></ul></li>
-      <li><b>07</b>${en ? "Sensitivity (Tornado)" : "Duyarlılık (Tornado)"}</li>
+        <li>5.5 ${en ? "Fleet & Recommendation" : "Filo & Öneri"}</li></ul></li>` : ""}
+      ${dahil("tarife") ? `<li><b>06</b>${en ? "Timetable (Service Schedule)" : "Tarife (Zaman Çizelgesi)"}<ul><li>6.1 ${en ? "First Departures" : "İlk Kalkışlar"}</li></ul></li>` : ""}
+      ${dahil("duyarlilik") ? `<li><b>07</b>${en ? "Sensitivity (Tornado)" : "Duyarlılık (Tornado)"}</li>` : ""}
     </ol>
     <div class="toc-fig">${en ? "Figures" : "Şekiller"}<ul>
       <li>${en ? "Fig. 1 — Line schematic" : "Şekil 1 — Hat şeması"}</li>
@@ -1088,27 +1091,27 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   </section>
 
   <!-- 0: Yönetici Özeti -->
-  ${ozetSec}
+  ${dahil("ozet") ? ozetSec : ""}
 
   <!-- 1 -->
-  <div class="banner breakbefore"><span class="no">01</span>${L.s1}</div>
+  ${dahil("girdi") ? `<div class="banner breakbefore"><span class="no">01</span>${L.s1}</div>
   <p>${L.s1i}</p>
-  ${tbl(L.thParam, paramRows, { first: true })}
+  ${tbl(L.thParam, paramRows, { first: true })}` : ""}
 
   <!-- 2 -->
-  <div class="banner"><span class="no">02</span>${L.s2}</div>
+  ${dahil("hat") ? `<div class="banner"><span class="no">02</span>${L.s2}</div>
   <p>${L.s2i(rings.length, cfg.headway)}</p>
   <div class="fig">${ringSemaSvg(rings, subeler)}<div class="cap">${L.fig1}${subeler.length ? (en ? ` — with ${subeler.length} branch(es) diverging at junctions (red)` : ` — kavşaklardan ayrılan ${subeler.length} şube (kırmızı) dâhil`) : ""}</div></div>
   ${tbl(L.thRing, ringRows, { first: true })}
   <h3 class="sub" style="page-break-before:always">${sunum ? (lang === "en" ? "2.1 Per-cell Constraint Analysis" : "2.1 Ring Bazında Kısıt Analizi") : L.s21}</h3>
-  ${ringDetay}
-  ${kurpKonforBol}
+  ${ringDetay}` : ""}
+  ${dahil("kurpKonfor") ? kurpKonforBol : ""}
 
   <!-- 3: Sinyalizasyon -->
-  ${sinyalBolum}
+  ${dahil("sinyal") ? sinyalBolum : ""}
 
   <!-- 4 -->
-  <div class="banner"><span class="no">04</span>${L.s4}</div>
+  ${dahil("kapasite") ? `<div class="banner"><span class="no">04</span>${L.s4}</div>
   <p>${L.s4i}</p>
   ${kpiRow}
   ${kapasiteTbl}
@@ -1132,14 +1135,14 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   ${cakismaBolum}
   ${knockOnBolum}
   ${subeBolum}
-  ${ortakKesimBolum}
+  ${ortakKesimBolum}` : ""}
 
   <!-- 5: İşletme & Talep Analizi (ters işletme) -->
-  ${isletmeBolum}
+  ${dahil("isletme") ? isletmeBolum : ""}
 
-  ${tarifeBolum}
+  ${dahil("tarife") ? tarifeBolum : ""}
 
-  ${duyarlilikBolum}
+  ${dahil("duyarlilik") ? duyarlilikBolum : ""}
 
   ${cekirdekNot}
 

@@ -12,7 +12,7 @@ import { NextResponse } from "next/server";
 import { istekKimlik, isAdminConfigured } from "@/lib/firebaseAdmin";
 import { krediDus, krediBakiye, KrediYetersizError } from "@/lib/cuzdanServer";
 import { hizSiniri } from "@/lib/rateLimit";
-import { KREDI_BEDELI } from "@/lib/cuzdan";
+import { raporKredi, RAPOR_BOLUMLER, type RaporSecim } from "@/lib/raporFiyat";
 import { yoneticiMi, yoneticiUidMi } from "@/lib/anaray/yetki";
 import { raporHTML, type RaporDil } from "@/lib/anaray/rapor";
 import { varsayilanArac } from "@/lib/anaray/vehicles";
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     );
   }
 
-  let govde: { veri?: { rings?: DurakArasiRing[]; cfg?: Partial<SimConfig>; meta?: Partial<ProjeMeta>; arac?: RollingStock; turnaroundSn?: number; filo?: number; isletme?: Partial<Isletme>; qrUrl?: string; subeler?: Sube[] }; dil?: string };
+  let govde: { veri?: { rings?: DurakArasiRing[]; cfg?: Partial<SimConfig>; meta?: Partial<ProjeMeta>; arac?: RollingStock; turnaroundSn?: number; filo?: number; isletme?: Partial<Isletme>; qrUrl?: string; subeler?: Sube[] }; dil?: string; secim?: Record<string, unknown> };
   try { govde = await req.json(); } catch { return NextResponse.json({ hata: "Geçersiz istek." }, { status: 400 }); }
 
   const rings = govde.veri?.rings;
@@ -82,6 +82,14 @@ export async function POST(req: Request) {
   const subeler: Sube[] = Array.isArray(govde.veri?.subeler)
     ? govde.veri!.subeler!.filter((s) => s && Array.isArray(s.rings)).slice(0, 20)
     : [];
+  // Bölüm seçimi: yalnız bilinen bölüm anahtarları + boolean değerler kabul (istemci
+  // fiyat yollamaz; bedel SUNUCUDA raporKredi'den hesaplanır). Boşsa tümü dâhil.
+  const secim: RaporSecim = {};
+  const secimHam = govde.secim;
+  if (secimHam && typeof secimHam === "object") {
+    for (const b of RAPOR_BOLUMLER) if (typeof (secimHam as Record<string, unknown>)[b] === "boolean") secim[b] = (secimHam as Record<string, boolean>)[b];
+  }
+  const bedel = raporKredi(secim); // taban + seçilen bölümler
 
   // Bakiye ÖN-KONTROLÜ: muaf değilse ve bakiye yetersizse pahalı rapor üretimini
   // hiç çalıştırma (boşuna CPU / DoS önlemi). Asıl düşüm aşağıda atomik krediDus'ta.
@@ -89,15 +97,15 @@ export async function POST(req: Request) {
     let bakiye: number;
     try { bakiye = await krediBakiye(uid); }
     catch { return NextResponse.json({ hata: "Bakiye okunamadı." }, { status: 500 }); }
-    if (bakiye < KREDI_BEDELI.rapor) {
-      return NextResponse.json({ hata: "yetersiz_kredi", gereken: KREDI_BEDELI.rapor, mevcut: bakiye }, { status: 402 });
+    if (bakiye < bedel) {
+      return NextResponse.json({ hata: "yetersiz_kredi", gereken: bedel, mevcut: bakiye }, { status: 402 });
     }
   }
 
   // 1) Raporu ÜRET (başarısızsa kredi düşülmez).
   let html: string;
   try {
-    html = raporHTML(meta, cfg, rings, arac, dil, filo, isletme, qrUrl, subeler);
+    html = raporHTML(meta, cfg, rings, arac, dil, filo, isletme, qrUrl, subeler, secim);
   } catch (e) {
     return NextResponse.json({ hata: `Rapor üretilemedi: ${e instanceof Error ? e.message : String(e)}` }, { status: 500 });
   }
@@ -105,7 +113,7 @@ export async function POST(req: Request) {
   // 2) Krediyi DÜŞ (yönetici muaf). Yetersizse rapor verilmez.
   if (!muaf) {
     try {
-      await krediDus(uid, KREDI_BEDELI.rapor, { tur: "rapor", ref: meta.dokumanNo || undefined });
+      await krediDus(uid, bedel, { tur: "rapor", ref: meta.dokumanNo || undefined });
     } catch (e) {
       if (e instanceof KrediYetersizError) {
         return NextResponse.json({ hata: "yetersiz_kredi", gereken: e.gereken, mevcut: e.mevcut }, { status: 402 });

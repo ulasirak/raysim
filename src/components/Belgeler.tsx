@@ -14,6 +14,7 @@ import { PROJE_META_ALANLAR } from "@/lib/anaray/config";
 import { loopDenge, olceklenme, ringChallenge, ringDogrula, loopTamMi } from "@/lib/anaray/ring";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import { type RaporDil } from "@/lib/anaray/rapor";
+import { RAPOR_BOLUMLER, RAPOR_BOLUM_KREDI, RAPOR_BOLUM_AD, RAPOR_TABAN_KREDI, raporKredi, type RaporBolum } from "@/lib/raporFiyat";
 import { useCuzdan } from "@/components/CuzdanProvider";
 import { getAuthInstance } from "@/lib/firebase";
 
@@ -47,6 +48,12 @@ export function Belgeler() {
   const [durum, setDurum] = useState<{ tip: "ok" | "err" | "info"; metin: string } | null>(null);
   const [mesgul, setMesgul] = useState<"" | "rapor">("");
   const [dil, setDil] = useState<RaporDil>("tr");
+  // Bölüm seçimi — kullanıcı hangi bölümleri PDF'e koyacağını seçer; fiyat kümülatif.
+  const [secim, setSecim] = useState<Record<RaporBolum, boolean>>(
+    () => Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, true])) as Record<RaporBolum, boolean>,
+  );
+  const toplamKredi = raporKredi(secim);
+  const secBolum = (b: RaporBolum) => setSecim((s) => ({ ...s, [b]: !s[b] }));
 
   const ozet = useMemo(() => {
     const olcek = olceklenme(rings, stock, true, cfg);
@@ -82,7 +89,7 @@ export function Belgeler() {
     const yanit = await fetch("/api/rapor", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ veri: { rings, cfg, meta, arac: stock, turnaroundSn, filo: isletme.pikFilo, isletme, qrUrl, subeler }, dil }),
+      body: JSON.stringify({ veri: { rings, cfg, meta, arac: stock, turnaroundSn, filo: isletme.pikFilo, isletme, qrUrl, subeler }, dil, secim }),
     });
     if (!yanit.ok) {
       const v = await yanit.json().catch(() => ({}));
@@ -249,10 +256,37 @@ export function Belgeler() {
           </div>
         )}
 
+        {/* BÖLÜM SEÇİCİ — hangi bölümler PDF'e girecek; fiyat KÜMÜLATİF (taban + seçilen). */}
+        <div className="mb-3 rounded-md border p-3" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
+          <div className="mb-2 flex items-center justify-between">
+            <span className="field-label">Rapor Bölümleri — dâhil etmek istediklerini seç</span>
+            <span className="text-xs" style={{ color: brand.muted }}>Taban (kapak+künye+içindekiler) {RAPOR_TABAN_KREDI} kredi</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {RAPOR_BOLUMLER.map((b) => {
+              const on = secim[b];
+              return (
+                <button key={b} type="button" onClick={() => secBolum(b)}
+                  className="rounded-md border px-2.5 py-1.5 text-xs font-medium transition"
+                  style={on ? { background: brand.ink, color: "#fff", borderColor: brand.ink } : { background: "#fff", color: brand.inkSoft, borderColor: brand.border }}
+                  title={on ? "Dâhil — çıkarmak için tıkla" : "Hariç — eklemek için tıkla"}>
+                  <span>{on ? "✓ " : "＋ "}{dil === "en" ? RAPOR_BOLUM_AD[b].en : RAPOR_BOLUM_AD[b].tr}</span>
+                  <span className="ml-1.5 rounded px-1 py-0.5 text-[0.6rem] font-bold" style={{ background: on ? "rgba(255,255,255,0.22)" : CK.track, color: on ? "#fff" : brand.muted }}>+{RAPOR_BOLUM_KREDI[b]} kr</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-2 flex items-center gap-2 text-xs" style={{ color: brand.muted }}>
+            <button type="button" onClick={() => setSecim(Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, true])) as Record<RaporBolum, boolean>)} className="underline">tümü</button>
+            <button type="button" onClick={() => setSecim(Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, false])) as Record<RaporBolum, boolean>)} className="underline">yalnız taban</button>
+            <span className="ml-auto text-sm font-semibold" style={{ color: brand.ink }}>Toplam: {toplamKredi} kredi</span>
+          </div>
+        </div>
+
         <div className="flex flex-wrap items-center gap-3">
           <button onClick={raporUret} disabled={!!mesgul || !hatTam}
             className="rounded-md px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: brand.red }}>
-            {mesgul === "rapor" ? "Açılıyor…" : "🖨 PDF Rapor"}
+            {mesgul === "rapor" ? "Açılıyor…" : `🖨 PDF Rapor · ${toplamKredi} kredi`}
           </button>
           {durum && (
             <span className="text-sm" style={{ color: durum.tip === "err" ? brand.red : durum.tip === "ok" ? CK.good : brand.muted }}>
