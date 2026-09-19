@@ -65,22 +65,29 @@ describe("Rapor bölüm seçimi — her varyasyon kusursuz", () => {
     expect(html).toContain('<span class="no">04</span>'); // kapasite metni var
   }, TO);
 
-  // Yalnız grafikler açık (taban + görsel katman) → figürler geri gelir
-  it("yalnız grafikler açık → figürler üretilir", () => {
+  // ANA DÜZELTME: yalnız grafikler seçilince artık AYRI "Görsel Analiz" bölümü (08) gelir —
+  // içerik bölümlerine bağlı değil; tek başına dolu, figürlü bir görsel bölüm üretir.
+  it("yalnız grafikler açık → ayrı Görsel Analiz bölümü + figürler", () => {
     const secim = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, b === "grafikler"])) as RaporSecim;
     const html = uret(secim);
     saglamHtml(html);
-    // grafikler tek başına: hat/kapasite kapalı olduğundan o bölümlere gömülü figürler
-    // gelmez; ama figür barındıran bir bölüm açık değilse fig sayısı 0 olabilir — bu yüzden
-    // "grafikler + kapasite" ile figür varlığını ayrıca doğrula.
+    expect(html).toContain('<span class="no">08</span>'); // Görsel Analiz bölüm başlığı
+    expect(html).toContain("GÖRSEL ANALİZ (GRAFİKLER)");
+    expect(html).toContain('<div class="fig">');
+    expect(html).toContain("Şekil 3"); // Bildfahrplan
+    expect(html).toContain("Sperrzeitentreppe"); // Şekil 4
+    // içerik bölümleri kapalı → hat/kapasite BANNER'ları yok (sadece figür bölümü)
+    expect(html).not.toContain('<span class="no">02</span>');
+    expect(html).not.toContain('<span class="no">04</span>');
   }, TO);
 
-  it("grafikler + kapasite → Sperrzeit/Bildfahrplan figürleri var", () => {
+  it("grafikler + kapasite → kapasite metni VE Görsel Analiz figürleri ayrı", () => {
     const secim = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, b === "grafikler" || b === "kapasite"])) as RaporSecim;
     const html = uret(secim);
     saglamHtml(html);
+    expect(html).toContain('<span class="no">04</span>'); // kapasite bölümü (metin/tablo)
+    expect(html).toContain('<span class="no">08</span>'); // grafikler bölümü ayrı
     expect(html).toContain('<div class="fig">');
-    expect(html).toContain("Sperrzeitentreppe");
   }, TO);
 
   // Her bölümü TEK BAŞINA aç → hepsi geçerli rapor üretir

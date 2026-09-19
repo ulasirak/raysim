@@ -112,10 +112,15 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   stock = etkinArac(stock, cfg); // config dinamik tavanları (ivme/servis freni) araca bağlı — rapordaki tüm sim/kapasite tutarlı
   // Bölüm seçimi (kullanıcı hangi bölümleri istediğini seçer; yoksa hepsi). `dahil(b)` kısayolu.
   const dahil = (b: Parameters<typeof bolumDahil>[1]) => bolumDahil(secim, b);
-  // GRAFİKLER (görsel analiz) 3 kredilik ayrı seçenek — tüm <div class="fig"> şekilleri
-  // yalnızca `g` doğruyken üretilir; kapalıyken rapor metin + tablo olarak gelir (SVG'ler
-  // KAYNAĞA hiç yazılmaz, sadece CSS gizleme değil → ücret dürüst gateленir).
+  // GRAFİKLER (görsel analiz) 3 kredilik ayrı seçenek. Tüm şekiller AYRI bir "Grafikler"
+  // bölümünde (08) toplanır — böylece kullanıcı YALNIZ grafikleri seçtiğinde de anlamlı,
+  // dolu bir görsel bölüm alır (eskiden şekiller içerik bölümlerine gömülüydü → yalnız
+  // grafik seçilince hiçbir şey çıkmıyordu). İçerik bölümleri metin + tablo olarak kalır.
+  // `g` kapalıyken hiçbir SVG üretilmez (kaynağa yazılmaz → ücret dürüst gatelenir).
   const g = dahil("grafikler");
+  // Closure-içi (ste/ko) figürleri, üretildikleri yerde yakalanıp Grafikler bölümünde
+  // kullanılır (ağır hoisting yerine mutable yakalama).
+  let seferTersFig = "", knockOnFig = "";
   // Dallanma (#1): şube varsa ana hat, geçtiği kavşak turnout'larını yansıtsın diye
   // kavşak makalarıyla zenginleştirilir (şubesizse AYNEN kalır → geriye uyumlu).
   const rings = subeler.length ? kavsakliRingler(ringsGiris, subeler) : ringsGiris;
@@ -247,12 +252,10 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
     const acik = en
       ? `Over <b>${mc.trials}</b> simulated services, each train receives a random entry delay (mean ${giris} s) and per-stop dwell deviation (mean ${durak} s), drawn from an exponential distribution; the propagation of these primary delays to following trains is measured. <b>%${mc.onTimePct.toFixed(0)}</b> of arrivals stay within the ${Math.round(MC_ESIK / 60)}-minute threshold, with a mean delay of <b>${sure(mc.meanDelay)}</b> and a P90 of <b>${sure(mc.p90Delay)}</b>. The spread chart shows whether an early train's delay dampens or cascades down the service order — a rising median indicates a timetable with insufficient recovery margin.`
       : `<b>${mc.trials}</b> simüle edilen seferde her tren, üstel dağılımdan çekilen rastgele bir giriş gecikmesi (ort. ${giris} s) ve durak başına bekleme sapması (ort. ${durak} s) alır; bu birincil gecikmelerin sonraki trenlere yayılımı ölçülür. Varışların <b>%${mc.onTimePct.toFixed(0)}</b>'i ${Math.round(MC_ESIK / 60)} dakikalık eşiğin içinde kalır; ortalama gecikme <b>${sure(mc.meanDelay)}</b>, P90 ise <b>${sure(mc.p90Delay)}</b>'dir. Yayılım grafiği, öndeki bir trenin gecikmesinin sefer sırası boyunca sönümlenip sönümlenmediğini gösterir — medyanın yükselmesi, tarifenin toparlanma payının yetersiz olduğuna işaret eder.`;
-    const n = mc.perTren.length;
+    // Şekil 6/7 (MC dağılımı + yayılım) Grafikler bölümüne taşındı (mc üst kapsamda).
     return `<h3 class="sub" style="page-break-before:always">${en ? "4.1 Robustness — Monte-Carlo Delay Analysis" : "4.1 Robustluk — Monte-Carlo Gecikme Analizi"}</h3>
       <div class="gs" style="font-size:10pt">${acik}</div>
-      ${mcKpi}
-      ${g ? `<div class="fig">${mcHistSvg(mc, en)}<div class="cap">${en ? `Figure 6 — Delay distribution: ${mc.trials} services × ${n} trains; blue = on-time (below threshold), red = late. Vertical marks: mean · threshold · P90.` : `Şekil 6 — Gecikme dağılımı: ${mc.trials} sefer × ${n} tren; mavi = dakik (eşik altı), kırmızı = geç. Dikey işaretler: ortalama · eşik · P90.`}</div></div>
-      <div class="fig">${mcYayilimSvg(mc, en)}<div class="cap">${en ? "Figure 7 — Propagation by service order: median (dot + line) with P90 whisker per train. A rising trend = delay cascading to later trains." : "Şekil 7 — Sefer sırasına göre yayılım: tren başına medyan (nokta + çizgi) ve P90 bıyığı. Yükselen eğilim = gecikmenin sonraki trenlere kademelenmesi."}</div></div>` : ""}`;
+      ${mcKpi}`;
   })() : "";
 
   // ---- Çizelge çakışma analizi (#2) — tek-hat karşılaşmaları + sistemik headway<hMin ----
@@ -330,7 +333,9 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
       ${kpi(en ? "Total secondary" : "Toplam ikincil", sure(ko.toplamIkincil), en ? "sum over fleet" : "filo toplamı", INK)}
       ${kpi(en ? "Recovery" : "Sönümleme", ko.sonumleme !== null ? `${ko.sonumleme - ko.hedefTren} ${en ? "trains" : "tren"}` : (en ? "none" : "yok"), en ? "to absorb" : "sonra yutulur", ko.sonumleme !== null ? "#0E7C57" : RED)}
     </div>`;
-    return `${baslik}<div class="gs" style="font-size:10pt">${giris}</div>${kpis}<div class="gs" style="font-size:10pt"><b>${esc(ko.ozet)}</b></div>${g ? `<div class="fig">${svg}<div class="cap">${cap}</div></div>` : ""}`;
+    // Şekil 8 (knock-on zinciri) Grafikler bölümüne taşındı — burada yakalanır.
+    knockOnFig = g ? `<div class="fig">${svg}<div class="cap">${cap}</div></div>` : "";
+    return `${baslik}<div class="gs" style="font-size:10pt">${giris}</div>${kpis}<div class="gs" style="font-size:10pt"><b>${esc(ko.ozet)}</b></div>`;
   })() : "";
 
   // ---- Şubeler / Dallanma (#1) — her şube rotasının kapasitesi + kavşak kısıtı ----
@@ -572,7 +577,6 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
         ? `The table presents each stop's directional load together with the busiest point on the line; the peak load is <b>${tia.tepeYuk} pax/h</b> at <b>${esc(tia.tepeDurak)}</b>. ${tia.gercekVeri ? `The profile is derived directly from the boarding/alighting counts entered for each stop.` : `It arises from distributing the defined total demand of ${P} pax/h across the stops according to their role — hospital, interchange, stadium and centre carrying more — so that the load accumulates along the line in this manner.`}`
         : `Tabloda her durağın yönlü yükü ve hattın en yoğun noktası yer almaktadır; en yüksek yük <b>${tia.tepeYuk} yolcu/saat</b> ile <b>${esc(tia.tepeDurak)}</b> durağındadır. ${tia.gercekVeri ? `Profil, her durak için ayrı girilen iniş-biniş sayımlarından doğrudan elde edilmiştir.` : `Bu profil, tanımlanan ${P} yolcu/saatlik toplam talebin durakların rolüne göre (hastane, aktarma, stadyum ve merkez daha yoğun) hat boyunca dağıtılmasıyla oluşmaktadır.`}`)}
       ${tbl(yukThead, yukRows, { first: true })}
-      ${g ? `<div class="fig">${yukDwellSvg(tia.duraklar, rings, en)}<div class="cap">${en ? "Figure 5b — Load profile (per-stop peak load, coloured by occupancy; peak marked) and dwell breakdown (door-open / passenger exchange / door-close), along the line." : "Şekil 5b — Yük profili (durak başına tepe yük, doluluğa göre renkli; tepe işaretli) ve duruş dökümü (kapı açma / yolcu değişimi / kapı kapama), hat boyunca."}</div></div>` : ""}
       ${(() => {
         const pikDol = Math.round(Math.max(...tia.duraklar.map((d) => d.doluluk), 0) * 100);
         const gA = tia.filo.gerekenArac, mP = tia.filo.mevcutPik, fk = gA - mP;
@@ -663,6 +667,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
       ? Math.round(isletme.seferHeadwayDk * 60)
       : (maks.cevrimSuresi > 0 && filoGercek > 0 ? Math.round(maks.cevrimSuresi / filoGercek) : cfg.headway);
     const ste = seferTersEntegre(rings, stock, cfg, isletme, stHeadway, 0);
+    // Şekil 5c (sefer↔ters entegre konum diyagramı) Grafikler bölümüne taşındı — yakala.
+    seferTersFig = (g && ste.gecerli) ? `<div class="fig">${seferTersSvg(ste)}<div class="cap">${en ? `Figure 5c — Vehicle positions at the representative interval: outbound (▲) / inbound (▼) trams, all reverse-running switches (◆, km-labelled) with short-turn candidates (🔄, red) and the tram→switch binding for each recommendation.` : `Şekil 5c — Temsili aralıkta araç konumları: gidiş (▲) / dönüş (▼) tramvaylar, ters işletme yapılabilen tüm makaslar (◆, km etiketli), kısa dönüş adayları (🔄, kırmızı) ve her öneri için araç→makas bağlantısı.`}</div></div>` : "";
     let b56 = "";
     if (ste.gecerli) {
       const stHw = (s: number) => { const x = Math.max(0, Math.round(s)); const d = Math.floor(x / 60), k = x % 60; return d > 0 ? `${d}:${String(k).padStart(2, "0")}` : `${k} s`; };
@@ -676,7 +682,6 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
       ${gsNot(en
         ? `At a representative service interval of <b>${stHw(stHeadway)}</b> the line runs <b>${ste.filo} trams</b>${ste.aracKirpildi ? ` (only <b>${ste.cizilenArac}</b> physically fit — the diagram is capped to that)` : ""}; the diagram below places each tram at its real position along the line (${(ste.L / 1000).toFixed(1)} km) — obtained from the same trajectory the live simulation uses, so signal lamps, switch-transit speeds, road/pedestrian crossings, gradient and station dwells are all accounted for. Where the entered demand leaves a switch zone with a busy inner leg and a quiet outer end, the short-turn decision is bound to the outbound tram approaching that switch, and its real time-to-switch is read off the trajectory.`
         : `Temsili <b>${stHw(stHeadway)}</b> sefer aralığında hat <b>${ste.filo} tramvay</b> ${ste.aracKirpildi ? `ister (yalnız <b>${ste.cizilenArac}</b> tanesi hatta sığar — diyagram buna kırpıldı)` : "ile işlemekte"}; aşağıdaki diyagram her aracı hat boyunca (${(ste.L / 1000).toFixed(1)} km) gerçek konumuna yerleştirir — bu konumlar canlı simülasyonun kullandığı yörüngeden gelir, dolayısıyla sinyal lambaları, makas geçiş hızları, karayolu/yaya geçitleri, eğim ve istasyon duruşları hesaba katılıdır. Girilen talep, bir makas bölgesinin iç kolunu yoğun, dış ucunu sessiz bıraktığında kısa dönüş kararı o makasa yaklaşan gidiş aracına bağlanır ve makasa gerçek ulaşım süresi yörüngeden okunur.`)}
-      ${g ? `<div class="fig">${seferTersSvg(ste)}<div class="cap">${en ? `Figure 5c — Vehicle positions at the representative interval: outbound (▲) / inbound (▼) trams, all reverse-running switches (◆, km-labelled) with short-turn candidates (🔄, red) and the tram→switch binding for each recommendation.` : `Şekil 5c — Temsili aralıkta araç konumları: gidiş (▲) / dönüş (▼) tramvaylar, ters işletme yapılabilen tüm makaslar (◆, km etiketli), kısa dönüş adayları (🔄, kırmızı) ve her öneri için araç→makas bağlantısı.`}</div></div>` : ""}
       ${oneriBlok}
       ${(() => {
         const f = ste.filoIhtiyac; if (!f) return "";
@@ -820,6 +825,33 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
     <div class="onay-kutu"><div><span class="ok-et">${esc(L.thImza[1])}</span><div class="ok-ad">${esc(meta.onaylayan) || "&nbsp;"}</div></div><div class="ok-imza">${esc(L.imzaTarih)}</div></div>
   </div>
   <div class="antet-alt"><span>${esc(meta.sinyalizasyonFirmasi || "RaySim")} · ${esc(meta.projeAdi)}</span><span>${bugun ? esc(bugun) + " · " : ""}${esc(meta.dokumanNo)}</span></div>`;
+
+  // ——— GRAFİKLER (Görsel Analiz) — bölüm 08 ———
+  // TÜM şekiller burada toplanır; yalnız "grafikler" seçiliyken (g) üretilir. Böylece
+  // kullanıcı sadece grafikleri seçtiğinde dahi dolu, tek başına anlamlı bir görsel bölüm
+  // alır (şekiller artık içerik bölümlerine gömülü değil). Her altyazı kendi başına açıklar.
+  const grafik08: string[] = [];
+  if (g) {
+    if (line) grafik08.push(`<div class="fig">${ringSemaSvg(rings, subeler)}<div class="cap">${L.fig1}${subeler.length ? (en ? ` — with ${subeler.length} branch(es) diverging at junctions (red)` : ` — kavşaklardan ayrılan ${subeler.length} şube (kırmızı) dâhil`) : ""}</div></div>`);
+    if (kisitFig) grafik08.push(kisitFig);
+    if (hemzeminFig) grafik08.push(hemzeminFig);
+    if (bfFig) grafik08.push(bfFig);
+    if (hizFig) grafik08.push(hizFig);
+    if (line) grafik08.push(`<div class="fig">${sperrzeitSvg(bt, line.length, kritikRenk, en)}<div class="cap">${sunum ? (lang === "en" ? `Figure 4 — Sperrzeitentreppe: block occupation (blocking-time) windows; min headway ${Math.round(bt.minHeadway)}s.` : `Şekil 4 — Sperrzeitentreppe: blok işgal (blocking-time) pencereleri; min headway ${Math.round(bt.minHeadway)} s.`) : L.fig4(Math.round(bt.minHeadway))}</div></div>`);
+    grafik08.push(`<div class="fig">${blockingBarSvg(bt.bloklar, bt.kritikBlok, kritikRenk, en)}<div class="cap">${sunum ? (lang === "en" ? "Figure 5 — Per-block blocking-time component distribution (determining block highlighted)." : "Şekil 5 — Blok başına blocking-time bileşen dağılımı (belirleyici blok vurgulu).") : L.fig5}${bt.bloklar.length > 16 ? (lang === "en" ? ` (highest 16 of ${bt.bloklar.length} blocks; full list in the table below)` : ` (${bt.bloklar.length} bloktan en yüksek 16'sı; tümü aşağıdaki tabloda)`) : ""}</div></div>`);
+    if (tia) grafik08.push(`<div class="fig">${yukDwellSvg(tia.duraklar, rings, en)}<div class="cap">${en ? "Figure 5b — Load profile (per-stop peak load, coloured by occupancy; peak marked) and dwell breakdown (door-open / passenger exchange / door-close), along the line." : "Şekil 5b — Yük profili (durak başına tepe yük, doluluğa göre renkli; tepe işaretli) ve duruş dökümü (kapı açma / yolcu değişimi / kapı kapama), hat boyunca."}</div></div>`);
+    if (seferTersFig) grafik08.push(seferTersFig);
+    if (mc) grafik08.push(
+      `<div class="fig">${mcHistSvg(mc, en)}<div class="cap">${en ? `Figure 6 — Delay distribution: ${mc.trials} services × ${mc.perTren.length} trains; blue = on-time (below threshold), red = late. Vertical marks: mean · threshold · P90.` : `Şekil 6 — Gecikme dağılımı: ${mc.trials} sefer × ${mc.perTren.length} tren; mavi = dakik (eşik altı), kırmızı = geç. Dikey işaretler: ortalama · eşik · P90.`}</div></div>`,
+      `<div class="fig">${mcYayilimSvg(mc, en)}<div class="cap">${en ? "Figure 7 — Propagation by service order: median (dot + line) with P90 whisker per train. A rising trend = delay cascading to later trains." : "Şekil 7 — Sefer sırasına göre yayılım: tren başına medyan (nokta + çizgi) ve P90 bıyığı. Yükselen eğilim = gecikmenin sonraki trenlere kademelenmesi."}</div></div>`,
+    );
+    if (knockOnFig) grafik08.push(knockOnFig);
+  }
+  const grafikBaslik = en ? "VISUAL ANALYSIS (CHARTS)" : "GÖRSEL ANALİZ (GRAFİKLER)";
+  const grafikGiris = en
+    ? "This section consolidates all analytical charts derived from your line — line schematic, determining constraint, level-crossing delay, time-distance diagram (Bildfahrplan), speed profile, blocking-time (Sperrzeitentreppe), load/dwell profile, integrated reverse-running snapshot and delay-robustness charts. Each figure caption is self-contained; the corresponding numeric analysis is in its own section."
+    : "Bu bölüm hattınızdan türetilen tüm analitik grafikleri tek yerde toplar — hat şeması, belirleyici kısıt, hemzemin geçit gecikmesi, zaman-mesafe diyagramı (Bildfahrplan), hız profili, blocking-time (Sperrzeitentreppe), yük/duruş profili, entegre ters işletme anlık görüntüsü ve gecikme-robustluk grafikleri. Her şeklin altyazısı kendi başına açıklayıcıdır; sayısal analizler ilgili bölümlerdedir.";
+  const grafiklerBolum = (g && grafik08.length) ? `<div class="banner breakbefore"><span class="no">08</span>${grafikBaslik}</div><p>${grafikGiris}</p>${grafik08.join("\n")}` : "";
 
   return `<!doctype html><html lang="${L.htmlLang}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1084,6 +1116,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
         <li>5.5 ${en ? "Fleet & Recommendation" : "Filo & Öneri"}</li></ul></li>` : ""}
       ${dahil("tarife") ? `<li><b>06</b>${en ? "Timetable (Service Schedule)" : "Tarife (Zaman Çizelgesi)"}<ul><li>6.1 ${en ? "First Departures" : "İlk Kalkışlar"}</li></ul></li>` : ""}
       ${dahil("duyarlilik") ? `<li><b>07</b>${en ? "Sensitivity (Tornado)" : "Duyarlılık (Tornado)"}</li>` : ""}
+      ${g ? `<li><b>08</b>${en ? "Visual Analysis (Charts)" : "Görsel Analiz (Grafikler)"}</li>` : ""}
     </ol>
     ${g ? `<div class="toc-fig">${en ? "Figures" : "Şekiller"}<ul>
       <li>${en ? "Fig. 1 — Line schematic" : "Şekil 1 — Hat şeması"}</li>
@@ -1105,7 +1138,6 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   <!-- 2 -->
   ${dahil("hat") ? `<div class="banner"><span class="no">02</span>${L.s2}</div>
   <p>${L.s2i(rings.length, cfg.headway)}</p>
-  ${g ? `<div class="fig">${ringSemaSvg(rings, subeler)}<div class="cap">${L.fig1}${subeler.length ? (en ? ` — with ${subeler.length} branch(es) diverging at junctions (red)` : ` — kavşaklardan ayrılan ${subeler.length} şube (kırmızı) dâhil`) : ""}</div></div>` : ""}
   ${tbl(L.thRing, ringRows, { first: true })}
   <h3 class="sub" style="page-break-before:always">${sunum ? (lang === "en" ? "2.1 Per-cell Constraint Analysis" : "2.1 Ring Bazında Kısıt Analizi") : L.s21}</h3>
   ${ringDetay}` : ""}
@@ -1123,16 +1155,10 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   ${sunum ? `<div class="gs ok"><b style="color:#2E7D57">✓</b> ${lang === "en" ? `Capacity analysis confirms that all blocks remain within the target headway (${cfg.headway} s); no limit is exceeded. The design is compliant in terms of capacity.` : `Kapasite analizi, tüm blokların hedef headway (${cfg.headway} s) sınırı içinde kaldığını göstermektedir; sınır aşımı bulunmamaktadır. Tasarım, kapasite açısından uygundur.`}</div>` : ""}
   <p class="muted" style="font-size:11px;margin-top:6px">${L.kapNot}</p>
   <div class="gs" style="font-size:10pt">${kapYorum}</div>
-  ${kisitFig}
   ${kavsakDetayBlok}
   <h3 class="sub">${lang === "en" ? "Terminal Turnback Capacity" : "Terminal Turnback Kapasitesi"}</h3>
   ${turnbackTblStr}
-  ${hemzeminFig}
-  ${bfFig}
-  ${hizFig}
   <h3 class="sub">${L.s41}</h3>
-  ${g ? `<div class="fig">${line ? sperrzeitSvg(bt, line.length, kritikRenk, en) : ""}<div class="cap">${sunum ? (lang === "en" ? `Figure 4 — Sperrzeitentreppe: block occupation (blocking-time) windows; min headway ${Math.round(bt.minHeadway)}s.` : `Şekil 4 — Sperrzeitentreppe: blok işgal (blocking-time) pencereleri; min headway ${Math.round(bt.minHeadway)} s.`) : L.fig4(Math.round(bt.minHeadway))}</div></div>
-  <div class="fig">${blockingBarSvg(bt.bloklar, bt.kritikBlok, kritikRenk, en)}<div class="cap">${sunum ? (lang === "en" ? "Figure 5 — Per-block blocking-time component distribution (determining block highlighted)." : "Şekil 5 — Blok başına blocking-time bileşen dağılımı (belirleyici blok vurgulu).") : L.fig5}${bt.bloklar.length > 16 ? (lang === "en" ? ` (highest 16 of ${bt.bloklar.length} blocks; full list in the table below)` : ` (${bt.bloklar.length} bloktan en yüksek 16'sı; tümü aşağıdaki tabloda)`) : ""}</div></div>` : ""}
   <div class="gs" style="font-size:9pt">${L.btTanim}</div>
   ${btTbl}
   ${mcBolum}
@@ -1147,6 +1173,9 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   ${dahil("tarife") ? tarifeBolum : ""}
 
   ${dahil("duyarlilik") ? duyarlilikBolum : ""}
+
+  <!-- 8: Grafikler (Görsel Analiz) — tüm şekiller; yalnız "grafikler" seçilince -->
+  ${grafiklerBolum}
 
   ${cekirdekNot}
 

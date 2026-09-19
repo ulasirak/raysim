@@ -18,6 +18,44 @@ import { RAPOR_BOLUMLER, RAPOR_BOLUM_KREDI, RAPOR_BOLUM_AD, RAPOR_TABAN_KREDI, r
 import { useCuzdan } from "@/components/CuzdanProvider";
 import { getAuthInstance } from "@/lib/firebase";
 
+// Rapor sekmesi açılır açılmaz gösterilen ŞIK yükleme ekranı (about:blank yerine).
+// Kendi kendine yeten tam HTML: markalı, CSS spinner + ilerleme çubuğu. Rapor hazır
+// olunca sekme blob URL'ine yönlendirilir ve bu ekran otomatik yerini rapora bırakır.
+const YUKLEME_EKRANI = `<!doctype html><html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rapor hazırlanıyor…</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, #F4F6F8 0%, #EAEEF2 60%, #E3E8ED 100%); color: #1F2933; }
+  .card { text-align: center; padding: 40px 44px; }
+  .brand { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; color: #1F2933; }
+  .brand .r { color: #B3282D; }
+  .spin { width: 46px; height: 46px; margin: 26px auto 20px; border: 4px solid #D5DBE1;
+    border-top-color: #B3282D; border-radius: 50%; animation: sp 0.9s linear infinite; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  .msg { font-size: 15px; font-weight: 600; color: #334155; }
+  .sub { margin-top: 6px; font-size: 12.5px; color: #64748B; }
+  .bar { width: 240px; height: 4px; margin: 22px auto 0; background: #DDE3E9; border-radius: 4px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 40%; border-radius: 4px; background: #B3282D;
+    animation: mv 1.3s ease-in-out infinite; }
+  @keyframes mv { 0% { margin-left: -40%; } 100% { margin-left: 100%; } }
+  @media (prefers-color-scheme: dark) {
+    body { background: radial-gradient(1200px 600px at 50% -10%, #1B2129 0%, #141A21 70%, #0F141A 100%); color: #E5EAF0; }
+    .brand { color: #F1F5F9; } .msg { color: #CBD5E1; } .sub { color: #94A3B8; } .bar { background: #2A333D; }
+    .spin { border-color: #2A333D; border-top-color: #E24B50; } .bar > i { background: #E24B50; }
+  }
+</style></head>
+<body><div class="card">
+  <div class="brand">Ray<span class="r">Sim</span></div>
+  <div class="spin" role="status" aria-label="Yükleniyor"></div>
+  <div class="msg">Rapor hazırlanıyor…</div>
+  <div class="sub">Simülasyon çalışıyor · birkaç saniye sürebilir</div>
+  <div class="bar"><i></i></div>
+</div></body></html>`;
+
 export function Belgeler() {
   const { cfg } = useSimConfig();
   const { rings: ringsHam, meta, patchMeta, yazilabilir, subeler } = useProje();
@@ -114,8 +152,9 @@ export function Belgeler() {
       setDurum({ tip: "err", metin: "Açılır pencere engellendi — tarayıcı pop-up iznini bu site için açıp tekrar deneyin." });
       setMesgul(""); return;
     }
-    // Yükleniyor göstergesi — kullanıcı boş (about:blank) sekme görmesin.
-    try { w.document.title = "Rapor hazırlanıyor…"; w.document.body && (w.document.body.innerHTML = '<p style="font-family:system-ui,sans-serif;padding:2rem;color:#334">Rapor hazırlanıyor…</p>'); } catch { /* cross-origin değil ama garantiye al */ }
+    // Şık yükleme ekranı — boş (about:blank) sekme yerine markalı spinner. Hazır olunca
+    // blob'a yönlendirilince bu ekran otomatik yerini rapora bırakır.
+    try { w.document.open(); w.document.write(YUKLEME_EKRANI); w.document.close(); } catch { /* garantiye al */ }
     try {
       const html = await raporAl();
       if (!html) { w.close(); return; }
@@ -124,7 +163,7 @@ export function Belgeler() {
       // sayfayı normal navigasyonla yükle → her varyasyonda güvenilir + yazdırılabilir.
       const blob = new Blob([html], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
-      w.location.href = url;
+      w.location.href = url; // yükleme ekranından rapora doğrudan yönlendir
       // Belge yüklendikten sonra URL'i serbest bırak (yüklenen doküman bellekte kalır).
       window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
       setDurum({ tip: "ok", metin: "Rapor yeni sekmede açıldı — yazdırma diyalogunda “Hedef: PDF olarak kaydet”i seçin." });
