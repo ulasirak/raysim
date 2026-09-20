@@ -12,6 +12,7 @@ import { brand } from "@/lib/anaray/brand";
 import { sure, kmh } from "@/lib/anaray/format";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { Duyarlilik } from "@/components/Duyarlilik";
+import { DogrulamaPaneli } from "@/components/DogrulamaPaneli";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import { blockingTimeRing, type BlokSperr } from "@/lib/anaray/blockingtime";
 import { maksimumTren } from "@/lib/anaray/kapasite";
@@ -278,6 +279,9 @@ export function SistemMerkezi() {
 
       {/* Duyarlılık (tornado) — hangi parametre kapasiteyi en çok oynatıyor. */}
       <Duyarlilik ringsHam={ringsHam} stock={stock} cfg={cfg} isletme={isletme} />
+
+      {/* Doğrulama & Geçerleme — motorun analitik referanslara karşı doğruluk sertifikasyonu. */}
+      <div className="mt-6"><DogrulamaPaneli /></div>
 
       {/* Parametre düzenleme TEK yerde: header'daki ⚙ Parametreler. Burada tekrar
           gösterilmez (çift giriş kafa karıştırıyordu) — yalnız yönlendirme. */}
