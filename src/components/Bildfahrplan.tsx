@@ -7,7 +7,7 @@
 // paralel zigzaglar. Öbekleşme (bunching), headway düzenliliği ve gidiş↔dönüş karşılaşma
 // noktaları tek bakışta görünür. Veri, canlı sim ile AYNI loop yörüngesinden gelir.
 
-import { useMemo } from "react";
+import { useMemo, useRef, useState, type WheelEvent as RWheelEvent, type PointerEvent as RPointerEvent } from "react";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { bildIstasyonZamanlari, bildKesisimZamanlari, satirYerlesim, type BildOlay } from "@/lib/anaray/grafikNoktalar";
@@ -64,6 +64,12 @@ export function Bildfahrplan({ loop, line, cakismalar = [] }: { loop: LoopVeri; 
     return { trenler, pencere, L, istOlay, kesisim };
   }, [loop, line]);
 
+  // ETKİLEŞİM (E): zoom/pan + tren vurgu. Hook'lar erken-return'den ÖNCE (kurallar).
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const [view, setView] = useState({ k: 1, tx: 0, ty: 0 });
+  const [vurgu, setVurgu] = useState<number | null>(null);
+  const dragRef = useRef<{ cx: number; cy: number; tx: number; ty: number; moved: boolean } | null>(null);
+
   if (!veri) return null;
   const { trenler, pencere, L, istOlay, kesisim } = veri;
 
@@ -93,10 +99,69 @@ export function Bildfahrplan({ loop, line, cakismalar = [] }: { loop: LoopVeri; 
   const olaySatir = satirYerlesim(olayX, 30, 3);
   const olayRenk = (tip: string) => (tip === "durak" ? brand.inkSoft : CK.amber);
 
+  // — Etkileşim (E): zoom/pan + hi-res export —
+  const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
+  const svgNokta = (cx: number, cy: number) => {
+    const svg = svgRef.current;
+    const ctm = svg?.getScreenCTM();
+    if (!svg || !ctm) return { x: 0, y: 0 };
+    const p = svg.createSVGPoint(); p.x = cx; p.y = cy;
+    const q = p.matrixTransform(ctm.inverse());
+    return { x: q.x, y: q.y };
+  };
+  const onWheel = (e: RWheelEvent) => {
+    e.preventDefault();
+    const { x, y } = svgNokta(e.clientX, e.clientY);
+    const f = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+    setView((v) => { const k = clamp(v.k * f, 1, 12); const r = k / v.k; return { k, tx: x - r * (x - v.tx), ty: y - r * (y - v.ty) }; });
+  };
+  const onDown = (e: RPointerEvent) => { (e.currentTarget as Element).setPointerCapture?.(e.pointerId); dragRef.current = { cx: e.clientX, cy: e.clientY, tx: view.tx, ty: view.ty, moved: false }; };
+  const onMove = (e: RPointerEvent) => {
+    const d = dragRef.current; const svg = svgRef.current; if (!d || !svg) return;
+    const rect = svg.getBoundingClientRect();
+    const dx = (e.clientX - d.cx) * (W / rect.width), dy = (e.clientY - d.cy) * (H / rect.height);
+    if (Math.abs(e.clientX - d.cx) + Math.abs(e.clientY - d.cy) > 3) d.moved = true;
+    setView((v) => ({ ...v, tx: d.tx + dx, ty: d.ty + dy }));
+  };
+  const onUp = () => { dragRef.current = null; };
+  const zoom = (f: number) => setView((v) => { const k = clamp(v.k * f, 1, 12); const cx = W / 2, cy = H / 2; const r = k / v.k; return { k, tx: cx - r * (cx - v.tx), ty: cy - r * (cy - v.ty) }; });
+  const sifirla = () => setView({ k: 1, tx: 0, ty: 0 });
+
+  const indir = (blob: Blob, ad: string) => { const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = ad; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
+  const svgXml = () => { const svg = svgRef.current; if (!svg) return ""; const c = svg.cloneNode(true) as SVGSVGElement; c.setAttribute("width", String(W)); c.setAttribute("height", String(H)); c.setAttribute("xmlns", "http://www.w3.org/2000/svg"); return new XMLSerializer().serializeToString(c); };
+  const exportSvg = () => { const xml = svgXml(); if (xml) indir(new Blob([xml], { type: "image/svg+xml;charset=utf-8" }), "bildfahrplan.svg"); };
+  const exportPng = () => {
+    const xml = svgXml(); if (!xml) return; const scale = 3;
+    const url = URL.createObjectURL(new Blob([xml], { type: "image/svg+xml;charset=utf-8" }));
+    const img = new Image();
+    img.onload = () => {
+      const cv = document.createElement("canvas"); cv.width = W * scale; cv.height = H * scale;
+      const ctx = cv.getContext("2d");
+      if (ctx) { ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cv.width, cv.height); ctx.drawImage(img, 0, 0, cv.width, cv.height); cv.toBlob((b) => { if (b) indir(b, "bildfahrplan.png"); }, "image/png"); }
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  };
+  const dugme = "rounded px-2 py-1 text-xs font-semibold";
+
   return (
-    <div className="-mx-1 overflow-x-auto px-1 sm:mx-0" style={{ WebkitOverflowScrolling: "touch" }}>
-      <div className="min-w-[720px] sm:min-w-0">
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Bildfahrplan — zaman-mesafe tren grafiği">
+    <div>
+      <div className="mb-2 flex flex-wrap items-center gap-1.5">
+        <button type="button" onClick={() => zoom(1.3)} className={dugme} style={{ background: brand.ink, color: "#fff" }} aria-label="Yakınlaştır">+</button>
+        <button type="button" onClick={() => zoom(1 / 1.3)} className={dugme} style={{ background: brand.ink, color: "#fff" }} aria-label="Uzaklaştır">−</button>
+        <button type="button" onClick={sifirla} className={dugme} style={{ border: `1px solid ${brand.border}`, color: brand.ink }}>Sıfırla</button>
+        <span className="mx-1 text-[0.65rem] tabular-nums" style={{ color: brand.muted }}>×{view.k.toFixed(1)}</span>
+        <span className="hidden text-[0.65rem] sm:inline" style={{ color: brand.muted }}>tekerlek = yakınlaş · sürükle = kaydır · tren üstüne gel = vurgula</span>
+        <span className="flex-1" />
+        <button type="button" onClick={exportPng} className={dugme} style={{ border: `1px solid ${brand.border}`, color: brand.ink }}>PNG indir</button>
+        <button type="button" onClick={exportSvg} className={dugme} style={{ border: `1px solid ${brand.border}`, color: brand.ink }}>SVG indir</button>
+      </div>
+      <div className="overflow-hidden rounded-md" style={{ border: `1px solid ${brand.border}` }}>
+        <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full h-auto select-none" style={{ touchAction: "none", cursor: "grab" }}
+          onWheel={onWheel} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerLeave={onUp}
+          role="img" aria-label="Bildfahrplan — zaman-mesafe tren grafiği (yakınlaştırılabilir)">
+          <defs><clipPath id="bfclip"><rect x={0} y={0} width={W} height={H} /></clipPath></defs>
+          <g clipPath="url(#bfclip)"><g transform={`translate(${view.tx.toFixed(2)} ${view.ty.toFixed(2)}) scale(${view.k})`}>
           {/* İstasyon yatay ızgara + adları */}
           {duraklar.map((d, i) => {
             const y = Y(d.pos);
@@ -113,13 +178,19 @@ export function Bildfahrplan({ loop, line, cakismalar = [] }: { loop: LoopVeri; 
           {eksenOlay.map((o, i) => (
             <line key={`gv${i}`} x1={X(o.t)} y1={ustPad} x2={X(o.t)} y2={eksenY} stroke={olayRenk(o.tip)} strokeWidth={0.5} strokeOpacity={o.tip === "durak" ? 0.28 : 0.5} strokeDasharray={o.tip === "kesisim" ? "2 2" : undefined} />
           ))}
-          {/* Tren çizgileri — gidiş mavi, dönüş kırmızı; referans tren (k=0) vurgulu */}
-          {trenler.map((tr) => (
-            <g key={tr.k}>
-              {tr.gidis.map((seg, i) => <path key={`g${i}`} d={yol(seg)} fill="none" stroke={CK.blue} strokeWidth={tr.k === 0 ? 1.8 : 0.9} strokeOpacity={tr.k === 0 ? 1 : 0.75} />)}
-              {tr.donus.map((seg, i) => <path key={`d${i}`} d={yol(seg)} fill="none" stroke={CK.red} strokeWidth={tr.k === 0 ? 1.8 : 0.9} strokeOpacity={tr.k === 0 ? 1 : 0.75} />)}
-            </g>
-          ))}
+          {/* Tren çizgileri — gidiş mavi, dönüş kırmızı; hover ile vurgu (diğerleri soluklaşır) */}
+          {trenler.map((tr) => {
+            const kalin = (tr.k === 0 ? 1.8 : 0.9) * (vurgu === tr.k ? 2.1 : 1);
+            const op = vurgu == null ? (tr.k === 0 ? 1 : 0.75) : vurgu === tr.k ? 1 : 0.16;
+            return (
+              <g key={tr.k} onMouseEnter={() => setVurgu(tr.k)} onMouseLeave={() => setVurgu(null)} style={{ cursor: "pointer" }}>
+                {/* görünmez kalın vuruş — hover kolaylığı */}
+                {[...tr.gidis, ...tr.donus].map((seg, i) => <path key={`h${i}`} d={yol(seg)} fill="none" stroke="transparent" strokeWidth={6} />)}
+                {tr.gidis.map((seg, i) => <path key={`g${i}`} d={yol(seg)} fill="none" stroke={CK.blue} strokeWidth={kalin} strokeOpacity={op} />)}
+                {tr.donus.map((seg, i) => <path key={`d${i}`} d={yol(seg)} fill="none" stroke={CK.red} strokeWidth={kalin} strokeOpacity={op} />)}
+              </g>
+            );
+          })}
           {/* Kesişim (karşılaşma) noktaları — ◇ */}
           {kesisim.map((c, i) => (
             <rect key={`k${i}`} x={X(c.t) - 2.4} y={Y(c.fp) - 2.4} width={4.8} height={4.8} transform={`rotate(45 ${X(c.t).toFixed(1)} ${Y(c.fp).toFixed(1)})`} fill={CK.amber} stroke="#fff" strokeWidth={0.5} />
@@ -147,6 +218,7 @@ export function Bildfahrplan({ loop, line, cakismalar = [] }: { loop: LoopVeri; 
           {/* Eksen başlıkları */}
           <text x={solPad + cizW / 2} y={H - 3} textAnchor="middle" fontSize={8} fontWeight={600} fill={brand.inkSoft}>Zaman (çevrim boyu) →</text>
           <text x={12} y={ustPad + cizH / 2} textAnchor="middle" fontSize={8} fontWeight={600} fill={brand.inkSoft} transform={`rotate(-90 12 ${ustPad + cizH / 2})`}>Mesafe / İstasyon ↑</text>
+          </g></g>
         </svg>
         <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 px-1 text-xs" style={{ color: brand.muted }}>
           <span><span style={{ color: CK.blue }}>▬</span> Gidiş yönü</span>
