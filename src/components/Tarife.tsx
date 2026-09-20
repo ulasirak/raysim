@@ -27,7 +27,7 @@ export function Tarife({ cevrimSn, headwaySn }: { cevrimSn: number; headwaySn: n
 
   return (
     <section className="mt-6">
-      <div className="rounded-lg border bg-white p-5" style={{ borderColor: brand.border }}>
+      <div className="ds-card p-5">
         <div className="mb-2 flex items-baseline gap-2">
           <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
           <h2 className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>Tarife (Zaman Çizelgesi)</h2>
@@ -127,7 +127,7 @@ export function Tarife({ cevrimSn, headwaySn }: { cevrimSn: number; headwaySn: n
 
 function Ozet({ et, d, alt }: { et: string; d: string; alt: string }) {
   return (
-    <div className="rounded border p-2.5" style={{ borderColor: brand.border }}>
+    <div className="ds-card p-2.5">
       <div className="text-[0.6rem] uppercase" style={{ color: brand.muted }}>{et}</div>
       <div className="text-lg font-bold tabular-nums" style={{ color: brand.ink }}>{d}</div>
       <div className="text-[0.6rem]" style={{ color: brand.muted }}>{alt}</div>

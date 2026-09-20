@@ -32,7 +32,7 @@ export function DogrulamaPaneli() {
   const bagimsizN = rapor.sonuclar.filter((s) => s.bagimsiz).length;
 
   return (
-    <div className="rounded-lg border" style={{ borderColor: brand.border, background: "#fff" }}>
+    <div className="ds-card">
       {/* Başlık + özet */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4" style={{ borderColor: brand.border }}>
         <div>

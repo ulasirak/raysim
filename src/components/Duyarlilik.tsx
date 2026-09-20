@@ -19,7 +19,7 @@ export function Duyarlilik({ ringsHam, stock, cfg, isletme }: { ringsHam: DurakA
 
   if (ringsHam.length < 1 || s.taban <= 0) {
     return (
-      <div className="mt-6 rounded-lg border bg-white p-5" style={{ borderColor: brand.border }}>
+      <div className="mt-6 ds-card p-5">
         <PanelBaslik ad="Duyarlılık (Tornado)" not="hangi parametre kapasiteyi en çok oynatıyor" />
         <p className="text-sm" style={{ color: brand.muted }}>Analiz için kurulu bir hat gerekir (Ringler).</p>
       </div>
@@ -32,7 +32,7 @@ export function Duyarlilik({ ringsHam, stock, cfg, isletme }: { ringsHam: DurakA
   const yuzde = (v: number) => ((v - min) / span) * 100;
 
   return (
-    <div className="mt-6 rounded-lg border bg-white p-5" style={{ borderColor: brand.border }}>
+    <div className="mt-6 ds-card p-5">
       <PanelBaslik ad="Duyarlılık (Tornado)" not="hangi parametre hedef metriği en çok oynatıyor — en güçlü kaldıraç tepede" />
 
       <div className="mb-4 flex flex-wrap items-end gap-4">

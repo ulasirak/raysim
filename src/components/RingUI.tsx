@@ -45,7 +45,7 @@ export function MiniStat({ etiket, deger, alt, vurgu }: { etiket: string; deger:
 
 export function Panel({ baslik, aciklama, children }: { baslik: string; aciklama?: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border bg-white p-5" style={{ borderColor: brand.border }}>
+    <div className="ds-card p-5">
       <div className="mb-4 flex items-baseline gap-2">
         <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
         <h2 className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{baslik}</h2>
