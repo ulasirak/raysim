@@ -62,6 +62,45 @@ export function CografiAg({
   const L = loop?.L ?? line.length;
   const loopLen = loop?.loopLen ?? line.length * 2;
 
+  // GERÇEK OSM geometrisi projeksiyonu — görünürdeki (bu hattın) yolları 2B'ye taşır.
+  // Hem çizim (yolD) hem de trenlerin RAYA SNAP'i (raydan yürüsün) bundan beslenir.
+  const geoProjeksiyon = useMemo(() => {
+    const pe = g.projekteEt;
+    if (!g.coordluMu || !pe) return [] as { insaat: boolean; pts: GeoNokta[] }[];
+    const kaynak = geometri && geometri.length ? geometri : KONYA_GEOMETRI;
+    const { w, h } = g.vb;
+    const out: { insaat: boolean; pts: GeoNokta[] }[] = [];
+    for (const yol of kaynak) {
+      const pts = yol.noktalar.map(([lat, lon]) => pe(lat, lon));
+      const ic = pts.filter((p) => p.x >= -20 && p.x <= w + 20 && p.y >= -20 && p.y <= h + 20).length;
+      if (ic < pts.length * 0.6) continue;
+      out.push({ insaat: !!yol.insaat, pts });
+    }
+    return out;
+  }, [g, geometri]);
+  const gercekGeo = geoProjeksiyon.length > 0;
+  // Snap için düz segment listesi (operasyonel yolları tercih et — dönüş/tren o hatta).
+  const geoSegmentler = useMemo(() => {
+    const segs: { ax: number; ay: number; bx: number; by: number }[] = [];
+    for (const y of geoProjeksiyon) if (!y.insaat) for (let i = 1; i < y.pts.length; i++) segs.push({ ax: y.pts[i - 1].x, ay: y.pts[i - 1].y, bx: y.pts[i].x, by: y.pts[i].y });
+    // operasyonel yoksa inşaat da olsun (yine de raya otursun)
+    if (segs.length === 0) for (const y of geoProjeksiyon) for (let i = 1; i < y.pts.length; i++) segs.push({ ax: y.pts[i - 1].x, ay: y.pts[i - 1].y, bx: y.pts[i].x, by: y.pts[i].y });
+    return segs;
+  }, [geoProjeksiyon]);
+  // Bir noktayı en yakın ray segmentine snap et + o segmentin açısını ver (tren raya otursun).
+  const snapRay = (px: number, py: number): { x: number; y: number; aci: number } | null => {
+    if (geoSegmentler.length === 0) return null;
+    let best = Infinity, bx = px, by = py, ba = 0;
+    for (const s of geoSegmentler) {
+      const dx = s.bx - s.ax, dy = s.by - s.ay, L2 = dx * dx + dy * dy || 1e-9;
+      let tt = ((px - s.ax) * dx + (py - s.ay) * dy) / L2; tt = tt < 0 ? 0 : tt > 1 ? 1 : tt;
+      const x = s.ax + tt * dx, y = s.ay + tt * dy;
+      const d2 = (px - x) ** 2 + (py - y) ** 2;
+      if (d2 < best) { best = d2; bx = x; by = y; ba = (Math.atan2(dy, dx) * 180) / Math.PI; }
+    }
+    return { x: bx, y: by, aci: ba };
+  };
+
   // Trenleri döngü fazından örnekle (headway'le eşit aralıklı). s → fiziksel kilometraj:
   // gidiş (s≤L) düz; dönüş (s>L) geri → chain = loopLen − s. Şerit ofseti yönle işaretlenir.
   const trenler = useMemo(() => {
@@ -72,41 +111,36 @@ export function CografiAg({
       const smp = sampleLoop(loop.ornekler, faz);
       const gidis = smp.s <= L;
       const chain = gidis ? smp.s : loopLen - smp.s;
-      const pt = g.konum(chain);
-      const ileri = g.konum(Math.min(line.length, chain + 5));
-      const geri = g.konum(Math.max(0, chain - 5));
-      const dx = ileri.x - geri.x, dy = ileri.y - geri.y;
-      const aci = (Math.atan2(dy, dx) * 180) / Math.PI;
-      const nrm = g.normal(chain);
+      // Konumu GERÇEK RAYA snap et (tren raydan yürüsün, köşe kesmesin). Yön = ilerideki
+      // (seyahat yönündeki) snap noktasına göre → gidiş/dönüş oku doğru.
+      const base = g.konum(chain);
+      const s0 = gercekGeo ? snapRay(base.x, base.y) : null;
+      const cx = s0 ? s0.x : base.x, cy = s0 ? s0.y : base.y;
+      const ilerideChain = gidis ? Math.min(line.length, chain + 4) : Math.max(0, chain - 4);
+      const b1 = g.konum(ilerideChain);
+      const s1 = gercekGeo ? snapRay(b1.x, b1.y) : null;
+      const fx = (s1 ? s1.x : b1.x) - cx, fy = (s1 ? s1.y : b1.y) - cy;
+      const aci = (Math.atan2(fy, fx) * 180) / Math.PI;
+      // Çift-şerit ofseti: ray yönüne DİK, yönle işaretli.
+      const rad = (aci * Math.PI) / 180, ox = -Math.sin(rad), oy = Math.cos(rad);
       const yon = gidis ? 1 : -1;
-      out.push({ pt: { x: pt.x + nrm.x * GAP * yon, y: pt.y + nrm.y * GAP * yon }, aci, gidis, durum: smp.durum, s: smp.s });
+      out.push({ pt: { x: cx + ox * GAP * yon, y: cy + oy * GAP * yon }, aci, gidis, durum: smp.durum, s: smp.s });
     }
     return out;
-  }, [loop, t, periyot, L, loopLen, g, line.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loop, t, periyot, L, loopLen, g, line.length, geoSegmentler, gercekGeo]);
 
   const yolD = g.yol.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
 
-  // GERÇEK OSM TRACK GEOMETRİSİ (Konya) — istasyon koordinatlarıyla aynı projeksiyona
-  // taşınır; çoğu noktası viewBox içinde kalan yollar (yani bu Konya hattı) çizilir.
-  // Böylece harita düz istasyon-çizgisi yerine gerçek kavisli hizayı gösterir.
-  const geoYollar = useMemo(() => {
-    const pe = g.projekteEt;
-    if (!g.coordluMu || !pe) return [] as { insaat: boolean; d: string }[];
-    // KAYNAK: müşterinin kendi geometrisi (GTFS shape vb.) varsa O; yoksa Konya bundled örnek.
-    const kaynak = geometri && geometri.length ? geometri : KONYA_GEOMETRI;
-    const { w, h } = g.vb;
-    const out: { insaat: boolean; d: string }[] = [];
-    for (const yol of kaynak) {
-      const pts = yol.noktalar.map(([lat, lon]) => pe(lat, lon));
-      const ic = pts.filter((p) => p.x >= -20 && p.x <= w + 20 && p.y >= -20 && p.y <= h + 20).length;
-      if (ic < pts.length * 0.6) continue; // çoğu görünürse (bu hat) çiz
-      out.push({ insaat: !!yol.insaat, d: pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ") });
-    }
-    return out;
-  }, [g, geometri]);
-  const gercekGeo = geoYollar.length > 0;
+  // Çizim yolları (geoProjeksiyon'dan path string'i) — gerçek kavisli hiza.
+  const geoYollar = useMemo(
+    () => geoProjeksiyon.map((y) => ({ insaat: y.insaat, d: y.pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ") })),
+    [geoProjeksiyon]
+  );
   const featureSimge = (f: HatOzellik, idx: number) => {
-    const p = g.konum(f.pos);
+    const b = g.konum(f.pos);
+    const sr = gercekGeo ? snapRay(b.x, b.y) : null; // özellikler de raya otursun
+    const p = sr ? { x: sr.x, y: sr.y } : b;
     if (f.kind === "makas") {
       return <rect key={`f${idx}`} x={p.x - 4} y={p.y - 4} width={8} height={8} transform={`rotate(45 ${p.x.toFixed(1)} ${p.y.toFixed(1)})`} fill={CK.gold} stroke="#fff" strokeWidth={1}><title>{f.ad}</title></rect>;
     }
