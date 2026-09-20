@@ -28,6 +28,7 @@ import type { RollingStock } from "./types";
 // Üretim: güzergah DWG → accoreconsole DXF → TT_EM_SERİT/TT_KBT-HAT ekseni → scripts/kurp_cikar.py.
 import kurpVeri from "./kurpVeri.json";
 import type { ProjeVerisi } from "../projeler";
+import { konyaKoordinatBul } from "./konyaKoordinat";
 
 const KMH = 1 / 3.6;
 
@@ -478,5 +479,21 @@ export function hazirHatlar(): HazirHat[] {
     },
   };
 
-  return [mevcut, etap1, etap2, birlesik];
+  const hatlar = [mevcut, etap1, etap2, birlesik];
+  // Gerçek Konya OSM koordinatlarını istasyon ADINA göre göm → hazır hatlar "Harita"
+  // modunda kullanıcı hiç uğraşmadan gerçek konumda çizilir (eşleşmeyen durak elle).
+  for (const h of hatlar) {
+    const koord = konyaKoordinatlariRingden(h.veri.rings ?? []);
+    if (Object.keys(koord).length) h.veri.isletme = { ...(h.veri.isletme ?? varsayilanIsletme), istasyonKoordinat: koord };
+  }
+  return hatlar;
+}
+
+/** Ringlerin istasyon adlarından gerçek Konya OSM koordinatlarını topla (eşleşenler). */
+function konyaKoordinatlariRingden(rings: DurakArasiRing[]): Record<string, { lat: number; lon: number }> {
+  const adlar = new Set<string>();
+  for (const r of rings) { if (r.fromAd) adlar.add(r.fromAd); if (r.toAd) adlar.add(r.toAd); }
+  const out: Record<string, { lat: number; lon: number }> = {};
+  for (const ad of adlar) { const c = konyaKoordinatBul(ad); if (c) out[ad] = c; }
+  return out;
 }
