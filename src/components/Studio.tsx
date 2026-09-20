@@ -15,6 +15,7 @@ import { tramvaylar } from "@/lib/anaray/vehicles";
 import { maksimumTren } from "@/lib/anaray/kapasite";
 import { etkinArac, type Isletme } from "@/lib/anaray/config";
 import { osmKoordinatEsle } from "@/lib/anaray/adEsle";
+import { parseGtfsZip, gtfsRotalar, gtfsYonler, gtfsHatKur } from "@/lib/anaray/gtfs";
 import { cakismaTespit } from "@/lib/anaray/cakisma";
 import { gecikmeYayilim } from "@/lib/anaray/gecikmeYayilim";
 import { ortakKesimAnaliz } from "@/lib/anaray/ortakKesim";
@@ -126,6 +127,8 @@ function StudioIc() {
   const [agGorunum, setAgGorunum] = useState<"sematik" | "harita">("sematik"); // Canlı Ağ: şematik şerit / coğrafi harita
   const [koordAcik, setKoordAcik] = useState(false); // istasyon koordinat giriş paneli açık mı
   const [haritaBilgi, setHaritaBilgi] = useState(true); // harita bilgilendirme paneli açık mı
+  const [gtfsYukle, setGtfsYukle] = useState<"bos" | "yukleniyor" | "hata">("bos"); // gtfsHazir tek-tıkla import durumu
+  const [gtfsMesaj, setGtfsMesaj] = useState("");
   const [koHedef, setKoHedef] = useState(0);      // knock-on: birincil gecikme verilen tren
   const [koGecikme, setKoGecikme] = useState(180); // knock-on: birincil gecikme (s)
   // Pop-up'ı BODY'ye portallamak için mount bekle (SSR'da document yok). Portal,
@@ -306,6 +309,39 @@ function StudioIc() {
     })();
     return () => { iptal = true; };
   }, [isletme.osmBbox, haritaTam, agIstasyonlar, isletme.istasyonKoordinat, isletme.hatGeometri, isletme.koordinatKaynak, patchIsletme]);
+
+  // TEK-TIKLA İÇE AKTAR (gtfsHazir): hazır etap hattının GTFS asset'ini indir → ayrıştır →
+  // durak lat/lon + gerçek geometriyi ada göre eşle → PROJEYE yaz (koordinatKaynak="iceaktar",
+  // yetkili → OSM'e girişilmez). Gömülü koordinat DEĞİL; makas/sinyal/ring korunur (yalnız
+  // koordinat + geometri eklenir). Kaynak ~150m CAD+kilometraj olduğundan koordinatYaklasik=true.
+  const gtfsIceAktar = async () => {
+    const url = isletme.gtfsHazir;
+    if (!url) return;
+    setGtfsYukle("yukleniyor"); setGtfsMesaj("");
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error("indirilemedi");
+      const feed = parseGtfsZip(new Uint8Array(await r.arrayBuffer()));
+      const rid = gtfsRotalar(feed)[0]?.id;
+      if (!rid) throw new Error("rota yok");
+      const dir = gtfsYonler(feed, rid)[0]?.dir ?? "0";
+      const sonuc = gtfsHatKur(feed, rid, dir);
+      const koord = osmKoordinatEsle(agIstasyonlar, sonuc.duraklar ?? []);
+      if (Object.keys(koord).length === 0) throw new Error("istasyon adları eşleşmedi");
+      const patch: Partial<Isletme> = {
+        istasyonKoordinat: { ...(isletme.istasyonKoordinat ?? {}), ...koord },
+        koordinatKaynak: "iceaktar", koordinatYaklasik: true,
+      };
+      if (sonuc.geometri && sonuc.geometri.length >= 2) patch.hatGeometri = [{ noktalar: sonuc.geometri }];
+      patchIsletme(patch);
+      setAgGorunum("harita");
+      setGtfsYukle("bos");
+      setGtfsMesaj(`✓ ${Object.keys(koord).length} durak koordinatı içe aktarıldı (projeye kaydedildi).`);
+    } catch (e) {
+      setGtfsYukle("hata");
+      setGtfsMesaj(e instanceof Error && e.message === "istasyon adları eşleşmedi" ? "Durak adları eşleşmedi." : "İçe aktarılamadı — tekrar deneyin.");
+    }
+  };
 
   // Çizelge çakışma tespiti (#2) — tek-hat karşılaşmaları + sistemik headway<hMin.
   const cakisma = useMemo(
@@ -623,6 +659,14 @@ function StudioIc() {
             style={{ border: `1px solid ${haritaTam ? "#16794C" : brand.border}`, color: haritaTam ? "#16794C" : brand.ink }}>
             ⌖ Koordinat gir {haritaTam ? "✓" : agKoordSay > 0 ? `${agKoordSay}/${agIstasyonlar.length}` : ""}
           </button>
+          {isletme.gtfsHazir && !haritaTam && (
+            <button type="button" onClick={gtfsIceAktar} disabled={gtfsYukle === "yukleniyor"}
+              className="rounded-md px-3 py-1 text-xs font-semibold text-white disabled:opacity-60" style={{ background: "#2E7D57" }}
+              title="Hattın gerçek koordinatlarını (CAD güzergâh + kilometraj, OSM-hizalı) GTFS asset'inden içe aktarır → PROJENE kaydeder (kaynak koduna gömülü değil). Makas/sinyal korunur; yalnız koordinat + geometri eklenir.">
+              {gtfsYukle === "yukleniyor" ? "⟳ İçe aktarılıyor…" : "⬇ Gerçek koordinatlı haritayı içe aktar (CAD/GTFS)"}
+            </button>
+          )}
+          {gtfsMesaj && <span className="text-[0.7rem] font-medium" style={{ color: gtfsYukle === "hata" ? CK.red : CK.good }}>{gtfsMesaj}</span>}
           {agGorunum === "harita" && !haritaTam && (
             <button type="button" onClick={() => setKoordAcik(true)} className="text-[0.7rem] font-medium underline" style={{ color: CK.amberInk }}>
               ⚠ {agKoordSay}/{agIstasyonlar.length} durak koordinatlı — TAM olunca gerçek harita çizilir (OSM’den otomatik çekiliyor / “Koordinat gir” ile tamamla). Sahte konum üretilmez.

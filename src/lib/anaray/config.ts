@@ -294,6 +294,10 @@ export interface Isletme {
    *  "iceaktar" = CAD/GTFS/railML/Shapefile ile girildi (YETKİLİ, hazır) → OSM'e HİÇ girişilmez,
    *  sayfa doğrudan bu veriyle çizilir. "yaklasik"/boş = OSM'den doldurulabilir/geliştirilebilir. */
   koordinatKaynak?: "iceaktar" | "manuel" | "yaklasik" | "osm";
+  /** İçe aktarılabilir GTFS asset URL'i (koordinat DEĞİL, pointer). Hazır etap hatlarına
+   *  verilir → "tek tıkla içe aktar" gerçek koordinat + geometriyi projeye (Firestore) yazar.
+   *  Gömülü koordinat yerine: veri asset'ten import yoluyla gelir, düzenlenebilir/silinebilir. */
+  gtfsHazir?: string;
   /** Parklanma dizilimi: her depo (ring id / "origin") → oraya ELLE yerleştirilen araç sayısı.
    *  Rastgele dağıtılmaz; kullanıcı doldurur (toplam = filo). Boşsa henüz dizilmemiş. */
   parklanmaDagilim?: Record<string, number>;

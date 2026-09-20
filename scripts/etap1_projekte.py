@@ -161,3 +161,13 @@ for i,nm in enumerate(E1):
 
 json.dump(out,open(SP+"/etap1_coords.json","w",encoding="utf-8"),ensure_ascii=False,indent=1)
 print(f"\n# yazıldı: etap1_coords.json")
+
+# SHAPE (GTFS shapes.txt için): HAT1 merkez hattı WGS84, Aslım(0) -> Şehir Hastanesi ucu,
+# sonra Adliye kolu eklenir (13 istasyonu kapsar). Import bunu gerçek kavisli hiza +
+# gerçek mesafe + kavis çıkarımı için kullanır.
+shape = center[::-1] if sh_at_start else center[:]   # Aslım başta
+shape_out = [[round(la, 6), round(lo, 6)] for la, lo in shape]
+adl = out["Adliye (Lise/Okullar)"]
+shape_out.append([adl["lat"], adl["lon"]])
+json.dump(shape_out, open(SP + "/etap1_shape.json", "w", encoding="utf-8"))
+print(f"# yazıldı: etap1_shape.json ({len(shape_out)} nokta)")
