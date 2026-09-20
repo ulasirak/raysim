@@ -57,7 +57,7 @@ async function overpassCek(bbox: [number, number, number, number]): Promise<GeoY
 
 export async function POST(req: Request) {
   const ip = (req.headers.get("x-forwarded-for") || "?").split(",")[0].trim();
-  const hiz = await hizSiniri("osmgeo:" + ip, 20, 60, true); // 20/dk; DB yoksa fail-open
+  const hiz = await hizSiniri("osmgeo:" + ip, 20, 60, false); // 20/dk; rate-limit altyapısı yoksa fail-OPEN (convenience uç)
   if (!hiz.izin) return NextResponse.json({ hata: "Çok fazla istek — biraz bekleyin.", sifirlaSn: hiz.sifirlaSn }, { status: 429 });
 
   let body: { bbox?: [number, number, number, number] };
