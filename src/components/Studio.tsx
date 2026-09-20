@@ -4,7 +4,7 @@
 // Ağ + araç düzenlenir; her değişiklikte flattenRoute→simulate→paneller anında güncellenir.
 // Senaryolar Firestore'a kaydedilir/yüklenir. İstasyon ekle/sil grafı düzenler.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import type { RailNetwork, Route } from "@/lib/anaray/types";
@@ -255,6 +255,14 @@ function StudioIc() {
     () => agIstasyonlar.length > 0 && agIstasyonlar.every((n) => { const c = agKoordinat?.[n]; return !!c && Number.isFinite(c.lat) && Number.isFinite(c.lon); }),
     [agIstasyonlar, agKoordinat]
   );
+  // Hat TAM koordinatlıysa (harita hazır) İLK yüklemede Harita'yı VARSAYILAN göster —
+  // kullanıcı gerçek hattını hemen görür (sonra Şematik'e geçebilir). Yalnız bir kez.
+  const agModAyarlandi = useRef(false);
+  useEffect(() => {
+    if (agModAyarlandi.current || !haritaHazir) return;
+    agModAyarlandi.current = true;
+    setAgGorunum("harita");
+  }, [haritaHazir]);
 
   // Çizelge çakışma tespiti (#2) — tek-hat karşılaşmaları + sistemik headway<hMin.
   const cakisma = useMemo(
