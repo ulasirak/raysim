@@ -286,6 +286,10 @@ export interface Isletme {
    *  bu bölgeden SUNUCU tarafı OSM'den çekilir (ilk yükte, kalıcı cache). Hazır hatlarda
    *  şehir bbox'ı; elle/import hatlarda boş (koordinat oradan gelir). */
   osmBbox?: [number, number, number, number];
+  /** İstasyon koordinatları YAKLAŞIK mı? (ör. CAD alignment + kilometraj projeksiyonu,
+   *  ±~150m). true ise haritada "yaklaşık — demoya özel" uyarısı gösterilir; OSM gerçek
+   *  verisi geldiğinde üzerine yazılır. Gerçek/hassas (OSM/GTFS) koordinatlarda false/boş. */
+  koordinatYaklasik?: boolean;
   /** Parklanma dizilimi: her depo (ring id / "origin") → oraya ELLE yerleştirilen araç sayısı.
    *  Rastgele dağıtılmaz; kullanıcı doldurur (toplam = filo). Boşsa henüz dizilmemiş. */
   parklanmaDagilim?: Record<string, number>;

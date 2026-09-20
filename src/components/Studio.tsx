@@ -272,7 +272,9 @@ function StudioIc() {
   const osmCekRef = useRef<string | null>(null);
   useEffect(() => {
     const bbox = isletme.osmBbox;
-    if (!bbox || haritaTam || agIstasyonlar.length === 0) return;
+    const geometriVar = !!(isletme.hatGeometri && isletme.hatGeometri.length);
+    if (!bbox || agIstasyonlar.length === 0) return;
+    if (haritaTam && geometriVar) return; // koordinat + geometri tam → OSM'e gitmeye gerek yok
     const key = bbox.join(",");
     if (osmCekRef.current === key) return;
     osmCekRef.current = key;
@@ -299,7 +301,7 @@ function StudioIc() {
       if (!iptal) osmCekRef.current = null; // hepsi başarısız → yeniden denenebilir kalsın
     })();
     return () => { iptal = true; };
-  }, [isletme.osmBbox, haritaTam, agIstasyonlar, isletme.istasyonKoordinat, patchIsletme]);
+  }, [isletme.osmBbox, haritaTam, agIstasyonlar, isletme.istasyonKoordinat, isletme.hatGeometri, patchIsletme]);
 
   // Çizelge çakışma tespiti (#2) — tek-hat karşılaşmaları + sistemik headway<hMin.
   const cakisma = useMemo(
@@ -622,7 +624,13 @@ function StudioIc() {
               ⚠ {agKoordSay}/{agIstasyonlar.length} durak koordinatlı — TAM olunca gerçek harita çizilir (OSM’den otomatik çekiliyor / “Koordinat gir” ile tamamla). Sahte konum üretilmez.
             </button>
           )}
-          {agGorunum === "harita" && haritaTam && (!isletme.hatGeometri || isletme.hatGeometri.length === 0) && (
+          {agGorunum === "harita" && haritaTam && isletme.koordinatYaklasik && (
+            <span className="rounded px-2 py-1 text-[0.7rem] font-semibold" style={{ background: CK.amberBg, color: CK.amberInk, border: `1px solid ${CK.amber}` }}
+              title="1. Etap istasyonları OpenStreetMap'te henüz adlı node olarak yok. Konumlar karşı tarafın CAD güzergâh projesinden (HAT1 alignment) + gerçek kilometrajdan üretilip OSM inşaat hattına hizalandı. Hassasiyet ~150m — demo amaçlı. OSM'e istasyonlar eklenince otomatik gerçek veriyle güncellenir.">
+              ⚠ Yaklaşık konum (CAD güzergâh + kilometraj, ±~150m) — demoya özel; OSM gerçek verisi gelince güncellenir
+            </span>
+          )}
+          {agGorunum === "harita" && haritaTam && !isletme.koordinatYaklasik && (!isletme.hatGeometri || isletme.hatGeometri.length === 0) && (
             <button type="button" onClick={() => setKoordAcik(true)} className="text-[0.7rem] font-medium underline" style={{ color: "#2E7D57" }}>
               💡 Gerçek kavisli hizayı kalıcılaştır: ⤓ OSM’den çek (ya da GTFS içe aktar)
             </button>

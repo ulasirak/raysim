@@ -27,6 +27,7 @@ import type { RollingStock } from "./types";
 // GERÇEK CAD kurpları (yarıçaplar) AYRI VERİ DOSYASINDA — kaynak koda gömülü değil.
 // Üretim: güzergah DWG → accoreconsole DXF → TT_EM_SERİT/TT_KBT-HAT ekseni → scripts/kurp_cikar.py.
 import kurpVeri from "./kurpVeri.json";
+import { ETAP1_KOORDINAT } from "./etapKoordinat";
 import type { ProjeVerisi } from "../projeler";
 
 const KMH = 1 / 3.6;
@@ -317,7 +318,7 @@ const ETAP2_MESAFE = [413, 762, 880, 853, 1011, 1446, 1137, 1062, 1057];
 // v7: sinyalizasyon firması = Aslan Sinyalizasyon (üç hatta da).
 // v8: 4. hat — Bütünleşik Hat (Alaaddin–Stadyum), üç etap tek sürekli hatta birleşik.
 // v9: makas S/X crossover geometrisi + terminal makas sayıları (gerçek CAD/kullanıcı verisi).
-export const HAZIR_VERI_SURUM = 14; // v14: Mevcut hat gerçek CAD kurpları eklendi (HAT1 katmanı, Alaaddin-Etap1-2-depo_v11 DWG → 9 bağlayıcı kurp) → yeniden seed
+export const HAZIR_VERI_SURUM = 15; // v15: 1. Etap demoya-özel YAKLAŞIK koordinat (CAD HAT1 + kilometraj, OSM-hizalı, ~150m) → harita modu + uyarı → yeniden seed
 // NOT (model): makasSayisi = MAKAS ADEDİ (S/X), makas MOTORU değil. Her makas ya S-makas (2 motor)
 // ya X-makas (4 motor); motor sayısı içseldir, raporda gösterilmez. CAD'den okurken yakın 2 motor
 // = 1 S-makas, yakın 4 motor = 1 X-makas.
@@ -485,5 +486,9 @@ export function hazirHatlar(): HazirHat[] {
   for (const h of hatlar) {
     h.veri.isletme = { ...(h.veri.isletme ?? varsayilanIsletme), osmBbox: KONYA_BBOX };
   }
+  // İSTİSNA (demoya özel): 1. Etap istasyonları OSM'de YOK → CAD güzergâh (HAT1 alignment)
+  // + kilometraj ile üretilmiş YAKLAŞIK (~150m) koordinat gömülür; haritada uyarı gösterilir.
+  // OSM'e istasyon eklendiğinde auto-fetch üzerine yazar. Bkz. etapKoordinat.ts.
+  etap1.veri.isletme = { ...(etap1.veri.isletme ?? varsayilanIsletme), istasyonKoordinat: ETAP1_KOORDINAT, koordinatYaklasik: true };
   return hatlar;
 }
