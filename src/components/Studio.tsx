@@ -267,7 +267,8 @@ function StudioIc() {
 
   // OSM AUTO-FETCH (gömülü YOK): hattın osmBbox'ı varsa ve koordinat/geometri eksikse,
   // SUNUCU tarafı OSM'den (Vercel IP → rate-limit yok) çek + ada göre eşle + kalıcı yaz.
-  // Bir bbox için bir kez denenir; başarısızsa sessizce şematik kalır.
+  // Overpass ağır bbox'ta sık 502 verir → SINIRLI RETRY (backoff); yalnız BAŞARIDA kalıcı
+  // biter, tüm denemeler başarısızsa ref sıfırlanır ki sonraki değişimde yeniden denensin.
   const osmCekRef = useRef<string | null>(null);
   useEffect(() => {
     const bbox = isletme.osmBbox;
@@ -276,19 +277,26 @@ function StudioIc() {
     if (osmCekRef.current === key) return;
     osmCekRef.current = key;
     let iptal = false;
+    const bekle = (ms: number) => new Promise((res) => setTimeout(res, ms));
     (async () => {
-      try {
-        const r = await fetch("/api/geometri/osm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bbox }) });
-        const j = await r.json();
-        if (iptal || !r.ok) return;
-        const patch: Partial<Isletme> = {};
-        if (Array.isArray(j.istasyonlar) && j.istasyonlar.length) {
-          const koord = osmKoordinatEsle(agIstasyonlar, j.istasyonlar);
-          if (Object.keys(koord).length) patch.istasyonKoordinat = { ...(isletme.istasyonKoordinat ?? {}), ...koord };
-        }
-        if (Array.isArray(j.geometri) && j.geometri.length) patch.hatGeometri = j.geometri;
-        if (Object.keys(patch).length) patchIsletme(patch);
-      } catch { /* sessiz — şematik kalır */ }
+      for (let deneme = 0; deneme < 4 && !iptal; deneme++) {
+        if (deneme > 0) { await bekle(6000 * deneme); if (iptal) return; } // 6s·12s·18s backoff
+        try {
+          const r = await fetch("/api/geometri/osm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bbox }) });
+          const j = await r.json();
+          if (iptal) return;
+          if (!r.ok) continue; // 502/429 (Overpass yoğun) → tekrar dene
+          const patch: Partial<Isletme> = {};
+          if (Array.isArray(j.istasyonlar) && j.istasyonlar.length) {
+            const koord = osmKoordinatEsle(agIstasyonlar, j.istasyonlar);
+            if (Object.keys(koord).length) patch.istasyonKoordinat = { ...(isletme.istasyonKoordinat ?? {}), ...koord };
+          }
+          if (Array.isArray(j.geometri) && j.geometri.length) patch.hatGeometri = j.geometri;
+          if (Object.keys(patch).length) patchIsletme(patch);
+          return; // başarı — kalıcı biter
+        } catch { /* ağ hatası → tekrar dene */ }
+      }
+      if (!iptal) osmCekRef.current = null; // hepsi başarısız → yeniden denenebilir kalsın
     })();
     return () => { iptal = true; };
   }, [isletme.osmBbox, haritaTam, agIstasyonlar, isletme.istasyonKoordinat, patchIsletme]);
