@@ -20,6 +20,7 @@ import { cakismaTespit } from "@/lib/anaray/cakisma";
 import { gecikmeYayilim } from "@/lib/anaray/gecikmeYayilim";
 import { ortakKesimAnaliz } from "@/lib/anaray/ortakKesim";
 import { tersIsletmeAnaliz } from "@/lib/anaray/tersisletme";
+import { kurpKonforAnaliz, type KurpKonforSatir } from "@/lib/anaray/ring";
 import { dwellUygulanmisRings, maxYolcuKapasitesi, netTabanAlani } from "@/lib/anaray/yolcu";
 import { kmh, km, sure } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
@@ -189,6 +190,16 @@ function StudioIc() {
   const yolcuVeriVar = !!isletme.istasyonYolcu && Object.keys(isletme.istasyonYolcu).length > 0;
   const tersRapor = useMemo(() => tersIsletmeAnaliz(rings, stock, isletme, cfg), [rings, stock, isletme, cfg]);
   const talepFilosu = yolcuVeriVar && tersRapor ? tersRapor.filo.gerekenArac : 0;
+  // KURP KONFOR TAVSİYELERİ (harita) — her ring'in doluluğu HER İSTASYONDAN alınan yolcu
+  // sayısıyla (tersRapor.duraklar[i].doluluk) eşlenir → kurpta ayakta-yolcu konfor uyarısı
+  // + önerilen ≤hız. Haritada: aşım (geometri fazla) her zaman; kalabalık YALNIZ yolcu verisi
+  // varken (doluluğa bağlı) gösterilir — verisizken düz konfor-bandı kurpları kirletmesin.
+  const kurpKonfor = useMemo<KurpKonforSatir[]>(() => {
+    const dolulukByRing: Record<string, number> = {};
+    if (yolcuVeriVar && tersRapor) rings.forEach((r, i) => { const d = tersRapor.duraklar[i]; if (d) dolulukByRing[r.id] = d.doluluk; });
+    const satir = kurpKonforAnaliz(rings, cfg, yolcuVeriVar ? dolulukByRing : undefined);
+    return satir.filter((k) => k.seviye === "asim" || (k.seviye === "kalabalik" && yolcuVeriVar));
+  }, [rings, cfg, tersRapor, yolcuVeriVar]);
   // Önerilen tramvay = ⌈RTT ÷ hedef headway⌉ (kural); yolcu girildiyse talep de artırabilir.
   const oneriTramvay = maks.gecerli ? Math.max(1, Math.ceil(maks.cevrimSuresi / hedefHeadwaySn), talepFilosu) : 0;
   const filoOneriUyum = filoTek === oneriTramvay;
@@ -765,25 +776,19 @@ function StudioIc() {
         {agGorunum === "harita" && (
           <div className="mb-3 rounded-lg border-l-4 px-3 py-2.5 text-[0.72rem] leading-relaxed" style={{ borderColor: brand.ink, background: CK.goodBgSoft, color: brand.inkSoft }}>
             <div className="flex items-center justify-between gap-2">
-              <span className="font-semibold" style={{ color: brand.ink }}>ℹ️ Mevcut / inşaat halindeki bir hattı görüntülüyorsunuz</span>
+              <span className="font-semibold" style={{ color: brand.ink }}>ℹ️ Var olan hat → OSM · yeni / inşaat hattı → CAD</span>
               <button type="button" onClick={() => setHaritaBilgi((o) => !o)} className="shrink-0 text-[0.68rem] underline" style={{ color: brand.muted }}>{haritaBilgi ? "gizle" : "detay"}</button>
             </div>
             {haritaBilgi && (
               <>
                 <div className="mt-1">
-                  <b>CAD (AutoCAD) güzergâh dosyanız</b> içe aktarılsaydı bu ekranı <b>aynı şekilde, hazır</b> görürdünüz — o durumda OpenStreetMap’e hiç gidilmez, veriniz doğrudan çizilir. Şu an <b>OpenStreetMap + RailsMaps</b> verisiyle mevcut/inşaat halindeki hattı görüntülüyoruz.
+                  <b>İşleyen bir tramvay sistemi</b> için: istasyon adlarınız zaten girili → <b>“OSM’den çek”</b> koordinatları + gerçek kavisli hattı <b>doğrudan, otomatik</b> getirir (~10&nbsp;m). <b>Henüz yapılmamış / inşaat halindeki</b> hat için: <b>CAD güzergâh projenizi</b> içe aktarın.
                 </div>
                 <div className="mt-1">
-                  <b>Farkımız:</b> RailsMaps’ten yalnızca <i>bakarsınız</i>; burada <b>projenize özel simülasyonu ve sinyalizasyon revizyonlarını sistem içinden CANLI yönetirsiniz</b> — bir <b>sinyal lambasının</b> yerini değiştirdiğinizde, makas/geçit eklediğinizde değişiklik <b>anında bu haritaya da</b> kusursuzca yansır.
+                  <b>Değeri:</b> harita yalnız “bakmak” değil — projenize özel <b>simülasyonu ve sinyalizasyon revizyonlarını sistem içinden CANLI yönetirsiniz</b>; bir sinyal lambasını taşıdığınızda, makas/geçit eklediğinizde ya da kurp hız/konfor uyarısı çıktığında değişiklik <b>anında bu haritaya yansır</b>.
                 </div>
               </>
             )}
-            <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              <span style={{ color: brand.muted }}>RailsMaps’te (Türkiye) karşılaştır →</span>
-              <a href="https://railsmaps.com/turkey" target="_blank" rel="noreferrer" className="rounded px-2 py-1 font-semibold no-underline" style={{ border: `1px solid ${brand.border}`, color: brand.ink }}>🚆 Mevcut hat</a>
-              <a href="https://railsmaps.com/turkey" target="_blank" rel="noreferrer" className="rounded px-2 py-1 font-semibold no-underline" style={{ border: `1px solid ${CK.amber}`, color: CK.amberInk, background: CK.amberBg }}>🚧 İnşaat halinde</a>
-              <span className="text-[0.66rem]" style={{ color: brand.faint }}>(RailsMaps’te Konya’ya yakınlaşın; inşaat için sağ panelde <b>“Show under-construction lines”</b> filtresini açın)</span>
-            </div>
           </div>
         )}
         {koordAcik && (
@@ -793,7 +798,7 @@ function StudioIc() {
         )}
         {simHazir ? (
           agGorunum === "harita" ? (
-            <CografiAg line={line} loop={loopVeri} features={hatOzellik} koordinat={agKoordinat} geometri={isletme.hatGeometri} blocks={canliGidis.blocks} ters={tersRapor} autoOynat={otoOynat} />
+            <CografiAg line={line} loop={loopVeri} features={hatOzellik} koordinat={agKoordinat} geometri={isletme.hatGeometri} blocks={canliGidis.blocks} ters={tersRapor} kurplar={kurpKonfor} yolcuVeriVar={yolcuVeriVar} autoOynat={otoOynat} />
           ) : (
             <LiveNetwork autoOynat={otoOynat} network={network} route={route} line={line} blocks={canliGidis.blocks}
               up={canliGidis.trains} down={donusSim.trains} tMax={Math.max(canliGidis.tMax, donusSim.tMax)} trainLen={stock.length}

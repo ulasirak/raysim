@@ -15,6 +15,7 @@ import { cografiGeometri, type GeoNokta } from "@/lib/anaray/cografi";
 import { sampleLoop, HIZLAR, UP_COL, DOWN, GAP, DURUM_STIL } from "@/components/liveNetworkGeo";
 import { TrenDetayKutusu } from "@/components/liveNetworkKartlar";
 import type { TersIsletmeRapor } from "@/lib/anaray/tersisletme";
+import type { KurpKonforSatir } from "@/lib/anaray/ring";
 import { saat } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
@@ -34,6 +35,8 @@ export function CografiAg({
   geometri,
   blocks,
   ters,
+  kurplar = [],
+  yolcuVeriVar = false,
   autoOynat = false,
 }: {
   line: Line;
@@ -44,6 +47,11 @@ export function CografiAg({
   blocks?: number[];
   /** Ters işletme analizi — kısa-dönüş önerilen makaslar + filo etkisi harita OVERLAY'i. */
   ters?: TersIsletmeRapor | null;
+  /** Kurp konfor tavsiyeleri — her ring doluluğu (istasyon yolcusu) ile eşlenmiş; kmMutlak'ta
+   *  ⤾ işaretlenir + önerilen ≤hız. Aşım (geometri fazla) + kalabalık (ayakta yolcu konforu). */
+  kurplar?: KurpKonforSatir[];
+  /** Yolcu verisi girili mi? (kurp kalabalık uyarısı buna bağlı — bilgilendirme). */
+  yolcuVeriVar?: boolean;
   /** Hattın GERÇEK track geometrisi (müşteri verisi: GTFS shape vb.). Verilmezse Konya
    *  bbox'ında bundled örneğe düşer; o da yoksa düz istasyon-çizgisi. Sürdürülebilir. */
   geometri?: { insaat?: boolean; noktalar: [number, number][] }[];
@@ -225,6 +233,19 @@ export function CografiAg({
         </div>
       )}
 
+      {/* Kurp konfor tavsiyeleri — her istasyon yolcusuna (doluluk) eşli (overlay özeti) */}
+      {kurplar.length > 0 && (() => {
+        const asim = kurplar.filter((k) => k.seviye === "asim").length;
+        const kalabalik = kurplar.length - asim;
+        return (
+          <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-3 py-2 text-[0.72rem]" style={{ background: asim > 0 ? "#FDECEC" : CK.amberBg, border: `1px solid ${asim > 0 ? CK.red : CK.amber}`, color: asim > 0 ? CK.red : CK.amberInk }}>
+            <span className="font-semibold">⤾ Kurp konfor:</span>
+            <span><b>{kurplar.length}</b> kurpta öneri (haritada ⤾){asim > 0 ? ` · ${asim} aşım (hız geometri için fazla)` : ""}{kalabalik > 0 ? ` · ${kalabalik} ayakta-yolcu konforu` : ""}</span>
+            <span style={{ color: brand.muted }}>{yolcuVeriVar ? "her istasyon yolcusuna göre eşlendi" : "yolcu verisi girilirse doluluğa göre eşlenir"}</span>
+          </div>
+        );
+      })()}
+
       <div className="overflow-hidden rounded-lg border" style={{ borderColor: brand.border, background: g.coordluMu ? "#F2F6F4" : "#FBFCFD" }}>
         <svg viewBox={`0 0 ${g.vb.w} ${g.vb.h}`} width="100%" style={{ display: "block" }} role="img" aria-label="Coğrafi canlı ağ">
           {/* İz — gerçek OSM geometrisi varsa onu (kavisli hiza), yoksa düz istasyon-çizgisi */}
@@ -265,6 +286,25 @@ export function CografiAg({
                 <circle cx={p.x} cy={p.y} r={6.5} fill="#fff" stroke={CK.amber} strokeWidth={1.8} />
                 <text x={p.x} y={p.y + 3} textAnchor="middle" fontSize={9} fontWeight={700} fill={CK.amberInk}>↺</text>
                 <title>{m.ad} — kısa dönüş önerilir (sessiz taraf %{Math.round(m.kisaDonusYuzde)})</title>
+              </g>
+            );
+          })}
+
+          {/* Kurp konfor tavsiyeleri — ⤾ kmMutlak'ta; renk seviyeye göre (aşım kırmızı,
+              kalabalık amber); önerilen ≤hız etiketi + tooltip (yolcu doluluğu dâhil). */}
+          {kurplar.map((k, i) => {
+            const b = g.konum(k.kmMutlak);
+            const sp = gercekGeo ? snapRay(b.x, b.y) : null;
+            const p = sp ? { x: sp.x, y: sp.y } : b;
+            const renk = k.seviye === "asim" ? CK.red : CK.amber;
+            return (
+              <g key={`kurp${i}`} style={{ cursor: "help" }}>
+                <circle cx={p.x} cy={p.y} r={6} fill="#fff" stroke={renk} strokeWidth={1.8} />
+                <text x={p.x} y={p.y + 3.2} textAnchor="middle" fontSize={8.5} fontWeight={800} fill={renk}>⤾</text>
+                {k.oneriVKmh != null && (
+                  <text x={p.x} y={p.y - 8.5} textAnchor="middle" fontSize={6.8} fontWeight={700} fill={renk}>≤{k.oneriVKmh}</text>
+                )}
+                <title>{`${k.kurpAd} (R${Math.round(k.yaricap)} m${k.dever > 0 ? `, dever ${Math.round(k.dever * 1000)} mm` : ""}): ${k.mesaj}`}</title>
               </g>
             );
           })}
@@ -325,6 +365,7 @@ export function CografiAg({
         <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rotate-45" style={{ background: CK.gold }} /> makas</span>
         <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full" style={{ background: CK.good }} /> sinyal</span>
         <span className="flex items-center gap-1"><span style={{ color: CK.red }}>✕</span> geçit</span>
+        {kurplar.length > 0 && <span className="flex items-center gap-1"><span style={{ color: CK.amber, fontWeight: 800 }}>⤾</span> kurp konfor (≤hız)</span>}
         <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5" style={{ background: brand.ink }} /> parklanma</span>
         {gercekGeo && (
           <>
