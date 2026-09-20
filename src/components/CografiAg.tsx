@@ -15,6 +15,7 @@ import { cografiGeometri, type GeoNokta } from "@/lib/anaray/cografi";
 import { KONYA_GEOMETRI } from "@/lib/anaray/konyaGeometri";
 import { sampleLoop, HIZLAR, UP_COL, DOWN, GAP, DURUM_STIL } from "@/components/liveNetworkGeo";
 import { TrenDetayKutusu } from "@/components/liveNetworkKartlar";
+import type { TersIsletmeRapor } from "@/lib/anaray/tersisletme";
 import { saat } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
@@ -33,6 +34,7 @@ export function CografiAg({
   koordinat,
   geometri,
   blocks,
+  ters,
   autoOynat = false,
 }: {
   line: Line;
@@ -41,6 +43,8 @@ export function CografiAg({
   koordinat?: Record<string, { lat: number; lon: number }>;
   /** Blok sınırları (kilometraj) — işgal edilen blok rayı kırmızıya döner (şematikle aynı). */
   blocks?: number[];
+  /** Ters işletme analizi — kısa-dönüş önerilen makaslar + filo etkisi harita OVERLAY'i. */
+  ters?: TersIsletmeRapor | null;
   /** Hattın GERÇEK track geometrisi (müşteri verisi: GTFS shape vb.). Verilmezse Konya
    *  bbox'ında bundled örneğe düşer; o da yoksa düz istasyon-çizgisi. Sürdürülebilir. */
   geometri?: { insaat?: boolean; noktalar: [number, number][] }[];
@@ -51,6 +55,8 @@ export function CografiAg({
   const [oynat, setOynat] = useState(autoOynat);
   const [hiz, setHiz] = useState(15);
   const [secili, setSecili] = useState<number | null>(null); // tıklanan tren (detay kutusu)
+  const [tersGoster, setTersGoster] = useState(true); // ters işletme overlay'i açık mı
+  const tersMakaslar = (ters?.makaslar ?? []).filter((m) => m.kisaDonusOnerilir);
   const periyot = loop?.periyot ?? 0;
 
   // ZAMANLAYICI sürücüsü — t'yi burada ilerlet (render'da DEĞİL). Interval yalnız
@@ -208,6 +214,18 @@ export function CografiAg({
         )}
       </div>
 
+      {/* Ters işletme analizi — kısa dönüş önerilen istasyonlar + filo etkisi (overlay özeti) */}
+      {tersMakaslar.length > 0 && (
+        <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-3 py-2 text-[0.72rem]" style={{ background: CK.amberBg, border: `1px solid ${CK.amber}`, color: CK.amberInk }}>
+          <span className="font-semibold">↺ Ters işletme:</span>
+          <span><b>{tersMakaslar.length}</b> istasyon makasında kısa dönüş önerilir (haritada ↺)</span>
+          {ters?.filo && ters.filo.kisaDonusTasarruf > 0 && (
+            <span>· filo: gereken <b>{ters.filo.gerekenArac}</b> → kısa dönüşle <b>{ters.filo.gerekenAracKisaDonusle}</b> (−{ters.filo.kisaDonusTasarruf} araç)</span>
+          )}
+          <button type="button" onClick={() => setTersGoster((o) => !o)} className="ml-auto underline">{tersGoster ? "gizle" : "göster"}</button>
+        </div>
+      )}
+
       <div className="overflow-hidden rounded-lg border" style={{ borderColor: brand.border, background: g.coordluMu ? "#F2F6F4" : "#FBFCFD" }}>
         <svg viewBox={`0 0 ${g.vb.w} ${g.vb.h}`} width="100%" style={{ display: "block" }} role="img" aria-label="Coğrafi canlı ağ">
           {/* İz — gerçek OSM geometrisi varsa onu (kavisli hiza), yoksa düz istasyon-çizgisi */}
@@ -237,6 +255,20 @@ export function CografiAg({
 
           {/* Özellikler (makas/sinyal/geçit) */}
           {features.map((f, i) => featureSimge(f, i))}
+
+          {/* Ters işletme: kısa dönüş önerilen istasyon makasları ↺ (overlay) */}
+          {tersGoster && tersMakaslar.map((m, i) => {
+            const b = g.konum(m.konum);
+            const sp = gercekGeo ? snapRay(b.x, b.y) : null;
+            const p = sp ? { x: sp.x, y: sp.y } : b;
+            return (
+              <g key={`ters${i}`}>
+                <circle cx={p.x} cy={p.y} r={6.5} fill="#fff" stroke={CK.amber} strokeWidth={1.8} />
+                <text x={p.x} y={p.y + 3} textAnchor="middle" fontSize={9} fontWeight={700} fill={CK.amberInk}>↺</text>
+                <title>{m.ad} — kısa dönüş önerilir (sessiz taraf %{Math.round(m.kisaDonusYuzde)})</title>
+              </g>
+            );
+          })}
 
           {/* İstasyonlar — raya snap (koordinatsız/yaklaşık olanlar da rayın üstüne otursun) */}
           {g.istasyonlar.map((s, i) => {
