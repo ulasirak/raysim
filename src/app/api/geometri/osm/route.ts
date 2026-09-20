@@ -39,7 +39,7 @@ function dp(pts: { lat: number; lon: number }[], eps = 0.00025): [number, number
 }
 const r4 = (n: number) => Math.round(n * 1e4) / 1e4;
 
-async function overpassCek(bbox: [number, number, number, number]): Promise<OsmSonuc> {
+async function overpassCek(bbox: [number, number, number, number], eps = 0.00025): Promise<OsmSonuc> {
   const [s, w, n, e] = bbox;
   const bb = `(${s},${w},${n},${e})`;
   // Tek sorguda hem raylı-hat WAY'leri (geometri) hem de İSTASYON NODE'ları (tram_stop /
@@ -59,7 +59,7 @@ async function overpassCek(bbox: [number, number, number, number]): Promise<OsmS
       const j = (await r.json()) as { elements?: { type: string; tags?: Record<string, string>; lat?: number; lon?: number; geometry?: { lat: number; lon: number }[] }[] };
       const el = j.elements ?? [];
       const geometri = el.filter((x) => x.type === "way" && x.geometry && x.geometry.length >= 2)
-        .map((wy) => ({ insaat: wy.tags?.railway === "construction", noktalar: dp(wy.geometry!) }))
+        .map((wy) => ({ insaat: wy.tags?.railway === "construction", noktalar: dp(wy.geometry!, eps) }))
         .filter((y) => y.noktalar.length >= 2);
       // İstasyon node'ları: adlı olanlar; aynı ada birden çok platform → ilkini tut.
       const gorulen = new Set<string>();
@@ -83,9 +83,10 @@ export async function POST(req: Request) {
   const hiz = await hizSiniri("osmgeo:" + ip, 20, 60, false); // 20/dk; rate-limit altyapısı yoksa fail-OPEN (convenience uç)
   if (!hiz.izin) return NextResponse.json({ hata: "Çok fazla istek — biraz bekleyin.", sifirlaSn: hiz.sifirlaSn }, { status: 429 });
 
-  let body: { bbox?: [number, number, number, number] };
+  let body: { bbox?: [number, number, number, number]; ham?: boolean };
   try { body = await req.json(); } catch { return NextResponse.json({ hata: "Geçersiz istek." }, { status: 400 }); }
   const bbox = body.bbox;
+  const eps = body.ham ? 0.00002 : 0.00025; // ham=~2m (kavis analizi), varsayılan ~28m (harita)
   if (!Array.isArray(bbox) || bbox.length !== 4 || !bbox.every((v) => typeof v === "number" && Number.isFinite(v))) {
     return NextResponse.json({ hata: "Geçerli bbox gerekli [güney,batı,kuzey,doğu]." }, { status: 400 });
   }
@@ -94,12 +95,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ hata: "bbox geçersiz ya da çok büyük (≤0,6°)." }, { status: 400 });
   }
 
-  const key = bbox.map((v) => v.toFixed(3)).join(",");
+  const key = bbox.map((v) => v.toFixed(3)).join(",") + (body.ham ? ":ham" : "");
   const c = cache.get(key);
   if (c && Date.now() - c.t < TTL) return NextResponse.json({ geometri: c.veri.geometri, istasyonlar: c.veri.istasyonlar, kaynak: "osm-cache", not: "© OpenStreetMap · ODbL" });
 
   try {
-    const veri = await overpassCek(bbox);
+    const veri = await overpassCek(bbox, eps);
     cache.set(key, { t: Date.now(), veri });
     return NextResponse.json({
       geometri: veri.geometri,
