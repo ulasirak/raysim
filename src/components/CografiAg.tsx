@@ -202,19 +202,23 @@ export function CografiAg({
           {/* Özellikler (makas/sinyal/geçit) */}
           {features.map((f, i) => featureSimge(f, i))}
 
-          {/* İstasyonlar */}
-          {g.istasyonlar.map((s, i) => (
-            <g key={`s${i}`}>
-              {s.depot ? (
-                <rect x={s.nokta.x - 4.5} y={s.nokta.y - 4.5} width={9} height={9} fill={brand.ink} stroke="#fff" strokeWidth={1.4} />
-              ) : (
-                <circle cx={s.nokta.x} cy={s.nokta.y} r={s.tip && s.tip !== "istasyon" ? 2.6 : 4} fill={s.tip && s.tip !== "istasyon" ? brand.muted : "#fff"} stroke={brand.ink} strokeWidth={1.6} />
-              )}
-              {(!s.tip || s.tip === "istasyon" || s.depot) && (
-                <text x={s.nokta.x} y={s.nokta.y - 8} textAnchor="middle" fontSize={7.5} fontWeight={600} fill={brand.inkSoft}>{s.ad}</text>
-              )}
-            </g>
-          ))}
+          {/* İstasyonlar — raya snap (koordinatsız/yaklaşık olanlar da rayın üstüne otursun) */}
+          {g.istasyonlar.map((s, i) => {
+            const sp = gercekGeo ? snapRay(s.nokta.x, s.nokta.y) : null;
+            const sx = sp ? sp.x : s.nokta.x, sy = sp ? sp.y : s.nokta.y;
+            return (
+              <g key={`s${i}`}>
+                {s.depot ? (
+                  <rect x={sx - 4.5} y={sy - 4.5} width={9} height={9} fill={brand.ink} stroke="#fff" strokeWidth={1.4} />
+                ) : (
+                  <circle cx={sx} cy={sy} r={s.tip && s.tip !== "istasyon" ? 2.6 : 4} fill={s.tip && s.tip !== "istasyon" ? brand.muted : "#fff"} stroke={brand.ink} strokeWidth={1.6} />
+                )}
+                {(!s.tip || s.tip === "istasyon" || s.depot) && (
+                  <text x={sx} y={sy - 8} textAnchor="middle" fontSize={7.5} fontWeight={600} fill={brand.inkSoft}>{s.ad}</text>
+                )}
+              </g>
+            );
+          })}
 
           {/* Trenler */}
           {trenler.map((tr, i) => (

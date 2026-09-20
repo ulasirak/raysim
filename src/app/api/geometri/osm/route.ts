@@ -15,7 +15,12 @@ type GeoYol = { insaat: boolean; noktalar: [number, number][] };
 const cache = new Map<string, { t: number; veri: GeoYol[] }>();
 const TTL = 1000 * 60 * 60 * 24;
 
-const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+const OVERPASS = [
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.osm.jp/api/interpreter",
+  "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+];
 
 /** Douglas-Peucker (lat/lon planar, şehir ölçeği) → nokta sayısını düşür, harita boyutu makul. */
 function dp(pts: { lat: number; lon: number }[], eps = 0.00025): [number, number][] {

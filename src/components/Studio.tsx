@@ -251,18 +251,20 @@ function StudioIc() {
   // (varsa gerçek harita; yoksa şematik/ölçekli). Koordinatlar Isletme'de kalıcı.
   const agKoordinat = isletme.istasyonKoordinat;
   const agIstasyonlar = useMemo(() => Array.from(new Set(line.stations.map((s) => s.name))), [line]);
-  const haritaHazir = useMemo(
-    () => agIstasyonlar.length > 0 && agIstasyonlar.every((n) => { const c = agKoordinat?.[n]; return !!c && Number.isFinite(c.lat) && Number.isFinite(c.lon); }),
+  const agKoordSay = useMemo(
+    () => agIstasyonlar.filter((n) => { const c = agKoordinat?.[n]; return !!c && Number.isFinite(c.lat) && Number.isFinite(c.lon); }).length,
     [agIstasyonlar, agKoordinat]
   );
-  // Hat TAM koordinatlıysa (harita hazır) İLK yüklemede Harita'yı VARSAYILAN göster —
-  // kullanıcı gerçek hattını hemen görür (sonra Şematik'e geçebilir). Yalnız bir kez.
+  const haritaTam = agIstasyonlar.length > 0 && agKoordSay === agIstasyonlar.length; // hepsi koordinatlı (✓)
+  const haritaGosterilebilir = agKoordSay >= 2; // en az 2 → gerçek harita (eksikler yaklaşık)
+  // Harita gösterilebiliyorsa İLK yüklemede Harita'yı VARSAYILAN yap (kullanıcı gerçek
+  // hattını hemen görür; sonra Şematik'e geçebilir). Yalnız bir kez.
   const agModAyarlandi = useRef(false);
   useEffect(() => {
-    if (agModAyarlandi.current || !haritaHazir) return;
+    if (agModAyarlandi.current || !haritaGosterilebilir) return;
     agModAyarlandi.current = true;
     setAgGorunum("harita");
-  }, [haritaHazir]);
+  }, [haritaGosterilebilir]);
 
   // Çizelge çakışma tespiti (#2) — tek-hat karşılaşmaları + sistemik headway<hMin.
   const cakisma = useMemo(
@@ -577,18 +579,23 @@ function StudioIc() {
               style={{ background: agGorunum === "harita" ? brand.ink : "transparent", color: agGorunum === "harita" ? "#fff" : brand.muted }}>Harita</button>
           </div>
           <button type="button" onClick={() => setKoordAcik((o) => !o)} className="rounded-md px-3 py-1 text-xs font-semibold"
-            style={{ border: `1px solid ${haritaHazir ? "#16794C" : brand.border}`, color: haritaHazir ? "#16794C" : brand.ink }}>
-            ⌖ Koordinat gir {haritaHazir ? "✓" : ""}
+            style={{ border: `1px solid ${haritaTam ? "#16794C" : brand.border}`, color: haritaTam ? "#16794C" : brand.ink }}>
+            ⌖ Koordinat gir {haritaTam ? "✓" : agKoordSay > 0 ? `${agKoordSay}/${agIstasyonlar.length}` : ""}
           </button>
-          {agGorunum === "harita" && !haritaHazir && (
-            <span className="text-[0.7rem]" style={{ color: CK.amberInk }}>Tüm istasyonlar koordinatlı değil — ölçekli plan gösterilir. “Koordinat gir” ile tamamla (Konya preset hazır).</span>
+          {agGorunum === "harita" && !haritaGosterilebilir && (
+            <span className="text-[0.7rem]" style={{ color: CK.amberInk }}>Koordinat yok — ölçekli plan gösterilir. “Koordinat gir” ile ekle (Konya preset / OSM’den çek).</span>
           )}
-          {agGorunum === "harita" && haritaHazir && (!isletme.hatGeometri || isletme.hatGeometri.length === 0) && (
-            <button type="button" onClick={() => setKoordAcik(true)} className="text-[0.7rem] font-medium underline" style={{ color: "#2E7D57" }}>
-              💡 Gerçek kavisli hizayı kalıcılaştır: Koordinat gir → ⤓ OSM’den çek (ya da GTFS içe aktar)
+          {agGorunum === "harita" && haritaGosterilebilir && !haritaTam && (
+            <button type="button" onClick={() => setKoordAcik(true)} className="text-[0.7rem] font-medium underline" style={{ color: CK.amberInk }}>
+              ⚠ {agKoordSay}/{agIstasyonlar.length} durak koordinatlı — eksikler <b>yaklaşık</b> konumlanır. “Koordinat gir” ile tamamla.
             </button>
           )}
-          {agGorunum === "sematik" && haritaHazir && (
+          {agGorunum === "harita" && haritaTam && (!isletme.hatGeometri || isletme.hatGeometri.length === 0) && (
+            <button type="button" onClick={() => setKoordAcik(true)} className="text-[0.7rem] font-medium underline" style={{ color: "#2E7D57" }}>
+              💡 Gerçek kavisli hizayı kalıcılaştır: ⤓ OSM’den çek (ya da GTFS içe aktar)
+            </button>
+          )}
+          {agGorunum === "sematik" && haritaGosterilebilir && (
             <span className="text-[0.7rem] font-medium" style={{ color: CK.good }}>💡 Bu hattın gerçek haritası hazır — üstteki <b>“Harita”</b> ile gör.</span>
           )}
         </div>

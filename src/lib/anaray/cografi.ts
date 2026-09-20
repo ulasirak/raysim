@@ -52,41 +52,50 @@ export function cografiGeometri(
   const n = st.length;
   const uz = Math.max(1, line.length);
 
-  // Koordinat kipi yalnız her istasyonun geçerli lat/lon'u varsa (en az 2 istasyon).
-  const koordVar =
-    !!koordinat &&
-    n >= 2 &&
-    st.every((s) => {
-      const k = koordinat[s.name];
-      return k && Number.isFinite(k.lat) && Number.isFinite(k.lon);
-    });
+  // Koordinat kipi: EN AZ 2 istasyonun geçerli lat/lon'u varsa (KISMI de olur). Eksik
+  // koordinatlı istasyonlar kilometrajlarına göre komşu koordinatlılar arasına konur →
+  // yarım koordinatlı hat da GERÇEK harita gösterir (eksikler yaklaşık, koordinatlılar tam).
+  const koordlu = st.map((s) => {
+    const k = koordinat?.[s.name];
+    return k && Number.isFinite(k.lat) && Number.isFinite(k.lon) ? { lat: k.lat, lon: k.lon } : null;
+  });
+  const koordSay = koordlu.filter((k): k is { lat: number; lon: number } => !!k).length;
+  const koordVar = koordSay >= 2;
 
   let noktalar: GeoNokta[];
   let h: number;
   let projekteEt: ((lat: number, lon: number) => GeoNokta) | undefined;
 
   if (koordVar) {
-    // Equirectangular: x = lon·cos(ortLat), y = lat (kuzey yukarı → ekranda ters).
-    const lats = st.map((s) => koordinat![s.name].lat);
-    const ortLat = (lats.reduce((a, b) => a + b, 0) / n) * (Math.PI / 180);
+    // Equirectangular projeksiyon YALNIZ koordinatlı istasyonların bbox'undan kurulur.
+    const kl = koordlu.filter((k): k is { lat: number; lon: number } => !!k);
+    const ortLat = (kl.reduce((a, b) => a + b.lat, 0) / kl.length) * (Math.PI / 180);
     const kx = Math.cos(ortLat) || 1;
-    const ham = st.map((s) => ({ x: koordinat![s.name].lon * kx, y: koordinat![s.name].lat }));
-    const minX = Math.min(...ham.map((p) => p.x)), maxX = Math.max(...ham.map((p) => p.x));
-    const minY = Math.min(...ham.map((p) => p.y)), maxY = Math.max(...ham.map((p) => p.y));
+    const xs = kl.map((k) => k.lon * kx), ys = kl.map((k) => k.lat);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
     const spanX = maxX - minX || 1e-6, spanY = maxY - minY || 1e-6;
     const oran = spanY / spanX;
-    // Yükseklik en-boya göre; makul aralıkta kıskaç (çok yassı/uzun bantları önle).
     h = Math.min(620, Math.max(200, (w - 2 * PAD) * oran + 2 * PAD));
     const olcek = Math.min((w - 2 * PAD) / spanX, (h - 2 * PAD) / spanY);
-    // Ortala + Y ekseni ters (kuzey yukarı).
     const offX = PAD + ((w - 2 * PAD) - spanX * olcek) / 2;
     const offY = PAD + ((h - 2 * PAD) - spanY * olcek) / 2;
-    noktalar = ham.map((p) => ({
-      x: offX + (p.x - minX) * olcek,
-      y: offY + (maxY - p.y) * olcek,
-    }));
-    // Aynı equirectangular projeksiyonu dışa aç (gerçek track geometrisi backdrop'u).
     projekteEt = (lat: number, lon: number) => ({ x: offX + (lon * kx - minX) * olcek, y: offY + (maxY - lat) * olcek });
+    void minY;
+    // Koordinatlıları projekte et; eksikleri kilometraja göre komşular arası enterpolasyon.
+    const proj = koordlu.map((k) => (k ? projekteEt!(k.lat, k.lon) : null));
+    noktalar = proj.map((p, i) => {
+      if (p) return p;
+      let j = i - 1; while (j >= 0 && !proj[j]) j--;
+      let kk = i + 1; while (kk < n && !proj[kk]) kk++;
+      const pj = j >= 0 ? proj[j] : null, pk = kk < n ? proj[kk] : null;
+      if (pj && pk) {
+        const d = st[kk].position - st[j].position || 1;
+        const f = Math.max(0, Math.min(1, (st[i].position - st[j].position) / d));
+        return lerp(pj, pk, f);
+      }
+      return (pj || pk)!; // uçtaki eksik → en yakın koordinatlıya yasla
+    });
   } else {
     // Ölçekli plan: düz yatay, x = kilometraja orantılı.
     h = 150;
