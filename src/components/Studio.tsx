@@ -583,10 +583,18 @@ function StudioIc() {
           {agGorunum === "harita" && !haritaHazir && (
             <span className="text-[0.7rem]" style={{ color: CK.amberInk }}>Tüm istasyonlar koordinatlı değil — ölçekli plan gösterilir. “Koordinat gir” ile tamamla (Konya preset hazır).</span>
           )}
+          {agGorunum === "harita" && haritaHazir && (!isletme.hatGeometri || isletme.hatGeometri.length === 0) && (
+            <button type="button" onClick={() => setKoordAcik(true)} className="text-[0.7rem] font-medium underline" style={{ color: "#2E7D57" }}>
+              💡 Gerçek kavisli hizayı kalıcılaştır: Koordinat gir → ⤓ OSM’den çek (ya da GTFS içe aktar)
+            </button>
+          )}
+          {agGorunum === "sematik" && haritaHazir && (
+            <span className="text-[0.7rem] font-medium" style={{ color: CK.good }}>💡 Bu hattın gerçek haritası hazır — üstteki <b>“Harita”</b> ile gör.</span>
+          )}
         </div>
         {koordAcik && (
           <div className="mb-3 rounded-md p-3" style={{ border: `1px solid ${brand.border}`, background: "#FAFBFC" }}>
-            <KoordinatDuzen istasyonlar={agIstasyonlar} koordinat={agKoordinat} onChange={(k) => patchIsletme({ istasyonKoordinat: k })} />
+            <KoordinatDuzen istasyonlar={agIstasyonlar} koordinat={agKoordinat} onChange={(k) => patchIsletme({ istasyonKoordinat: k })} onGeometri={(g) => patchIsletme({ hatGeometri: g })} />
           </div>
         )}
         {simHazir ? (
