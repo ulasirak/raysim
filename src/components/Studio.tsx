@@ -606,7 +606,7 @@ function StudioIc() {
         )}
         {simHazir ? (
           agGorunum === "harita" ? (
-            <CografiAg line={line} loop={loopVeri} features={hatOzellik} koordinat={agKoordinat} geometri={isletme.hatGeometri} autoOynat={otoOynat} />
+            <CografiAg line={line} loop={loopVeri} features={hatOzellik} koordinat={agKoordinat} geometri={isletme.hatGeometri} blocks={canliGidis.blocks} autoOynat={otoOynat} />
           ) : (
             <LiveNetwork autoOynat={otoOynat} network={network} route={route} line={line} blocks={canliGidis.blocks}
               up={canliGidis.trains} down={donusSim.trains} tMax={Math.max(canliGidis.tMax, donusSim.tMax)} trainLen={stock.length}

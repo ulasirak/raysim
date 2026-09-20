@@ -13,7 +13,8 @@ import type { LoopYorunge } from "@/lib/anaray/signalling";
 import type { HatOzellik } from "@/lib/anaray/network";
 import { cografiGeometri, type GeoNokta } from "@/lib/anaray/cografi";
 import { KONYA_GEOMETRI } from "@/lib/anaray/konyaGeometri";
-import { sampleLoop, HIZLAR, UP_COL, DOWN, GAP } from "@/components/liveNetworkGeo";
+import { sampleLoop, HIZLAR, UP_COL, DOWN, GAP, DURUM_STIL } from "@/components/liveNetworkGeo";
+import { TrenDetayKutusu } from "@/components/liveNetworkKartlar";
 import { saat } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
@@ -31,12 +32,15 @@ export function CografiAg({
   features = [],
   koordinat,
   geometri,
+  blocks,
   autoOynat = false,
 }: {
   line: Line;
   loop?: LoopVeri;
   features?: HatOzellik[];
   koordinat?: Record<string, { lat: number; lon: number }>;
+  /** Blok sınırları (kilometraj) — işgal edilen blok rayı kırmızıya döner (şematikle aynı). */
+  blocks?: number[];
   /** Hattın GERÇEK track geometrisi (müşteri verisi: GTFS shape vb.). Verilmezse Konya
    *  bbox'ında bundled örneğe düşer; o da yoksa düz istasyon-çizgisi. Sürdürülebilir. */
   geometri?: { insaat?: boolean; noktalar: [number, number][] }[];
@@ -46,6 +50,7 @@ export function CografiAg({
   const [t, setT] = useState(0);
   const [oynat, setOynat] = useState(autoOynat);
   const [hiz, setHiz] = useState(15);
+  const [secili, setSecili] = useState<number | null>(null); // tıklanan tren (detay kutusu)
   const periyot = loop?.periyot ?? 0;
 
   // ZAMANLAYICI sürücüsü — t'yi burada ilerlet (render'da DEĞİL). Interval yalnız
@@ -105,7 +110,7 @@ export function CografiAg({
   // gidiş (s≤L) düz; dönüş (s>L) geri → chain = loopLen − s. Şerit ofseti yönle işaretlenir.
   const trenler = useMemo(() => {
     if (!loop || loop.count <= 0 || periyot <= 0) return [];
-    const out: { pt: GeoNokta; aci: number; gidis: boolean; durum: string; s: number }[] = [];
+    const out: { no: number; pt: GeoNokta; aci: number; gidis: boolean; durum: import("@/lib/anaray/signalling").LoopDurum; ad: string; v: number; fp: number; s: number }[] = [];
     for (let i = 0; i < loop.count; i++) {
       const faz = (t + (loop.offset ?? 0) + (i * periyot) / loop.count) % periyot;
       const smp = sampleLoop(loop.ornekler, faz);
@@ -124,11 +129,37 @@ export function CografiAg({
       // Çift-şerit ofseti: ray yönüne DİK, yönle işaretli.
       const rad = (aci * Math.PI) / 180, ox = -Math.sin(rad), oy = Math.cos(rad);
       const yon = gidis ? 1 : -1;
-      out.push({ pt: { x: cx + ox * GAP * yon, y: cy + oy * GAP * yon }, aci, gidis, durum: smp.durum, s: smp.s });
+      out.push({ no: i + 1, pt: { x: cx + ox * GAP * yon, y: cy + oy * GAP * yon }, aci, gidis, durum: smp.durum, ad: smp.ad, v: smp.v, fp: chain, s: smp.s });
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loop, t, periyot, L, loopLen, g, line.length, geoSegmentler, gercekGeo]);
+
+  // BLOK İŞGAL (şematikle aynı): bir trenin bulunduğu blok kırmızıya döner. Blok
+  // sınırları (kilometraj) → o aralığın rayı örneklenip snap edilerek kırmızı çizilir.
+  const blokDoluluk = useMemo(() => {
+    if (!blocks || blocks.length < 2 || trenler.length === 0) return [] as string[];
+    const occ = new Set<number>();
+    for (const tr of trenler) {
+      const c = tr.fp;
+      for (let j = 0; j < blocks.length - 1; j++) if (c >= blocks[j] && c < blocks[j + 1]) { occ.add(j); break; }
+    }
+    const out: string[] = [];
+    for (const j of occ) {
+      const b0 = blocks[j], b1 = blocks[j + 1];
+      const N = Math.max(3, Math.ceil((b1 - b0) / 60));
+      const pts: GeoNokta[] = [];
+      for (let s = 0; s <= N; s++) {
+        const c = b0 + ((b1 - b0) * s) / N;
+        const p = g.konum(c);
+        const sp = gercekGeo ? snapRay(p.x, p.y) : null;
+        pts.push(sp ? { x: sp.x, y: sp.y } : p);
+      }
+      out.push(pts.map((p, k) => `${k === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" "));
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocks, trenler, g, gercekGeo, geoSegmentler]);
 
   const yolD = g.yol.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
 
@@ -199,6 +230,11 @@ export function CografiAg({
             </>
           )}
 
+          {/* Blok işgali — işgal edilen blok rayı kırmızı (şematikle aynı) */}
+          {blokDoluluk.map((d, i) => (
+            <path key={`bd${i}`} d={d} fill="none" stroke={CK.red} strokeWidth={5} strokeOpacity={0.32} strokeLinecap="round" />
+          ))}
+
           {/* Özellikler (makas/sinyal/geçit) */}
           {features.map((f, i) => featureSimge(f, i))}
 
@@ -220,15 +256,36 @@ export function CografiAg({
             );
           })}
 
-          {/* Trenler */}
-          {trenler.map((tr, i) => (
-            <g key={`t${i}`} transform={`translate(${tr.pt.x.toFixed(1)} ${tr.pt.y.toFixed(1)}) rotate(${tr.aci.toFixed(1)})`}>
-              <rect x={-6} y={-3.2} width={12} height={6.4} rx={1.6} fill={tr.gidis ? UP_COL : DOWN} stroke="#fff" strokeWidth={1} />
-              <path d="M4,-2 L7,0 L4,2 Z" fill={tr.gidis ? UP_COL : DOWN} />
-            </g>
-          ))}
+          {/* Trenler — durum halkası (ne yaptığı) + no + tıkla→detay */}
+          {trenler.map((tr, i) => {
+            const sec = secili === i;
+            const stil = DURUM_STIL[tr.durum];
+            return (
+              <g key={`t${i}`} onClick={() => setSecili(sec ? null : i)} style={{ cursor: "pointer" }}>
+                <circle cx={tr.pt.x} cy={tr.pt.y} r={7} fill="transparent" />
+                <circle cx={tr.pt.x} cy={tr.pt.y} r={sec ? 9 : 7} fill="none" stroke={stil.renk} strokeWidth={sec ? 2.2 : 1.4} strokeOpacity={0.9} />
+                <g transform={`translate(${tr.pt.x.toFixed(1)} ${tr.pt.y.toFixed(1)}) rotate(${tr.aci.toFixed(1)})`}>
+                  <rect x={-6} y={-3.2} width={12} height={6.4} rx={1.6} fill={tr.gidis ? UP_COL : DOWN} stroke="#fff" strokeWidth={sec ? 1.6 : 1} />
+                  <path d="M4,-2 L7,0 L4,2 Z" fill={tr.gidis ? UP_COL : DOWN} />
+                </g>
+                <text x={tr.pt.x} y={tr.pt.y - 10} textAnchor="middle" fontSize={6.5} fontWeight={700} fill={stil.renk}>{tr.no}</text>
+              </g>
+            );
+          })}
         </svg>
       </div>
+
+      {/* Tıklanan trenin detayı — şematikle AYNI kutu (durum + tam-tur hareket/duruş dökümü) */}
+      {secili != null && trenler[secili] && loop && (
+        <TrenDetayKutusu
+          st={{ durum: trenler[secili].durum, ad: trenler[secili].ad, v: trenler[secili].v, fp: trenler[secili].fp, up: trenler[secili].gidis }}
+          no={trenler[secili].no}
+          dokum={loop.dokum}
+          periyot={periyot}
+          cakismaVar={false}
+          onKapat={() => setSecili(null)}
+        />
+      )}
 
       {/* Lejant */}
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.65rem]" style={{ color: brand.muted }}>
