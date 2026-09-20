@@ -21,6 +21,7 @@ import type { RollingStock } from "@/lib/anaray/types";
 import { getAuthInstance } from "@/lib/firebase";
 import { useCuzdan } from "@/components/CuzdanProvider";
 import { BosDurum } from "@/components/BosDurum";
+import { Kart } from "@/components/Kart";
 
 // —— What-if parametreleri (doluluk İLK: HER hatta sürdürülebilir/işletme kapasitesini
 // KESİN değiştirir → dinamikliği garanti eder) ——
@@ -346,7 +347,7 @@ function CubukKart({ baslik, ms, al, renk }: { baslik: string; ms: Metrik[]; al:
   const span = maks - min;
   const w = (v: number) => (span <= 0 ? 100 : 30 + ((v - min) / span) * 70);
   return (
-    <div className="rounded-lg border p-3" style={{ borderColor: brand.border }}>
+    <Kart ic="sm">
       <div className="field-label mb-2" style={{ fontSize: "0.62rem" }}>{baslik}</div>
       <div className="space-y-1.5">
         {ms.map((m, i) => {
@@ -366,19 +367,19 @@ function CubukKart({ baslik, ms, al, renk }: { baslik: string; ms: Metrik[]; al:
           );
         })}
       </div>
-    </div>
+    </Kart>
   );
 }
 
 function Panel({ baslik, aciklama, children }: { baslik: string; aciklama?: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border bg-white p-5" style={{ borderColor: brand.border }}>
+    <Kart ic="lg">
       <div className="mb-4 flex items-baseline gap-2">
         <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
         <h2 className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{baslik}</h2>
       </div>
       {aciklama && <p className="-mt-3 mb-4 pl-[11px] text-xs" style={{ color: brand.muted }}>{aciklama}</p>}
       {children}
-    </div>
+    </Kart>
   );
 }

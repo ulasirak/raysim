@@ -13,6 +13,8 @@ import { sure, kmh } from "@/lib/anaray/format";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { Duyarlilik } from "@/components/Duyarlilik";
 import { DogrulamaPaneli } from "@/components/DogrulamaPaneli";
+import { Kart } from "@/components/Kart";
+import { Kpi } from "@/components/Kpi";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import { blockingTimeRing, type BlokSperr } from "@/lib/anaray/blockingtime";
 import { maksimumTren } from "@/lib/anaray/kapasite";
@@ -312,22 +314,20 @@ function BlokCekmece({ baslik, ozet, acik, onToggle, children }: { baslik: strin
 
 function MiniStat({ etiket, deger, alt, vurgu }: { etiket: string; deger: string; alt?: string; vurgu?: string }) {
   return (
-    <div className="rounded border p-2.5" style={{ borderColor: brand.border }}>
-      <div className="field-label" style={{ fontSize: "0.6rem" }}>{etiket}</div>
-      <div className="mt-0.5 text-lg font-semibold" style={{ color: vurgu ?? brand.ink }}>{deger}</div>
-      {alt && <div className="truncate text-xs" style={{ color: brand.faint }} title={alt}>{alt}</div>}
-    </div>
+    <Kart ic="sm">
+      <Kpi etiket={etiket} deger={deger} alt={alt} renk={vurgu} title={alt} />
+    </Kart>
   );
 }
 function Panel({ baslik, aciklama, children }: { baslik: string; aciklama?: string; children: React.ReactNode }) {
   return (
-    <div className="mt-6 rounded-lg border bg-white p-5" style={{ borderColor: brand.border }}>
+    <Kart ic="lg" className="mt-6">
       <div className="mb-4 flex items-baseline gap-2">
         <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
         <h2 className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{baslik}</h2>
       </div>
       {aciklama && <p className="-mt-3 mb-4 pl-[11px] text-xs" style={{ color: brand.muted }}>{aciklama}</p>}
       {children}
-    </div>
+    </Kart>
   );
 }
