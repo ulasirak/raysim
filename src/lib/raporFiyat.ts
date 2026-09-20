@@ -21,6 +21,7 @@ export const RAPOR_BOLUM_KREDI = {
   isletme: 1,     // 5. İşletme & Talep + Tavsiye Edilen Tramvay Sayısı
   tarife: 1,      // 6. Tarife
   duyarlilik: 1,  // 7. Duyarlılık (tornado)
+  dogrulama: 1,   // 9. Doğrulama & Geçerleme (V&V) — motorun analitik referanslara karşı sertifikasyonu
   grafikler: 3,   // Görsel analiz — tüm şekiller/çizelgeler (Bildfahrplan, hız profili, yük, Sperrzeit, tornado…)
 } as const;
 
@@ -51,5 +52,6 @@ export const RAPOR_BOLUM_AD: Record<RaporBolum, { tr: string; en: string }> = {
   isletme: { tr: "İşletme & Talep + Tavsiye Filo", en: "Operations & Demand + Fleet" },
   tarife: { tr: "Tarife", en: "Timetable" },
   duyarlilik: { tr: "Duyarlılık (Tornado)", en: "Sensitivity (Tornado)" },
+  dogrulama: { tr: "Doğrulama & Geçerleme (V&V)", en: "Verification & Validation" },
   grafikler: { tr: "Grafikler (Görsel Analiz)", en: "Charts (Visual Analysis)" },
 };

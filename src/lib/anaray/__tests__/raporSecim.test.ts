@@ -107,12 +107,12 @@ describe("Rapor bölüm seçimi — her varyasyon kusursuz", () => {
     const yalnizGrafik = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, b === "grafikler"])) as RaporSecim;
     expect(raporKredi(yalnizGrafik)).toBe(RAPOR_TABAN_KREDI + 3);
   });
-  it("raporKredi: grafiksiz tam rapor = 10 kredi (klasik fiyat)", () => {
+  it("raporKredi: grafiksiz tam rapor = taban 3 + 8 bölüm = 11 kredi", () => {
     const secim = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, b !== "grafikler"])) as RaporSecim;
-    expect(raporKredi(secim)).toBe(10);
+    expect(raporKredi(secim)).toBe(11);
   });
-  it("raporKredi: her şey açık = 13 kredi", () => {
+  it("raporKredi: her şey açık = 3 + 8 + grafikler(3) = 14 kredi", () => {
     const secim = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, true])) as RaporSecim;
-    expect(raporKredi(secim)).toBe(13);
+    expect(raporKredi(secim)).toBe(14);
   });
 });

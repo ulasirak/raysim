@@ -13,6 +13,7 @@ import { CK } from "./chartkit";
 import { type SimConfig, type ProjeMeta, type Isletme, PARAM_META, paramGoster, birim, varsayilanIsletme, etkinArac } from "./config";
 import { tersIsletmeAnaliz, tavsiyeTramvaySayisi } from "./tersisletme";
 import { bolumDahil, type RaporSecim } from "@/lib/raporFiyat";
+import { dogrulamaCalistir } from "./dogrulama";
 import { seferTersEntegre } from "./seferters";
 import { maksimumTren } from "./kapasite";
 import { tarifeUret } from "./tarife";
@@ -825,6 +826,29 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   </div>
   <div class="antet-alt"><span>${esc(meta.sinyalizasyonFirmasi || "RaySim")} · ${esc(meta.projeAdi)}</span><span>${bugun ? esc(bugun) + " · " : ""}${esc(meta.dokumanNo)}</span></div>`;
 
+  // ——— DOĞRULAMA & GEÇERLEME (V&V) — bölüm 09 ———
+  // Motorun çıktısı BAĞIMSIZ kapalı-form analitik referanslara karşı sertifikalanır.
+  // Dürüst çerçeve: [analitik] = bağımsız referans (gerçek doğrulama), [tutarlılık] =
+  // motorun kendi tanımı/tasarım değişmezleriyle uyum. Resmi teslimatta güven katmanı.
+  const dogrulamaBolum = dahil("dogrulama") ? (() => {
+    const vv = dogrulamaCalistir(rings, stock, cfg, isletme);
+    const YESIL = "#2E7D57";
+    const vvSay = (v: number, birim: string) => { const d = Math.abs(v) >= 100 ? 0 : Math.abs(v) >= 10 ? 1 : 2; return `${v.toFixed(d)}${birim ? " " + birim : ""}`; };
+    const etiket = (b: boolean) => b ? (en ? "analytical" : "analitik") : (en ? "consistency" : "tutarlılık");
+    const vvRows = vv.sonuclar.map((s) => [
+      `<b>${esc(s.ad)}</b> <span style="font-size:8pt;color:#6B7480">[${etiket(s.bagimsiz)}] · ${esc(s.kategori)}</span><br><span style="font-size:8.5pt;color:#6B7480">${esc(s.yontem)}</span>`,
+      vvSay(s.referans, s.birim), vvSay(s.hesaplanan, s.birim), `%${s.sapmaYuzde.toFixed(2)}`,
+      `<b style="color:${s.gecti ? YESIL : RED}">${s.gecti ? (en ? "Pass" : "Geçti") : (en ? "Fail" : "Kaldı")}</b> <span style="font-size:8pt;color:#6B7480">(≤%${s.tolerans})</span>`,
+    ]);
+    const giris = en
+      ? "Engine outputs are checked against independent closed-form (analytical) references — the standard verification method for engineering software. No external tool or dataset is required: because the physics is known in closed form, the numerical integration is validated directly. Checks tagged [analytical] are independent references (true validation); [consistency] checks confirm agreement with the engine's own definitions and design invariants."
+      : "Motor çıktıları bağımsız kapalı-form (analitik) referanslara karşı sınanır — mühendislik yazılımı doğrulamasının standart yöntemi. Dış araç ya da veriye gerek yoktur: fizik kapalı-formda bilindiği için sayısal entegrasyon doğrudan doğrulanır. [analitik] etiketli kontroller bağımsız referanstır (gerçek doğrulama); [tutarlılık] kontrolleri motorun kendi tanımı ve tasarım değişmezleriyle uyumu gösterir.";
+    return `<div class="banner breakbefore"><span class="no">09</span>${en ? "VERIFICATION & VALIDATION" : "DOĞRULAMA & GEÇERLEME"}</div>
+  <p>${giris}</p>
+  <div class="gs" style="font-size:10pt"><b style="color:${vv.gecen === vv.toplam ? YESIL : RED}">${vv.gecen}/${vv.toplam}</b> ${en ? "checks passed" : "kontrol geçti"} · ${en ? "maximum deviation" : "azami sapma"} %${vv.maxSapma.toFixed(2)}.</div>
+  ${tbl([en ? "Check" : "Kontrol", en ? "Reference" : "Referans", en ? "Computed" : "Hesaplanan", en ? "Deviation" : "Sapma", en ? "Result" : "Sonuç"], vvRows, { first: true })}`;
+  })() : "";
+
   // ——— GRAFİKLER (Görsel Analiz) — bölüm 08 ———
   // TÜM şekiller burada toplanır; yalnız "grafikler" seçiliyken (g) üretilir. Böylece
   // kullanıcı sadece grafikleri seçtiğinde dahi dolu, tek başına anlamlı bir görsel bölüm
@@ -1109,6 +1133,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
       ${dahil("tarife") ? `<li><b>06</b>${en ? "Timetable (Service Schedule)" : "Tarife (Zaman Çizelgesi)"}<ul><li>6.1 ${en ? "First Departures" : "İlk Kalkışlar"}</li></ul></li>` : ""}
       ${dahil("duyarlilik") ? `<li><b>07</b>${en ? "Sensitivity (Tornado)" : "Duyarlılık (Tornado)"}</li>` : ""}
       ${g ? `<li><b>08</b>${en ? "Visual Analysis (Charts)" : "Görsel Analiz (Grafikler)"}</li>` : ""}
+      ${dahil("dogrulama") ? `<li><b>09</b>${en ? "Verification & Validation" : "Doğrulama & Geçerleme"}</li>` : ""}
     </ol>
     ${g ? `<div class="toc-fig">${en ? "Figures" : "Şekiller"}<ul>
       <li>${en ? "Fig. 1 — Line schematic" : "Şekil 1 — Hat şeması"}</li>
@@ -1168,6 +1193,9 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
 
   <!-- 8: Grafikler (Görsel Analiz) — tüm şekiller; yalnız "grafikler" seçilince -->
   ${grafiklerBolum}
+
+  <!-- 9: Doğrulama & Geçerleme (V&V) — motor sertifikasyonu -->
+  ${dogrulamaBolum}
 
   ${cekirdekNot}
 
