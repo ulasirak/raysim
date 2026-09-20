@@ -11,6 +11,7 @@ import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import { tersIsletmeAnaliz, tavsiyeTramvaySayisi } from "@/lib/anaray/tersisletme";
 import { Num, SubBaslik } from "@/components/RingUI";
 import { brand } from "@/lib/anaray/brand";
+import { Kart } from "@/components/Kart";
 import { CK } from "@/lib/anaray/chartkit";
 
 function Kucuk({ children }: { children: React.ReactNode }) {
@@ -219,8 +220,8 @@ export function TersIsletme() {
       <Cekmece baslik="Depo Çıkışı — Tek Depodan İki Yön" acik={acik.depo} onToggle={() => topla("depo")}
         ozet={<span>{rapor.depoDagilim.gidis} gidiş / {rapor.depoDagilim.donus} ters</span>}>
         <div className="flex flex-wrap gap-4">
-          <div className="rounded border px-3 py-2" style={{ borderColor: brand.border }}><div className="text-xl font-bold tabular-nums" style={{ color: CK.blue }}>{rapor.depoDagilim.gidis}</div><div className="text-xs" style={{ color: brand.muted }}>gidiş (kendi yönünden çıkar)</div></div>
-          <div className="rounded border px-3 py-2" style={{ borderColor: brand.border }}><div className="text-xl font-bold tabular-nums" style={{ color: CK.orange }}>{rapor.depoDagilim.donus}</div><div className="text-xs" style={{ color: brand.muted }}>ters (ilk makastan karşı şeride geçer)</div></div>
+          <Kart ic="sm"><div className="text-xl font-bold tabular-nums" style={{ color: CK.blue }}>{rapor.depoDagilim.gidis}</div><div className="text-xs" style={{ color: brand.muted }}>gidiş (kendi yönünden çıkar)</div></Kart>
+          <Kart ic="sm"><div className="text-xl font-bold tabular-nums" style={{ color: CK.orange }}>{rapor.depoDagilim.donus}</div><div className="text-xs" style={{ color: brand.muted }}>ters (ilk makastan karşı şeride geçer)</div></Kart>
         </div>
         <p className="mt-2 text-xs" style={{ color: brand.muted }}>{rapor.depoDagilim.aciklama}</p>
       </Cekmece>

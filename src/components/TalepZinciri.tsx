@@ -6,6 +6,8 @@
 
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
+import { Kart } from "@/components/Kart";
+import { Kpi } from "@/components/Kpi";
 
 interface Zincir {
   tepeYuk: number; tepeDurak: string; aracKapasite: number;
@@ -19,11 +21,9 @@ export function TalepZinciri({ t, dolulukHedefi = 0.85 }: { t: Zincir; dolulukHe
   const fark = t.filo.gerekenArac - t.filo.mevcutPik;
 
   const kutu = (baslik: string, buyuk: string, alt: string, renk: string) => (
-    <div className="flex-1 rounded-lg border p-3 text-center" style={{ borderColor: brand.border, background: "#fff", minWidth: 120 }}>
-      <div className="text-xs font-semibold" style={{ color: brand.muted }}>{baslik}</div>
-      <div className="mt-1 text-2xl font-bold tabular-nums" style={{ color: renk }}>{buyuk}</div>
-      <div className="mt-0.5 text-xs" style={{ color: brand.inkSoft }}>{alt}</div>
-    </div>
+    <Kart ic="sm" className="flex-1" style={{ minWidth: 120 }}>
+      <Kpi etiket={baslik} deger={buyuk} alt={alt} renk={renk} boyut="lg" hiza="orta" />
+    </Kart>
   );
   const ok = (etiket: string) => (
     <div className="flex flex-col items-center justify-center px-1" style={{ color: brand.muted }}>

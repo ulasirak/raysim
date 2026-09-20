@@ -24,6 +24,8 @@ import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { BosHat } from "@/components/BosHat";
+import { Kart } from "@/components/Kart";
+import { Kpi } from "@/components/Kpi";
 import { LiveNetwork } from "@/components/LiveNetwork";
 import { Bildfahrplan } from "@/components/Bildfahrplan";
 import { HizProfili } from "@/components/HizProfili";
@@ -374,11 +376,7 @@ function StudioIc() {
             </div>
             <span className="mt-0.5 block text-[0.6rem]" style={{ color: filoOneriUyum ? "#16794C" : CK.amberInk }}>{filoOneriUyum ? "✓ öneriyle eşleşiyor" : `öneri ${oneriTramvay} · fark ${filoTek - oneriTramvay > 0 ? "+" : ""}${filoTek - oneriTramvay}`}</span>
           </div>
-          <div>
-            <span className="field-label">Ulaşılan sefer aralığı</span>
-            <div className="mt-1 text-lg font-bold tabular-nums" style={{ color: brand.ink }}>{sure(ulasilanHeadwaySn)}</div>
-            <span className="text-[0.6rem]" style={{ color: brand.muted }}>çevrim ÷ filo · filo↑→aralık↓</span>
-          </div>
+          <Kpi etiket="Ulaşılan sefer aralığı" deger={sure(ulasilanHeadwaySn)} alt="çevrim ÷ filo · filo↑→aralık↓" />
           <div>
             <span className="field-label">Hedef headway (kural)</span>
             <div className="mt-1 flex items-center gap-1">
@@ -388,11 +386,10 @@ function StudioIc() {
             </div>
             <span className="mt-0.5 block text-[0.6rem]" style={{ color: CK.amberInk }}>⚠ değiştirilmesi önerilmez (240 s tasarım kuralı)</span>
           </div>
-          <div title="Aynı anda bu hatta sığabilen EN FAZLA tramvay (darboğazın izin verdiği fiziksel üst sınır). Filon bu sayıyı aşamaz — aşarsa trenler kaçınılmaz kuyruklanır.">
-            <span className="field-label">Hat kapasitesi</span>
-            <div className="mt-1 text-lg font-bold tabular-nums" style={{ color: filoAsim ? brand.red : brand.ink }}>{nMax}</div>
-            <span className="text-[0.6rem]" style={{ color: filoAsim ? brand.red : brand.muted }}>{filoAsim ? `⚠ filo ${filoTek} > kapasite ${nMax}` : "araç · üst sınır (darboğaz)"}</span>
-          </div>
+          <Kpi
+            title="Aynı anda bu hatta sığabilen EN FAZLA tramvay (darboğazın izin verdiği fiziksel üst sınır). Filon bu sayıyı aşamaz — aşarsa trenler kaçınılmaz kuyruklanır."
+            etiket="Hat kapasitesi" deger={nMax} ton={filoAsim ? "danger" : "notr"}
+            alt={filoAsim ? `⚠ filo ${filoTek} > kapasite ${nMax}` : "araç · üst sınır (darboğaz)"} />
         </div>
 
         {/* ③ Parklanma dizilimi (elle) */}
@@ -725,26 +722,24 @@ function StudioIc() {
       {maks.gecerli && (
       <Panel baslik="Canlı Etkiler & Öneriler" aciklama="Filoyu oynattıkça bağlı olduğu her durum burada canlı güncellenir — ulaşılan sıklık, kapasite/park aşımı, tıkanan duraklar/dönüş ihtiyacı ve makaslarda ters işletme ihtiyacı.">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded border p-2.5" style={{ borderColor: brand.border }}>
-            <div className="text-[0.6rem] uppercase" style={{ color: brand.muted }}>Ulaşılan sıklık</div>
-            <div className="text-lg font-bold tabular-nums" style={{ color: brand.ink }}>{sure(ulasilanHeadwaySn)}</div>
-            <div className="text-[0.6rem]" style={{ color: brand.muted }}>{(3600 / Math.max(1, ulasilanHeadwaySn)).toFixed(1)} tren/saat · filo {filoTek}</div>
-          </div>
-          <div className="rounded border p-2.5" style={{ borderColor: filoAsim ? brand.red : brand.border }}>
-            <div className="text-[0.6rem] uppercase" style={{ color: brand.muted }}>Kapasite</div>
-            <div className="text-lg font-bold tabular-nums" style={{ color: filoAsim ? brand.red : brand.ink }}>{filoTek} / {nMax}</div>
-            <div className="text-[0.6rem]" style={{ color: filoAsim ? brand.red : brand.muted }}>{filoAsim ? "⚠ aşıldı, sığmaz" : "araç / üst sınır ✓"}</div>
-          </div>
-          <div className="rounded border p-2.5" style={{ borderColor: depoVar && parkToplam !== filoTek ? CK.amber : brand.border }}>
-            <div className="text-[0.6rem] uppercase" style={{ color: brand.muted }}>Parklanma</div>
-            <div className="text-lg font-bold tabular-nums" style={{ color: brand.ink }}>{depoVar ? `${parkToplam}/${filoTek}` : "—"}</div>
-            <div className="text-[0.6rem]" style={{ color: depoVar && parkToplam !== filoTek ? CK.amberInk : brand.muted }}>{!depoVar ? "depo yok" : parkToplam === filoTek ? "✓ dizildi" : "⚠ eksik/fazla"}</div>
-          </div>
-          <div className="rounded border p-2.5" style={{ borderColor: yolcuVeriVar && tersRapor && tersRapor.donusIhtiyaclari.length > 0 ? brand.red : brand.border }}>
-            <div className="text-[0.6rem] uppercase" style={{ color: brand.muted }}>Tıkanma / dönüş</div>
-            <div className="text-lg font-bold tabular-nums" style={{ color: yolcuVeriVar && tersRapor && tersRapor.donusIhtiyaclari.length > 0 ? brand.red : brand.ink }}>{yolcuVeriVar && tersRapor ? tersRapor.donusIhtiyaclari.length : "—"}</div>
-            <div className="text-[0.6rem]" style={{ color: brand.muted }}>{yolcuVeriVar ? "tıkanan durak" : <button type="button" className="underline" style={{ color: brand.ink }} onClick={() => setTalepPopup(true)}>yolcu gir</button>}</div>
-          </div>
+          <Kart ic="sm">
+            <Kpi etiket="Ulaşılan sıklık" deger={sure(ulasilanHeadwaySn)}
+              alt={`${(3600 / Math.max(1, ulasilanHeadwaySn)).toFixed(1)} tren/saat · filo ${filoTek}`} />
+          </Kart>
+          <Kart ic="sm" ton={filoAsim ? "danger" : "notr"}>
+            <Kpi etiket="Kapasite" deger={`${filoTek} / ${nMax}`} ton={filoAsim ? "danger" : "notr"}
+              alt={filoAsim ? "⚠ aşıldı, sığmaz" : "araç / üst sınır ✓"} />
+          </Kart>
+          <Kart ic="sm" ton={depoVar && parkToplam !== filoTek ? "warn" : "notr"}>
+            <Kpi etiket="Parklanma" deger={depoVar ? `${parkToplam}/${filoTek}` : "—"}
+              alt={!depoVar ? "depo yok" : parkToplam === filoTek ? "✓ dizildi" : "⚠ eksik/fazla"} />
+          </Kart>
+          <Kart ic="sm" ton={yolcuVeriVar && tersRapor && tersRapor.donusIhtiyaclari.length > 0 ? "danger" : "notr"}>
+            <Kpi etiket="Tıkanma / dönüş"
+              deger={yolcuVeriVar && tersRapor ? tersRapor.donusIhtiyaclari.length : "—"}
+              ton={yolcuVeriVar && tersRapor && tersRapor.donusIhtiyaclari.length > 0 ? "danger" : "notr"}
+              alt={yolcuVeriVar ? "tıkanan durak" : <button type="button" className="underline" style={{ color: brand.ink }} onClick={() => setTalepPopup(true)}>yolcu gir</button>} />
+          </Kart>
         </div>
         {yolcuVeriVar && tersRapor && (tersRapor.donusIhtiyaclari.length > 0 || tersRapor.makaslar.some((m) => m.kisaDonusOnerilir)) && (
           <div className="mt-3 space-y-1 text-xs">
