@@ -19,6 +19,7 @@ import { KayitBildirimi } from "@/components/KayitBildirimi";
 import { OdemeModal } from "@/components/OdemeModal";
 import { ParametreDuzenleButonu } from "@/components/ParametreDuzenleButonu";
 import { Karsilama } from "@/components/Karsilama";
+import { SunumModu } from "@/components/SunumModu";
 import { brand } from "@/lib/anaray/brand";
 
 interface Modul {
@@ -336,6 +337,10 @@ function Govde({ children }: { children: React.ReactNode }) {
           bir kez otomatik açılır (bir daha açılmaz). "Tanıtımı göster" ile tekrar açılabilir.
           /giris rotasında (henüz içerik yok) render edilmez. */}
       {icerikVar && !pathname.startsWith("/giris") && <Karsilama />}
+
+      {/* Sunum/hikaye modu — sistemi tek nefeste gezdiren rehberli pitch (H). Yalnız
+          tek-sayfa stüdyoda (ana sayfa) bölüm ankorları bulunduğu için görünür. */}
+      {icerikVar && anaSayfa && <SunumModu />}
 
       {/* Global footer — sol: dürüst metodoloji notu · orta: amblem · sağ: künye */}
       <footer className="border-t-2" style={{ background: "#0C2233", borderColor: "#C8102E" }}>
