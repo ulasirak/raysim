@@ -12,6 +12,7 @@ import type { Line } from "@/lib/anaray/types";
 import type { LoopYorunge } from "@/lib/anaray/signalling";
 import type { HatOzellik } from "@/lib/anaray/network";
 import { cografiGeometri, type GeoNokta } from "@/lib/anaray/cografi";
+import { KONYA_GEOMETRI } from "@/lib/anaray/konyaGeometri";
 import { sampleLoop, HIZLAR, UP_COL, DOWN, GAP } from "@/components/liveNetworkGeo";
 import { saat } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
@@ -80,6 +81,24 @@ export function CografiAg({
   }, [loop, t, periyot, L, loopLen, g, line.length]);
 
   const yolD = g.yol.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+
+  // GERÇEK OSM TRACK GEOMETRİSİ (Konya) — istasyon koordinatlarıyla aynı projeksiyona
+  // taşınır; çoğu noktası viewBox içinde kalan yollar (yani bu Konya hattı) çizilir.
+  // Böylece harita düz istasyon-çizgisi yerine gerçek kavisli hizayı gösterir.
+  const geoYollar = useMemo(() => {
+    const pe = g.projekteEt;
+    if (!g.coordluMu || !pe) return [] as { insaat: boolean; d: string }[];
+    const { w, h } = g.vb;
+    const out: { insaat: boolean; d: string }[] = [];
+    for (const yol of KONYA_GEOMETRI) {
+      const pts = yol.noktalar.map(([lat, lon]) => pe(lat, lon));
+      const ic = pts.filter((p) => p.x >= -20 && p.x <= w + 20 && p.y >= -20 && p.y <= h + 20).length;
+      if (ic < pts.length * 0.6) continue; // çoğu görünürse (bu Konya hattı) çiz
+      out.push({ insaat: yol.insaat, d: pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ") });
+    }
+    return out;
+  }, [g]);
+  const gercekGeo = geoYollar.length > 0;
   const featureSimge = (f: HatOzellik, idx: number) => {
     const p = g.konum(f.pos);
     if (f.kind === "makas") {
@@ -97,7 +116,7 @@ export function CografiAg({
       {/* Kip rozeti + kontroller */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <span className="ds-chip" style={{ background: g.coordluMu ? CK.goodBgSoft : "#EEF2F6", color: g.coordluMu ? CK.good : brand.muted, border: `1px solid ${g.coordluMu ? CK.good : brand.border}` }}>
-          {g.coordluMu ? "Gerçek koordinat (harita)" : "Ölçekli plan (koordinatsız)"}
+          {gercekGeo ? "Gerçek OSM hattı (harita)" : g.coordluMu ? "Gerçek koordinat (harita)" : "Ölçekli plan (koordinatsız)"}
         </span>
         {loop && periyot > 0 && (
           <>
@@ -120,9 +139,25 @@ export function CografiAg({
 
       <div className="overflow-hidden rounded-lg border" style={{ borderColor: brand.border, background: g.coordluMu ? "#F2F6F4" : "#FBFCFD" }}>
         <svg viewBox={`0 0 ${g.vb.w} ${g.vb.h}`} width="100%" style={{ display: "block" }} role="img" aria-label="Coğrafi canlı ağ">
-          {/* İz — kılıf + ana çizgi */}
-          <path d={yolD} fill="none" stroke="#fff" strokeWidth={7} strokeLinejoin="round" strokeLinecap="round" />
-          <path d={yolD} fill="none" stroke={brand.route} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
+          {/* İz — gerçek OSM geometrisi varsa onu (kavisli hiza), yoksa düz istasyon-çizgisi */}
+          {gercekGeo ? (
+            <>
+              {/* kılıf (beyaz) */}
+              {geoYollar.map((y, i) => (
+                <path key={`gc${i}`} d={y.d} fill="none" stroke="#fff" strokeWidth={y.insaat ? 4.5 : 6} strokeLinejoin="round" strokeLinecap="round" />
+              ))}
+              {/* gerçek track: operasyonel düz, inşaat kesikli */}
+              {geoYollar.map((y, i) => (
+                <path key={`g${i}`} d={y.d} fill="none" stroke={y.insaat ? CK.amber : brand.route} strokeWidth={y.insaat ? 1.8 : 2.6}
+                  strokeOpacity={y.insaat ? 0.8 : 1} strokeDasharray={y.insaat ? "5 4" : undefined} strokeLinejoin="round" strokeLinecap="round" />
+              ))}
+            </>
+          ) : (
+            <>
+              <path d={yolD} fill="none" stroke="#fff" strokeWidth={7} strokeLinejoin="round" strokeLinecap="round" />
+              <path d={yolD} fill="none" stroke={brand.route} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
+            </>
+          )}
 
           {/* Özellikler (makas/sinyal/geçit) */}
           {features.map((f, i) => featureSimge(f, i))}
@@ -159,6 +194,12 @@ export function CografiAg({
         <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full" style={{ background: CK.good }} /> sinyal</span>
         <span className="flex items-center gap-1"><span style={{ color: CK.red }}>✕</span> geçit</span>
         <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5" style={{ background: brand.ink }} /> parklanma</span>
+        {gercekGeo && (
+          <>
+            <span className="flex items-center gap-1"><span className="inline-block h-[3px] w-4 rounded-sm" style={{ background: brand.route }} /> gerçek hat (OSM)</span>
+            <span className="flex items-center gap-1"><span className="inline-block h-[3px] w-4 rounded-sm" style={{ background: CK.amber }} /> inşaat halinde</span>
+          </>
+        )}
       </div>
     </div>
   );

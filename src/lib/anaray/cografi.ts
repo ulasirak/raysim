@@ -28,6 +28,9 @@ export interface CografiGeometri {
   konum: (chain: number) => GeoNokta;
   /** Kilometrajdaki birim dik normal (çift-şerit ofseti + etiket yerleşimi). */
   normal: (chain: number) => GeoNokta;
+  /** Gerçek-koordinat kipinde bir lat/lon'u AYNI projeksiyonla 2B'ye taşır (gerçek
+   *  track geometrisi backdrop'u için). Ölçekli plan kipinde undefined. */
+  projekteEt?: (lat: number, lon: number) => GeoNokta;
 }
 
 const PAD = 46;
@@ -60,6 +63,7 @@ export function cografiGeometri(
 
   let noktalar: GeoNokta[];
   let h: number;
+  let projekteEt: ((lat: number, lon: number) => GeoNokta) | undefined;
 
   if (koordVar) {
     // Equirectangular: x = lon·cos(ortLat), y = lat (kuzey yukarı → ekranda ters).
@@ -81,6 +85,8 @@ export function cografiGeometri(
       x: offX + (p.x - minX) * olcek,
       y: offY + (maxY - p.y) * olcek,
     }));
+    // Aynı equirectangular projeksiyonu dışa aç (gerçek track geometrisi backdrop'u).
+    projekteEt = (lat: number, lon: number) => ({ x: offX + (lon * kx - minX) * olcek, y: offY + (maxY - lat) * olcek });
   } else {
     // Ölçekli plan: düz yatay, x = kilometraja orantılı.
     h = 150;
@@ -114,5 +120,5 @@ export function cografiGeometri(
     return { x: -dy / L, y: dx / L }; // 90° dik, birim
   };
 
-  return { coordluMu: koordVar, vb: { w, h }, istasyonlar, yol: noktalar, konum, normal };
+  return { coordluMu: koordVar, vb: { w, h }, istasyonlar, yol: noktalar, konum, normal, projekteEt };
 }
