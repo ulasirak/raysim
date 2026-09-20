@@ -282,6 +282,10 @@ export interface Isletme {
    *  KAYNAK müşterinin verisidir → sürdürülebilir: GTFS import (shapes) otomatik doldurur;
    *  elle/DXF hatlarda boş kalır (düz-çizgiye düşer). Konya hazır hatlarında gömülü örnek. */
   hatGeometri?: { insaat?: boolean; noktalar: [number, number][] }[];
+  /** OSM auto-fetch bölgesi [güney,batı,kuzey,doğu] — koordinat/geometri GÖMÜLÜ değil,
+   *  bu bölgeden SUNUCU tarafı OSM'den çekilir (ilk yükte, kalıcı cache). Hazır hatlarda
+   *  şehir bbox'ı; elle/import hatlarda boş (koordinat oradan gelir). */
+  osmBbox?: [number, number, number, number];
   /** Parklanma dizilimi: her depo (ring id / "origin") → oraya ELLE yerleştirilen araç sayısı.
    *  Rastgele dağıtılmaz; kullanıcı doldurur (toplam = filo). Boşsa henüz dizilmemiş. */
   parklanmaDagilim?: Record<string, number>;

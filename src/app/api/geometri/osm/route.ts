@@ -10,9 +10,11 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 type GeoYol = { insaat: boolean; noktalar: [number, number][] };
+type OsmIstasyon = { ad: string; lat: number; lon: number };
+type OsmSonuc = { geometri: GeoYol[]; istasyonlar: OsmIstasyon[] };
 
 // Modül-içi cache (bbox anahtarlı, 24 s TTL). Serverless soğuk-başlatmada sıfırlanır — zararsız.
-const cache = new Map<string, { t: number; veri: GeoYol[] }>();
+const cache = new Map<string, { t: number; veri: OsmSonuc }>();
 const TTL = 1000 * 60 * 60 * 24;
 
 const OVERPASS = [
@@ -37,10 +39,15 @@ function dp(pts: { lat: number; lon: number }[], eps = 0.00025): [number, number
 }
 const r4 = (n: number) => Math.round(n * 1e4) / 1e4;
 
-async function overpassCek(bbox: [number, number, number, number]): Promise<GeoYol[]> {
+async function overpassCek(bbox: [number, number, number, number]): Promise<OsmSonuc> {
   const [s, w, n, e] = bbox;
   const bb = `(${s},${w},${n},${e})`;
-  const q = `[out:json][timeout:50];(way["railway"="tram"]${bb};way["railway"="light_rail"]${bb};way["railway"="subway"]${bb};way["railway"="construction"]${bb};);out geom;`;
+  // Tek sorguda hem raylı-hat WAY'leri (geometri) hem de İSTASYON NODE'ları (tram_stop /
+  // station / halt / public_transport + inşaat halindeki istasyonlar) — koordinat da gelir.
+  const q = `[out:json][timeout:60];`
+    + `(way["railway"~"^(tram|light_rail|subway|construction)$"]${bb};)->.w;`
+    + `(node["railway"~"^(tram_stop|station|halt)$"]${bb};node["public_transport"~"^(station|platform|stop_position)$"]${bb};node["construction:railway"~"^(station|halt|tram_stop)$"]${bb};)->.n;`
+    + `.w out geom;.n out body;`;
   let sonHata: unknown = null;
   for (const url of OVERPASS) {
     try {
@@ -49,12 +56,23 @@ async function overpassCek(bbox: [number, number, number, number]): Promise<GeoY
       const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "data=" + encodeURIComponent(q), signal: ctrl.signal });
       clearTimeout(zaman);
       if (!r.ok) { sonHata = new Error("HTTP " + r.status); continue; }
-      const j = (await r.json()) as { elements?: { type: string; tags?: Record<string, string>; geometry?: { lat: number; lon: number }[] }[] };
-      const ways = (j.elements ?? []).filter((x) => x.type === "way" && x.geometry && x.geometry.length >= 2);
-      return ways.map((wy) => ({
-        insaat: wy.tags?.railway === "construction",
-        noktalar: dp(wy.geometry!),
-      })).filter((y) => y.noktalar.length >= 2);
+      const j = (await r.json()) as { elements?: { type: string; tags?: Record<string, string>; lat?: number; lon?: number; geometry?: { lat: number; lon: number }[] }[] };
+      const el = j.elements ?? [];
+      const geometri = el.filter((x) => x.type === "way" && x.geometry && x.geometry.length >= 2)
+        .map((wy) => ({ insaat: wy.tags?.railway === "construction", noktalar: dp(wy.geometry!) }))
+        .filter((y) => y.noktalar.length >= 2);
+      // İstasyon node'ları: adlı olanlar; aynı ada birden çok platform → ilkini tut.
+      const gorulen = new Set<string>();
+      const istasyonlar: OsmIstasyon[] = [];
+      for (const nd of el) {
+        if (nd.type !== "node" || !nd.tags?.name || !Number.isFinite(nd.lat) || !Number.isFinite(nd.lon)) continue;
+        const ad = nd.tags.name.trim();
+        const key = ad.toLocaleLowerCase("tr");
+        if (gorulen.has(key)) continue;
+        gorulen.add(key);
+        istasyonlar.push({ ad, lat: r4(nd.lat!), lon: r4(nd.lon!) });
+      }
+      return { geometri, istasyonlar };
     } catch (err) { sonHata = err; }
   }
   throw sonHata ?? new Error("Overpass erişilemedi.");
@@ -78,16 +96,17 @@ export async function POST(req: Request) {
 
   const key = bbox.map((v) => v.toFixed(3)).join(",");
   const c = cache.get(key);
-  if (c && Date.now() - c.t < TTL) return NextResponse.json({ geometri: c.veri, kaynak: "osm-cache", not: "© OpenStreetMap · ODbL" });
+  if (c && Date.now() - c.t < TTL) return NextResponse.json({ geometri: c.veri.geometri, istasyonlar: c.veri.istasyonlar, kaynak: "osm-cache", not: "© OpenStreetMap · ODbL" });
 
   try {
     const veri = await overpassCek(bbox);
     cache.set(key, { t: Date.now(), veri });
     return NextResponse.json({
-      geometri: veri,
+      geometri: veri.geometri,
+      istasyonlar: veri.istasyonlar,
       kaynak: "osm",
       not: "© OpenStreetMap · ODbL",
-      uyari: veri.length === 0 ? "Bu alanda OpenStreetMap'te raylı hat bulunamadı." : undefined,
+      uyari: veri.geometri.length === 0 && veri.istasyonlar.length === 0 ? "Bu alanda OpenStreetMap'te raylı hat bulunamadı." : undefined,
     });
   } catch {
     return NextResponse.json({ hata: "OpenStreetMap'ten çekilemedi (geçici — Overpass yoğun olabilir). Biraz sonra tekrar deneyin." }, { status: 502 });

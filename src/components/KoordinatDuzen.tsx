@@ -6,10 +6,9 @@
 // koordinatları" preset'i (OSM kaynaklı 41 istasyon) ad eşleştirmesiyle doldurur.
 // Koordinatlar Isletme.istasyonKoordinat'ta KALICI saklanır.
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
-import { konyaKoordinatBul } from "@/lib/anaray/konyaKoordinat";
 
 type Koord = Record<string, { lat: number; lon: number }>;
 type GeoYol = { insaat?: boolean; noktalar: [number, number][] };
@@ -29,7 +28,6 @@ export function KoordinatDuzen({
 }) {
   const k = koordinat ?? {};
   const doluSay = istasyonlar.filter((s) => k[s] && Number.isFinite(k[s].lat) && Number.isFinite(k[s].lon)).length;
-  const konyaEsles = useMemo(() => istasyonlar.filter((s) => konyaKoordinatBul(s)).length, [istasyonlar]);
   const [osmDurum, setOsmDurum] = useState<"bos" | "yukleniyor" | "hata">("bos");
   const [osmMesaj, setOsmMesaj] = useState("");
 
@@ -54,11 +52,6 @@ export function KoordinatDuzen({
     const cur = k[ad] ?? { lat: 0, lon: 0 };
     onChange({ ...k, [ad]: { ...cur, [alan]: v } });
   };
-  const konyaYukle = () => {
-    const yeni: Koord = { ...k };
-    for (const s of istasyonlar) { const c = konyaKoordinatBul(s); if (c) yeni[s] = { lat: c.lat, lon: c.lon }; }
-    onChange(yeni);
-  };
   const temizle = () => onChange({});
 
   return (
@@ -67,11 +60,6 @@ export function KoordinatDuzen({
         <span className="rounded-full px-2 py-0.5 font-semibold" style={{ background: doluSay === istasyonlar.length ? CK.goodBgSoft : CK.track, color: doluSay === istasyonlar.length ? CK.good : brand.muted }}>
           {doluSay}/{istasyonlar.length} istasyon koordinatlı
         </span>
-        {konyaEsles > 0 && (
-          <button type="button" onClick={konyaYukle} className="rounded px-2.5 py-1 font-semibold text-white" style={{ background: brand.ink }}>
-            Konya gerçek koordinatlarını yükle ({konyaEsles} eşleşme)
-          </button>
-        )}
         {onGeometri && doluSay >= 2 && (
           <button type="button" onClick={osmCek} disabled={osmDurum === "yukleniyor"}
             className="rounded px-2.5 py-1 font-semibold text-white disabled:opacity-60" style={{ background: "#2E7D57" }}

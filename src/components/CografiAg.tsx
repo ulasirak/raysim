@@ -12,7 +12,6 @@ import type { Line } from "@/lib/anaray/types";
 import type { LoopYorunge } from "@/lib/anaray/signalling";
 import type { HatOzellik } from "@/lib/anaray/network";
 import { cografiGeometri, type GeoNokta } from "@/lib/anaray/cografi";
-import { KONYA_GEOMETRI } from "@/lib/anaray/konyaGeometri";
 import { sampleLoop, HIZLAR, UP_COL, DOWN, GAP, DURUM_STIL } from "@/components/liveNetworkGeo";
 import { TrenDetayKutusu } from "@/components/liveNetworkKartlar";
 import type { TersIsletmeRapor } from "@/lib/anaray/tersisletme";
@@ -78,7 +77,7 @@ export function CografiAg({
   const geoProjeksiyon = useMemo(() => {
     const pe = g.projekteEt;
     if (!g.coordluMu || !pe) return [] as { insaat: boolean; pts: GeoNokta[] }[];
-    const kaynak = geometri && geometri.length ? geometri : KONYA_GEOMETRI;
+    const kaynak = geometri ?? [];
     const { w, h } = g.vb;
     const out: { insaat: boolean; pts: GeoNokta[] }[] = [];
     for (const yol of kaynak) {

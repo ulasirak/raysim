@@ -13,7 +13,8 @@ import { simulate } from "@/lib/anaray/sim";
 import { simulateSignalled, reverseRoute, monteCarlo, planDepotDispatch, loopYorunge, type MonteCarloResult } from "@/lib/anaray/signalling";
 import { tramvaylar } from "@/lib/anaray/vehicles";
 import { maksimumTren } from "@/lib/anaray/kapasite";
-import { etkinArac } from "@/lib/anaray/config";
+import { etkinArac, type Isletme } from "@/lib/anaray/config";
+import { osmKoordinatEsle } from "@/lib/anaray/adEsle";
 import { cakismaTespit } from "@/lib/anaray/cakisma";
 import { gecikmeYayilim } from "@/lib/anaray/gecikmeYayilim";
 import { ortakKesimAnaliz } from "@/lib/anaray/ortakKesim";
@@ -255,16 +256,42 @@ function StudioIc() {
     () => agIstasyonlar.filter((n) => { const c = agKoordinat?.[n]; return !!c && Number.isFinite(c.lat) && Number.isFinite(c.lon); }).length,
     [agIstasyonlar, agKoordinat]
   );
-  const haritaTam = agIstasyonlar.length > 0 && agKoordSay === agIstasyonlar.length; // hepsi koordinatlı (✓)
-  const haritaGosterilebilir = agKoordSay >= 2; // en az 2 → gerçek harita (eksikler yaklaşık)
-  // Harita gösterilebiliyorsa İLK yüklemede Harita'yı VARSAYILAN yap (kullanıcı gerçek
-  // hattını hemen görür; sonra Şematik'e geçebilir). Yalnız bir kez.
+  const haritaTam = agIstasyonlar.length > 0 && agKoordSay === agIstasyonlar.length; // hepsi koordinatlı → gerçek harita
+  // TAM koordinatlıysa İLK yüklemede Harita'yı VARSAYILAN yap (bir kez).
   const agModAyarlandi = useRef(false);
   useEffect(() => {
-    if (agModAyarlandi.current || !haritaGosterilebilir) return;
+    if (agModAyarlandi.current || !haritaTam) return;
     agModAyarlandi.current = true;
     setAgGorunum("harita");
-  }, [haritaGosterilebilir]);
+  }, [haritaTam]);
+
+  // OSM AUTO-FETCH (gömülü YOK): hattın osmBbox'ı varsa ve koordinat/geometri eksikse,
+  // SUNUCU tarafı OSM'den (Vercel IP → rate-limit yok) çek + ada göre eşle + kalıcı yaz.
+  // Bir bbox için bir kez denenir; başarısızsa sessizce şematik kalır.
+  const osmCekRef = useRef<string | null>(null);
+  useEffect(() => {
+    const bbox = isletme.osmBbox;
+    if (!bbox || haritaTam || agIstasyonlar.length === 0) return;
+    const key = bbox.join(",");
+    if (osmCekRef.current === key) return;
+    osmCekRef.current = key;
+    let iptal = false;
+    (async () => {
+      try {
+        const r = await fetch("/api/geometri/osm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bbox }) });
+        const j = await r.json();
+        if (iptal || !r.ok) return;
+        const patch: Partial<Isletme> = {};
+        if (Array.isArray(j.istasyonlar) && j.istasyonlar.length) {
+          const koord = osmKoordinatEsle(agIstasyonlar, j.istasyonlar);
+          if (Object.keys(koord).length) patch.istasyonKoordinat = { ...(isletme.istasyonKoordinat ?? {}), ...koord };
+        }
+        if (Array.isArray(j.geometri) && j.geometri.length) patch.hatGeometri = j.geometri;
+        if (Object.keys(patch).length) patchIsletme(patch);
+      } catch { /* sessiz — şematik kalır */ }
+    })();
+    return () => { iptal = true; };
+  }, [isletme.osmBbox, haritaTam, agIstasyonlar, isletme.istasyonKoordinat, patchIsletme]);
 
   // Çizelge çakışma tespiti (#2) — tek-hat karşılaşmaları + sistemik headway<hMin.
   const cakisma = useMemo(
@@ -582,12 +609,9 @@ function StudioIc() {
             style={{ border: `1px solid ${haritaTam ? "#16794C" : brand.border}`, color: haritaTam ? "#16794C" : brand.ink }}>
             ⌖ Koordinat gir {haritaTam ? "✓" : agKoordSay > 0 ? `${agKoordSay}/${agIstasyonlar.length}` : ""}
           </button>
-          {agGorunum === "harita" && !haritaGosterilebilir && (
-            <span className="text-[0.7rem]" style={{ color: CK.amberInk }}>Koordinat yok — ölçekli plan gösterilir. “Koordinat gir” ile ekle (Konya preset / OSM’den çek).</span>
-          )}
-          {agGorunum === "harita" && haritaGosterilebilir && !haritaTam && (
+          {agGorunum === "harita" && !haritaTam && (
             <button type="button" onClick={() => setKoordAcik(true)} className="text-[0.7rem] font-medium underline" style={{ color: CK.amberInk }}>
-              ⚠ {agKoordSay}/{agIstasyonlar.length} durak koordinatlı — eksikler <b>yaklaşık</b> konumlanır. “Koordinat gir” ile tamamla.
+              ⚠ {agKoordSay}/{agIstasyonlar.length} durak koordinatlı — TAM olunca gerçek harita çizilir (OSM’den otomatik çekiliyor / “Koordinat gir” ile tamamla). Sahte konum üretilmez.
             </button>
           )}
           {agGorunum === "harita" && haritaTam && (!isletme.hatGeometri || isletme.hatGeometri.length === 0) && (
@@ -595,7 +619,7 @@ function StudioIc() {
               💡 Gerçek kavisli hizayı kalıcılaştır: ⤓ OSM’den çek (ya da GTFS içe aktar)
             </button>
           )}
-          {agGorunum === "sematik" && haritaGosterilebilir && (
+          {agGorunum === "sematik" && haritaTam && (
             <span className="text-[0.7rem] font-medium" style={{ color: CK.good }}>💡 Bu hattın gerçek haritası hazır — üstteki <b>“Harita”</b> ile gör.</span>
           )}
         </div>
