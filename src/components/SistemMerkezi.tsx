@@ -14,6 +14,7 @@ import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimCon
 import { Duyarlilik } from "@/components/Duyarlilik";
 import { DogrulamaPaneli } from "@/components/DogrulamaPaneli";
 import { KilitlemePaneli } from "@/components/KilitlemePaneli";
+import { KararDestekPaneli } from "@/components/KararDestekPaneli";
 import { Kart } from "@/components/Kart";
 import { Kpi } from "@/components/Kpi";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
@@ -288,6 +289,9 @@ export function SistemMerkezi() {
 
       {/* Kilitleme (Interlocking) Kontrol Tablosu — rota tesisi/makas konumu/kilit (G). */}
       <div className="mt-6"><KilitlemePaneli /></div>
+
+      {/* Karar Destek & Optimizasyon — filo↔headway ödünleşimi + hedef-arama (F). */}
+      <div className="mt-6"><KararDestekPaneli /></div>
 
       {/* Parametre düzenleme TEK yerde: header'daki ⚙ Parametreler. Burada tekrar
           gösterilmez (çift giriş kafa karıştırıyordu) — yalnız yönlendirme. */}
