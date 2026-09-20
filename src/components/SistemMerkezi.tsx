@@ -13,6 +13,7 @@ import { sure, kmh } from "@/lib/anaray/format";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { Duyarlilik } from "@/components/Duyarlilik";
 import { DogrulamaPaneli } from "@/components/DogrulamaPaneli";
+import { KilitlemePaneli } from "@/components/KilitlemePaneli";
 import { Kart } from "@/components/Kart";
 import { Kpi } from "@/components/Kpi";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
@@ -284,6 +285,9 @@ export function SistemMerkezi() {
 
       {/* Doğrulama & Geçerleme — motorun analitik referanslara karşı doğruluk sertifikasyonu. */}
       <div className="mt-6"><DogrulamaPaneli /></div>
+
+      {/* Kilitleme (Interlocking) Kontrol Tablosu — rota tesisi/makas konumu/kilit (G). */}
+      <div className="mt-6"><KilitlemePaneli /></div>
 
       {/* Parametre düzenleme TEK yerde: header'daki ⚙ Parametreler. Burada tekrar
           gösterilmez (çift giriş kafa karıştırıyordu) — yalnız yönlendirme. */}
