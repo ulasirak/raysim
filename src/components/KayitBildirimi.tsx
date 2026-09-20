@@ -62,6 +62,7 @@ export function KayitBildirimi() {
   return (
     <div
       className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4"
+      data-noprint
       aria-live="polite"
       role="status"
     >
