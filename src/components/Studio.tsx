@@ -343,6 +343,46 @@ function StudioIc() {
     }
   };
 
+  // AKTİF "OSM'DEN ÇEK" (① işleyen/OSM'de kayıtlı hatlar): hattın bbox'ından (yoksa mevcut
+  // koordinatlardan türetilir) SUNUCU-OSM'den durak lat/lon + geometri çeker, ada göre eşler,
+  // PROJEYE yazar. Kısmî eşleşmede (bazı durak OSM'de yok) kaç bulunduğunu söyler → kalanı
+  // elle ya da ② CAD/GTFS ile tamamlanır. Overpass 502'ye karşı retry.
+  const osmCek = async () => {
+    let bbox = isletme.osmBbox;
+    if (!bbox) {
+      const pts = agIstasyonlar.map((n) => agKoordinat?.[n]).filter((c): c is { lat: number; lon: number } => !!c && Number.isFinite(c.lat) && Number.isFinite(c.lon));
+      if (pts.length >= 2) {
+        const lats = pts.map((p) => p.lat), lons = pts.map((p) => p.lon), m = 0.01;
+        bbox = [Math.min(...lats) - m, Math.min(...lons) - m, Math.max(...lats) + m, Math.max(...lons) + m];
+      } else {
+        setGtfsYukle("hata"); setGtfsMesaj("OSM için hattın konumu yok — önce birkaç durak koordinatı girin ya da ② CAD/GTFS içe aktarın."); setKoordAcik(true); return;
+      }
+    }
+    setGtfsYukle("yukleniyor"); setGtfsMesaj("");
+    const bekle = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    for (let deneme = 0; deneme < 4; deneme++) {
+      if (deneme > 0) await bekle(5000 * deneme);
+      try {
+        const r = await fetch("/api/geometri/osm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bbox }) });
+        const j = await r.json();
+        if (!r.ok) continue;
+        const koord = osmKoordinatEsle(agIstasyonlar, Array.isArray(j.istasyonlar) ? j.istasyonlar : []);
+        const birlesik = { ...(isletme.istasyonKoordinat ?? {}), ...koord };
+        const patch: Partial<Isletme> = {};
+        if (Object.keys(koord).length) patch.istasyonKoordinat = birlesik;
+        if (Array.isArray(j.geometri) && j.geometri.length) patch.hatGeometri = j.geometri;
+        if (Object.keys(patch).length) patchIsletme(patch);
+        const bulunan = agIstasyonlar.filter((n) => { const c = birlesik[n]; return !!c && Number.isFinite(c.lat) && Number.isFinite(c.lon); }).length;
+        const toplam = agIstasyonlar.length;
+        setGtfsYukle("bos");
+        if (bulunan >= toplam) { setAgGorunum("harita"); setGtfsMesaj(`✓ ${toplam}/${toplam} durak OSM'den çekildi.`); }
+        else { setKoordAcik(true); setGtfsMesaj(`⚠ ${bulunan}/${toplam} durak OSM'de bulundu — kalan ${toplam - bulunan} OSM'de yok. Aşağıda elle girin ya da ② CAD/GTFS içe aktarın.`); }
+        return;
+      } catch { /* ağ/Overpass hatası → tekrar dene */ }
+    }
+    setGtfsYukle("hata"); setGtfsMesaj("OSM'den çekilemedi (Overpass yoğun olabilir) — birazdan tekrar deneyin.");
+  };
+
   // Çizelge çakışma tespiti (#2) — tek-hat karşılaşmaları + sistemik headway<hMin.
   const cakisma = useMemo(
     () => cakismaTespit(rings, stock, cfg, loopY, filo, isletme),
@@ -692,9 +732,14 @@ function StudioIc() {
                 <div className="mt-1 text-[0.68rem] font-semibold" style={{ color: agKoordSay > 0 ? CK.good : brand.muted }}>
                   {agKoordSay}/{agIstasyonlar.length} durak OSM’de bulundu{agKoordSay > 0 && agKoordSay < agIstasyonlar.length ? " — kalanı OSM’de yok" : ""} · otomatik çekiliyor
                 </div>
-                <button type="button" onClick={() => setKoordAcik(true)} className="mt-auto self-start rounded px-2.5 py-1 text-[0.7rem] font-semibold" style={{ border: `1px solid ${brand.border}`, color: brand.ink, marginTop: "0.5rem" }}>
-                  ⌖ Elle koordinat gir · ⤓ OSM’den çek
-                </button>
+                <div className="mt-auto flex flex-wrap items-center gap-2" style={{ marginTop: "0.5rem" }}>
+                  <button type="button" onClick={osmCek} disabled={gtfsYukle === "yukleniyor"}
+                    className="rounded px-2.5 py-1 text-[0.7rem] font-semibold text-white disabled:opacity-60" style={{ background: "#2E7D57" }}
+                    title="Hattın bölgesinden OpenStreetMap durak koordinatlarını + gerçek hattı çeker → projeye yazar.">
+                    {gtfsYukle === "yukleniyor" ? "⟳ OSM’den çekiliyor…" : "⤓ OSM’den çek"}
+                  </button>
+                  <button type="button" onClick={() => setKoordAcik(true)} className="rounded px-2 py-1 text-[0.7rem] font-medium" style={{ border: `1px solid ${brand.border}`, color: brand.muted }}>⌖ elle gir</button>
+                </div>
               </div>
               <div className="flex flex-col rounded-md border p-2.5" style={{ borderColor: CK.amber, background: CK.amberBg }}>
                 <div className="text-[0.74rem] font-bold" style={{ color: CK.amberInk }}>② 📐 CAD / GTFS içe aktar</div>
