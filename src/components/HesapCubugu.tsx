@@ -277,7 +277,7 @@ export function HesapKontrolleri() {
             </div>
             <div className="px-4 py-4">
               <HatIceAktar gomulu onIceAktar={async (yeni: DurakArasiRing[], ad: string, _mod, koord?: Record<string, { lat: number; lon: number }>, geometri?: { insaat?: boolean; noktalar: [number, number][] }[]) => {
-                try { await projeYeni(ad); setRings(() => yeni); patchMeta({ hatAdi: ad }); patchIsletme({ istasyonKoordinat: koord ?? {}, hatGeometri: geometri }); setIceModal(false); }
+                try { await projeYeni(ad); setRings(() => yeni); patchMeta({ hatAdi: ad }); patchIsletme({ istasyonKoordinat: koord ?? {}, hatGeometri: geometri, koordinatKaynak: "iceaktar" }); setIceModal(false); }
                 catch { /* hata hesap çubuğunda görünür; modal açık kalır */ }
               }} />
             </div>

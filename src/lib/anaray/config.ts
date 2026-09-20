@@ -290,6 +290,10 @@ export interface Isletme {
    *  ±~150m). true ise haritada "yaklaşık — demoya özel" uyarısı gösterilir; OSM gerçek
    *  verisi geldiğinde üzerine yazılır. Gerçek/hassas (OSM/GTFS) koordinatlarda false/boş. */
   koordinatYaklasik?: boolean;
+  /** Koordinatların KAYNAĞI → auto-fetch algoritmasını yönetir:
+   *  "iceaktar" = CAD/GTFS/railML/Shapefile ile girildi (YETKİLİ, hazır) → OSM'e HİÇ girişilmez,
+   *  sayfa doğrudan bu veriyle çizilir. "yaklasik"/boş = OSM'den doldurulabilir/geliştirilebilir. */
+  koordinatKaynak?: "iceaktar" | "manuel" | "yaklasik" | "osm";
   /** Parklanma dizilimi: her depo (ring id / "origin") → oraya ELLE yerleştirilen araç sayısı.
    *  Rastgele dağıtılmaz; kullanıcı doldurur (toplam = filo). Boşsa henüz dizilmemiş. */
   parklanmaDagilim?: Record<string, number>;

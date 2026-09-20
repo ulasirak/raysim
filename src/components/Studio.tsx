@@ -125,6 +125,7 @@ function StudioIc() {
   const [talepPopup, setTalepPopup] = useState(false); // yolcu verisi yokken talep-öneri uyarısı
   const [agGorunum, setAgGorunum] = useState<"sematik" | "harita">("sematik"); // Canlı Ağ: şematik şerit / coğrafi harita
   const [koordAcik, setKoordAcik] = useState(false); // istasyon koordinat giriş paneli açık mı
+  const [haritaBilgi, setHaritaBilgi] = useState(true); // harita bilgilendirme paneli açık mı
   const [koHedef, setKoHedef] = useState(0);      // knock-on: birincil gecikme verilen tren
   const [koGecikme, setKoGecikme] = useState(180); // knock-on: birincil gecikme (s)
   // Pop-up'ı BODY'ye portallamak için mount bekle (SSR'da document yok). Portal,
@@ -257,6 +258,12 @@ function StudioIc() {
     [agIstasyonlar, agKoordinat]
   );
   const haritaTam = agIstasyonlar.length > 0 && agKoordSay === agIstasyonlar.length; // hepsi koordinatlı → gerçek harita
+  // Hattın koordinat merkezi (RailsMaps/OSM'i hattın üstüne ortalamak için); yoksa Konya merkezi.
+  const haritaMerkez = useMemo(() => {
+    const pts = agIstasyonlar.map((n) => agKoordinat?.[n]).filter((c): c is { lat: number; lon: number } => !!c && Number.isFinite(c.lat) && Number.isFinite(c.lon));
+    if (!pts.length) return { lat: 37.874, lon: 32.493, z: 13 }; // Konya (Alaaddin)
+    return { lat: pts.reduce((s, c) => s + c.lat, 0) / pts.length, lon: pts.reduce((s, c) => s + c.lon, 0) / pts.length, z: 13 };
+  }, [agIstasyonlar, agKoordinat]);
   // TAM koordinatlıysa İLK yüklemede Harita'yı VARSAYILAN yap (bir kez).
   const agModAyarlandi = useRef(false);
   useEffect(() => {
@@ -271,6 +278,9 @@ function StudioIc() {
   // biter, tüm denemeler başarısızsa ref sıfırlanır ki sonraki değişimde yeniden denensin.
   const osmCekRef = useRef<string | null>(null);
   useEffect(() => {
+    // CAD/GTFS ile İÇE AKTARILAN koordinat YETKİLİDİR → OSM'e HİÇ girişme (üzerine yazma),
+    // sayfa doğrudan bu veriyle hazır çizilir. En düzgün algoritma: sağlanan veri kazanır.
+    if (isletme.koordinatKaynak === "iceaktar" || isletme.koordinatKaynak === "manuel") return;
     const bbox = isletme.osmBbox;
     const geometriVar = !!(isletme.hatGeometri && isletme.hatGeometri.length);
     if (!bbox || agIstasyonlar.length === 0) return;
@@ -301,7 +311,7 @@ function StudioIc() {
       if (!iptal) osmCekRef.current = null; // hepsi başarısız → yeniden denenebilir kalsın
     })();
     return () => { iptal = true; };
-  }, [isletme.osmBbox, haritaTam, agIstasyonlar, isletme.istasyonKoordinat, isletme.hatGeometri, patchIsletme]);
+  }, [isletme.osmBbox, haritaTam, agIstasyonlar, isletme.istasyonKoordinat, isletme.hatGeometri, isletme.koordinatKaynak, patchIsletme]);
 
   // Çizelge çakışma tespiti (#2) — tek-hat karşılaşmaları + sistemik headway<hMin.
   const cakisma = useMemo(
@@ -639,9 +649,33 @@ function StudioIc() {
             <span className="text-[0.7rem] font-medium" style={{ color: CK.good }}>💡 Bu hattın gerçek haritası hazır — üstteki <b>“Harita”</b> ile gör.</span>
           )}
         </div>
+        {agGorunum === "harita" && (
+          <div className="mb-3 rounded-lg border-l-4 px-3 py-2.5 text-[0.72rem] leading-relaxed" style={{ borderColor: brand.ink, background: CK.goodBgSoft, color: brand.inkSoft }}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-semibold" style={{ color: brand.ink }}>ℹ️ Mevcut / inşaat halindeki bir hattı görüntülüyorsunuz</span>
+              <button type="button" onClick={() => setHaritaBilgi((o) => !o)} className="shrink-0 text-[0.68rem] underline" style={{ color: brand.muted }}>{haritaBilgi ? "gizle" : "detay"}</button>
+            </div>
+            {haritaBilgi && (
+              <>
+                <div className="mt-1">
+                  <b>CAD (AutoCAD) güzergâh dosyanız</b> içe aktarılsaydı bu ekranı <b>aynı şekilde, hazır</b> görürdünüz — o durumda OpenStreetMap’e hiç gidilmez, veriniz doğrudan çizilir. Şu an <b>OpenStreetMap + RailsMaps</b> verisiyle mevcut/inşaat halindeki hattı görüntülüyoruz.
+                </div>
+                <div className="mt-1">
+                  <b>Farkımız:</b> RailsMaps’ten yalnızca <i>bakarsınız</i>; burada <b>projenize özel simülasyonu ve sinyalizasyon revizyonlarını sistem içinden CANLI yönetirsiniz</b> — bir <b>sinyal lambasının</b> yerini değiştirdiğinizde, makas/geçit eklediğinizde değişiklik <b>anında bu haritaya da</b> kusursuzca yansır.
+                </div>
+              </>
+            )}
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              <span style={{ color: brand.muted }}>RailsMaps’te karşılaştır →</span>
+              <a href="https://railsmaps.com/#13/37.870/32.512" target="_blank" rel="noreferrer" className="rounded px-2 py-1 font-semibold no-underline" style={{ border: `1px solid ${brand.border}`, color: brand.ink }}>🚆 Mevcut hat</a>
+              <a href={`https://railsmaps.com/#${haritaMerkez.z}/${haritaMerkez.lat.toFixed(4)}/${haritaMerkez.lon.toFixed(4)}`} target="_blank" rel="noreferrer" className="rounded px-2 py-1 font-semibold no-underline" style={{ border: `1px solid ${CK.amber}`, color: CK.amberInk, background: CK.amberBg }}>🚧 İnşaat halinde</a>
+              <span className="text-[0.66rem]" style={{ color: brand.faint }}>(RailsMaps’te “construction status” filtresini açın)</span>
+            </div>
+          </div>
+        )}
         {koordAcik && (
           <div className="mb-3 rounded-md p-3" style={{ border: `1px solid ${brand.border}`, background: "#FAFBFC" }}>
-            <KoordinatDuzen istasyonlar={agIstasyonlar} koordinat={agKoordinat} onChange={(k) => patchIsletme({ istasyonKoordinat: k })} onGeometri={(g) => patchIsletme({ hatGeometri: g })} />
+            <KoordinatDuzen istasyonlar={agIstasyonlar} koordinat={agKoordinat} onChange={(k) => patchIsletme({ istasyonKoordinat: k, koordinatKaynak: "manuel" })} onGeometri={(g) => patchIsletme({ hatGeometri: g })} />
           </div>
         )}
         {simHazir ? (
