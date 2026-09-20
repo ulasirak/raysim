@@ -68,6 +68,7 @@ export function Bildfahrplan({ loop, line, cakismalar = [] }: { loop: LoopVeri; 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [view, setView] = useState({ k: 1, tx: 0, ty: 0 });
   const [vurgu, setVurgu] = useState<number | null>(null);
+  const [cakSecili, setCakSecili] = useState<BildCakisma | null>(null);
   const dragRef = useRef<{ cx: number; cy: number; tx: number; ty: number } | null>(null);
 
   // Tekerlek zoom'u NON-PASSIVE native dinleyiciyle: React onWheel passive olduğundan
@@ -159,6 +160,15 @@ export function Bildfahrplan({ loop, line, cakismalar = [] }: { loop: LoopVeri; 
         <button type="button" onClick={exportPng} className={dugme} style={{ border: `1px solid ${brand.border}`, color: brand.ink }}>PNG indir</button>
         <button type="button" onClick={exportSvg} className={dugme} style={{ border: `1px solid ${brand.border}`, color: brand.ink }}>SVG indir</button>
       </div>
+      {cakSecili && (
+        <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-3 py-2 text-xs" style={{ background: "#FBE4E7", border: `1px solid ${CK.red}`, color: brand.inkSoft }}>
+          <b style={{ color: CK.red }}>Çakışma</b>
+          <span>{cakSecili.karsi ? "karşı yön (meet — karşılaşma)" : "aynı yön (kuyruk/bunching)"}</span>
+          <span>· zaman <b className="tabular-nums">{saat(cakSecili.t)}</b></span>
+          <span>· konum <b className="tabular-nums">k{Math.floor(Math.min(cakSecili.kmBas, cakSecili.kmSon) / 1000)}+{String(Math.round(Math.min(cakSecili.kmBas, cakSecili.kmSon) % 1000)).padStart(3, "0")}</b>–<b className="tabular-nums">k{Math.floor(Math.max(cakSecili.kmBas, cakSecili.kmSon) / 1000)}+{String(Math.round(Math.max(cakSecili.kmBas, cakSecili.kmSon) % 1000)).padStart(3, "0")}</b></span>
+          <button type="button" onClick={() => setCakSecili(null)} className="ml-auto" style={{ color: brand.muted }} aria-label="Kapat">✕</button>
+        </div>
+      )}
       <div className="overflow-hidden rounded-md" style={{ border: `1px solid ${brand.border}` }}>
         <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full h-auto select-none" style={{ touchAction: "none", cursor: "grab" }}
           onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerLeave={onUp}
@@ -202,11 +212,14 @@ export function Bildfahrplan({ loop, line, cakismalar = [] }: { loop: LoopVeri; 
               bant (span boyu) + ✖. Karşı yön (meet) dolu, aynı yön (kuyruk) içi boş. */}
           {cakismalar.slice(0, 120).map((c, i) => {
             const x = X(c.t), y1 = Y(Math.min(L, c.kmSon)), y2 = Y(Math.max(0, c.kmBas)), ym = (y1 + y2) / 2;
+            const sec = cakSecili === c;
             return (
-              <g key={`ck${i}`}>
-                <line x1={x} y1={y1} x2={x} y2={y2} stroke={CK.red} strokeWidth={2.4} strokeOpacity={0.32} strokeLinecap="round" />
+              <g key={`ck${i}`} onClick={() => setCakSecili(sec ? null : c)} style={{ cursor: "pointer" }}>
+                {/* tıklama kolaylığı için görünmez geniş vuruş */}
+                <line x1={x} y1={y1} x2={x} y2={y2} stroke="transparent" strokeWidth={10} />
+                <line x1={x} y1={y1} x2={x} y2={y2} stroke={CK.red} strokeWidth={sec ? 3.4 : 2.4} strokeOpacity={sec ? 0.55 : 0.32} strokeLinecap="round" />
                 <path d={`M${(x - 3).toFixed(1)},${(ym - 3).toFixed(1)} l6,6 M${(x + 3).toFixed(1)},${(ym - 3).toFixed(1)} l-6,6`} stroke={CK.red} strokeWidth={1.4} fill="none" />
-                <circle cx={x} cy={ym} r={2.6} fill={c.karsi ? CK.red : "#fff"} stroke={CK.red} strokeWidth={1} />
+                <circle cx={x} cy={ym} r={sec ? 4.2 : 2.6} fill={c.karsi ? CK.red : "#fff"} stroke={CK.red} strokeWidth={sec ? 1.6 : 1} />
               </g>
             );
           })}
@@ -228,7 +241,7 @@ export function Bildfahrplan({ loop, line, cakismalar = [] }: { loop: LoopVeri; 
           <span><span style={{ color: CK.red }}>▬</span> Dönüş yönü</span>
           <span>Kalın çizgi = referans tren (zaman etiketleri bu trenindir)</span>
           <span><span style={{ color: CK.amber }}>◆</span> karşılaşma (kesişim) noktası</span>
-          {cakismalar.length > 0 && <span><span style={{ color: CK.red }}>✖</span> tek-hat çakışması ({cakismalar.length})</span>}
+          {cakismalar.length > 0 && <span><span style={{ color: CK.red }}>✖</span> tek-hat çakışması ({cakismalar.length}) · tıkla → detay</span>}
           <span>Eğim = hız · yatay = duruş · çizgi aralığı = headway ({saat(loop.offset || 0)})</span>
         </div>
       </div>

@@ -23,8 +23,10 @@ export interface KilitlemeRota {
   kilitSn: number;                  // toplam kilit süresi (tanzim + serbest)
 }
 
-/** Bir makas bölgesinin ürettiği rota(lar) — ana hat düz geçiş + tipe özgü manevra. */
-function makasRotalari(m: MakasBolgesi, km: number): KilitlemeRota[] {
+/** Bir makas bölgesinin ürettiği rota(lar) — ana hat düz geçiş + tipe özgü manevra.
+ *  `overlapM` = makastan sonraki blok sınırına (sinyal/istasyon) gerçek mesafe. */
+function makasRotalari(m: MakasBolgesi, km: number, overlapM: number): KilitlemeRota[] {
+  const ov = `overlap ~${overlapM} m`;
   const tanzim = Math.max(1, m.makasSayisi) * Math.max(0, m.makasAdimSuresi);
   const serbest = m.routeRelease;
   const tcc = tccGerekli(m.tip) || m.tccZorunlu;
@@ -44,7 +46,7 @@ function makasRotalari(m: MakasBolgesi, km: number): KilitlemeRota[] {
     makasKonum: "Normal",
     tcc: false,
     cakisan: "—",
-    flankOverlap: "Çıkış sinyali + overlap bloğu serbest",
+    flankOverlap: `Çıkış sinyali + overlap bloğu serbest · ${ov}`,
     tanzimSn: 0, // düz konumda ek makas hareketi gerekmez
     serbestSn: serbest,
     kilitSn: serbest,
@@ -53,7 +55,7 @@ function makasRotalari(m: MakasBolgesi, km: number): KilitlemeRota[] {
   // Tipe özgü MANEVRA rotası (makas Ters/crossover) — çakışan hareketleri kilitler.
   let manevra: KilitlemeRota | null = null;
   const mv = (rota: string, cakisan: string, flank: string): KilitlemeRota => ({
-    ...taban, rota, makasKonum: "Ters", tcc, cakisan, flankOverlap: flank,
+    ...taban, rota, makasKonum: "Ters", tcc, cakisan, flankOverlap: `${flank} · ${ov}`,
     tanzimSn: tanzim, serbestSn: serbest, kilitSn: tanzim + serbest,
   });
 
@@ -107,11 +109,29 @@ function makasRotalari(m: MakasBolgesi, km: number): KilitlemeRota[] {
  * flank/overlap + süreler) betimler.
  */
 export function kilitlemeTablosu(rings: DurakArasiRing[]): KilitlemeRota[] {
+  // Blok SINIRLARI = istasyonlar (ring başları/sonu) + sinyal lambaları — overlap mesafesi
+  // bir makastan bir SONRAKİ blok sınırına kadardır (çıkış sinyali ötesi güvenlik payı).
+  const sinirlar: number[] = [];
+  let off0 = 0;
+  for (const r of rings) {
+    sinirlar.push(off0);
+    for (const s of r.sinyaller ?? []) sinirlar.push(off0 + s.konum);
+    off0 += r.uzunluk;
+  }
+  sinirlar.push(off0);
+  const hatSonu = off0;
+  sinirlar.sort((a, b) => a - b);
+  const overlapAt = (km: number) => {
+    const nx = sinirlar.find((s) => s > km + 1e-6);
+    return Math.max(0, Math.round((nx ?? hatSonu) - km));
+  };
+
   const out: KilitlemeRota[] = [];
   let offset = 0;
   for (const r of rings) {
     for (const m of r.makaslar) {
-      out.push(...makasRotalari(m, offset + m.konum));
+      const gkm = offset + m.konum;
+      out.push(...makasRotalari(m, gkm, overlapAt(gkm)));
     }
     offset += r.uzunluk;
   }

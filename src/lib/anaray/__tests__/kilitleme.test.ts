@@ -52,6 +52,15 @@ describe("kilitlemeTablosu", () => {
     expect(kmler).toEqual([...kmler].sort((a, b) => a - b));
   });
 
+  it("overlap: makastan sonraki blok sınırına GERÇEK mesafe (flankOverlap içinde)", () => {
+    // M1 km 300, ring1 uzunluk 1000 → sonraki sınır = ring sonu 1000 → overlap ~700 m
+    const m1 = t.find((r) => r.makasAd === "M1")!;
+    expect(m1.flankOverlap).toMatch(/overlap ~700 m/);
+    // M3 km 1200, ring2 (1000..2000) → sonraki sınır = M? yok, ring sonu 2000 → overlap ~800 m
+    const m3 = t.find((r) => r.makasAd === "M3")!;
+    expect(m3.flankOverlap).toMatch(/overlap ~800 m/);
+  });
+
   it("özet sayaçlar tutarlı", () => {
     const o = kilitlemeOzet(t);
     expect(o.makas).toBe(4);

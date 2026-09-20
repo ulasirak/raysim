@@ -21,8 +21,17 @@ const ADIMLAR: { slug: BolumSlug; no: string; faz: string; baslik: string; anlat
 export function SunumModu() {
   const [aktif, setAktif] = useState(false);
   const [i, setI] = useState(0);
+  const [oto, setOto] = useState(false);
 
   const git = (n: number) => setI(Math.max(0, Math.min(ADIMLAR.length - 1, n)));
+
+  // Oto-oynat: her adımda ~6,5 s sonra ilerle; son adımda oto kapanır (hands-free pitch).
+  useEffect(() => {
+    if (!aktif || !oto) return;
+    const son = i >= ADIMLAR.length - 1;
+    const id = setTimeout(() => { if (son) setOto(false); else setI(i + 1); }, son ? 3000 : 6500);
+    return () => clearTimeout(id);
+  }, [aktif, oto, i]);
 
   // Adım değişince ilgili bölüme kaydır.
   useEffect(() => {
@@ -48,7 +57,7 @@ export function SunumModu() {
       <button
         type="button"
         data-noprint
-        onClick={() => { setI(0); setAktif(true); }}
+        onClick={() => { setI(0); setOto(false); setAktif(true); }}
         className="fixed bottom-6 left-6 z-40 flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold shadow-lg transition-transform hover:scale-105"
         style={{ background: "#0C2233", borderColor: "#A8842C", color: "#fff" }}
         title="Sistemi tek nefeste gezdiren rehberli sunum"
@@ -85,17 +94,22 @@ export function SunumModu() {
         </div>
         {/* Kontroller */}
         <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setOto((o) => !o)} aria-label={oto ? "Duraklat" : "Oto-oynat"}
+            title={oto ? "Duraklat" : "Otomatik ilerlet"}
+            className="rounded-md px-2.5 py-1.5 text-xs font-bold" style={{ background: oto ? brand.gold : "#12314A", color: oto ? "#0C2233" : "#fff" }}>
+            {oto ? "⏸" : "⏵"}
+          </button>
           <button type="button" onClick={() => git(i - 1)} disabled={i === 0}
             className="rounded-md px-3 py-1.5 text-xs font-semibold disabled:opacity-40"
             style={{ border: "1px solid #31536B", color: "#fff" }}>◁ Geri</button>
           {son ? (
-            <button type="button" onClick={() => setAktif(false)}
+            <button type="button" onClick={() => { setOto(false); setAktif(false); }}
               className="rounded-md px-3 py-1.5 text-xs font-bold" style={{ background: brand.gold, color: "#0C2233" }}>Bitir ✓</button>
           ) : (
             <button type="button" onClick={() => git(i + 1)}
               className="rounded-md px-3 py-1.5 text-xs font-bold text-white" style={{ background: brand.red }}>İleri ▷</button>
           )}
-          <button type="button" onClick={() => setAktif(false)} aria-label="Sunumdan çık"
+          <button type="button" onClick={() => { setOto(false); setAktif(false); }} aria-label="Sunumdan çık"
             className="rounded-md px-2 py-1.5 text-xs" style={{ color: "#8494A3" }}>✕</button>
         </div>
       </div>

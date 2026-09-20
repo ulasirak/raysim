@@ -49,6 +49,9 @@ export function KararDestekPaneli() {
   const yol = egri.map((p, i) => `${i === 0 ? "M" : "L"}${X(p.filo).toFixed(1)},${Y(p.headwaySn).toFixed(1)}`).join(" ");
   const oneri = Math.max(1, Math.min(nMax, maks.nSurdurulebilir || 0));
   const hedefY = Y(hedefDk * 60);
+  // UIC 406 kapasite kullanımı: seçilen filonun ulaşılan headway'i, fiziksel min'e
+  // (hMin) ne kadar yakın — %100 = kapasite duvarı. Motorla (blocking-time) tutarlı.
+  const uicDol = Math.round(Math.min(100, (hMin / Math.max(1, hedef.ulasilanHeadwaySn)) * 100));
 
   return (
     <div className="ds-card">
@@ -110,6 +113,15 @@ export function KararDestekPaneli() {
               alt={hedef.uygun
                 ? `ulaşılan aralık ${sure(hedef.ulasilanHeadwaySn)} (≤ hedef) · kapasite ${hedef.kapasiteFilo}`
                 : `KAPASİTE AŞILDI: ${hedef.filo} > duvar ${hedef.kapasiteFilo}. Bu aralık fiziksel olarak sağlanamaz.`} />
+            {hedef.uygun && (
+              <div className="mt-2 flex items-center gap-2 border-t pt-2 text-[0.7rem]" style={{ borderColor: `${CK.good}44` }}>
+                <span style={{ color: brand.muted }}>UIC 406 kapasite kullanımı</span>
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full" style={{ background: CK.track }}>
+                  <div style={{ width: `${uicDol}%`, height: "100%", background: uicDol > 85 ? CK.amber : CK.good }} />
+                </div>
+                <b className="tabular-nums" style={{ color: uicDol > 85 ? CK.amberInk : brand.inkSoft }}>%{uicDol}</b>
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-2">
             <Kpi etiket="Önerilen (sürd.)" deger={`${oneri}`} ton="success" boyut="sm" alt={`aralık ${sure(cevrim / oneri)}`} />
