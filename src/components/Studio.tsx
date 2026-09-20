@@ -26,6 +26,8 @@ import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimCon
 import { BosHat } from "@/components/BosHat";
 import { Kart } from "@/components/Kart";
 import { Kpi } from "@/components/Kpi";
+import { CografiAg } from "@/components/CografiAg";
+import { KoordinatDuzen } from "@/components/KoordinatDuzen";
 import { LiveNetwork } from "@/components/LiveNetwork";
 import { Bildfahrplan } from "@/components/Bildfahrplan";
 import { HizProfili } from "@/components/HizProfili";
@@ -120,6 +122,8 @@ function StudioIc() {
   const [mc, setMc] = useState<MonteCarloResult | null>(null);
   const [mcRunning, setMcRunning] = useState(false);
   const [talepPopup, setTalepPopup] = useState(false); // yolcu verisi yokken talep-öneri uyarısı
+  const [agGorunum, setAgGorunum] = useState<"sematik" | "harita">("sematik"); // Canlı Ağ: şematik şerit / coğrafi harita
+  const [koordAcik, setKoordAcik] = useState(false); // istasyon koordinat giriş paneli açık mı
   const [koHedef, setKoHedef] = useState(0);      // knock-on: birincil gecikme verilen tren
   const [koGecikme, setKoGecikme] = useState(180); // knock-on: birincil gecikme (s)
   // Pop-up'ı BODY'ye portallamak için mount bekle (SSR'da document yok). Portal,
@@ -243,6 +247,15 @@ function StudioIc() {
     () => ({ ...loopY, count: filo, offset: loopY.periyot / Math.max(1, filo), dagitim }),
     [loopY, filo, dagitim]
   );
+  // Canlı Ağ HARİTA modu: istasyon adları (tekil) + tüm istasyonların koordinatı var mı
+  // (varsa gerçek harita; yoksa şematik/ölçekli). Koordinatlar Isletme'de kalıcı.
+  const agKoordinat = isletme.istasyonKoordinat;
+  const agIstasyonlar = useMemo(() => Array.from(new Set(line.stations.map((s) => s.name))), [line]);
+  const haritaHazir = useMemo(
+    () => agIstasyonlar.length > 0 && agIstasyonlar.every((n) => { const c = agKoordinat?.[n]; return !!c && Number.isFinite(c.lat) && Number.isFinite(c.lon); }),
+    [agIstasyonlar, agKoordinat]
+  );
+
   // Çizelge çakışma tespiti (#2) — tek-hat karşılaşmaları + sistemik headway<hMin.
   const cakisma = useMemo(
     () => cakismaTespit(rings, stock, cfg, loopY, filo, isletme),
@@ -546,12 +559,38 @@ function StudioIc() {
       <div id="canli" className="mt-6 ml-[calc(-50vw+50%)] mr-[calc(-50vw+50%)] px-4 sm:px-8">
       <div className="mx-auto max-w-[1600px]">
       <Panel baslik="Canlı Ağ Simülasyonu" aciklama="Trenler PARKLANMA ALANINDAN çıkar: hepsi AYNI yerden, GİDİŞ yönünde (alt şerit), SIRAYLA (headway aralığıyla) yola çıkar; sıra bekleyenler ⏸ parkta durur. Hat DÖNGÜdür (lastik): tren gidiş şeridini yürür → terminalde peron işgali süresi kadar DÖNER (turnback) → dönüş şeridinden geri gelir → başta döner → tekrar. İki şerit, trenler turnback'e ulaştıkça DOĞAL olarak dolar (gerçek işletmede depodan öyle çıkarlar). Her trenin üstünde o an ne yaşadığı (⤵ hız kısıtı · ⏸ istasyon duruşu · 🔄 terminal dönüşü · ↗ hızlanma · → seyir) rozetle görünür; bir trene TIKLA → bir tam turda hangi nedene kaç saniye geçirdiğinin dökümü açılır. Sinyaller blok sınırlarında 3-aspekt yanar. Oynat ▶">
+        {/* Görünüm: Şematik çift-şerit ↔ Coğrafi harita. Harita, istasyon koordinatları
+            girilince gerçek konumda çizer; eksikse ölçekli plana düşer. Koordinat kalıcı. */}
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <div className="inline-flex overflow-hidden rounded-md" style={{ border: `1px solid ${brand.border}` }}>
+            <button type="button" onClick={() => setAgGorunum("sematik")} className="px-3 py-1 text-xs font-semibold"
+              style={{ background: agGorunum === "sematik" ? brand.ink : "transparent", color: agGorunum === "sematik" ? "#fff" : brand.muted }}>Şematik</button>
+            <button type="button" onClick={() => setAgGorunum("harita")} className="px-3 py-1 text-xs font-semibold"
+              style={{ background: agGorunum === "harita" ? brand.ink : "transparent", color: agGorunum === "harita" ? "#fff" : brand.muted }}>Harita</button>
+          </div>
+          <button type="button" onClick={() => setKoordAcik((o) => !o)} className="rounded-md px-3 py-1 text-xs font-semibold"
+            style={{ border: `1px solid ${haritaHazir ? "#16794C" : brand.border}`, color: haritaHazir ? "#16794C" : brand.ink }}>
+            ⌖ Koordinat gir {haritaHazir ? "✓" : ""}
+          </button>
+          {agGorunum === "harita" && !haritaHazir && (
+            <span className="text-[0.7rem]" style={{ color: CK.amberInk }}>Tüm istasyonlar koordinatlı değil — ölçekli plan gösterilir. “Koordinat gir” ile tamamla (Konya preset hazır).</span>
+          )}
+        </div>
+        {koordAcik && (
+          <div className="mb-3 rounded-md p-3" style={{ border: `1px solid ${brand.border}`, background: "#FAFBFC" }}>
+            <KoordinatDuzen istasyonlar={agIstasyonlar} koordinat={agKoordinat} onChange={(k) => patchIsletme({ istasyonKoordinat: k })} />
+          </div>
+        )}
         {simHazir ? (
-        <LiveNetwork autoOynat={otoOynat} network={network} route={route} line={line} blocks={canliGidis.blocks}
-          up={canliGidis.trains} down={donusSim.trains} tMax={Math.max(canliGidis.tMax, donusSim.tMax)} trainLen={stock.length}
-          faultBlocks={ariza} onBlockClick={arizaToggle} depots={depotPlan.depots} features={hatOzellik} loop={loopVeri}
-          terminalBas={isletme.terminalBas} terminalSon={isletme.terminalSon}
-          tersMod={isletme.tersMod ?? "gidenHat"} onTersMod={(m) => patchIsletme({ tersMod: m })} />
+          agGorunum === "harita" ? (
+            <CografiAg line={line} loop={loopVeri} features={hatOzellik} koordinat={agKoordinat} autoOynat={otoOynat} />
+          ) : (
+            <LiveNetwork autoOynat={otoOynat} network={network} route={route} line={line} blocks={canliGidis.blocks}
+              up={canliGidis.trains} down={donusSim.trains} tMax={Math.max(canliGidis.tMax, donusSim.tMax)} trainLen={stock.length}
+              faultBlocks={ariza} onBlockClick={arizaToggle} depots={depotPlan.depots} features={hatOzellik} loop={loopVeri}
+              terminalBas={isletme.terminalBas} terminalSon={isletme.terminalSon}
+              tersMod={isletme.tersMod ?? "gidenHat"} onTersMod={(m) => patchIsletme({ tersMod: m })} />
+          )
         ) : (
           <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-10 text-center" style={{ borderColor: CK.amber, background: CK.amberBg }}>
             <div className="text-2xl">🚋</div>
