@@ -20,6 +20,7 @@ import type { DurakArasiRing } from "@/lib/anaray/ring";
 import type { RollingStock } from "@/lib/anaray/types";
 import { getAuthInstance } from "@/lib/firebase";
 import { useCuzdan } from "@/components/CuzdanProvider";
+import { BosDurum } from "@/components/BosDurum";
 
 // —— What-if parametreleri (doluluk İLK: HER hatta sürdürülebilir/işletme kapasitesini
 // KESİN değiştirir → dinamikliği garanti eder) ——
@@ -180,7 +181,7 @@ export function Karsilastirma() {
       {mod === "projeler" && (
         <Panel baslik="Projeleri Seç" aciklama="Kıyaslamak istediğin 2-4 projeyi işaretle (kendi kayıtlı hatların). Her biri bir sütun olur.">
           {projeler.length === 0 ? (
-            <p className="text-sm" style={{ color: brand.muted }}>Kayıtlı proje yok. Ringler’de bir hat kurup kaydettiğinde burada görünür.</p>
+            <BosDurum baslik="Kayıtlı proje yok" ipucu="Ringler’de bir hat kurup kaydettiğinde burada kıyaslanmak üzere görünür." />
           ) : (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {projeler.map((p) => {

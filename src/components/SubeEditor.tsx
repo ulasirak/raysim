@@ -9,6 +9,7 @@
 import { useMemo } from "react";
 import { useProje } from "@/components/SimConfigProvider";
 import { brand } from "@/lib/anaray/brand";
+import { BosDurum } from "@/components/BosDurum";
 import { ringDuraklari, yeniSube, yeniRing, type Sube } from "@/lib/anaray/ring";
 
 export function SubeEditor() {
@@ -54,7 +55,9 @@ export function SubeEditor() {
         </p>
 
         {subeler.length === 0 && (
-          <p className="mb-3 text-sm" style={{ color: brand.inkSoft }}>Henüz şube yok.</p>
+          <div className="mb-3">
+            <BosDurum sik baslik="Henüz şube yok" ipucu="Aşağıdan bir durağı kavşak seçip tali hat ekleyin." />
+          </div>
         )}
 
         <div className="space-y-4">
