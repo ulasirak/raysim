@@ -135,13 +135,13 @@ export function RingEditor() {
   useEffect(() => () => { if (geriAlZaman.current) clearTimeout(geriAlZaman.current); }, []);
 
   // İçe aktarma — 3 mod. "yeniHat" mevcut hatta HİÇ dokunmaz (yeni proje açar, ona doldurur).
-  const iceAktarUygula = async (yeni: DurakArasiRing[], ad: string, mod: IceAktarMod, koord?: Record<string, { lat: number; lon: number }>) => {
-    // koord: GTFS içe aktarımından gelen durak lat/lon (GTFS export için saklanır).
-    if (mod === "degistir") { silHatirla(() => yeni); patchMeta({ hatAdi: ad }); patchIsletme({ istasyonKoordinat: koord ?? {} }); }
+  const iceAktarUygula = async (yeni: DurakArasiRing[], ad: string, mod: IceAktarMod, koord?: Record<string, { lat: number; lon: number }>, geometri?: { insaat?: boolean; noktalar: [number, number][] }[]) => {
+    // koord: GTFS durak lat/lon (GTFS export için); geometri: GTFS shape (gerçek harita hizası).
+    if (mod === "degistir") { silHatirla(() => yeni); patchMeta({ hatAdi: ad }); patchIsletme({ istasyonKoordinat: koord ?? {}, hatGeometri: geometri }); }
     else if (mod === "ekle") { silHatirla((rs) => [...rs, ...yeni]); if (koord) patchIsletme({ istasyonKoordinat: { ...(isletme.istasyonKoordinat ?? {}), ...koord } }); }
     else if (mod === "yeniHat") {
       setIceMesgul(true);
-      try { await projeYeni(ad); setRings(() => yeni); patchMeta({ hatAdi: ad }); patchIsletme({ istasyonKoordinat: koord ?? {} }); }
+      try { await projeYeni(ad); setRings(() => yeni); patchMeta({ hatAdi: ad }); patchIsletme({ istasyonKoordinat: koord ?? {}, hatGeometri: geometri }); }
       catch (e) { alert(e instanceof Error ? e.message : "Yeni hat oluşturulamadı."); }
       finally { setIceMesgul(false); }
     }

@@ -130,7 +130,21 @@ function enYakinIdx(pts: { lat: number; lon: number }[], p: { lat: number; lon: 
   return bi;
 }
 
-export interface GtfsHatSonuc { rings: DurakArasiRing[]; ad: string; durakSayisi: number; toplamKm: number; uyarilar: string[]; duraklar?: { ad: string; lat: number; lon: number }[]; }
+export interface GtfsHatSonuc { rings: DurakArasiRing[]; ad: string; durakSayisi: number; toplamKm: number; uyarilar: string[]; duraklar?: { ad: string; lat: number; lon: number }[]; geometri?: [number, number][]; }
+
+/** Douglas-Peucker polyline sadeleştirme (harita geometrisi için; lat/lon planar, şehir ölçeği). */
+function dpSadelestir(pts: { lat: number; lon: number }[], eps = 0.00025): [number, number][] {
+  if (pts.length < 3) return pts.map((p) => [Math.round(p.lat * 1e4) / 1e4, Math.round(p.lon * 1e4) / 1e4]);
+  const d2 = (p: { lat: number; lon: number }, a: { lat: number; lon: number }, b: { lat: number; lon: number }) => {
+    const dx = b.lat - a.lat, dy = b.lon - a.lon, L = dx * dx + dy * dy || 1e-12;
+    let t = ((p.lat - a.lat) * dx + (p.lon - a.lon) * dy) / L; t = Math.max(0, Math.min(1, t));
+    const x = a.lat + t * dx, y = a.lon + t * dy; return (p.lat - x) ** 2 + (p.lon - y) ** 2;
+  };
+  const keep = new Array(pts.length).fill(false); keep[0] = keep[pts.length - 1] = true;
+  const st: [number, number][] = [[0, pts.length - 1]];
+  while (st.length) { const [i, j] = st.pop()!; let mx = 0, mi = -1; for (let k = i + 1; k < j; k++) { const dd = d2(pts[k], pts[i], pts[j]); if (dd > mx) { mx = dd; mi = k; } } if (mx > eps * eps && mi > 0) { keep[mi] = true; st.push([i, mi], [mi, j]); } }
+  return pts.filter((_, k) => keep[k]).map((p) => [Math.round(p.lat * 1e4) / 1e4, Math.round(p.lon * 1e4) / 1e4]);
+}
 
 /** Rota + yön → RaySim ring zinciri. Temsili trip = o yönde EN ÇOK duraklı trip. */
 export function gtfsHatKur(feed: GtfsFeed, routeId: string, dir: string): GtfsHatSonuc {
@@ -208,7 +222,10 @@ export function gtfsHatKur(feed: GtfsFeed, routeId: string, dir: string): GtfsHa
   const duraklar = dizi
     .map((d) => { const s = feed.stops.get(d.stopId); return s && Number.isFinite(s.lat) && Number.isFinite(s.lon) ? { ad: s.ad || d.stopId, lat: s.lat, lon: s.lon } : null; })
     .filter((x): x is { ad: string; lat: number; lon: number } => x !== null);
-  return { rings, ad, durakSayisi: dizi.length, toplamKm: toplam / 1000, uyarilar, duraklar };
+  // GERÇEK GÜZERGÂH GEOMETRİSİ (sürdürülebilir harita): shape varsa sadeleştirilmiş
+  // polyline döndür → müşterinin hattı coğrafi haritada gerçek kavisli hizada çizilir.
+  const geometri = shape && shape.length >= 2 ? dpSadelestir(shape) : undefined;
+  return { rings, ad, durakSayisi: dizi.length, toplamKm: toplam / 1000, uyarilar, duraklar, geometri };
 }
 
 // ————————————————————————————————————————————————————————————————

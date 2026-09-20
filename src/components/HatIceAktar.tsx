@@ -25,7 +25,7 @@ export type IceAktarMod = "degistir" | "ekle" | "yeniHat";
 interface HatSonuc { rings: DurakArasiRing[]; ad: string; durakSayisi: number; toplamKm: number; uyarilar: string[]; yol?: { x: number; y: number }[]; duraklar?: { ad: string; km: number; x: number; y: number }[]; }
 
 export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false }: {
-  onIceAktar: (rings: DurakArasiRing[], ad: string, mod: IceAktarMod, koord?: Record<string, { lat: number; lon: number }>) => void | Promise<void>;
+  onIceAktar: (rings: DurakArasiRing[], ad: string, mod: IceAktarMod, koord?: Record<string, { lat: number; lon: number }>, geometri?: { insaat?: boolean; noktalar: [number, number][] }[]) => void | Promise<void>;
   disabled?: boolean;
   mesgulDis?: boolean;
   /** Gömülü (ör. "+ Yeni hat" modalı): daima YENİ hat modu, mod seçici + details sarmalı yok. */
@@ -136,7 +136,10 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false }:
       koord = {};
       for (const d of gtfsFull.duraklar) koord[d.ad] = { lat: d.lat, lon: d.lon };
     }
-    await onIceAktar(sonuc.rings, sonuc.ad, mod, koord);
+    // GTFS shape'i varsa GERÇEK track geometrisini de geçir → harita kavisli hizada çizer.
+    const geometri = kaynak === "gtfs" && gtfsFull?.geometri && gtfsFull.geometri.length >= 2
+      ? [{ noktalar: gtfsFull.geometri }] : undefined;
+    await onIceAktar(sonuc.rings, sonuc.ad, mod, koord, geometri);
   };
 
   const govde = (

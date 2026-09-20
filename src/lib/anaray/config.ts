@@ -277,6 +277,11 @@ export interface Isletme {
    *  yakalanır; GTFS DIŞA aktarımında (stops.txt) kullanılır. Elle kurulan/DXF hatlarda
    *  boştur (GTFS export yalnız koordinatlı hatlarda anlamlı). */
   istasyonKoordinat?: Record<string, { lat: number; lon: number }>;
+  /** Hattın GERÇEK track geometrisi (kavisli hiza) — coğrafi haritada düz istasyon-çizgisi
+   *  yerine çizilir. Her yol: [enlem, boylam] nokta dizisi + (opsiyonel) inşaat bayrağı.
+   *  KAYNAK müşterinin verisidir → sürdürülebilir: GTFS import (shapes) otomatik doldurur;
+   *  elle/DXF hatlarda boş kalır (düz-çizgiye düşer). Konya hazır hatlarında gömülü örnek. */
+  hatGeometri?: { insaat?: boolean; noktalar: [number, number][] }[];
   /** Parklanma dizilimi: her depo (ring id / "origin") → oraya ELLE yerleştirilen araç sayısı.
    *  Rastgele dağıtılmaz; kullanıcı doldurur (toplam = filo). Boşsa henüz dizilmemiş. */
   parklanmaDagilim?: Record<string, number>;

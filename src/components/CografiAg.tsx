@@ -30,12 +30,16 @@ export function CografiAg({
   loop,
   features = [],
   koordinat,
+  geometri,
   autoOynat = false,
 }: {
   line: Line;
   loop?: LoopVeri;
   features?: HatOzellik[];
   koordinat?: Record<string, { lat: number; lon: number }>;
+  /** Hattın GERÇEK track geometrisi (müşteri verisi: GTFS shape vb.). Verilmezse Konya
+   *  bbox'ında bundled örneğe düşer; o da yoksa düz istasyon-çizgisi. Sürdürülebilir. */
+  geometri?: { insaat?: boolean; noktalar: [number, number][] }[];
   autoOynat?: boolean;
 }) {
   const g = useMemo(() => cografiGeometri(line, koordinat, VBW), [line, koordinat]);
@@ -88,16 +92,18 @@ export function CografiAg({
   const geoYollar = useMemo(() => {
     const pe = g.projekteEt;
     if (!g.coordluMu || !pe) return [] as { insaat: boolean; d: string }[];
+    // KAYNAK: müşterinin kendi geometrisi (GTFS shape vb.) varsa O; yoksa Konya bundled örnek.
+    const kaynak = geometri && geometri.length ? geometri : KONYA_GEOMETRI;
     const { w, h } = g.vb;
     const out: { insaat: boolean; d: string }[] = [];
-    for (const yol of KONYA_GEOMETRI) {
+    for (const yol of kaynak) {
       const pts = yol.noktalar.map(([lat, lon]) => pe(lat, lon));
       const ic = pts.filter((p) => p.x >= -20 && p.x <= w + 20 && p.y >= -20 && p.y <= h + 20).length;
-      if (ic < pts.length * 0.6) continue; // çoğu görünürse (bu Konya hattı) çiz
-      out.push({ insaat: yol.insaat, d: pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ") });
+      if (ic < pts.length * 0.6) continue; // çoğu görünürse (bu hat) çiz
+      out.push({ insaat: !!yol.insaat, d: pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ") });
     }
     return out;
-  }, [g]);
+  }, [g, geometri]);
   const gercekGeo = geoYollar.length > 0;
   const featureSimge = (f: HatOzellik, idx: number) => {
     const p = g.konum(f.pos);

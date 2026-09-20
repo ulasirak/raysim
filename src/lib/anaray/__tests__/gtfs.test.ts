@@ -106,3 +106,33 @@ describe("GTFS shapes.txt — gerçek güzergâh mesafesi", () => {
     expect(sonuc.uyarilar.some((u) => u.includes("shapes.txt"))).toBe(true);
   });
 });
+
+// GTFS shape → GERÇEK GEOMETRİ (sürdürülebilir harita): shape'li feed geometri döndürür.
+describe("GTFS shape → geometri", () => {
+  const feed2 = {
+    "stops.txt": ["stop_id,stop_name,stop_lat,stop_lon", "A,A,39.0000,32.0000", "B,B,39.0100,32.0000", "C,C,39.0200,32.0000"].join("\n"),
+    "routes.txt": ["route_id,route_short_name,route_long_name,route_type", "R1,T1,Test,0"].join("\n"),
+    "trips.txt": ["route_id,trip_id,direction_id,trip_headsign,shape_id", "R1,TR1,0,C,S1"].join("\n"),
+    "stop_times.txt": ["trip_id,stop_id,stop_sequence,arrival_time,departure_time", "TR1,A,1,08:00:00,08:00:00", "TR1,B,2,08:01:00,08:01:00", "TR1,C,3,08:02:00,08:02:00"].join("\n"),
+    // düz bir çizgi (kolineer ara noktalar) — DP bunları budamalı
+    "shapes.txt": ["shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence",
+      "S1,39.0000,32.0000,1", "S1,39.0025,32.0000,2", "S1,39.0050,32.0000,3", "S1,39.0075,32.0000,4", "S1,39.0100,32.0000,5",
+      "S1,39.0150,32.0050,6", "S1,39.0200,32.0000,7"].join("\n"),
+  };
+  const zip2 = zipSync(Object.fromEntries(Object.entries(feed2).map(([k, v]) => [k, strToU8(v)])));
+  const parsed2 = parseGtfsZip(zip2);
+  const sonuc = gtfsHatKur(parsed2, "R1", "0");
+
+  it("geometri döndürür (shape polyline)", () => {
+    expect(sonuc.geometri).toBeDefined();
+    expect(sonuc.geometri!.length).toBeGreaterThanOrEqual(2);
+  });
+  it("DP kolineer noktaları budar (7 → daha az)", () => {
+    expect(sonuc.geometri!.length).toBeLessThan(7);
+  });
+  it("uçlar korunur + [lat,lon] biçimi", () => {
+    const g = sonuc.geometri!;
+    expect(g[0][0]).toBeCloseTo(39.0, 3);
+    expect(g[g.length - 1][0]).toBeCloseTo(39.02, 3);
+  });
+});
