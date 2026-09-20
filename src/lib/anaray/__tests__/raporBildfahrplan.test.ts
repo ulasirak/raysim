@@ -29,8 +29,8 @@ describe("rapor Bildfahrplan (git-gel loop)", () => {
     expect(html).toContain("Belirleyici kısıt");            // Şekil 2c
     expect(html).toContain("Terminal Turnback Kapasitesi"); // tablo
     expect(html).toContain("geçit");                        // hemzemin/TSP (Şekil 2e ya da not)
-    expect(html).toContain("Talep → Gereken Filo → Doluluk"); // talep zinciri
-    expect(html).toContain("Sefer ↔ Ters İşletme (Entegre)"); // 5.6 entegre bölüm
+    expect(html).toContain("Talep, Gereken Filo ve Doluluk"); // talep zinciri (sadeleştirilmiş başlık)
+    expect(html).toContain("Sefer ve Ters İşletme"); // 5.6 entegre bölüm (sadeleştirilmiş başlık)
     expect(html).toContain("Şekil 5c");                        // entegre konum diyagramı
     // Monte-Carlo robustluk bölümü (A: analizi rapora taşı)
     expect(html).toContain("Monte-Carlo Gecikme Analizi");     // 4.1 alt başlık

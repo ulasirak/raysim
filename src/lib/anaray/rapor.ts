@@ -8,7 +8,6 @@
 // Tarayıcıda çalışır: yeni pencerede açar, yazdırma diyalogunu tetikler
 // (kullanıcı "Hedef: PDF olarak kaydet" ile indirir). SSR'de çağrılmaz.
 
-import { emblemSvg } from "@/lib/emblem";
 import { aslsLogoSvg, firmaAslsMi } from "./aslsLogo";
 import { CK } from "./chartkit";
 import { type SimConfig, type ProjeMeta, type Isletme, PARAM_META, paramGoster, birim, varsayilanIsletme, etkinArac } from "./config";
@@ -546,10 +545,10 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
     const rows = kurpSatir.map((k) => [
       esc(k.ringAd), kmFmt(k.kmMutlak), `${Math.round(k.yaricap)}`, `${Math.round(k.dever * 1000)}`,
       `${k.vKmh}`, k.aYanal.toFixed(2),
-      sunum ? (en ? "OK" : "Uygun")
-        : k.seviye === "asim" ? `⚠ ${esc(k.mesaj)}`
-          : k.seviye === "kalabalik" ? `● ${esc(k.mesaj)}`
-            : (en ? "OK" : "Uygun"),
+      sunum ? (en ? "Compliant" : "Uygun")
+        : k.seviye === "asim" ? `<b style="color:${RED}">${en ? "Exceeds" : "Aşıyor"}</b> — ${esc(k.mesaj)}`
+          : k.seviye === "kalabalik" ? `<b style="color:${GOLD}">${en ? "Tight" : "Sınırda"}</b> — ${esc(k.mesaj)}`
+            : (en ? "Compliant" : "Uygun"),
     ]);
     const oneriler = kurpSatir.filter((k) => k.seviye !== "ok");
     const not = sunum
@@ -589,7 +588,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
         const zn = en
           ? `Peak demand requires <b>${gA} trams</b> at the target occupancy${fk > 0 ? ` (${fk} more than current)` : fk < 0 ? ` (${-fk} fewer suffice)` : " (current suffices)"}; with the current fleet the busiest section reaches <b>%${pikDol}</b> occupancy.`
           : `Tepe talep, hedef dolulukta <b>${gA} tramvay</b> gerektirir${fk > 0 ? ` (mevcuttan ${fk} fazla)` : fk < 0 ? ` (mevcuttan ${-fk} az yeterli)` : " (mevcut yeterli)"}; mevcut filoda en yoğun kesim <b>%${pikDol}</b> doluluğa ulaşır.`;
-        return `<h3 class="sub">${en ? "Demand → Required Fleet → Occupancy" : "Talep → Gereken Filo → Doluluk"}</h3>${tbl(zt, zr, { first: true })}<div class="gs" style="font-size:9.5pt">${zn}</div>`;
+        return `<h3 class="sub">${en ? "Demand, Required Fleet and Occupancy" : "Talep, Gereken Filo ve Doluluk"}</h3>${tbl(zt, zr, { first: true })}<div class="gs" style="font-size:9.5pt">${zn}</div>`;
       })()}`;
 
     // 5.2 Depo Çıkışı
@@ -668,7 +667,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
       : (maks.cevrimSuresi > 0 && filoGercek > 0 ? Math.round(maks.cevrimSuresi / filoGercek) : cfg.headway);
     const ste = seferTersEntegre(rings, stock, cfg, isletme, stHeadway, 0);
     // Şekil 5c (sefer↔ters entegre konum diyagramı) Grafikler bölümüne taşındı — yakala.
-    seferTersFig = (g && ste.gecerli) ? `<div class="fig">${seferTersSvg(ste)}<div class="cap">${en ? `Figure 5c — Vehicle positions at the representative interval: outbound (▲) / inbound (▼) trams, all reverse-running switches (◆, km-labelled) with short-turn candidates (🔄, red) and the tram→switch binding for each recommendation.` : `Şekil 5c — Temsili aralıkta araç konumları: gidiş (▲) / dönüş (▼) tramvaylar, ters işletme yapılabilen tüm makaslar (◆, km etiketli), kısa dönüş adayları (🔄, kırmızı) ve her öneri için araç→makas bağlantısı.`}</div></div>` : "";
+    seferTersFig = (g && ste.gecerli) ? `<div class="fig">${seferTersSvg(ste)}<div class="cap">${en ? `Figure 5c — Vehicle positions at the representative interval: outbound and inbound trams, all reverse-running switches (km-labelled), with short-turn candidates highlighted in red and the tram-to-switch binding for each recommendation.` : `Şekil 5c — Temsili aralıkta araç konumları: gidiş ve dönüş tramvayları, ters işletme yapılabilen tüm makaslar (km etiketli), kırmızıyla vurgulanan kısa dönüş adayları ve her öneri için araç-makas bağlantısı.`}</div></div>` : "";
     let b56 = "";
     if (ste.gecerli) {
       const stHw = (s: number) => { const x = Math.max(0, Math.round(s)); const d = Math.floor(x / 60), k = x % 60; return d > 0 ? `${d}:${String(k).padStart(2, "0")}` : `${k} s`; };
@@ -678,10 +677,10 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
         ? `${tbl(oThead, oRows, { first: true })}
            <ul style="margin:6px 0 0 16px;padding:0;font-size:9pt;color:#334">${ste.oneriler.map((o) => `<li style="margin-bottom:2px">${esc(o.gerekce)}</li>`).join("")}</ul>`
         : `<p class="muted" style="font-size:9.5pt">${en ? "At this representative snapshot no tram is approaching a load-imbalanced switch in the outbound direction; the binding shifts as trams advance through the cycle." : "Bu temsili anlık-görüntüde yük dengesizliği olan bir makasa gidiş yönünde yaklaşan araç yok; araçlar çevrimde ilerledikçe bağlanan araç değişir."}</p>`;
-      b56 = `<h3 class="sub">5.6 ${en ? "Service ↔ Reverse-Running (Integrated)" : "Sefer ↔ Ters İşletme (Entegre)"}</h3>
+      b56 = `<h3 class="sub">5.6 ${en ? "Service and Reverse-Running" : "Sefer ve Ters İşletme"}</h3>
       ${gsNot(en
-        ? `At a representative service interval of <b>${stHw(stHeadway)}</b> the line runs <b>${ste.filo} trams</b>${ste.aracKirpildi ? ` (only <b>${ste.cizilenArac}</b> physically fit — the diagram is capped to that)` : ""}; the diagram below places each tram at its real position along the line (${(ste.L / 1000).toFixed(1)} km) — obtained from the same trajectory the live simulation uses, so signal lamps, switch-transit speeds, road/pedestrian crossings, gradient and station dwells are all accounted for. Where the entered demand leaves a switch zone with a busy inner leg and a quiet outer end, the short-turn decision is bound to the outbound tram approaching that switch, and its real time-to-switch is read off the trajectory.`
-        : `Temsili <b>${stHw(stHeadway)}</b> sefer aralığında hat <b>${ste.filo} tramvay</b> ${ste.aracKirpildi ? `ister (yalnız <b>${ste.cizilenArac}</b> tanesi hatta sığar — diyagram buna kırpıldı)` : "ile işlemekte"}; aşağıdaki diyagram her aracı hat boyunca (${(ste.L / 1000).toFixed(1)} km) gerçek konumuna yerleştirir — bu konumlar canlı simülasyonun kullandığı yörüngeden gelir, dolayısıyla sinyal lambaları, makas geçiş hızları, karayolu/yaya geçitleri, eğim ve istasyon duruşları hesaba katılıdır. Girilen talep, bir makas bölgesinin iç kolunu yoğun, dış ucunu sessiz bıraktığında kısa dönüş kararı o makasa yaklaşan gidiş aracına bağlanır ve makasa gerçek ulaşım süresi yörüngeden okunur.`)}
+        ? `At a ${stHw(stHeadway)} service interval the line is operated with <b>${ste.filo} trams</b>${ste.aracKirpildi ? ` (only <b>${ste.cizilenArac}</b> fit physically; the figure is capped accordingly)` : ""}. Vehicle positions along the ${(ste.L / 1000).toFixed(1)} km line are taken from the live-simulation trajectory, accounting for signal lamps, switch-transit speeds, road and pedestrian crossings, gradient and station dwells. Where demand leaves a switch zone with a busy inner leg and a quiet outer end, the short-turn is assigned to the outbound tram approaching that switch, with its time-to-switch read from the trajectory.`
+        : `${stHw(stHeadway)} sefer aralığında hat <b>${ste.filo} tramvayla</b> ${ste.aracKirpildi ? `işletilir (yalnız <b>${ste.cizilenArac}</b> tanesi hatta sığar; şekil buna göre sınırlandırılmıştır)` : "işletilir"}. Araç konumları ${(ste.L / 1000).toFixed(1)} km hat boyunca canlı simülasyon yörüngesinden alınır; sinyal lambaları, makas geçiş hızları, karayolu ve yaya geçitleri, eğim ve istasyon duruşları hesaba katılır. Talep bir makas bölgesinin iç kolunu yoğun, dış ucunu sessiz bıraktığında kısa dönüş, o makasa yaklaşan gidiş aracına atanır; makasa ulaşım süresi yörüngeden okunur.`)}
       ${oneriBlok}
       ${(() => {
         const f = ste.filoIhtiyac; if (!f) return "";
@@ -703,7 +702,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
           // PROBLEM VAR → rapora belirgin uyarı düşür (ekleme İSTEĞİ ya da sıklık SAĞLANAMAZ).
           const baslik = yetersiz ? (en ? "SERVICE FREQUENCY NOT FEASIBLE" : "SEFER SIKLIĞI SAĞLANAMAZ") : (en ? "TRAM ADDITION REQUIRED" : "TRAMVAY EKLEME İHTİYACI");
           return `<div style="margin-top:8px;border:1px solid ${CK.red};border-left:4px solid ${CK.red};background:${CK.badBgSoft};border-radius:6px;padding:9px 11px">
-            <div style="font-weight:800;color:#8E1224;font-size:10pt;letter-spacing:.02em">⚠ ${baslik}</div>
+            <div style="font-weight:800;color:#8E1224;font-size:10pt;letter-spacing:.02em">${baslik}</div>
             <p style="margin:4px 0 0;font-size:9.5pt;color:#3a2226">${esc(f.mesaj)}</p>
             ${rows.length ? tbl(en ? ["Metric", "Value"] : ["Gösterge", "Değer"], rows, { first: true }) : ""}
           </div>`;
@@ -798,7 +797,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
     const satirHtml = duy.satirlar.map((r) => {
       const low = Math.min(r.eksi, r.arti), high = Math.max(r.eksi, r.arti);
       const l = pos(low), w = Math.max(1.5, pos(high) - l);
-      const ok = r.yon === 1 ? "▲" : r.yon === -1 ? "▼" : "–";
+      const ok = r.yon === 1 ? (en ? "rises" : "artar") : r.yon === -1 ? (en ? "falls" : "azalır") : "—";
       return `<tr><td class="l">${esc(r.ad)}</td>`
         + `<td class="trk-td"><div class="trk"><div class="barr" style="left:${l.toFixed(1)}%;width:${w.toFixed(1)}%"></div><div class="base" style="left:${bPos.toFixed(1)}%"></div></div></td>`
         + `<td>${low.toFixed(0)}–${high.toFixed(0)}</td><td><b>${r.salinim.toFixed(0)}</b> ${ok}</td></tr>`;
@@ -812,8 +811,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   <thead><tr><th class="l">${en ? "Parameter" : "Parametre"}</th><th>${en ? "Effect on operating capacity" : "İşletme kapasitesine etki"}</th><th>${en ? "Range" : "Aralık"}</th><th>${en ? "Swing" : "Salınım"}</th></tr></thead>
   <tbody>${satirHtml}</tbody></table></div>
   <div class="gs">${en
-    ? `The strongest lever here is <b>${esc(okKok.ad)}</b> (swing ${okKok.salinim.toFixed(0)} tph) — the parameter to secure first in design and operation. ▲ = capacity rises as the parameter rises; ▼ = it falls.`
-    : `Bu hatta en güçlü kaldıraç <b>${esc(okKok.ad)}</b> (salınım ${okKok.salinim.toFixed(0)} tramvay/sa) — tasarımda ve işletmede önce güvenceye alınması gereken parametre. ▲ = parametre artınca kapasite artar; ▼ = azalır.`}</div>`;
+    ? `The strongest lever is <b>${esc(okKok.ad)}</b> (swing ${okKok.salinim.toFixed(0)} tph) — the parameter to secure first in design and operation. The direction column states whether capacity rises or falls as the parameter increases.`
+    : `En güçlü kaldıraç <b>${esc(okKok.ad)}</b> (salınım ${okKok.salinim.toFixed(0)} tramvay/sa) — tasarımda ve işletmede önce güvenceye alınması gereken parametredir. Yön sütunu, parametre artınca kapasitenin arttığını mı yoksa azaldığını mı gösterir.`}</div>`;
   }
 
   // Altbilgi (onay şeridi) içeriği — İKİ yerde kullanılır: (1) tfoot içinde GÖRÜNMEZ kopya
@@ -909,12 +908,6 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   .cover-brand svg { height: 17mm; width: auto; display: inline-block; }
   .cover-logo { height: 18mm; width: auto; max-width: 85mm; display: inline-block; object-fit: contain; }
   .cover-brand-name { font-size: 20pt; font-weight: 700; letter-spacing: .04em; color: ${INK}; }
-  .poweredby { margin-top: 9px; display: flex; align-items: center; justify-content: center; gap: 7px; }
-  .poweredby .pb-emblem { line-height: 0; }
-  .poweredby .pb-emblem svg { height: 7mm; width: auto; }
-  .poweredby .pb-txt { font-size: 8.5pt; color: #8A97A4; letter-spacing: .02em; }
-  .poweredby .pb-txt b { font-family: "Spectral", Georgia, serif; font-weight: 700; letter-spacing: .06em; color: #6B7A8A; }
-  .poweredby .pb-txt .r { color: ${RED}; }
   .cover .rule { width: 56px; height: 3px; background: ${RED}; margin: 12px auto 14px; }
   .cover .sys { font-size: 14pt; letter-spacing: .28em; color: ${INK}; font-weight: 600; }
   .cover .kit { font-size: 22pt; letter-spacing: .05em; color: ${INK}; font-weight: 700; margin: 3px 0 14px; }
@@ -1084,8 +1077,8 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   <div class="alt-spacer" aria-hidden="true">${altbilgiIc}</div>
 </td></tr></tfoot><tbody><tr><td>
 
-  <!-- KAPAK — ANA MARKA = sinyalizasyon firması (büyük). RaySim, altta küçük
-       "Powered by" rozetine indirgenir (araç/motor kimliği). -->
+  <!-- KAPAK — tek marka: sinyalizasyon/müşavir firması. Üretici (RaySim) ibaresi
+       KULLANILMAZ; teslimat tümüyle firmanın kurumsal kimliğiyle sunulur. -->
   <section class="cover">
     <div class="cover-brand">${meta.logo ? `<img class="cover-logo" src="${meta.logo}" alt="${esc(meta.sinyalizasyonFirmasi || "logo")}"/>` : firmaAsls ? aslsLogoSvg : `<span class="cover-brand-name">${esc(meta.sinyalizasyonFirmasi || "")}</span>`}</div>
     <div class="rule"></div>
@@ -1095,7 +1088,6 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
     <div class="hat">${esc(meta.hatAdi)}</div>
     <table class="kunye"><tbody>${kunye.map(([a, b]) => `<tr><td class="l k">${esc(a)}</td><td class="l">${esc(b)}</td></tr>`).join("")}</tbody></table>
     <div class="qr">${qrSvg(qrHedef, 92)}<div class="qr-cap"><b>${derinLink ? L.qrCap : L.qrCapGenel}</b><br><span class="qr-hint">${L.qrHint}</span> · ${esc(qrHost)}</div></div>
-    <div class="poweredby"><span class="pb-emblem">${emblemSvg}</span><span class="pb-txt">Powered by <b>Ray<span class="r">Sim</span></b></span></div>
     <div class="foot">${esc(L.foot)}${bugun ? " · " + esc(bugun) : ""}</div>
   </section>
 
@@ -1152,7 +1144,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   ${kpiRow}
   ${kapasiteTbl}
   ${kapGirdiNot}
-  ${sunum ? `<div class="gs ok"><b style="color:#2E7D57">✓</b> ${lang === "en" ? `Capacity analysis confirms that all blocks remain within the target headway (${cfg.headway} s); no limit is exceeded. The design is compliant in terms of capacity.` : `Kapasite analizi, tüm blokların hedef headway (${cfg.headway} s) sınırı içinde kaldığını göstermektedir; sınır aşımı bulunmamaktadır. Tasarım, kapasite açısından uygundur.`}</div>` : ""}
+  ${sunum ? `<div class="gs ok">${lang === "en" ? `Capacity analysis confirms that all blocks remain within the target headway (${cfg.headway} s); no limit is exceeded. The design is compliant in terms of capacity.` : `Kapasite analizi, tüm blokların hedef headway (${cfg.headway} s) sınırı içinde kaldığını göstermektedir; sınır aşımı bulunmamaktadır. Tasarım, kapasite açısından uygundur.`}</div>` : ""}
   <p class="muted" style="font-size:11px;margin-top:6px">${L.kapNot}</p>
   <div class="gs" style="font-size:10pt">${kapYorum}</div>
   ${kavsakDetayBlok}

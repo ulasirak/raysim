@@ -3,7 +3,6 @@
 // yani canlı sim ile BİREBİR aynı çekirdek). karsilastirmaHTML: bu metriklerden
 // baskıya hazır kurumsal karar raporu (rapor.ts diliyle uyumlu).
 
-import { emblemSvg } from "@/lib/emblem";
 import { aslsLogoSvg, firmaAslsMi } from "./aslsLogo";
 import { maksimumTren } from "./kapasite";
 import { tersIsletmeAnaliz } from "./tersisletme";
@@ -118,7 +117,7 @@ export function karsilastirmaHTML(senaryolar: KarsSenaryo[], meta: ProjeMeta, al
     const baz = vals.length ? vals[0] : 0;
     const rows = ms.map((m, i) => {
       const v = al(m), d = m.gecerli && i > 0 ? v - baz : 0;
-      return `<div class="cb-row"><span class="cb-ad">${esc(m.ad)}</span><span class="cb-bar"><span style="width:${m.gecerli ? w(v).toFixed(0) : 0}%;background:${renk}"></span></span><span class="cb-val"><b>${m.gecerli ? v : "—"}</b>${d !== 0 ? ` <span class="cb-d">${d > 0 ? "▲" : "▼"}${Math.abs(d)}</span>` : ""}</span></div>`;
+      return `<div class="cb-row"><span class="cb-ad">${esc(m.ad)}</span><span class="cb-bar"><span style="width:${m.gecerli ? w(v).toFixed(0) : 0}%;background:${renk}"></span></span><span class="cb-val"><b>${m.gecerli ? v : "—"}</b>${d !== 0 ? ` <span class="cb-d">${d > 0 ? "+" : "−"}${Math.abs(d)}</span>` : ""}</span></div>`;
     }).join("");
     return `<div class="cb-kart"><div class="cb-baslik">${esc(baslik)}</div>${rows}</div>`;
   };
@@ -191,9 +190,6 @@ export function karsilastirmaHTML(senaryolar: KarsSenaryo[], meta: ProjeMeta, al
   .cover .kunye { border:1pt solid #D3DAE1; margin:20px auto 0; width:78%; border-collapse:collapse; }
   .cover .kunye td { text-align:left; padding:4px 10px; border-bottom:1px solid #EDF0F3; }
   .cover .kunye td.k { font-weight:600; width:38%; background:#F5F7F9; }
-  .poweredby { margin-top:16px; display:flex; align-items:center; justify-content:center; gap:7px; }
-  .poweredby svg { height:7mm; width:auto; } .poweredby .t { font-size:8.5pt; color:#8A97A4; }
-  .poweredby .t b { font-family:"Spectral",Georgia,serif; letter-spacing:.06em; color:#6B7A8A; } .poweredby .t .r { color:${RED}; }
   .cover .foot { margin-top:14px; font-size:8pt; letter-spacing:.14em; text-transform:uppercase; color:#9AA7B4; }
   /* Karşılaştırma raporu kısadır: bölümler ayrı sayfaya ZORLANMAZ (aksi halde tablo/öneri/
      onay tek tük satırla ayrı sayfalara düşüp büyük boşluk bırakıyordu). Bölümler akar; başlık
@@ -245,7 +241,6 @@ export function karsilastirmaHTML(senaryolar: KarsSenaryo[], meta: ProjeMeta, al
       <tr><td class="k">Doküman No</td><td>${esc(meta.dokumanNo || "—")}</td></tr>
       <tr><td class="k">Senaryo sayısı</td><td>${ms.length}</td></tr>
     </tbody></table>
-    <div class="poweredby"><span>${emblemSvg}</span><span class="t">Powered by <b>Ray<span class="r">Sim</span></b></span></div>
     <div class="foot">Kontrollü doküman${bugun ? " · " + esc(bugun) : ""}</div>
   </section>
 

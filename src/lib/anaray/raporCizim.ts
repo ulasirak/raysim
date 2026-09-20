@@ -442,7 +442,7 @@ export function seferTersSvg(ste: SeferTersSonuc): string {
     const x = X(m.km), renk = m.onerilir ? CK.red : CK.ink2, ly = i % 2 === 1 ? midY + 33 : midY + 22;
     return `<line x1="${x.toFixed(1)}" y1="${midY - 8}" x2="${x.toFixed(1)}" y2="${midY + 8}" stroke="${renk}" stroke-width="${m.onerilir ? 2 : 1.2}"/>`
       + `<rect x="${(x - 3).toFixed(1)}" y="${(midY - 3).toFixed(1)}" width="6" height="6" transform="rotate(45 ${x.toFixed(1)} ${midY})" fill="${renk}"/>`
-      + num(x, ly, `${m.onerilir ? "🔄 " : ""}${m.km.toFixed(2)}`, { anchor: "middle", size: 7, weight: m.onerilir ? 700 : 500, color: renk });
+      + num(x, ly, m.km.toFixed(2), { anchor: "middle", size: 7, weight: m.onerilir ? 700 : 500, color: renk });
   }).join("");
   const oklar = ste.oneriler.map((o) => `<line x1="${X(o.aracKm).toFixed(1)}" y1="${midY - 15}" x2="${X(o.makasKm).toFixed(1)}" y2="${midY - 15}" stroke="${CK.red}" stroke-width="0.8" stroke-dasharray="3 2"/>`).join("");
   const arac = ste.araclar.map((a) => {
@@ -545,6 +545,11 @@ export function mcYayilimSvg(mc: MonteCarloResult, en = false): string {
   const altEksen = num(padL, H - 4, en ? "train 1" : "tren 1", { anchor: "start", size: 9, color: CK.muted })
     + lab(padL + pw / 2, H - 4, en ? "service order →" : "sefer sırası →", { anchor: "middle", size: 8.5, color: CK.muted })
     + num(padL + pw, H - 4, `${en ? "train" : "tren"} ${n}`, { anchor: "end", size: 9, color: CK.muted });
-  const leg = `<text x="${W - padR}" y="11" text-anchor="end" font-family="${CK.sans}" font-size="8.5"><tspan fill="${CK.blue}">● ${en ? "median" : "medyan"}</tspan>  <tspan fill="${CK.blue}" opacity="0.5">| P90</tspan></text>`;
+  // Lejant: metin glyph (●/|) yerine gerçek SVG şekiller — font-bağımsız, kurumsal.
+  const lx = W - padR - 116;
+  const leg = `<circle cx="${lx + 3}" cy="8" r="3" fill="${CK.blue}"/>`
+    + `<text x="${lx + 10}" y="11" font-family="${CK.sans}" font-size="8.5" fill="${CK.blue}">${en ? "median" : "medyan"}</text>`
+    + `<line x1="${lx + 64}" y1="3" x2="${lx + 64}" y2="13" stroke="${CK.blue}" stroke-width="1.4" opacity="0.55"/>`
+    + `<text x="${lx + 70}" y="11" font-family="${CK.sans}" font-size="8.5" fill="${CK.blue}" opacity="0.75">P90</text>`;
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:100%">${yIsaret}${esik}${trend}${noktalar}${eksen}${altEksen}${leg}</svg>`;
 }
