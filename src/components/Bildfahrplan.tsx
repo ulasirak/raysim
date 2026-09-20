@@ -7,7 +7,7 @@
 // paralel zigzaglar. Öbekleşme (bunching), headway düzenliliği ve gidiş↔dönüş karşılaşma
 // noktaları tek bakışta görünür. Veri, canlı sim ile AYNI loop yörüngesinden gelir.
 
-import { useMemo, useRef, useState, type WheelEvent as RWheelEvent, type PointerEvent as RPointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from "react";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { bildIstasyonZamanlari, bildKesisimZamanlari, satirYerlesim, type BildOlay } from "@/lib/anaray/grafikNoktalar";
@@ -68,7 +68,25 @@ export function Bildfahrplan({ loop, line, cakismalar = [] }: { loop: LoopVeri; 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [view, setView] = useState({ k: 1, tx: 0, ty: 0 });
   const [vurgu, setVurgu] = useState<number | null>(null);
-  const dragRef = useRef<{ cx: number; cy: number; tx: number; ty: number; moved: boolean } | null>(null);
+  const dragRef = useRef<{ cx: number; cy: number; tx: number; ty: number } | null>(null);
+
+  // Tekerlek zoom'u NON-PASSIVE native dinleyiciyle: React onWheel passive olduğundan
+  // preventDefault çalışmaz (yakınlaşırken sayfa kayar + uyarı). İmleç-hassas zoom.
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const handler = (e: WheelEvent) => {
+      e.preventDefault();
+      const ctm = svg.getScreenCTM();
+      if (!ctm) return;
+      const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+      const q = p.matrixTransform(ctm.inverse());
+      const f = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+      setView((v) => { const k = Math.max(1, Math.min(12, v.k * f)); const r = k / v.k; return { k, tx: q.x - r * (q.x - v.tx), ty: q.y - r * (q.y - v.ty) }; });
+    };
+    svg.addEventListener("wheel", handler, { passive: false });
+    return () => svg.removeEventListener("wheel", handler);
+  }, [veri]);
 
   if (!veri) return null;
   const { trenler, pencere, L, istOlay, kesisim } = veri;
@@ -101,26 +119,11 @@ export function Bildfahrplan({ loop, line, cakismalar = [] }: { loop: LoopVeri; 
 
   // — Etkileşim (E): zoom/pan + hi-res export —
   const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
-  const svgNokta = (cx: number, cy: number) => {
-    const svg = svgRef.current;
-    const ctm = svg?.getScreenCTM();
-    if (!svg || !ctm) return { x: 0, y: 0 };
-    const p = svg.createSVGPoint(); p.x = cx; p.y = cy;
-    const q = p.matrixTransform(ctm.inverse());
-    return { x: q.x, y: q.y };
-  };
-  const onWheel = (e: RWheelEvent) => {
-    e.preventDefault();
-    const { x, y } = svgNokta(e.clientX, e.clientY);
-    const f = e.deltaY < 0 ? 1.15 : 1 / 1.15;
-    setView((v) => { const k = clamp(v.k * f, 1, 12); const r = k / v.k; return { k, tx: x - r * (x - v.tx), ty: y - r * (y - v.ty) }; });
-  };
-  const onDown = (e: RPointerEvent) => { (e.currentTarget as Element).setPointerCapture?.(e.pointerId); dragRef.current = { cx: e.clientX, cy: e.clientY, tx: view.tx, ty: view.ty, moved: false }; };
+  const onDown = (e: RPointerEvent) => { (e.currentTarget as Element).setPointerCapture?.(e.pointerId); dragRef.current = { cx: e.clientX, cy: e.clientY, tx: view.tx, ty: view.ty }; };
   const onMove = (e: RPointerEvent) => {
     const d = dragRef.current; const svg = svgRef.current; if (!d || !svg) return;
     const rect = svg.getBoundingClientRect();
     const dx = (e.clientX - d.cx) * (W / rect.width), dy = (e.clientY - d.cy) * (H / rect.height);
-    if (Math.abs(e.clientX - d.cx) + Math.abs(e.clientY - d.cy) > 3) d.moved = true;
     setView((v) => ({ ...v, tx: d.tx + dx, ty: d.ty + dy }));
   };
   const onUp = () => { dragRef.current = null; };
@@ -158,7 +161,7 @@ export function Bildfahrplan({ loop, line, cakismalar = [] }: { loop: LoopVeri; 
       </div>
       <div className="overflow-hidden rounded-md" style={{ border: `1px solid ${brand.border}` }}>
         <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full h-auto select-none" style={{ touchAction: "none", cursor: "grab" }}
-          onWheel={onWheel} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerLeave={onUp}
+          onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerLeave={onUp}
           role="img" aria-label="Bildfahrplan — zaman-mesafe tren grafiği (yakınlaştırılabilir)">
           <defs><clipPath id="bfclip"><rect x={0} y={0} width={W} height={H} /></clipPath></defs>
           <g clipPath="url(#bfclip)"><g transform={`translate(${view.tx.toFixed(2)} ${view.ty.toFixed(2)}) scale(${view.k})`}>
