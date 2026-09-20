@@ -26,7 +26,6 @@ import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimCon
 import { BosHat } from "@/components/BosHat";
 import { Kart } from "@/components/Kart";
 import { Kpi } from "@/components/Kpi";
-import { CografiAg } from "@/components/CografiAg";
 import { LiveNetwork } from "@/components/LiveNetwork";
 import { Bildfahrplan } from "@/components/Bildfahrplan";
 import { HizProfili } from "@/components/HizProfili";
@@ -600,11 +599,6 @@ function StudioIc() {
           </div>
         )}
       </Panel>
-      {line && (
-        <Panel baslik="Coğrafi Canlı Ağ" aciklama="Hattın KUŞBAKIŞI görünümü: istasyonların gerçek koordinatı varsa (GTFS içe aktarımı) gerçek harita düzlemine oturur; yoksa gerçek uzunluk oranlı ölçekli plana düşer (koordinat uydurulmaz). Trenler döngü yörüngesinden canlı akar; makas/sinyal/geçit gerçek kilometrajlarında işaretlenir. Oynat ▶ ile trenleri izle.">
-        <CografiAg line={line} loop={loopVeri} features={hatOzellik} koordinat={isletme.istasyonKoordinat} autoOynat={otoOynat} />
-        </Panel>
-      )}
       </div>
       </div>
 
