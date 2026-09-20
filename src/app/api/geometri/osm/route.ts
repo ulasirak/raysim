@@ -46,7 +46,7 @@ async function overpassCek(bbox: [number, number, number, number]): Promise<OsmS
   // station / halt / public_transport + inşaat halindeki istasyonlar) — koordinat da gelir.
   const q = `[out:json][timeout:60];`
     + `(way["railway"~"^(tram|light_rail|subway|construction)$"]${bb};)->.w;`
-    + `(node["railway"~"^(tram_stop|station|halt)$"]${bb};node["public_transport"~"^(station|platform|stop_position)$"]${bb};node["construction:railway"~"^(station|halt|tram_stop)$"]${bb};)->.n;`
+    + `(node["railway"~"^(tram_stop|station|halt)$"]${bb};node["public_transport"~"^(station|platform|stop_position)$"]${bb};node["construction:railway"~"^(station|halt|tram_stop)$"]${bb};node["proposed:railway"~"^(station|halt|tram_stop)$"]${bb};node["disused:railway"~"^(station|halt|tram_stop)$"]${bb};node["railway"~"^(construction|proposed)$"]["name"]${bb};)->.n;`
     + `.w out geom;.n out body;`;
   let sonHata: unknown = null;
   for (const url of OVERPASS) {
