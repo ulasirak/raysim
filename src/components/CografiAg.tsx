@@ -241,7 +241,7 @@ export function CografiAg({
           <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-3 py-2 text-[0.72rem]" style={{ background: asim > 0 ? "#FDECEC" : CK.amberBg, border: `1px solid ${asim > 0 ? CK.red : CK.amber}`, color: asim > 0 ? CK.red : CK.amberInk }}>
             <span className="font-semibold">⤾ Kurp konfor:</span>
             <span><b>{kurplar.length}</b> kurpta öneri (haritada ⤾){asim > 0 ? ` · ${asim} aşım (hız geometri için fazla)` : ""}{kalabalik > 0 ? ` · ${kalabalik} ayakta-yolcu konforu` : ""}</span>
-            <span style={{ color: brand.muted }}>{yolcuVeriVar ? "her istasyon yolcusuna göre eşlendi" : "yolcu verisi girilirse doluluğa göre eşlenir"}</span>
+            <span style={{ color: brand.muted }}>{kalabalik > 0 ? (yolcuVeriVar ? "her istasyon yolcu sayısına göre eşlendi" : "istasyon talep doluluğuna göre eşlendi") : "geometri hızına göre"}</span>
           </div>
         );
       })()}

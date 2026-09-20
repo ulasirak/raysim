@@ -195,11 +195,13 @@ function StudioIc() {
   // + önerilen ≤hız. Haritada: aşım (geometri fazla) her zaman; kalabalık YALNIZ yolcu verisi
   // varken (doluluğa bağlı) gösterilir — verisizken düz konfor-bandı kurpları kirletmesin.
   const kurpKonfor = useMemo<KurpKonforSatir[]>(() => {
+    // Doluluk HER ZAMAN geçilir (tersRapor duraklarından — gerçek yolcu ya da rol/toplam-talep
+    // tahmini). Talep yoksa doluluk≈0 → kalabalık tetiklenmez (kirletmez). Kalabalık uyarısı
+    // yalnız doluluk kalabalikEsik'i (%85) aşınca çıkar → gerçek yolcu sayısına eşli.
     const dolulukByRing: Record<string, number> = {};
-    if (yolcuVeriVar && tersRapor) rings.forEach((r, i) => { const d = tersRapor.duraklar[i]; if (d) dolulukByRing[r.id] = d.doluluk; });
-    const satir = kurpKonforAnaliz(rings, cfg, yolcuVeriVar ? dolulukByRing : undefined);
-    return satir.filter((k) => k.seviye === "asim" || (k.seviye === "kalabalik" && yolcuVeriVar));
-  }, [rings, cfg, tersRapor, yolcuVeriVar]);
+    if (tersRapor) rings.forEach((r, i) => { const d = tersRapor.duraklar[i]; if (d) dolulukByRing[r.id] = d.doluluk; });
+    return kurpKonforAnaliz(rings, cfg, dolulukByRing).filter((k) => k.seviye !== "ok");
+  }, [rings, cfg, tersRapor]);
   // Önerilen tramvay = ⌈RTT ÷ hedef headway⌉ (kural); yolcu girildiyse talep de artırabilir.
   const oneriTramvay = maks.gecerli ? Math.max(1, Math.ceil(maks.cevrimSuresi / hedefHeadwaySn), talepFilosu) : 0;
   const filoOneriUyum = filoTek === oneriTramvay;
