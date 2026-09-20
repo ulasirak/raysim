@@ -14,6 +14,7 @@ import { type SimConfig, type ProjeMeta, type Isletme, PARAM_META, paramGoster, 
 import { tersIsletmeAnaliz, tavsiyeTramvaySayisi } from "./tersisletme";
 import { bolumDahil, type RaporSecim } from "@/lib/raporFiyat";
 import { dogrulamaCalistir } from "./dogrulama";
+import { MOTOR_SURUMU, MOTOR_ADI, YONTEM_STANDARTLARI } from "./surum";
 import { seferTersEntegre } from "./seferters";
 import { maksimumTren } from "./kapasite";
 import { tarifeUret } from "./tarife";
@@ -207,6 +208,9 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
     [L.kunye.proje, meta.projeAdi], [L.kunye.hat, meta.hatAdi], [L.kunye.dok, meta.dokumanNo], [L.kunye.rev, meta.revizyon],
     [L.kunye.tarih, meta.tarih || "—"], [L.kunye.idare, meta.idare], [L.kunye.yuk, meta.yuklenici], [L.kunye.mus, meta.musavir],
     [L.kunye.firma, meta.sinyalizasyonFirmasi],
+    // İzlenebilirlik (Büyük sıçrama B): motor sürümü DAİMA kapakta — her rapor deterministik
+    // motorla üretilir ve künyesinden yeniden üretilebilir (ayrıntı: bölüm 10, seçiliyse).
+    [en ? "Engine version" : "Motor sürümü", `v${MOTOR_SURUMU}`],
   ];
 
   // ---- KPI kartları ----
@@ -849,6 +853,55 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   ${tbl([en ? "Check" : "Kontrol", en ? "Reference" : "Referans", en ? "Computed" : "Hesaplanan", en ? "Deviation" : "Sapma", en ? "Result" : "Sonuç"], vvRows, { first: true })}`;
   })() : "";
 
+  // ——— İZLENEBİLİRLİK & TEKRAR-ÜRETİLEBİLİRLİK — bölüm 10 (Büyük sıçrama B) ———
+  // Motor DETERMİNİSTİK: aynı girdi + aynı motor sürümü → AYNI sayı. Bu bölüm raporun
+  // her ana sayısını künyeler — hangi girdilerden, hangi yöntemle, hangi bölümde üretildi —
+  // ve girdi digest'i + motor sürümünü verir, böylece herhangi bir sayı tam olarak yeniden
+  // üretilebilir/denetlenebilir. (Uydurma referans YOK — yalnız gerçek girdi + kanonik yöntem.)
+  const izlenebilirlikBolum = dahil("izlenebilirlik") ? (() => {
+    const num = (v: number, d = 1) => (Number.isFinite(v) ? v.toFixed(d) : "—");
+    const giris = en
+      ? "The engine is deterministic: the same input set and the same engine version reproduce the same numbers. This section is the report's audit trail — for each principal figure it records the inputs it derives from, the method used and the section where it is developed — together with the input digest and engine version below. Any number can therefore be independently reproduced and checked."
+      : "Motor deterministiktir: aynı girdi kümesi ve aynı motor sürümü aynı sayıları yeniden üretir. Bu bölüm raporun denetim izidir — her ana sayının hangi girdilerden türediğini, hangi yöntemle ve hangi bölümde geliştirildiğini kaydeder — aşağıdaki girdi künyesi ve motor sürümüyle birlikte. Böylece herhangi bir sayı bağımsızca yeniden üretilip denetlenebilir.";
+
+    // Motor künyesi (deterministik üretim beyanı).
+    const kunyeStr = `<div class="gs" style="font-size:10pt"><b>${esc(en ? MOTOR_ADI.en : MOTOR_ADI.tr)}</b> · ${en ? "engine version" : "motor sürümü"} <b>v${MOTOR_SURUMU}</b> · ${en ? "report date" : "rapor tarihi"} ${esc(meta.tarih || "—")}. ${en ? "Method basis" : "Yöntem temeli"}: ${YONTEM_STANDARTLARI.map((y) => `${esc(y.ad)}`).join(" · ")}.</div>`;
+
+    // Girdi künyesi — raporu belirleyen çekirdek parametreler (yeniden üretim için yeterli).
+    const girdiRows: (string | number)[][] = [
+      [en ? "Line — cells / total length" : "Hat — hücre / toplam uzunluk", `${rings.length} · ${line ? kmFmt(line.length) : "—"}`],
+      [en ? "Vehicle" : "Araç", `${esc(stock.name || "—")} · ${Math.round(stock.length)} m · ${en ? "cap." : "kap."} ${isletme.aracYolcuKapasite} ${en ? "pax" : "yolcu"}`],
+      [en ? "Acceleration / braking" : "Hızlanma / frenleme", `${num(cfg.ivme, 2)} / ${num(cfg.yavaslama, 2)} m/s²`],
+      [en ? "Main-line / turnout speed" : "Ana hat / makas hızı", `${Math.round(cfg.vAnahat * 3.6)} / ${Math.round(cfg.vMakas * 3.6)} km/h`],
+      [en ? "Target headway" : "Hedef headway", `${cfg.headway} s`],
+      [en ? "Lateral comfort / gauge" : "Yanal konfor / ekartman", `${num(cfg.aYanalKonfor, 2)} m/s² · ${num(cfg.ekartman, 3)} m`],
+      [en ? "UIC 406 occupancy cap" : "UIC 406 doluluk tavanı", `%${Math.round((cfg.dolulukTavani ?? 0.7) * 100)}`],
+      [en ? "Peak demand / occupancy target" : "Pik talep / doluluk hedefi", `${isletme.pikYolcuSaat} ${en ? "pax/h" : "yolcu/sa"} · %${Math.round((isletme.dolulukHedefi || 0.85) * 100)}`],
+      [en ? "Planned fleet" : "Planlanan filo", `${filoGercek}`],
+    ];
+
+    // İzlenebilirlik tablosu — her ana sayı → değer · kullanılan girdiler · yöntem · bölüm.
+    const izRows: (string | number)[][] = [
+      [en ? "Cycle time (RTT)" : "Çevrim süresi (RTT)", maks.gecerli ? `${num(maks.cevrimSuresi, 0)} s` : "—", en ? "line geometry, speeds, a/b, dwell" : "hat geometrisi, hızlar, a/b, duruş", en ? "Trapezoidal kinematics (microscopic)" : "Trapez kinematik (mikroskobik)", "04·06"],
+      [en ? "Achieved headway" : "Ulaşılan headway", maks.gecerli ? `${num(bfHeadway, 0)} s` : "—", en ? "cycle time, planned fleet" : "çevrim, planlanan filo", en ? "cycle ÷ fleet" : "çevrim ÷ filo", "05·06"],
+      [en ? "Determining min headway (hMin)" : "Belirleyici min headway (hMin)", maks.gecerli ? `${num(maks.hMin, 0)} s` : "—", en ? "block / terminal / single-track / junction limits" : "blok / terminal / tek-hat / kavşak kısıtları", en ? "longest binds (determining constraint)" : "en uzunu bağlar (belirleyici kısıt)", "04"],
+      [en ? "Line capacity (sustainable fleet)" : "Hat kapasitesi (sürdürülebilir filo)", maks.gecerli ? `${maks.nSurdurulebilir}` : "—", en ? "cycle time, hMin, UIC 406 cap" : "çevrim, hMin, UIC 406 tavanı", en ? "⌊cycle ÷ hMin⌋ × cap" : "⌊çevrim ÷ hMin⌋ × tavan", "04"],
+      [en ? "Blocking-time (min)" : "Blocking-time (min)", `${num(bt.minHeadway, 0)} s`, en ? "block lengths, speed, signal aspects" : "blok uzunlukları, hız, sinyal aspektleri", en ? "UIC 406 Sperrzeitentreppe" : "UIC 406 Sperrzeitentreppe", "04"],
+      [en ? "UIC 406 occupancy" : "UIC 406 doluluk", `%${num(uicDoluluk, 0)}`, en ? "hMin, target headway" : "hMin, hedef headway", en ? "hMin ÷ headway" : "hMin ÷ headway", "04"],
+      [en ? "Curve speed limit" : "Kurp hız limiti", "—", en ? "radius, cant, gauge, lateral comfort" : "yarıçap, dever, ekartman, yanal konfor", "v=√(R(a+g·d/e))", "02.2"],
+      [en ? "Required fleet (demand)" : "Gereken filo (talep)", maks.gecerli ? `${siganTren}` : "—", en ? "peak demand, occupancy target, vehicle cap." : "pik talep, doluluk hedefi, araç kap.", en ? "demand ÷ capacity ÷ occupancy" : "talep ÷ kapasite ÷ doluluk", "05"],
+      [en ? "Balancing speed" : "Denge hızı", "—", en ? "Davis A/B/C, power" : "Davis A/B/C, güç", "P/v = R(v)", "09"],
+    ];
+
+    return `<div class="banner breakbefore"><span class="no">10</span>${en ? "TRACEABILITY & REPRODUCIBILITY" : "İZLENEBİLİRLİK & TEKRAR-ÜRETİLEBİLİRLİK"}</div>
+  <p>${giris}</p>
+  ${kunyeStr}
+  <h3 class="sub">${en ? "Input Digest (reproducing inputs)" : "Girdi Künyesi (yeniden üretim girdileri)"}</h3>
+  ${tbl([en ? "Parameter" : "Parametre", en ? "Value" : "Değer"], girdiRows, { first: true })}
+  <h3 class="sub">${en ? "Number → Input · Method · Section" : "Sayı → Girdi · Yöntem · Bölüm"}</h3>
+  ${tbl([en ? "Quantity" : "Büyüklük", en ? "Value" : "Değer", en ? "Inputs" : "Girdiler", en ? "Method" : "Yöntem", en ? "Section" : "Bölüm"], izRows, { first: true })}`;
+  })() : "";
+
   // ——— GRAFİKLER (Görsel Analiz) — bölüm 08 ———
   // TÜM şekiller burada toplanır; yalnız "grafikler" seçiliyken (g) üretilir. Böylece
   // kullanıcı sadece grafikleri seçtiğinde dahi dolu, tek başına anlamlı bir görsel bölüm
@@ -1134,6 +1187,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
       ${dahil("duyarlilik") ? `<li><b>07</b>${en ? "Sensitivity (Tornado)" : "Duyarlılık (Tornado)"}</li>` : ""}
       ${g ? `<li><b>08</b>${en ? "Visual Analysis (Charts)" : "Görsel Analiz (Grafikler)"}</li>` : ""}
       ${dahil("dogrulama") ? `<li><b>09</b>${en ? "Verification & Validation" : "Doğrulama & Geçerleme"}</li>` : ""}
+      ${dahil("izlenebilirlik") ? `<li><b>10</b>${en ? "Traceability & Reproducibility" : "İzlenebilirlik & Tekrar-Üretilebilirlik"}</li>` : ""}
     </ol>
     ${g ? `<div class="toc-fig">${en ? "Figures" : "Şekiller"}<ul>
       <li>${en ? "Fig. 1 — Line schematic" : "Şekil 1 — Hat şeması"}</li>
@@ -1196,6 +1250,9 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
 
   <!-- 9: Doğrulama & Geçerleme (V&V) — motor sertifikasyonu -->
   ${dogrulamaBolum}
+
+  <!-- 10: İzlenebilirlik & Tekrar-Üretilebilirlik — motor sürümü + girdi künyesi + sayı→yöntem izi -->
+  ${izlenebilirlikBolum}
 
   ${cekirdekNot}
 

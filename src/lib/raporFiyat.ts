@@ -22,6 +22,7 @@ export const RAPOR_BOLUM_KREDI = {
   tarife: 1,      // 6. Tarife
   duyarlilik: 1,  // 7. Duyarlılık (tornado)
   dogrulama: 1,   // 9. Doğrulama & Geçerleme (V&V) — motorun analitik referanslara karşı sertifikasyonu
+  izlenebilirlik: 1, // 10. İzlenebilirlik & Tekrar-Üretilebilirlik — motor sürümü + girdi künyesi + her sayının yöntem kaynağı
   grafikler: 3,   // Görsel analiz — tüm şekiller/çizelgeler (Bildfahrplan, hız profili, yük, Sperrzeit, tornado…)
 } as const;
 
@@ -53,5 +54,6 @@ export const RAPOR_BOLUM_AD: Record<RaporBolum, { tr: string; en: string }> = {
   tarife: { tr: "Tarife", en: "Timetable" },
   duyarlilik: { tr: "Duyarlılık (Tornado)", en: "Sensitivity (Tornado)" },
   dogrulama: { tr: "Doğrulama & Geçerleme (V&V)", en: "Verification & Validation" },
+  izlenebilirlik: { tr: "İzlenebilirlik & Tekrar-Üretilebilirlik", en: "Traceability & Reproducibility" },
   grafikler: { tr: "Grafikler (Görsel Analiz)", en: "Charts (Visual Analysis)" },
 };

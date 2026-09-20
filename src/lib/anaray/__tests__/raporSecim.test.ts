@@ -11,6 +11,7 @@ import { hazirHatlar } from "@/lib/anaray/hazirHatlar";
 import { varsayilanConfig, varsayilanIsletme, varsayilanMeta } from "@/lib/anaray/config";
 import { varsayilanArac } from "@/lib/anaray/vehicles";
 import { RAPOR_BOLUMLER, RAPOR_TABAN_KREDI, raporKredi, type RaporSecim } from "@/lib/raporFiyat";
+import { MOTOR_SURUMU } from "@/lib/anaray/surum";
 
 // "mevcut" hattı — kısa (7 ring) → rapor üretimi hızlı; tüm bölümleri (kurplar dâhil,
 // v14) barındırır. Ağır Monte-Carlo'lu "birlesik" varyasyon başına ~7 s sürerdi.
@@ -107,12 +108,31 @@ describe("Rapor bölüm seçimi — her varyasyon kusursuz", () => {
     const yalnizGrafik = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, b === "grafikler"])) as RaporSecim;
     expect(raporKredi(yalnizGrafik)).toBe(RAPOR_TABAN_KREDI + 3);
   });
-  it("raporKredi: grafiksiz tam rapor = taban 3 + 8 bölüm = 11 kredi", () => {
+  it("raporKredi: grafiksiz tam rapor = taban 3 + 9 bölüm = 12 kredi", () => {
     const secim = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, b !== "grafikler"])) as RaporSecim;
-    expect(raporKredi(secim)).toBe(11);
+    expect(raporKredi(secim)).toBe(12);
   });
-  it("raporKredi: her şey açık = 3 + 8 + grafikler(3) = 14 kredi", () => {
+  it("raporKredi: her şey açık = 3 + 9 + grafikler(3) = 15 kredi", () => {
     const secim = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, true])) as RaporSecim;
-    expect(raporKredi(secim)).toBe(14);
+    expect(raporKredi(secim)).toBe(15);
   });
+
+  // İZLENEBİLİRLİK (Büyük sıçrama B) — motor sürümü DAİMA kapakta; seçilince bölüm 10
+  // motor künyesi + girdi digest'i + "sayı → yöntem" izleme tablosuyla render olur.
+  it("izlenebilirlik seçilince bölüm 10 (motor sürümü + izleme tablosu) render olur", () => {
+    const secim = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, b === "izlenebilirlik"])) as RaporSecim;
+    const html = uret(secim);
+    saglamHtml(html);
+    expect(html).toContain("İZLENEBİLİRLİK");
+    expect(html).toContain(`v${MOTOR_SURUMU}`);
+    expect(html).toContain("Çevrim süresi (RTT)"); // izleme tablosu satırı
+    expect(html).toContain("Girdi Künyesi"); // yeniden üretim girdileri tablosu
+  }, TO);
+  it("motor sürümü kapak künyesinde DAİMA (izlenebilirlik kapalı olsa da)", () => {
+    const secim = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, false])) as RaporSecim;
+    const html = uret(secim);
+    expect(html).toContain("Motor sürümü");
+    expect(html).toContain(`v${MOTOR_SURUMU}`);
+    expect(html).not.toContain("İZLENEBİLİRLİK"); // bölüm 10 kapalı → banner yok
+  }, TO);
 });
