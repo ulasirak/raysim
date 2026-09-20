@@ -258,12 +258,6 @@ function StudioIc() {
     [agIstasyonlar, agKoordinat]
   );
   const haritaTam = agIstasyonlar.length > 0 && agKoordSay === agIstasyonlar.length; // hepsi koordinatlı → gerçek harita
-  // Hattın koordinat merkezi (RailsMaps/OSM'i hattın üstüne ortalamak için); yoksa Konya merkezi.
-  const haritaMerkez = useMemo(() => {
-    const pts = agIstasyonlar.map((n) => agKoordinat?.[n]).filter((c): c is { lat: number; lon: number } => !!c && Number.isFinite(c.lat) && Number.isFinite(c.lon));
-    if (!pts.length) return { lat: 37.874, lon: 32.493, z: 13 }; // Konya (Alaaddin)
-    return { lat: pts.reduce((s, c) => s + c.lat, 0) / pts.length, lon: pts.reduce((s, c) => s + c.lon, 0) / pts.length, z: 13 };
-  }, [agIstasyonlar, agKoordinat]);
   // TAM koordinatlıysa İLK yüklemede Harita'yı VARSAYILAN yap (bir kez).
   const agModAyarlandi = useRef(false);
   useEffect(() => {
@@ -666,10 +660,10 @@ function StudioIc() {
               </>
             )}
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              <span style={{ color: brand.muted }}>RailsMaps’te karşılaştır →</span>
-              <a href="https://railsmaps.com/#13/37.870/32.512" target="_blank" rel="noreferrer" className="rounded px-2 py-1 font-semibold no-underline" style={{ border: `1px solid ${brand.border}`, color: brand.ink }}>🚆 Mevcut hat</a>
-              <a href={`https://railsmaps.com/#${haritaMerkez.z}/${haritaMerkez.lat.toFixed(4)}/${haritaMerkez.lon.toFixed(4)}`} target="_blank" rel="noreferrer" className="rounded px-2 py-1 font-semibold no-underline" style={{ border: `1px solid ${CK.amber}`, color: CK.amberInk, background: CK.amberBg }}>🚧 İnşaat halinde</a>
-              <span className="text-[0.66rem]" style={{ color: brand.faint }}>(RailsMaps’te “construction status” filtresini açın)</span>
+              <span style={{ color: brand.muted }}>RailsMaps’te (Türkiye) karşılaştır →</span>
+              <a href="https://railsmaps.com/turkey" target="_blank" rel="noreferrer" className="rounded px-2 py-1 font-semibold no-underline" style={{ border: `1px solid ${brand.border}`, color: brand.ink }}>🚆 Mevcut hat</a>
+              <a href="https://railsmaps.com/turkey" target="_blank" rel="noreferrer" className="rounded px-2 py-1 font-semibold no-underline" style={{ border: `1px solid ${CK.amber}`, color: CK.amberInk, background: CK.amberBg }}>🚧 İnşaat halinde</a>
+              <span className="text-[0.66rem]" style={{ color: brand.faint }}>(RailsMaps’te Konya’ya yakınlaşın; inşaat için sağ panelde <b>“Show under-construction lines”</b> filtresini açın)</span>
             </div>
           </div>
         )}
