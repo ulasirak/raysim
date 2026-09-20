@@ -126,7 +126,7 @@ function StudioIc() {
   const [talepPopup, setTalepPopup] = useState(false); // yolcu verisi yokken talep-öneri uyarısı
   const [agGorunum, setAgGorunum] = useState<"sematik" | "harita">("sematik"); // Canlı Ağ: şematik şerit / coğrafi harita
   const [koordAcik, setKoordAcik] = useState(false); // istasyon koordinat giriş paneli açık mı
-  const [haritaBilgi, setHaritaBilgi] = useState(true); // harita bilgilendirme paneli açık mı
+  const [haritaBilgi, setHaritaBilgi] = useState(false); // harita bilgilendirme paneli (değer önerisi) açık mı — vars. kapalı
   const [gtfsYukle, setGtfsYukle] = useState<"bos" | "yukleniyor" | "hata">("bos"); // gtfsHazir tek-tıkla import durumu
   const [gtfsMesaj, setGtfsMesaj] = useState("");
   const [koHedef, setKoHedef] = useState(0);      // knock-on: birincil gecikme verilen tren
@@ -659,34 +659,64 @@ function StudioIc() {
             style={{ border: `1px solid ${haritaTam ? "#16794C" : brand.border}`, color: haritaTam ? "#16794C" : brand.ink }}>
             ⌖ Koordinat gir {haritaTam ? "✓" : agKoordSay > 0 ? `${agKoordSay}/${agIstasyonlar.length}` : ""}
           </button>
-          {isletme.gtfsHazir && !haritaTam && (
-            <button type="button" onClick={gtfsIceAktar} disabled={gtfsYukle === "yukleniyor"}
-              className="rounded-md px-3 py-1 text-xs font-semibold text-white disabled:opacity-60" style={{ background: "#2E7D57" }}
-              title="Hattın gerçek koordinatlarını (CAD güzergâh + kilometraj, OSM-hizalı) GTFS asset'inden içe aktarır → PROJENE kaydeder (kaynak koduna gömülü değil). Makas/sinyal korunur; yalnız koordinat + geometri eklenir.">
-              {gtfsYukle === "yukleniyor" ? "⟳ İçe aktarılıyor…" : "⬇ Gerçek koordinatlı haritayı içe aktar (CAD/GTFS)"}
-            </button>
-          )}
           {gtfsMesaj && <span className="text-[0.7rem] font-medium" style={{ color: gtfsYukle === "hata" ? CK.red : CK.good }}>{gtfsMesaj}</span>}
-          {agGorunum === "harita" && !haritaTam && (
-            <button type="button" onClick={() => setKoordAcik(true)} className="text-[0.7rem] font-medium underline" style={{ color: CK.amberInk }}>
-              ⚠ {agKoordSay}/{agIstasyonlar.length} durak koordinatlı — TAM olunca gerçek harita çizilir (OSM’den otomatik çekiliyor / “Koordinat gir” ile tamamla). Sahte konum üretilmez.
-            </button>
-          )}
-          {agGorunum === "harita" && haritaTam && isletme.koordinatYaklasik && (
-            <span className="rounded px-2 py-1 text-[0.7rem] font-semibold" style={{ background: CK.amberBg, color: CK.amberInk, border: `1px solid ${CK.amber}` }}
-              title="1. Etap istasyonları OpenStreetMap'te henüz adlı node olarak yok. Konumlar karşı tarafın CAD güzergâh projesinden (HAT1 alignment) + gerçek kilometrajdan üretilip OSM inşaat hattına hizalandı. Hassasiyet ~150m — demo amaçlı. OSM'e istasyonlar eklenince otomatik gerçek veriyle güncellenir.">
-              ⚠ Yaklaşık konum (CAD güzergâh + kilometraj, ±~150m) — demoya özel; OSM gerçek verisi gelince güncellenir
-            </span>
-          )}
-          {agGorunum === "harita" && haritaTam && !isletme.koordinatYaklasik && (!isletme.hatGeometri || isletme.hatGeometri.length === 0) && (
-            <button type="button" onClick={() => setKoordAcik(true)} className="text-[0.7rem] font-medium underline" style={{ color: "#2E7D57" }}>
-              💡 Gerçek kavisli hizayı kalıcılaştır: ⤓ OSM’den çek (ya da GTFS içe aktar)
-            </button>
+          {agGorunum === "harita" && haritaTam && (
+            (isletme.koordinatKaynak === "iceaktar" || isletme.koordinatYaklasik) ? (
+              <span className="rounded px-2 py-1 text-[0.7rem] font-semibold" style={{ background: CK.amberBg, color: CK.amberInk, border: `1px solid ${CK.amber}` }}
+                title="Konumlar CAD güzergâh projesinden (alignment + kilometraj) üretilip OSM inşaat hattına hizalandı; ~150m demo hassasiyeti. OSM'e istasyonlar eklenince otomatik gerçek veriyle güncellenir.">
+                ⚠ Kaynak: CAD/GTFS içe aktarımı — yaklaşık ±~150m
+              </span>
+            ) : (
+              <span className="rounded px-2 py-1 text-[0.7rem] font-semibold" style={{ background: CK.goodBgSoft, color: CK.good, border: `1px solid ${CK.good}` }}
+                title="Durak koordinatları OpenStreetMap'ten gerçek node'lardan çekildi (~10m).">
+                ✓ Kaynak: OpenStreetMap gerçek verisi
+              </span>
+            )
           )}
           {agGorunum === "sematik" && haritaTam && (
             <span className="text-[0.7rem] font-medium" style={{ color: CK.good }}>💡 Bu hattın gerçek haritası hazır — üstteki <b>“Harita”</b> ile gör.</span>
           )}
         </div>
+        {/* KAYNAK — İKİ AYRI YOL (koordinat yoksa): ① OSM'den çek (işleyen hatlar) ② CAD/GTFS içe aktar (OSM'de olmayan). */}
+        {agGorunum === "harita" && !haritaTam && (
+          <div className="mb-3 rounded-lg border p-3" style={{ borderColor: brand.border, background: "#fff" }}>
+            <div className="mb-2 text-[0.78rem] font-semibold" style={{ color: brand.ink }}>
+              Bu hattı gerçek haritada çizmenin <span style={{ color: brand.red }}>iki ayrı yolu</span> var — hattın türüne göre seçin:
+            </div>
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              <div className="flex flex-col rounded-md border p-2.5" style={{ borderColor: brand.border, background: CK.goodBgSoft }}>
+                <div className="text-[0.74rem] font-bold" style={{ color: brand.ink }}>① 🌍 OpenStreetMap’ten çek</div>
+                <div className="mt-0.5 text-[0.68rem] leading-snug" style={{ color: brand.muted }}>
+                  <b>İşleyen / OSM’de kayıtlı</b> hatlar için. Durak koordinatı + gerçek kavisli hiza <b>otomatik</b> gelir (~10&nbsp;m).
+                </div>
+                <div className="mt-1 text-[0.68rem] font-semibold" style={{ color: agKoordSay > 0 ? CK.good : brand.muted }}>
+                  {agKoordSay}/{agIstasyonlar.length} durak OSM’de bulundu{agKoordSay > 0 && agKoordSay < agIstasyonlar.length ? " — kalanı OSM’de yok" : ""} · otomatik çekiliyor
+                </div>
+                <button type="button" onClick={() => setKoordAcik(true)} className="mt-auto self-start rounded px-2.5 py-1 text-[0.7rem] font-semibold" style={{ border: `1px solid ${brand.border}`, color: brand.ink, marginTop: "0.5rem" }}>
+                  ⌖ Elle koordinat gir · ⤓ OSM’den çek
+                </button>
+              </div>
+              <div className="flex flex-col rounded-md border p-2.5" style={{ borderColor: CK.amber, background: CK.amberBg }}>
+                <div className="text-[0.74rem] font-bold" style={{ color: CK.amberInk }}>② 📐 CAD / GTFS içe aktar</div>
+                <div className="mt-0.5 text-[0.68rem] leading-snug" style={{ color: brand.inkSoft }}>
+                  <b>İnşaat halindeki / OSM’de OLMAYAN</b> hatlar için. CAD güzergâh projenizden koordinat + geometri <b>projenize</b> aktarılır (~150&nbsp;m, kaynak koduna gömülü değil).
+                </div>
+                {isletme.gtfsHazir ? (
+                  <button type="button" onClick={gtfsIceAktar} disabled={gtfsYukle === "yukleniyor"}
+                    className="mt-auto self-start rounded px-2.5 py-1 text-[0.7rem] font-semibold text-white disabled:opacity-60" style={{ background: "#2E7D57", marginTop: "0.5rem" }}
+                    title="Bu hattın CAD güzergâhından üretilmiş GTFS'ini indirir → koordinat + geometriyi PROJENE yazar (makas/sinyal korunur).">
+                    {gtfsYukle === "yukleniyor" ? "⟳ İçe aktarılıyor…" : "⬇ Bu hattın CAD verisini içe aktar"}
+                  </button>
+                ) : (
+                  <Link href="/#ringler" className="mt-auto self-start rounded px-2.5 py-1 text-[0.7rem] font-semibold" style={{ border: `1px solid ${CK.amber}`, color: CK.amberInk, marginTop: "0.5rem" }}>
+                    📁 Ringler → Dosyadan İçe Aktar (GTFS / DXF)
+                  </Link>
+                )}
+              </div>
+            </div>
+            <div className="mt-1.5 text-[0.64rem]" style={{ color: brand.faint }}>Sahte konum üretilmez — koordinat yalnız gerçek kaynaktan (OSM ya da CAD) gelir.</div>
+          </div>
+        )}
         {agGorunum === "harita" && (
           <div className="mb-3 rounded-lg border-l-4 px-3 py-2.5 text-[0.72rem] leading-relaxed" style={{ borderColor: brand.ink, background: CK.goodBgSoft, color: brand.inkSoft }}>
             <div className="flex items-center justify-between gap-2">
