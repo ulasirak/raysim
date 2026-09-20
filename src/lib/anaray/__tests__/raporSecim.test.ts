@@ -108,13 +108,13 @@ describe("Rapor bölüm seçimi — her varyasyon kusursuz", () => {
     const yalnizGrafik = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, b === "grafikler"])) as RaporSecim;
     expect(raporKredi(yalnizGrafik)).toBe(RAPOR_TABAN_KREDI + 3);
   });
-  it("raporKredi: grafiksiz tam rapor = taban 3 + 9 bölüm = 12 kredi", () => {
+  it("raporKredi: grafiksiz tam rapor = taban 3 + 10 bölüm = 13 kredi", () => {
     const secim = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, b !== "grafikler"])) as RaporSecim;
-    expect(raporKredi(secim)).toBe(12);
+    expect(raporKredi(secim)).toBe(13);
   });
-  it("raporKredi: her şey açık = 3 + 9 + grafikler(3) = 15 kredi", () => {
+  it("raporKredi: her şey açık = 3 + 10 + grafikler(3) = 16 kredi", () => {
     const secim = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, true])) as RaporSecim;
-    expect(raporKredi(secim)).toBe(15);
+    expect(raporKredi(secim)).toBe(16);
   });
 
   // İZLENEBİLİRLİK (Büyük sıçrama B) — motor sürümü DAİMA kapakta; seçilince bölüm 10
@@ -127,6 +127,18 @@ describe("Rapor bölüm seçimi — her varyasyon kusursuz", () => {
     expect(html).toContain(`v${MOTOR_SURUMU}`);
     expect(html).toContain("Çevrim süresi (RTT)"); // izleme tablosu satırı
     expect(html).toContain("Girdi Künyesi"); // yeniden üretim girdileri tablosu
+  }, TO);
+  it("kilitleme seçilince 3.2 Kilitleme Kontrol Tablosu render olur (makaslı hat)", () => {
+    const secim = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, b === "kilitleme"])) as RaporSecim;
+    const html = uret(secim);
+    saglamHtml(html);
+    expect(html).toContain("Kilitleme Kontrol Tablosu"); // 3.2 alt başlık
+    expect(html).toContain("Ana hat düz geçiş");          // en az bir rota satırı
+  }, TO);
+  it("kilitleme kapalıyken kontrol tablosu render olmaz", () => {
+    const secim = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, b !== "kilitleme"])) as RaporSecim;
+    const html = uret(secim);
+    expect(html).not.toContain("Kilitleme Kontrol Tablosu");
   }, TO);
   it("motor sürümü kapak künyesinde DAİMA (izlenebilirlik kapalı olsa da)", () => {
     const secim = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, false])) as RaporSecim;

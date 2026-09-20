@@ -15,6 +15,7 @@ import { tersIsletmeAnaliz, tavsiyeTramvaySayisi } from "./tersisletme";
 import { bolumDahil, type RaporSecim } from "@/lib/raporFiyat";
 import { dogrulamaCalistir } from "./dogrulama";
 import { MOTOR_SURUMU, MOTOR_ADI, YONTEM_STANDARTLARI } from "./surum";
+import { kilitlemeTablosu, kilitlemeOzet } from "./kilitleme";
 import { seferTersEntegre } from "./seferters";
 import { maksimumTren } from "./kapasite";
 import { tarifeUret } from "./tarife";
@@ -524,12 +525,38 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
     [lang === "en" ? "Chainage span (first – last SG)" : "Metraj aralığı (ilk – son SG)", metrajAralik],
     ...(ortAralik ? [[lang === "en" ? "Mean signal spacing (outbound)" : "Ortalama sinyal aralığı (giden)", `~${ortAralik} m`]] : []),
   ];
+  // 3.2 Kilitleme (Interlocking) Kontrol Tablosu — makaslardan türetilir; seçiliyse eklenir (G).
+  const kilitlemeSub = dahil("kilitleme") ? (() => {
+    const kt = kilitlemeTablosu(rings);
+    if (!kt.length) return "";
+    const ko = kilitlemeOzet(kt);
+    const rows = kt.map((r) => [
+      `<b>${esc(r.makasAd)}</b> <span style="font-size:8pt;color:#6B7480">k${kmFmt(r.km)} · ${esc(r.tipAd)}${r.tcc ? " · TCC" : ""}</span>`,
+      esc(r.rota),
+      r.makasKonum === "Ters" ? (en ? "Reverse" : "Ters") : (en ? "Normal" : "Normal"),
+      esc(r.cakisan),
+      esc(r.flankOverlap),
+      `${r.tanzimSn ? `${r.tanzimSn}` : "—"} / ${r.serbestSn} / <b>${r.kilitSn}</b>`,
+    ]);
+    const giris = en
+      ? `Interlocking control table derived from the line's switch zones: for each route, the required switch position (Normal/Reverse), the conflicting movements it locks, flank/overlap protection and setting/release times. ${ko.makas} switch zones · ${ko.rota} routes · ${ko.manevra} reverse moves · ${ko.tccli} require TCC · max locking ${ko.maxKilit} s.`
+      : `Hattın makas bölgelerinden türetilen güzergâh–kilit tablosu: her rota için gereken makas konumu (Normal/Ters), kilitlenen çakışan hareketler, flank/overlap koruması ve tanzim/serbest süreleri. ${ko.makas} makas bölgesi · ${ko.rota} rota · ${ko.manevra} manevra · ${ko.tccli} TCC · azami kilit ${ko.maxKilit} s.`;
+    const not = en
+      ? "Normal = switch straight (main-line move); Reverse = switch thrown (crossover/manoeuvre). TCC = traffic-control approval required at every pass (facing/siding/depot). Locking = setting (switch throw × count) + route release; consistent with the blocking-time setup/release components."
+      : "Normal = makas düz (ana hat geçişi); Ters = makas dönük (crossover/manevra). TCC = her geçişte trafik kontrol onayı zorunlu (karşılaşmalı/barınma/depo). Kilit = tanzim (makas hareketi × adet) + rota serbest bırakma; blocking-time tanzim/serbest bileşenleriyle tutarlıdır.";
+    return `<h3 class="sub">${en ? "3.2 Interlocking Control Table" : "3.2 Kilitleme Kontrol Tablosu"}</h3>
+  <div class="gs" style="font-size:10pt">${giris}</div>
+  ${tbl([en ? "Switch / location" : "Makas / konum", en ? "Route" : "Rota", en ? "Switch" : "Konum", en ? "Locked (conflicting)" : "Kilitlenen (çakışan)", en ? "Flank / Overlap" : "Flank / Overlap", en ? "Set/Rel/Lock (s)" : "Tanzim/Serbest/Kilit (s)"], rows, { first: true })}
+  <div class="gs" style="font-size:9pt">${not}</div>`;
+  })() : "";
+
   const sinyalBolum = `
   <div class="banner"><span class="no">03</span>${lang === "en" ? "SIGNALLING — SIGNAL LAMPS (SG)" : "SİNYALİZASYON — SİNYAL LAMBALARI (SG)"}</div>
   <p>${lang === "en"
     ? `The line is protected by <b>${sinyalSayisi} signal lamps</b>; each outbound signal is a <b>block boundary</b>. The design layout is summarised below; the full signal schedule (per-lamp chainages) is held in the design model.`
     : `Hat, <b>${sinyalSayisi} adet sinyal lambası</b> ile korunur; her giden yön sinyali bir <b>blok sınırıdır</b>. Aşağıda sinyal düzeninin özeti verilmiştir; tam metraj listesi (sinyal-başı kilometraj) tasarım modelinde tutulur.`}</p>
   ${sinyalListe.length ? tbl(lang === "en" ? ["Indicator", "Value"] : ["Gösterge", "Değer"], sinyalOzetRows, { first: true }) : `<p class="muted">${lang === "en" ? "No signal lamps defined on this line yet (positions are entered in the Ringler module)." : "Bu hatta henüz sinyal lambası tanımlı değil (konumlar Ringler modülünde girilir)."}</p>`}
+  ${kilitlemeSub}
 `;
 
 
@@ -1175,7 +1202,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
       ${dahil("ozet") ? `<li><b>00</b>${en ? "Executive Summary" : "Yönetici Özeti"}</li>` : ""}
       <li><b>01</b>${L.s1}</li>
       ${(dahil("hat") || dahil("kurpKonfor")) ? `<li><b>02</b>${L.s2}<ul>${dahil("hat") ? `<li>2.1 ${en ? "Per-cell Constraint Analysis" : "Ring Bazında Kısıt Analizi"}</li>` : ""}${dahil("kurpKonfor") ? `<li>2.2 ${en ? "Curve & Lateral Comfort" : "Kurp & Yanal Konfor"}</li>` : ""}</ul></li>` : ""}
-      <li><b>03</b>${en ? "Signalling — Signal Lamps (SG)" : "Sinyalizasyon — Sinyal Lambaları (SG)"}</li>
+      <li><b>03</b>${en ? "Signalling — Signal Lamps (SG)" : "Sinyalizasyon — Sinyal Lambaları (SG)"}${dahil("kilitleme") ? `<ul><li>3.2 ${en ? "Interlocking Control Table" : "Kilitleme Kontrol Tablosu"}</li></ul>` : ""}</li>
       ${dahil("kapasite") ? `<li><b>04</b>${L.s4}<ul><li>4.1 Blocking-Time (Sperrzeitentreppe)</li></ul></li>` : ""}
       ${dahil("isletme") ? `<li><b>05</b>${en ? "Operations & Demand Analysis" : "İşletme & Talep Analizi"}<ul>
         <li>5.1 ${en ? "Passenger Load Profiles" : "Yolcu Yük Profilleri"}</li>
