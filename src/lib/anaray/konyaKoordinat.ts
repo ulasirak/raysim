@@ -67,7 +67,17 @@ const NORM_INDEX: Record<string, { lat: number; lon: number }> = Object.fromEntr
   Object.entries(KONYA_TRAM_KOORDINAT).map(([k, v]) => [norm(k), v]),
 );
 
-/** Bir durak adının gerçek koordinatını normalize ederek ara (yoksa undefined). */
+/** Bir durak adının gerçek koordinatını ara: önce tam (normalize) eşleşme; olmazsa
+ *  normalize-substring yedeği (biri diğerini içeriyorsa — "Karşehir" ↔ "Karşehir Caddesi",
+ *  "Selçuklu Belediyesi" ↔ "Belediye"). Kısa/genel adlarda yanlış eşleşmeyi önlemek için
+ *  sorgu en az 5 karakter olmalı. Yoksa undefined. */
 export function konyaKoordinatBul(ad: string): { lat: number; lon: number } | undefined {
-  return NORM_INDEX[norm(ad)];
+  const key = norm(ad);
+  if (NORM_INDEX[key]) return NORM_INDEX[key];
+  if (key.length >= 5) {
+    for (const [k, v] of Object.entries(NORM_INDEX)) {
+      if (k.length >= 5 && (k.includes(key) || key.includes(k))) return v;
+    }
+  }
+  return undefined;
 }
