@@ -317,7 +317,7 @@ const ETAP2_MESAFE = [413, 762, 880, 853, 1011, 1446, 1137, 1062, 1057];
 // v7: sinyalizasyon firması = Aslan Sinyalizasyon (üç hatta da).
 // v8: 4. hat — Bütünleşik Hat (Alaaddin–Stadyum), üç etap tek sürekli hatta birleşik.
 // v9: makas S/X crossover geometrisi + terminal makas sayıları (gerçek CAD/kullanıcı verisi).
-export const HAZIR_VERI_SURUM = 16; // v16: gömülü etap koordinatı KALDIRILDI; 1. Etap gtfsHazir asset (public/konya/etap1.zip) → tek-tıkla içe aktar (koordinat projeye yazılır) → yeniden seed
+export const HAZIR_VERI_SURUM = 17; // v17: etap2 + bütünleşik gtfsHazir (OSM koridoru + kilometraj) → tek-tıkla içe aktar → haritada görünür
 // NOT (model): makasSayisi = MAKAS ADEDİ (S/X), makas MOTORU değil. Her makas ya S-makas (2 motor)
 // ya X-makas (4 motor); motor sayısı içseldir, raporda gösterilmez. CAD'den okurken yakın 2 motor
 // = 1 S-makas, yakın 4 motor = 1 X-makas.
@@ -490,5 +490,9 @@ export function hazirHatlar(): HazirHat[] {
   // kullanıcı "tek tıkla içe aktar" ile gerçek koordinat + geometriyi PROJESİNE (Firestore)
   // yazar — düzenlenebilir, silinebilir, kaynak koduna gömülü değil. Üretim: scripts/konya_gtfs.py.
   etap1.veri.isletme = { ...(etap1.veri.isletme ?? varsayilanIsletme), gtfsHazir: "/konya/etap1.zip" };
+  // 2. Etap (Stadyum→Aslım) OSM inşaat koridoru + kilometraj (Aslım+Otogar 2-çapa) → GTFS.
+  etap2.veri.isletme = { ...(etap2.veri.isletme ?? varsayilanIsletme), gtfsHazir: "/konya/etap2.zip" };
+  // Bütünleşik (30 durak): mevcut OSM + etap1 CAD + etap2 OSM-koridor birleşik GTFS.
+  birlesik.veri.isletme = { ...(birlesik.veri.isletme ?? varsayilanIsletme), gtfsHazir: "/konya/birlesik.zip" };
   return hatlar;
 }
