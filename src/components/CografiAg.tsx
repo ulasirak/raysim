@@ -187,8 +187,9 @@ export function CografiAg({
   // İKİ YÖN ŞERİDİ (gidiş + / dönüş −) — merkez hattı örnekle, İLERİ-yöne dik ±GAP ofset;
   // trenler bu şeritlere oturur → haritada gidiş-geliş (çift hat) açıkça betimlenir.
   const seritler = useMemo(() => {
-    const N = 140;
+    const N = 160;
     const g1: GeoNokta[] = [], g2: GeoNokta[] = [];
+    const aci: number[] = [];      // her örnekte ileri-yön açısı (chevron için)
     for (let i = 0; i <= N; i++) {
       const chain = (line.length * i) / N;
       const base = g.konum(chain);
@@ -201,9 +202,17 @@ export function CografiAg({
       const ox = -ffy / flen, oy = ffx / flen;
       g1.push({ x: cx + ox * GAP, y: cy + oy * GAP });
       g2.push({ x: cx - ox * GAP, y: cy - oy * GAP });
+      aci.push((Math.atan2(ffy, ffx) * 180) / Math.PI);
     }
     const path = (pts: GeoNokta[]) => pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
-    return { gidis: path(g1), donus: path(g2) };
+    // Yön okları (chevron): gidiş → ileri (aci); dönüş → geri (aci+180). Periyodik.
+    const oklarGidis: { x: number; y: number; aci: number }[] = [];
+    const oklarDonus: { x: number; y: number; aci: number }[] = [];
+    for (let i = 10; i < N - 4; i += 22) {
+      oklarGidis.push({ x: g1[i].x, y: g1[i].y, aci: aci[i] });
+      oklarDonus.push({ x: g2[i].x, y: g2[i].y, aci: aci[i] + 180 });
+    }
+    return { gidis: path(g1), donus: path(g2), oklarGidis, oklarDonus };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [g, line.length, gercekGeo, geoSegmentler]);
 
@@ -287,24 +296,39 @@ export function CografiAg({
               {geoYollar.map((y, i) => (
                 <path key={`gc${i}`} d={y.d} fill="none" stroke="#fff" strokeWidth={y.insaat ? 4.5 : 6} strokeLinejoin="round" strokeLinecap="round" />
               ))}
-              {/* gerçek track: operasyonel düz, inşaat kesikli */}
+              {/* gerçek track: operasyonel düz, inşaat kesikli. Yön rayları çizilince taban
+                  soluklaşır (çift-hat baskın olsun); inşaat hatları tam kalır (bilgi). */}
               {geoYollar.map((y, i) => (
                 <path key={`g${i}`} d={y.d} fill="none" stroke={y.insaat ? CK.amber : brand.route} strokeWidth={y.insaat ? 1.8 : 2.6}
-                  strokeOpacity={y.insaat ? 0.8 : 1} strokeDasharray={y.insaat ? "5 4" : undefined} strokeLinejoin="round" strokeLinecap="round" />
+                  strokeOpacity={y.insaat ? 0.8 : (loop && periyot > 0 ? 0.35 : 1)} strokeDasharray={y.insaat ? "5 4" : undefined} strokeLinejoin="round" strokeLinecap="round" />
               ))}
             </>
           ) : (
             <>
               <path d={yolD} fill="none" stroke="#fff" strokeWidth={7} strokeLinejoin="round" strokeLinecap="round" />
-              <path d={yolD} fill="none" stroke={brand.route} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
+              <path d={yolD} fill="none" stroke={brand.route} strokeWidth={3} strokeOpacity={loop && periyot > 0 ? 0.35 : 1} strokeLinejoin="round" strokeLinecap="round" />
             </>
           )}
 
           {/* İki YÖN ŞERİDİ — gidiş (mavi) + / dönüş (turuncu) − : gidiş-geliş çift hat betimi */}
+          {/* İKİ YÖN RAYI (şematik kalitesinde çift hat) — beyaz kılıf + renkli ray (gidiş mavi,
+              dönüş turuncu) + periyodik yön chevron'ları (▶ gidiş / ◀ dönüş). */}
           {loop && periyot > 0 && (
             <>
-              <path d={seritler.gidis} fill="none" stroke={UP_COL} strokeWidth={2} strokeOpacity={0.28} strokeLinecap="round" strokeLinejoin="round" />
-              <path d={seritler.donus} fill="none" stroke={DOWN} strokeWidth={2} strokeOpacity={0.28} strokeLinecap="round" strokeLinejoin="round" />
+              <path d={seritler.gidis} fill="none" stroke="#fff" strokeWidth={3.6} strokeLinecap="round" strokeLinejoin="round" />
+              <path d={seritler.donus} fill="none" stroke="#fff" strokeWidth={3.6} strokeLinecap="round" strokeLinejoin="round" />
+              <path d={seritler.gidis} fill="none" stroke={UP_COL} strokeWidth={1.9} strokeOpacity={0.8} strokeLinecap="round" strokeLinejoin="round" />
+              <path d={seritler.donus} fill="none" stroke={DOWN} strokeWidth={1.9} strokeOpacity={0.8} strokeLinecap="round" strokeLinejoin="round" />
+              {seritler.oklarGidis.map((o, i) => (
+                <g key={`og${i}`} transform={`translate(${o.x.toFixed(1)} ${o.y.toFixed(1)}) rotate(${o.aci.toFixed(1)})`}>
+                  <path d="M-2,-2.4 L2.4,0 L-2,2.4" fill="none" stroke={UP_COL} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
+                </g>
+              ))}
+              {seritler.oklarDonus.map((o, i) => (
+                <g key={`od${i}`} transform={`translate(${o.x.toFixed(1)} ${o.y.toFixed(1)}) rotate(${o.aci.toFixed(1)})`}>
+                  <path d="M-2,-2.4 L2.4,0 L-2,2.4" fill="none" stroke={DOWN} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
+                </g>
+              ))}
             </>
           )}
 
