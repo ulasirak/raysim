@@ -10,12 +10,17 @@ import { useEffect, useState } from "react";
 import { brand } from "@/lib/anaray/brand";
 import type { BolumSlug } from "@/components/TekSayfa";
 
-const ADIMLAR: { slug: BolumSlug; no: string; faz: string; baslik: string; anlatim: string }[] = [
+// `tikla`: bu adıma girince OTO-tıklanacak butonlar (data-sunum anahtarı) — sunum,
+// adımın gerektirdiği görünümü kendisi açar (ör. filoyu onayla → Harita'ya geç).
+// `hedefId`: kaydırma hedefi slug yerine (ör. "canli" = Canlı Ağ/harita paneli).
+const ADIMLAR: { slug: BolumSlug; hedefId?: string; tikla?: string[]; no: string; faz: string; baslik: string; anlatim: string }[] = [
   { slug: "ringler", no: "1", faz: "KUR", baslik: "Hattı kur", anlatim: "Durak arası ringleri, makas bölgelerini ve kurpları gerçek CAD verisiyle tanımla — buradaki her veri kalıcıdır." },
   { slug: "sefer", no: "2", faz: "ANALİZ ET", baslik: "Simüle et", anlatim: "Hattı canlı ağda çalıştır: mikroskobik fizik, ulaşılan sefer aralığı, ters işletme ve tarife tek akışta." },
-  { slug: "sistem", no: "3", faz: "SİSTEM", baslik: "Kapasite & sinyalizasyon", anlatim: "UIC 406 kapasite, blocking-time, doğrulama (V&V), kilitleme kontrol tablosu ve karar-destek — hepsi bir arada." },
-  { slug: "belgeler", no: "4", faz: "BELGELE", baslik: "Raporla", anlatim: "Analizden profesyonel, izlenebilir PDF tasarım dokümantasyonu üret — her sayı girdi+yöntem künyeli." },
-  { slug: "karsilastirma", no: "5", faz: "KARŞILAŞTIR", baslik: "Karar ver", anlatim: "Senaryoları/projeleri yan yana koy — objektif, sayıya dayalı karar desteği." },
+  { slug: "sefer", hedefId: "canli", tikla: ["filo-onayla", "harita"], no: "3", faz: "HARİTA", baslik: "Gerçek harita & gidiş-geliş", anlatim: "Aynı ağı GERÇEK haritada gör: işleyen hatta koordinatlar OpenStreetMap'ten OTOMATİK gelir; inşaat/yeni hatta CAD güzergâhından tek tıkla içe aktarılır. Trenler çift-ray gidiş-geliş (mavi gidiş · turuncu dönüş) + yön oklarıyla akar; tekerlek/butonlarla yakınlaş-uzaklaş, sürükleyerek gez." },
+  { slug: "sefer", hedefId: "canli", tikla: ["harita"], no: "4", faz: "HARİTA", baslik: "Hız sınırı & kurp konfor", anlatim: "Haritada makas/geçit/kurp hız sınırları km/h ile işaretli; kurp konfor önerileri HER İSTASYONDAN alınan yolcu sayısına (doluluk) eşlenir. Bir işarete TIKLA → hız sınırı + öneri popup'ı; Ringler'de düzenle, anında haritaya yansır." },
+  { slug: "sistem", no: "5", faz: "SİSTEM", baslik: "Kapasite & sinyalizasyon", anlatim: "UIC 406 kapasite, blocking-time, doğrulama (V&V), kilitleme kontrol tablosu ve karar-destek — hepsi bir arada." },
+  { slug: "belgeler", no: "6", faz: "BELGELE", baslik: "Raporla", anlatim: "Analizden profesyonel, izlenebilir PDF tasarım dokümantasyonu üret — her sayı girdi+yöntem künyeli." },
+  { slug: "karsilastirma", no: "7", faz: "KARŞILAŞTIR", baslik: "Karar ver", anlatim: "Senaryoları/projeleri yan yana koy — objektif, sayıya dayalı karar desteği." },
 ];
 
 export function SunumModu() {
@@ -33,11 +38,18 @@ export function SunumModu() {
     return () => clearTimeout(id);
   }, [aktif, oto, i]);
 
-  // Adım değişince ilgili bölüme kaydır.
+  // Adım değişince: adımın gerektirdiği butonları OTO-tıkla (ör. filoyu onayla → Harita'ya
+  // geç), sonra ilgili bölüme/haritaya kaydır (görünüm render'ı için küçük gecikme).
   useEffect(() => {
     if (!aktif) return;
-    const el = document.getElementById(ADIMLAR[i].slug);
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const a = ADIMLAR[i];
+    for (const key of a.tikla ?? []) {
+      document.querySelector<HTMLButtonElement>(`[data-sunum="${key}"]`)?.click();
+    }
+    const t = setTimeout(() => {
+      document.getElementById(a.hedefId ?? a.slug)?.scrollIntoView({ behavior: "smooth", block: a.hedefId ? "center" : "start" });
+    }, a.tikla?.length ? 260 : 0);
+    return () => clearTimeout(t);
   }, [aktif, i]);
 
   // Klavye: ← → gezinir, Esc çıkar.

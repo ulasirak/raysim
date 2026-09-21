@@ -496,7 +496,7 @@ function StudioIc() {
                 <span className="text-sm" style={{ color: brand.inkSoft }}>araç · ⌈çevrim {sure(maks.cevrimSuresi)} ÷ hedef {Math.round(hedefHeadwaySn)} s⌉{talepFilosu > 0 && talepFilosu >= oneriTramvay ? " · talep de bunu gerektiriyor" : ""}</span>
               </div>
             </div>
-            <button type="button" onClick={() => { setFilo(oneriTramvay); patchIsletme({ filoOnaylandi: true }); }}
+            <button type="button" data-sunum="filo-onayla" onClick={() => { setFilo(oneriTramvay); patchIsletme({ filoOnaylandi: true }); }}
               className="rounded-lg px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: brand.ink }}>✓ Onayla — filoyu öneriye eşitle</button>
           </div>
           <div className="mt-2 text-xs" style={{ color: brand.muted }}>
@@ -703,9 +703,9 @@ function StudioIc() {
             girilince gerçek konumda çizer; eksikse ölçekli plana düşer. Koordinat kalıcı. */}
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <div className="inline-flex overflow-hidden rounded-md" style={{ border: `1px solid ${brand.border}` }}>
-            <button type="button" onClick={() => setAgGorunum("sematik")} className="px-3 py-1 text-xs font-semibold"
+            <button type="button" data-sunum="sematik" onClick={() => setAgGorunum("sematik")} className="px-3 py-1 text-xs font-semibold"
               style={{ background: agGorunum === "sematik" ? brand.ink : "transparent", color: agGorunum === "sematik" ? "#fff" : brand.muted }}>Şematik</button>
-            <button type="button" onClick={() => setAgGorunum("harita")} className="px-3 py-1 text-xs font-semibold"
+            <button type="button" data-sunum="harita" onClick={() => setAgGorunum("harita")} className="px-3 py-1 text-xs font-semibold"
               style={{ background: agGorunum === "harita" ? brand.ink : "transparent", color: agGorunum === "harita" ? "#fff" : brand.muted }}>Harita</button>
           </div>
           <button type="button" onClick={() => setKoordAcik((o) => !o)} className="rounded-md px-3 py-1 text-xs font-semibold"
