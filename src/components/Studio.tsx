@@ -20,7 +20,7 @@ import { cakismaTespit } from "@/lib/anaray/cakisma";
 import { gecikmeYayilim } from "@/lib/anaray/gecikmeYayilim";
 import { ortakKesimAnaliz } from "@/lib/anaray/ortakKesim";
 import { tersIsletmeAnaliz } from "@/lib/anaray/tersisletme";
-import { kurpKonforAnaliz, type KurpKonforSatir } from "@/lib/anaray/ring";
+import { haritaKisitlari, type HaritaKisit } from "@/lib/anaray/ring";
 import { dwellUygulanmisRings, maxYolcuKapasitesi, netTabanAlani } from "@/lib/anaray/yolcu";
 import { kmh, km, sure } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
@@ -194,13 +194,13 @@ function StudioIc() {
   // sayısıyla (tersRapor.duraklar[i].doluluk) eşlenir → kurpta ayakta-yolcu konfor uyarısı
   // + önerilen ≤hız. Haritada: aşım (geometri fazla) her zaman; kalabalık YALNIZ yolcu verisi
   // varken (doluluğa bağlı) gösterilir — verisizken düz konfor-bandı kurpları kirletmesin.
-  const kurpKonfor = useMemo<KurpKonforSatir[]>(() => {
-    // Doluluk HER ZAMAN geçilir (tersRapor duraklarından — gerçek yolcu ya da rol/toplam-talep
-    // tahmini). Talep yoksa doluluk≈0 → kalabalık tetiklenmez (kirletmez). Kalabalık uyarısı
-    // yalnız doluluk kalabalikEsik'i (%85) aşınca çıkar → gerçek yolcu sayısına eşli.
+  // HARİTA HIZ KISITLARI — makas/geçit/tehlike/kurp: hat-boyu mutlak km + hız sınırı (km/h).
+  // Kurplarda doluluk HER İSTASYONDAN alınan yolcu sayısıyla (tersRapor.duraklar[i].doluluk)
+  // eşlenir → ayakta-yolcu konfor önerisi. Haritada tıklanabilir işaret + popup.
+  const hizKisitlari = useMemo<HaritaKisit[]>(() => {
     const dolulukByRing: Record<string, number> = {};
     if (tersRapor) rings.forEach((r, i) => { const d = tersRapor.duraklar[i]; if (d) dolulukByRing[r.id] = d.doluluk; });
-    return kurpKonforAnaliz(rings, cfg, dolulukByRing).filter((k) => k.seviye !== "ok");
+    return haritaKisitlari(rings, cfg, dolulukByRing);
   }, [rings, cfg, tersRapor]);
   // Önerilen tramvay = ⌈RTT ÷ hedef headway⌉ (kural); yolcu girildiyse talep de artırabilir.
   const oneriTramvay = maks.gecerli ? Math.max(1, Math.ceil(maks.cevrimSuresi / hedefHeadwaySn), talepFilosu) : 0;
@@ -800,7 +800,7 @@ function StudioIc() {
         )}
         {simHazir ? (
           agGorunum === "harita" ? (
-            <CografiAg line={line} loop={loopVeri} features={hatOzellik} koordinat={agKoordinat} geometri={isletme.hatGeometri} blocks={canliGidis.blocks} ters={tersRapor} kurplar={kurpKonfor} yolcuVeriVar={yolcuVeriVar} autoOynat={otoOynat} />
+            <CografiAg line={line} loop={loopVeri} features={hatOzellik} koordinat={agKoordinat} geometri={isletme.hatGeometri} blocks={canliGidis.blocks} ters={tersRapor} hizKisitlari={hizKisitlari} yolcuVeriVar={yolcuVeriVar} autoOynat={otoOynat} />
           ) : (
             <LiveNetwork autoOynat={otoOynat} network={network} route={route} line={line} blocks={canliGidis.blocks}
               up={canliGidis.trains} down={donusSim.trains} tMax={Math.max(canliGidis.tMax, donusSim.tMax)} trainLen={stock.length}

@@ -384,6 +384,36 @@ export function kurpKonforAnaliz(
   return out;
 }
 
+/** HARİTA hız-kısıt işareti: makas/geçit/tehlike/kurp — mutlak kilometraj + hız sınırı (km/h)
+ *  + (kurpsa) yolcu-doluluğuna eşli konfor önerisi. Haritada tıklanabilir işaret + popup için. */
+export interface HaritaKisit {
+  tur: KisitTur; id: string; ad: string;
+  konum: number;  // m — hat başından mutlak kilometraj
+  vmax: number;   // km/h — bu kısıtın hız sınırı
+  detay: string;  // "15 km/h · S-makas" vb.
+  oneriVKmh?: number | null;         // kurp konfor önerisi (ayakta yolcu) — varsa
+  konforMesaj?: string;              // kurp konfor mesajı
+  seviye?: KurpKonforSeviye;         // kurp: ok/kalabalik/asim
+}
+
+/** Tüm hız kısıtlarını hat-boyu MUTLAK kilometrajla verir (ringKisitDizisi birleşik) +
+ *  kurplarda doluluğa (istasyon yolcusu) eşli konfor önerisini ekler. Haritada gösterim için. */
+export function haritaKisitlari(rings: DurakArasiRing[], cfg: SimConfig = BELGE, dolulukByRing?: Record<string, number>): HaritaKisit[] {
+  const konfor = new Map<string, KurpKonforSatir>();
+  for (const k of kurpKonforAnaliz(rings, cfg, dolulukByRing)) konfor.set(k.kurpId, k);
+  const out: HaritaKisit[] = [];
+  let off = 0;
+  for (const r of rings) {
+    for (const k of ringKisitDizisi(r)) {
+      const vmax = Math.round(parseFloat(k.detay) || 0);
+      const kk = k.tur === "kurp" ? konfor.get(k.id) : undefined;
+      out.push({ tur: k.tur, id: k.id, ad: k.ad, konum: off + k.konum, vmax, detay: k.detay, oneriVKmh: kk?.oneriVKmh, konforMesaj: kk?.mesaj, seviye: kk?.seviye });
+    }
+    off += r.uzunluk;
+  }
+  return out.sort((a, b) => a.konum - b.konum);
+}
+
 // ————————————————————————————————————————————————
 // Senaryo hesabı (worst / best / nominal + timing)
 // ————————————————————————————————————————————————

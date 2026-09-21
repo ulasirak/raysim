@@ -15,7 +15,7 @@ import { cografiGeometri, type GeoNokta } from "@/lib/anaray/cografi";
 import { sampleLoop, HIZLAR, UP_COL, DOWN, GAP, DURUM_STIL } from "@/components/liveNetworkGeo";
 import { TrenDetayKutusu } from "@/components/liveNetworkKartlar";
 import type { TersIsletmeRapor } from "@/lib/anaray/tersisletme";
-import type { KurpKonforSatir } from "@/lib/anaray/ring";
+import type { HaritaKisit } from "@/lib/anaray/ring";
 import { saat } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
@@ -35,7 +35,7 @@ export function CografiAg({
   geometri,
   blocks,
   ters,
-  kurplar = [],
+  hizKisitlari = [],
   yolcuVeriVar = false,
   autoOynat = false,
 }: {
@@ -47,9 +47,9 @@ export function CografiAg({
   blocks?: number[];
   /** Ters işletme analizi — kısa-dönüş önerilen makaslar + filo etkisi harita OVERLAY'i. */
   ters?: TersIsletmeRapor | null;
-  /** Kurp konfor tavsiyeleri — her ring doluluğu (istasyon yolcusu) ile eşlenmiş; kmMutlak'ta
-   *  ⤾ işaretlenir + önerilen ≤hız. Aşım (geometri fazla) + kalabalık (ayakta yolcu konforu). */
-  kurplar?: KurpKonforSatir[];
+  /** Hız kısıtları (makas/geçit/tehlike/kurp) — mutlak km + hız sınırı (km/h); kurplarda
+   *  yolcu-doluluğuna eşli konfor önerisi. Haritada tıklanabilir işaret + popup. */
+  hizKisitlari?: HaritaKisit[];
   /** Yolcu verisi girili mi? (kurp kalabalık uyarısı buna bağlı — bilgilendirme). */
   yolcuVeriVar?: boolean;
   /** Hattın GERÇEK track geometrisi (müşteri verisi: GTFS shape vb.). Verilmezse Konya
@@ -62,6 +62,7 @@ export function CografiAg({
   const [oynat, setOynat] = useState(autoOynat);
   const [hiz, setHiz] = useState(15);
   const [secili, setSecili] = useState<number | null>(null); // tıklanan tren (detay kutusu)
+  const [seciliKisit, setSeciliKisit] = useState<number | null>(null); // tıklanan hız kısıtı (popup)
   const [tersGoster, setTersGoster] = useState(true); // ters işletme overlay'i açık mı
   const tersMakaslar = (ters?.makaslar ?? []).filter((m) => m.kisaDonusOnerilir);
   const periyot = loop?.periyot ?? 0;
@@ -134,15 +135,22 @@ export function CografiAg({
       const base = g.konum(chain);
       const s0 = gercekGeo ? snapRay(base.x, base.y) : null;
       const cx = s0 ? s0.x : base.x, cy = s0 ? s0.y : base.y;
+      // OK yönü (seyahat): gidiş ileri, dönüş geri → ok doğru yöne baksın.
       const ilerideChain = gidis ? Math.min(line.length, chain + 4) : Math.max(0, chain - 4);
       const b1 = g.konum(ilerideChain);
       const s1 = gercekGeo ? snapRay(b1.x, b1.y) : null;
       const fx = (s1 ? s1.x : b1.x) - cx, fy = (s1 ? s1.y : b1.y) - cy;
       const aci = (Math.atan2(fy, fx) * 180) / Math.PI;
-      // Çift-şerit ofseti: ray yönüne DİK, yönle işaretli.
-      const rad = (aci * Math.PI) / 180, ox = -Math.sin(rad), oy = Math.cos(rad);
+      // ÇİFT ŞERİT ofseti: DAİMA ileri (chain artan) yöne DİK — gidiş +şerit, dönüş −şerit.
+      // (Eski hata: ofset seyahat yönüne göreydi → dönüşün ters açısı yüzünden iki tren aynı
+      //  şeride düşüyordu. Artık ileri-yön DİK'i sabit → iki yön GERÇEKTEN ayrı şeritte.)
+      const bf = g.konum(Math.min(line.length, chain + 4));
+      const sf = gercekGeo ? snapRay(bf.x, bf.y) : null;
+      const ffx = (sf ? sf.x : bf.x) - cx, ffy = (sf ? sf.y : bf.y) - cy;
+      const flen = Math.hypot(ffx, ffy) || 1;
+      const pox = -ffy / flen, poy = ffx / flen;
       const yon = gidis ? 1 : -1;
-      out.push({ no: i + 1, pt: { x: cx + ox * GAP * yon, y: cy + oy * GAP * yon }, aci, gidis, durum: smp.durum, ad: smp.ad, v: smp.v, fp: chain, s: smp.s });
+      out.push({ no: i + 1, pt: { x: cx + pox * GAP * yon, y: cy + poy * GAP * yon }, aci, gidis, durum: smp.durum, ad: smp.ad, v: smp.v, fp: chain, s: smp.s });
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -175,6 +183,29 @@ export function CografiAg({
   }, [blocks, trenler, g, gercekGeo, geoSegmentler]);
 
   const yolD = g.yol.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+
+  // İKİ YÖN ŞERİDİ (gidiş + / dönüş −) — merkez hattı örnekle, İLERİ-yöne dik ±GAP ofset;
+  // trenler bu şeritlere oturur → haritada gidiş-geliş (çift hat) açıkça betimlenir.
+  const seritler = useMemo(() => {
+    const N = 140;
+    const g1: GeoNokta[] = [], g2: GeoNokta[] = [];
+    for (let i = 0; i <= N; i++) {
+      const chain = (line.length * i) / N;
+      const base = g.konum(chain);
+      const s0 = gercekGeo ? snapRay(base.x, base.y) : null;
+      const cx = s0 ? s0.x : base.x, cy = s0 ? s0.y : base.y;
+      const bf = g.konum(Math.min(line.length, chain + 4));
+      const sf = gercekGeo ? snapRay(bf.x, bf.y) : null;
+      const ffx = (sf ? sf.x : bf.x) - cx, ffy = (sf ? sf.y : bf.y) - cy;
+      const flen = Math.hypot(ffx, ffy) || 1;
+      const ox = -ffy / flen, oy = ffx / flen;
+      g1.push({ x: cx + ox * GAP, y: cy + oy * GAP });
+      g2.push({ x: cx - ox * GAP, y: cy - oy * GAP });
+    }
+    const path = (pts: GeoNokta[]) => pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+    return { gidis: path(g1), donus: path(g2) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [g, line.length, gercekGeo, geoSegmentler]);
 
   // Çizim yolları (geoProjeksiyon'dan path string'i) — gerçek kavisli hiza.
   const geoYollar = useMemo(
@@ -233,15 +264,16 @@ export function CografiAg({
         </div>
       )}
 
-      {/* Kurp konfor tavsiyeleri — her istasyon yolcusuna (doluluk) eşli (overlay özeti) */}
-      {kurplar.length > 0 && (() => {
-        const asim = kurplar.filter((k) => k.seviye === "asim").length;
-        const kalabalik = kurplar.length - asim;
+      {/* Hız sınırı & kurp konfor özeti — haritada km/h işaretleri tıklanabilir (popup) */}
+      {hizKisitlari.length > 0 && (() => {
+        const konforlu = hizKisitlari.filter((k) => k.tur === "kurp" && (k.seviye === "asim" || k.seviye === "kalabalik"));
+        const asim = konforlu.filter((k) => k.seviye === "asim").length;
+        const kritik = asim > 0;
         return (
-          <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-3 py-2 text-[0.72rem]" style={{ background: asim > 0 ? "#FDECEC" : CK.amberBg, border: `1px solid ${asim > 0 ? CK.red : CK.amber}`, color: asim > 0 ? CK.red : CK.amberInk }}>
-            <span className="font-semibold">⤾ Kurp konfor:</span>
-            <span><b>{kurplar.length}</b> kurpta öneri (haritada ⤾){asim > 0 ? ` · ${asim} aşım (hız geometri için fazla)` : ""}{kalabalik > 0 ? ` · ${kalabalik} ayakta-yolcu konforu` : ""}</span>
-            <span style={{ color: brand.muted }}>{kalabalik > 0 ? (yolcuVeriVar ? "her istasyon yolcu sayısına göre eşlendi" : "istasyon talep doluluğuna göre eşlendi") : "geometri hızına göre"}</span>
+          <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-3 py-2 text-[0.72rem]" style={{ background: kritik ? "#FDECEC" : CK.goodBgSoft, border: `1px solid ${kritik ? CK.red : brand.border}`, color: kritik ? CK.red : brand.inkSoft }}>
+            <span className="font-semibold" style={{ color: brand.ink }}>⏱ Hız sınırı önerileri:</span>
+            <span><b>{hizKisitlari.length}</b> kısıt haritada işaretli (km/h — <b>tıkla</b> → detay){konforlu.length > 0 ? ` · ${konforlu.length} kurpta konfor önerisi` : ""}{asim > 0 ? ` (${asim} aşım)` : ""}</span>
+            {konforlu.length > 0 && <span style={{ color: brand.muted }}>{yolcuVeriVar ? "kurplar istasyon yolcu sayısına eşli" : "kurplar talep doluluğuna eşli"}</span>}
           </div>
         );
       })()}
@@ -268,13 +300,21 @@ export function CografiAg({
             </>
           )}
 
+          {/* İki YÖN ŞERİDİ — gidiş (mavi) + / dönüş (turuncu) − : gidiş-geliş çift hat betimi */}
+          {loop && periyot > 0 && (
+            <>
+              <path d={seritler.gidis} fill="none" stroke={UP_COL} strokeWidth={2} strokeOpacity={0.28} strokeLinecap="round" strokeLinejoin="round" />
+              <path d={seritler.donus} fill="none" stroke={DOWN} strokeWidth={2} strokeOpacity={0.28} strokeLinecap="round" strokeLinejoin="round" />
+            </>
+          )}
+
           {/* Blok işgali — işgal edilen blok rayı kırmızı (şematikle aynı) */}
           {blokDoluluk.map((d, i) => (
             <path key={`bd${i}`} d={d} fill="none" stroke={CK.red} strokeWidth={5} strokeOpacity={0.32} strokeLinecap="round" />
           ))}
 
-          {/* Özellikler (makas/sinyal/geçit) */}
-          {features.map((f, i) => featureSimge(f, i))}
+          {/* Sinyal lambaları (makas/geçit artık aşağıdaki hız-kısıt işaretinde km/h ile). */}
+          {features.map((f, i) => (f.kind === "sinyal" ? featureSimge(f, i) : null))}
 
           {/* Ters işletme: kısa dönüş önerilen istasyon makasları ↺ (overlay) */}
           {tersGoster && tersMakaslar.map((m, i) => {
@@ -290,21 +330,25 @@ export function CografiAg({
             );
           })}
 
-          {/* Kurp konfor tavsiyeleri — ⤾ kmMutlak'ta; renk seviyeye göre (aşım kırmızı,
-              kalabalık amber); önerilen ≤hız etiketi + tooltip (yolcu doluluğu dâhil). */}
-          {kurplar.map((k, i) => {
-            const b = g.konum(k.kmMutlak);
+          {/* HIZ SINIRI İŞARETLERİ (makas/geçit/tehlike/kurp) — tip ikonu + km/h; kurpta konfor
+              önerisi (≤hız) + renk (aşım kırmızı, kalabalık amber). TIKLA → popup (detay). */}
+          {hizKisitlari.map((k, i) => {
+            const b = g.konum(k.konum);
             const sp = gercekGeo ? snapRay(b.x, b.y) : null;
             const p = sp ? { x: sp.x, y: sp.y } : b;
-            const renk = k.seviye === "asim" ? CK.red : CK.amber;
+            const kritik = k.seviye === "asim";
+            const konfor = k.seviye === "kalabalik";
+            const renk = kritik ? CK.red : k.tur === "makas" ? CK.gold : k.tur === "tehlike" ? CK.red : k.tur === "hemzemin" ? CK.orange : konfor ? CK.amberInk : brand.muted;
+            const ikon = k.tur === "makas" ? "◆" : k.tur === "hemzemin" ? "✕" : k.tur === "tehlike" ? "!" : "⤾";
+            const gHiz = k.tur === "kurp" && k.oneriVKmh != null ? `≤${k.oneriVKmh}` : `${k.vmax}`;
+            const sec = seciliKisit === i;
             return (
-              <g key={`kurp${i}`} style={{ cursor: "help" }}>
-                <circle cx={p.x} cy={p.y} r={6} fill="#fff" stroke={renk} strokeWidth={1.8} />
-                <text x={p.x} y={p.y + 3.2} textAnchor="middle" fontSize={8.5} fontWeight={800} fill={renk}>⤾</text>
-                {k.oneriVKmh != null && (
-                  <text x={p.x} y={p.y - 8.5} textAnchor="middle" fontSize={6.8} fontWeight={700} fill={renk}>≤{k.oneriVKmh}</text>
-                )}
-                <title>{`${k.kurpAd} (R${Math.round(k.yaricap)} m${k.dever > 0 ? `, dever ${Math.round(k.dever * 1000)} mm` : ""}): ${k.mesaj}`}</title>
+              <g key={`hk${i}`} onClick={() => { setSeciliKisit(sec ? null : i); setSecili(null); }} style={{ cursor: "pointer" }}>
+                {sec && <circle cx={p.x} cy={p.y} r={10} fill="none" stroke={renk} strokeWidth={1.3} strokeOpacity={0.6} />}
+                <circle cx={p.x} cy={p.y} r={6} fill="#fff" stroke={renk} strokeWidth={sec ? 2.2 : 1.6} />
+                <text x={p.x} y={p.y + 2.8} textAnchor="middle" fontSize={7.5} fontWeight={800} fill={renk}>{ikon}</text>
+                <text x={p.x} y={p.y - 8} textAnchor="middle" fontSize={7} fontWeight={800} fill={renk}>{gHiz}</text>
+                <title>{`${k.ad}: ${k.detay}${k.tur === "kurp" && k.konforMesaj ? " — " + k.konforMesaj : ""} · tıkla → detay`}</title>
               </g>
             );
           })}
@@ -358,14 +402,37 @@ export function CografiAg({
         />
       )}
 
+      {/* Tıklanan hız kısıtının popup detayı (hız sınırı önerisi + kurp konfor) */}
+      {seciliKisit != null && hizKisitlari[seciliKisit] && (() => {
+        const k = hizKisitlari[seciliKisit];
+        const turAd = k.tur === "makas" ? "Makas (turnout)" : k.tur === "hemzemin" ? "Hemzemin geçit" : k.tur === "tehlike" ? "Tehlike noktası" : "Kurp (yatay kavis)";
+        const kritik = k.seviye === "asim", konfor = k.seviye === "kalabalik";
+        const renk = kritik ? CK.red : konfor ? CK.amberInk : brand.ink;
+        return (
+          <div className="mt-2 rounded-lg border-l-4 px-3 py-2.5 text-[0.75rem]" style={{ borderColor: renk, background: "#fff", boxShadow: "0 2px 12px rgba(0,0,0,0.10)" }}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-bold" style={{ color: renk }}>⏱ {k.ad} — {turAd}</span>
+              <button type="button" onClick={() => setSeciliKisit(null)} className="text-[0.7rem] underline" style={{ color: brand.muted }}>kapat ✕</button>
+            </div>
+            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5" style={{ color: brand.inkSoft }}>
+              <span>Konum: <b>{(k.konum / 1000).toFixed(2)} km</b></span>
+              <span>Hız sınırı: <b>{k.vmax} km/h</b></span>
+              {k.tur === "kurp" && k.oneriVKmh != null && <span>Önerilen (konfor): <b style={{ color: renk }}>≤{k.oneriVKmh} km/h</b></span>}
+            </div>
+            <div className="mt-1" style={{ color: k.tur === "kurp" && (kritik || konfor) ? renk : brand.muted }}>
+              {k.tur === "kurp" && k.konforMesaj ? k.konforMesaj : k.detay}
+            </div>
+            <div className="mt-1 text-[0.68rem]" style={{ color: brand.faint }}>Bu kısıtı <b>Ringler (KUR)</b>'da düzenleyebilirsiniz — değişiklik haritaya anında yansır.</div>
+          </div>
+        );
+      })()}
+
       {/* Lejant */}
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.65rem]" style={{ color: brand.muted }}>
-        <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm" style={{ background: UP_COL }} /> gidiş</span>
-        <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm" style={{ background: DOWN }} /> dönüş</span>
-        <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rotate-45" style={{ background: CK.gold }} /> makas</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm" style={{ background: UP_COL }} /> gidiş ▶</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm" style={{ background: DOWN }} /> ◀ dönüş</span>
         <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full" style={{ background: CK.good }} /> sinyal</span>
-        <span className="flex items-center gap-1"><span style={{ color: CK.red }}>✕</span> geçit</span>
-        {kurplar.length > 0 && <span className="flex items-center gap-1"><span style={{ color: CK.amber, fontWeight: 800 }}>⤾</span> kurp konfor (≤hız)</span>}
+        {hizKisitlari.length > 0 && <span className="flex items-center gap-1"><span className="inline-flex h-3 w-3 items-center justify-center rounded-full text-[0.55rem] font-bold" style={{ border: `1.4px solid ${CK.gold}`, color: CK.gold }}>◆</span> hız sınırı km/h — <b>tıkla → detay</b></span>}
         <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5" style={{ background: brand.ink }} /> parklanma</span>
         {gercekGeo && (
           <>
