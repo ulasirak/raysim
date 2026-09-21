@@ -7,7 +7,7 @@
 // akar; makas/sinyal/geçit gerçek kilometrajlarında işaretlenir. Kendi zamanlayıcı
 // sürücüsü (setInterval) — donma önlemi: ilerletme RENDER'da değil zamanlayıcıda.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Line } from "@/lib/anaray/types";
 import type { LoopYorunge } from "@/lib/anaray/signalling";
 import type { HatOzellik } from "@/lib/anaray/network";
@@ -64,6 +64,10 @@ export function CografiAg({
   const [secili, setSecili] = useState<number | null>(null); // tıklanan tren (detay kutusu)
   const [seciliKisit, setSeciliKisit] = useState<number | null>(null); // tıklanan hız kısıtı (popup)
   const [tersGoster, setTersGoster] = useState(true); // ters işletme overlay'i açık mı
+  // ZOOM/PAN — görüntü kutusu (null = tam sığdır). Tekerlek + butonlar + sürükle.
+  const [view, setView] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const panRef = useRef<{ sx: number; sy: number; vx: number; vy: number; moved: boolean } | null>(null);
   const tersMakaslar = (ters?.makaslar ?? []).filter((m) => m.kisaDonusOnerilir);
   const periyot = loop?.periyot ?? 0;
 
@@ -235,6 +239,50 @@ export function CografiAg({
     return <g key={`f${idx}`} stroke={CK.red} strokeWidth={1.4} strokeLinecap="round"><line x1={p.x - 3} y1={p.y - 3} x2={p.x + 3} y2={p.y + 3} /><line x1={p.x + 3} y1={p.y - 3} x2={p.x - 3} y2={p.y + 3} /><title>{f.ad}</title></g>;
   };
 
+  // ——— ZOOM / PAN ———
+  // Hat değişince (g.vb boyutu değişir) zoom'u sıfırla — render-zamanı türetilmiş state deseni.
+  const vbSig = `${g.vb.w}x${g.vb.h}`;
+  const [viewSig, setViewSig] = useState(vbSig);
+  let etkinView = view;
+  if (viewSig !== vbSig) { setViewSig(vbSig); setView(null); etkinView = null; }
+  const vb = etkinView ?? { x: 0, y: 0, w: g.vb.w, h: g.vb.h };
+  const enAz = g.vb.w * 0.18; // en fazla ~5.5× yakınlaştırma
+  const justPanned = useRef(false);
+  const [panning, setPanning] = useState(false);
+  useEffect(() => {
+    const el = svgRef.current; if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const r = el.getBoundingClientRect();
+      const mx = (e.clientX - r.left) / r.width, my = (e.clientY - r.top) / r.height;
+      setView((v) => {
+        const c = v ?? { x: 0, y: 0, w: g.vb.w, h: g.vb.h };
+        const f = e.deltaY > 0 ? 1.18 : 1 / 1.18;
+        const nw = Math.min(g.vb.w, Math.max(enAz, c.w * f));
+        const nh = nw * (g.vb.h / g.vb.w);
+        return { x: c.x + mx * c.w - mx * nw, y: c.y + my * c.h - my * nh, w: nw, h: nh };
+      });
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [g.vb.w, g.vb.h]);
+  const zoomBtn = (f: number) => setView(() => {
+    const c = vb;
+    const nw = Math.min(g.vb.w, Math.max(enAz, c.w * f));
+    const nh = nw * (g.vb.h / g.vb.w);
+    return { x: c.x + c.w / 2 - nw / 2, y: c.y + c.h / 2 - nh / 2, w: nw, h: nh };
+  });
+  const panDown = (e: React.PointerEvent) => { panRef.current = { sx: e.clientX, sy: e.clientY, vx: vb.x, vy: vb.y, moved: false }; setPanning(true); };
+  const panMove = (e: React.PointerEvent) => {
+    const p = panRef.current, el = svgRef.current; if (!p || !el) return;
+    const r = el.getBoundingClientRect();
+    if (Math.abs(e.clientX - p.sx) + Math.abs(e.clientY - p.sy) > 3) p.moved = true;
+    setView({ x: p.vx - (e.clientX - p.sx) / r.width * vb.w, y: p.vy - (e.clientY - p.sy) / r.height * vb.h, w: vb.w, h: vb.h });
+  };
+  const panUp = () => { if (panRef.current?.moved) { justPanned.current = true; setTimeout(() => { justPanned.current = false; }, 60); } panRef.current = null; setPanning(false); };
+  const yakinMi = vb.w < g.vb.w - 1;
+
   return (
     <div>
       {/* Kip rozeti + kontroller */}
@@ -287,8 +335,15 @@ export function CografiAg({
         );
       })()}
 
-      <div className="overflow-hidden rounded-lg border" style={{ borderColor: brand.border, background: g.coordluMu ? "#F2F6F4" : "#FBFCFD" }}>
-        <svg viewBox={`0 0 ${g.vb.w} ${g.vb.h}`} width="100%" style={{ display: "block" }} role="img" aria-label="Coğrafi canlı ağ">
+      <div className="relative overflow-hidden rounded-lg border" style={{ borderColor: brand.border, background: g.coordluMu ? "linear-gradient(160deg,#F5F9F7 0%,#E9F1EE 55%,#DEE9E5 100%)" : "linear-gradient(160deg,#FBFCFD 0%,#EEF3F6 100%)" }}>
+        {/* Zoom kontrolleri (tekerlekle de yakınlaş/uzaklaş; sürükleyerek kaydır) */}
+        <div className="absolute right-2 top-2 z-10 flex flex-col overflow-hidden rounded-md border shadow-sm" style={{ borderColor: brand.border, background: "rgba(255,255,255,0.92)" }}>
+          <button type="button" onClick={() => zoomBtn(1 / 1.4)} title="Yakınlaştır" className="px-2.5 py-1 text-base font-bold leading-none hover:bg-slate-100" style={{ color: brand.ink }}>+</button>
+          <button type="button" onClick={() => zoomBtn(1.4)} title="Uzaklaştır" className="border-t px-2.5 py-1 text-base font-bold leading-none hover:bg-slate-100" style={{ color: brand.ink, borderColor: brand.border }}>−</button>
+          {yakinMi && <button type="button" onClick={() => setView(null)} title="Tam sığdır" className="border-t px-2.5 py-1 text-[0.65rem] leading-none hover:bg-slate-100" style={{ color: brand.muted, borderColor: brand.border }}>⤢</button>}
+        </div>
+        <svg ref={svgRef} viewBox={`${vb.x.toFixed(1)} ${vb.y.toFixed(1)} ${vb.w.toFixed(1)} ${vb.h.toFixed(1)}`} width="100%" style={{ display: "block", cursor: panning ? "grabbing" : "grab", touchAction: "none" }} role="img" aria-label="Coğrafi canlı ağ"
+          onPointerDown={panDown} onPointerMove={panMove} onPointerUp={panUp} onPointerLeave={panUp}>
           {/* İz — gerçek OSM geometrisi varsa onu (kavisli hiza), yoksa düz istasyon-çizgisi */}
           {gercekGeo ? (
             <>
@@ -367,7 +422,7 @@ export function CografiAg({
             const gHiz = k.tur === "kurp" && k.oneriVKmh != null ? `≤${k.oneriVKmh}` : `${k.vmax}`;
             const sec = seciliKisit === i;
             return (
-              <g key={`hk${i}`} onClick={() => { setSeciliKisit(sec ? null : i); setSecili(null); }} style={{ cursor: "pointer" }}>
+              <g key={`hk${i}`} onClick={() => { if (justPanned.current) return; setSeciliKisit(sec ? null : i); setSecili(null); }} style={{ cursor: "pointer" }}>
                 {sec && <circle cx={p.x} cy={p.y} r={10} fill="none" stroke={renk} strokeWidth={1.3} strokeOpacity={0.6} />}
                 <circle cx={p.x} cy={p.y} r={6} fill="#fff" stroke={renk} strokeWidth={sec ? 2.2 : 1.6} />
                 <text x={p.x} y={p.y + 2.8} textAnchor="middle" fontSize={7.5} fontWeight={800} fill={renk}>{ikon}</text>
@@ -400,7 +455,7 @@ export function CografiAg({
             const sec = secili === i;
             const stil = DURUM_STIL[tr.durum];
             return (
-              <g key={`t${i}`} onClick={() => setSecili(sec ? null : i)} style={{ cursor: "pointer" }}>
+              <g key={`t${i}`} onClick={() => { if (justPanned.current) return; setSecili(sec ? null : i); }} style={{ cursor: "pointer" }}>
                 <circle cx={tr.pt.x} cy={tr.pt.y} r={7} fill="transparent" />
                 <circle cx={tr.pt.x} cy={tr.pt.y} r={sec ? 9 : 7} fill="none" stroke={stil.renk} strokeWidth={sec ? 2.2 : 1.4} strokeOpacity={0.9} />
                 <g transform={`translate(${tr.pt.x.toFixed(1)} ${tr.pt.y.toFixed(1)}) rotate(${tr.aci.toFixed(1)})`}>
