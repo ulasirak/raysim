@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from "react";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { parseGtfsZip, gtfsRotalar, gtfsYonler, gtfsHatKur, type GtfsFeed } from "@/lib/anaray/gtfs";
+import { osmHatKur, type OsmHatSonuc, type OsmSegment } from "@/lib/anaray/osmHat";
 import { railmlHatKur } from "@/lib/anaray/railml";
 import { dxfAyristir } from "@/lib/anaray/dxf";
 import { shapefileGeometri } from "@/lib/anaray/shapefile";
@@ -31,8 +32,16 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false }:
   /** Gömülü (ör. "+ Yeni hat" modalı): daima YENİ hat modu, mod seçici + details sarmalı yok. */
   gomulu?: boolean;
 }) {
-  const [kaynak, setKaynak] = useState<"gtfs" | "railml" | "cad" | null>(null);
+  const [kaynak, setKaynak] = useState<"gtfs" | "railml" | "cad" | "osm" | null>(null);
   const [feed, setFeed] = useState<GtfsFeed | null>(null);
+  // OSM / Şehir hattı kaynağı
+  type OsmRota = { id: number; ref: string; ad: string; from: string; to: string; network: string; operator: string; renk: string; tip: string };
+  const [osmSehir, setOsmSehir] = useState("");
+  const [osmRotalar, setOsmRotalar] = useState<OsmRota[]>([]);
+  const [osmSecili, setOsmSecili] = useState<number[]>([]);
+  const [osmFull, setOsmFull] = useState<OsmHatSonuc | null>(null);
+  const [osmDurum, setOsmDurum] = useState<"" | "ara" | "getir">("");
+  const [osmMesaj, setOsmMesaj] = useState<string | null>(null);
   const [railmlSonuc, setRailmlSonuc] = useState<HatSonuc | null>(null);
   const [dxfGeo, setDxfGeo] = useState<CadGeometri | null>(null);
   const [shpBuf, setShpBuf] = useState<Uint8Array | null>(null);   // shapefile ham zip (ad alanı değişince yeniden ayrıştırılır)
@@ -50,7 +59,42 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false }:
   const rotalar = useMemo(() => (feed ? gtfsRotalar(feed) : []), [feed]);
   const yonler = useMemo(() => (feed && routeId ? gtfsYonler(feed, routeId) : []), [feed, routeId]);
 
-  const sifirla = () => { setKaynak(null); setFeed(null); setRailmlSonuc(null); setDxfGeo(null); setShpBuf(null); setAdAlani(""); setAdAlanlari([]); setShpUyari([]); setEsle({ guzergahKatman: [], durakKatman: [] }); setRouteId(""); setDir(""); setHata(null); };
+  const sifirla = () => { setKaynak(null); setFeed(null); setRailmlSonuc(null); setDxfGeo(null); setShpBuf(null); setAdAlani(""); setAdAlanlari([]); setShpUyari([]); setEsle({ guzergahKatman: [], durakKatman: [] }); setRouteId(""); setDir(""); setHata(null); setOsmRotalar([]); setOsmSecili([]); setOsmFull(null); setOsmMesaj(null); };
+
+  // —— OSM / Şehir hattı ——
+  const osmAra = async () => {
+    const sehir = osmSehir.trim();
+    if (!sehir) return;
+    sifirla(); setKaynak("osm"); setOsmDurum("ara"); setOsmMesaj(null);
+    try {
+      const r = await fetch("/api/geometri/osm/rota", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mod: "ara", sehir }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.hata || "Aranamadı.");
+      const list: OsmRota[] = Array.isArray(j.rotalar) ? j.rotalar : [];
+      setOsmRotalar(list);
+      setOsmMesaj(list.length ? `${list.length} raylı rota bulundu — hattı kur için seç.` : "Bu bölgede OSM'de tram/hafif-raylı/metro rotası bulunamadı.");
+    } catch (e) {
+      setOsmMesaj(e instanceof Error ? e.message : "Aranamadı.");
+    } finally { setOsmDurum(""); }
+  };
+  const osmSec = (id: number) => setOsmSecili((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  const osmGetir = async () => {
+    if (osmSecili.length === 0) return;
+    setOsmDurum("getir"); setOsmMesaj(null); setOsmFull(null);
+    try {
+      const r = await fetch("/api/geometri/osm/rota", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mod: "hat", relIds: osmSecili }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.hata || "Getirilemedi.");
+      const segs: OsmSegment[] = (Array.isArray(j.segmentler) ? j.segmentler : []).map((s: { ad: string; duraklar: OsmSegment["duraklar"]; geometri: [number, number][] }) => ({ ad: s.ad, duraklar: s.duraklar ?? [], geometri: s.geometri ?? [] }));
+      const sec = osmRotalar.filter((x) => osmSecili.includes(x.id));
+      const net = sec[0]?.network || "";
+      const hatAd = sec.length === 1 ? sec[0].ad : (net ? `${net} — birleşik hat` : "OSM birleşik hat");
+      const full = osmHatKur(segs, hatAd);
+      setOsmFull(full);
+    } catch (e) {
+      setOsmMesaj(e instanceof Error ? e.message : "Getirilemedi.");
+    } finally { setOsmDurum(""); }
+  };
 
   // CAD geometrisi: DXF doğrudan; shapefile ham zip'ten (ad alanı seçimiyle) türetilir.
   const geo = useMemo<CadGeometri | null>(() => {
@@ -119,7 +163,12 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false }:
     } catch (e) { return { sonuc: null, hata: e instanceof Error ? e.message : "Hat kurulamadı." }; }
   }, [geo, esle, dosyaAd, shpUyari]);
 
-  const sonuc: HatSonuc | null = kaynak === "gtfs" ? gtfsSonuc : kaynak === "railml" ? railmlSonuc : cadSonuc.sonuc;
+  // OSM: lib çıktısını (lat/lon duraklar + geometri) ayrı taşırız; önizleme yol/durak (x/y) HatSonuc'a.
+  const osmSonuc: HatSonuc | null = osmFull
+    ? { rings: osmFull.rings, ad: osmFull.ad, durakSayisi: osmFull.durakSayisi, toplamKm: osmFull.toplamKm, uyarilar: osmFull.uyarilar, yol: osmFull.yol, duraklar: osmFull.onizleme }
+    : null;
+
+  const sonuc: HatSonuc | null = kaynak === "gtfs" ? gtfsSonuc : kaynak === "railml" ? railmlSonuc : kaynak === "osm" ? osmSonuc : cadSonuc.sonuc;
   const kurHata = kaynak === "cad" ? cadSonuc.hata : null;
 
   const katmanTikla = (k: string, alan: "guzergahKatman" | "durakKatman") =>
@@ -137,8 +186,14 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false }:
       for (const d of gtfsFull.duraklar) koord[d.ad] = { lat: d.lat, lon: d.lon };
     }
     // GTFS shape'i varsa GERÇEK track geometrisini de geçir → harita kavisli hizada çizer.
-    const geometri = kaynak === "gtfs" && gtfsFull?.geometri && gtfsFull.geometri.length >= 2
+    let geometri = kaynak === "gtfs" && gtfsFull?.geometri && gtfsFull.geometri.length >= 2
       ? [{ noktalar: gtfsFull.geometri }] : undefined;
+    // OSM: gerçek durak koordinatları + rota geometrisi → harita gerçek hizada çizer.
+    if (kaynak === "osm" && osmFull) {
+      koord = {};
+      for (const d of osmFull.duraklar) koord[d.ad] = { lat: d.lat, lon: d.lon };
+      if (osmFull.geometri.length >= 2) geometri = [{ noktalar: osmFull.geometri }];
+    }
     await onIceAktar(sonuc.rings, sonuc.ad, mod, koord, geometri);
   };
 
@@ -154,8 +209,49 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false }:
           <input type="file" accept=".zip,.xml,.railml,.dxf,application/zip,text/xml,application/xml,image/vnd.dxf" className="hidden"
             onChange={(e) => { dosyaSec(e.target.files?.[0]); e.target.value = ""; }} />
         </label>
-        {dosyaAd && <span className="ml-2 text-xs" style={{ color: brand.muted }}>{dosyaAd}{kaynak ? ` · ${kaynak.toUpperCase()}` : ""}{mesgul ? " · okunuyor…" : ""}</span>}
+        {dosyaAd && <span className="ml-2 text-xs" style={{ color: brand.muted }}>{dosyaAd}{kaynak && kaynak !== "osm" ? ` · ${kaynak.toUpperCase()}` : ""}{mesgul ? " · okunuyor…" : ""}</span>}
         {hata && <p className="mt-2 text-sm" style={{ color: brand.red }}>⚠ {hata}</p>}
+
+        {/* OSM / Şehir hattı — sistemin kendi çekmesi (dosya gerektirmez) */}
+        <div className="mt-3 rounded-md border p-3" style={{ borderColor: brand.border, background: "#F7FBFC" }}>
+          <div className="mb-1.5 flex items-center gap-2">
+            <span className="text-sm font-semibold" style={{ color: brand.ink }}>🌍 OSM'den şehir hattı</span>
+            <span className="text-xs" style={{ color: brand.muted }}>dosya gerekmez — şehir yaz, sistem OpenStreetMap'ten gerçek hattı çeker</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input value={osmSehir} onChange={(e) => setOsmSehir(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); osmAra(); } }}
+              placeholder="Şehir (ör. Samsun, Antalya, Eskişehir)"
+              className="min-w-[220px] flex-1 rounded border px-2 py-1.5 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+            <button type="button" onClick={osmAra} disabled={osmDurum !== "" || !osmSehir.trim()}
+              className="rounded-md border px-3 py-1.5 text-sm font-medium disabled:opacity-40" style={{ borderColor: brand.borderStrong, color: brand.ink }}>
+              {osmDurum === "ara" ? "aranıyor…" : "🔎 Rotaları ara"}
+            </button>
+          </div>
+          {osmMesaj && <p className="mt-2 text-xs" style={{ color: /bulunamadı|Overpass|yoğun|çekile|Aranamadı|Getirilemedi/.test(osmMesaj) ? brand.red : brand.muted }}>{osmMesaj}</p>}
+
+          {osmRotalar.length > 0 && (
+            <div className="mt-3">
+              <div className="mb-1 field-label">Rota(lar) seç <span style={{ color: brand.muted }}>(birden çok seçersen uçlarından birleştirilir)</span></div>
+              <div className="flex max-h-48 flex-col gap-1 overflow-auto rounded border p-2" style={{ borderColor: brand.border }}>
+                {osmRotalar.map((r) => (
+                  <label key={r.id} className="flex cursor-pointer items-start gap-2 text-sm">
+                    <input type="checkbox" checked={osmSecili.includes(r.id)} onChange={() => osmSec(r.id)} className="mt-1" />
+                    <span>
+                      <b style={{ color: brand.ink }}>{r.ref ? `${r.ref}: ` : ""}{r.ad}</b>
+                      {(r.from || r.to) && <span className="text-xs" style={{ color: brand.muted }}> · {r.from}{r.to ? ` → ${r.to}` : ""}</span>}
+                      {r.tip !== "tram" && <span className="ml-1 text-xs" style={{ color: brand.muted }}>[{r.tip}]</span>}
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <button type="button" onClick={osmGetir} disabled={osmDurum !== "" || osmSecili.length === 0}
+                className="mt-2 rounded-md px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40" style={{ background: brand.ink }}>
+                {osmDurum === "getir" ? "getiriliyor…" : `⬇ Hattı kur (${osmSecili.length} rota)`}
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* GTFS: rota + yön */}
         {kaynak === "gtfs" && feed && (
