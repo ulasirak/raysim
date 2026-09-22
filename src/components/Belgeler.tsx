@@ -72,7 +72,7 @@ export function Belgeler() {
   // istemcide (hazirHatlar) yüklenir, paylaşım açık/kapalı fark etmez → QR ASLA ana
   // sayfaya düşmez, daima o hattın canlı sim sayfasını açar. Diğer (kullanıcı) projeleri
   // için paylaşım açıkken `?proje=<id>` kullanılır.
-  const hazirKey = aktifId?.match(/^hazir_(mevcut|etap1|etap2|birlesik)_/)?.[1];
+  const hazirKey = aktifId?.match(/^hazir_(mevcut|etap1|etap2|birlesik|samsun)_/)?.[1];
   const qrUrl = typeof window === "undefined" ? ""
     : hazirKey ? `${window.location.origin}/canli?hat=${hazirKey}`
     : (aktifId && paylasimAcik ? `${window.location.origin}/canli?proje=${aktifId}` : "");

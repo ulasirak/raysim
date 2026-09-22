@@ -18,6 +18,7 @@ import { loopToHat } from "../hatsim";
 import { loopYorunge } from "../signalling";
 import { raporHTML } from "../rapor";
 import { gtfsIhrac, parseGtfsZip, gtfsRotalar, gtfsYonler, gtfsHatKur } from "../gtfs";
+import { hazirHatlar } from "../hazirHatlar";
 import { varsayilanConfig, varsayilanIsletme, varsayilanMeta } from "../config";
 import { varsayilanArac } from "../vehicles";
 import type { Line } from "../types";
@@ -148,6 +149,43 @@ describe("Samsun — GTFS dışa→içe roundtrip (içe/dışa aktarma)", () => 
     const geri = gtfsHatKur(feed, rota.id, yon.dir);
     expect(geri.durakSayisi).toBe(hat.durakSayisi);
     expect(geri.rings.length).toBe(rings.length);
+  });
+});
+
+describe("Samsun — HAZIR HAT olarak sistemde (teslim edilen ürün)", () => {
+  const h = hazirHatlar().find((x) => x.key === "samsun");
+  it("5. hazır hat mevcut, 35 istasyon / 34 ring, uçlar doğru", () => {
+    expect(h).toBeTruthy();
+    const rr = h!.veri.rings;
+    expect(rr).toHaveLength(34);
+    const duraklar = ringDuraklari(rr).map((d) => d.ad);
+    expect(duraklar[0]).toBe("Eczaneler");
+    expect(duraklar[duraklar.length - 1]).toBe("Tekkeköy");
+    expect(duraklar).toContain("Gar");
+  });
+  it("koordinat GÖMÜLÜ değil, kendi Samsun bbox'ından canlı OSM çeker (Konya bbox DEĞİL)", () => {
+    const bb = h!.veri.isletme?.osmBbox;
+    expect(bb).toBeTruthy();
+    expect(bb![0]).toBeGreaterThan(41);   // Samsun enlemi (~41,2–41,4), Konya (~37,8) değil
+    expect(h!.veri.isletme?.istasyonKoordinat ?? {}).toEqual({}); // gömülü koordinat yok
+  });
+  it("uçlarda U-dönüş + Gar crossover makası var (mühendislik varsayılanı)", () => {
+    const rr = h!.veri.rings;
+    expect(rr[0].makaslar.length).toBeGreaterThanOrEqual(1);
+    expect(rr[rr.length - 1].makaslar.length).toBeGreaterThanOrEqual(1);
+    expect(rr[20].makaslar.length).toBeGreaterThanOrEqual(1); // Gar civarı
+  });
+  it("hazır hat tüm ana motorlardan geçer (geçerli, PASS, NaN yok)", () => {
+    const rr = h!.veri.rings, st = h!.veri.arac!, ic = { ...varsayilanIsletme, ...h!.veri.isletme };
+    for (const r of rr) expect(ringDogrula(r, cfg)).toEqual([]);
+    const mk = maksimumTren(rr, st, cfg, ic);
+    expect(mk.gecerli).toBe(true);
+    expect(finite(mk.cevrimSuresi) && mk.cevrimSuresi > 0).toBe(true);
+    const dv = dogrulamaCalistir(rr, st, cfg, ic);
+    expect(dv.sonuclar.find((x) => x.kategori === "Kapasite")?.gecti).toBe(true);
+    const html = raporHTML(h!.veri.meta!, cfg, rr, st, "tr", 8, ic, "", []);
+    expect(html.includes("NaN")).toBe(false);
+    expect(html).toContain("Samsun");
   });
 });
 

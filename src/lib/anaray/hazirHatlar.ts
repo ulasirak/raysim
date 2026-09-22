@@ -23,6 +23,7 @@ import {
   type DurakArasiRing, type MakasTip, type HemzeminTip,
 } from "./ring";
 import { varsayilanConfig, varsayilanMeta, varsayilanIsletme, VARSAYILAN_TERMINAL, type ProjeMeta, type TerminalConfig } from "./config";
+import { varsayilanArac } from "./vehicles";
 import type { RollingStock } from "./types";
 // GERÇEK CAD kurpları (yarıçaplar) AYRI VERİ DOSYASINDA — kaynak koda gömülü değil.
 // Üretim: güzergah DWG → accoreconsole DXF → TT_EM_SERİT/TT_KBT-HAT ekseni → scripts/kurp_cikar.py.
@@ -317,16 +318,45 @@ const ETAP2_MESAFE = [413, 762, 880, 853, 1011, 1446, 1137, 1062, 1057];
 // v7: sinyalizasyon firması = Aslan Sinyalizasyon (üç hatta da).
 // v8: 4. hat — Bütünleşik Hat (Alaaddin–Stadyum), üç etap tek sürekli hatta birleşik.
 // v9: makas S/X crossover geometrisi + terminal makas sayıları (gerçek CAD/kullanıcı verisi).
-export const HAZIR_VERI_SURUM = 17; // v17: etap2 + bütünleşik gtfsHazir (OSM koridoru + kilometraj) → tek-tıkla içe aktar → haritada görünür
+export const HAZIR_VERI_SURUM = 18; // v18: 5. hat — SAMSUN TRAMVAYI (SAMULAŞ), sistemin OSM'den-hat-kur yetkinliğiyle üretildi (gerçek OSM durak+mesafe, koordinat/geometri canlı OSM bbox'tan)
 // NOT (model): makasSayisi = MAKAS ADEDİ (S/X), makas MOTORU değil. Her makas ya S-makas (2 motor)
 // ya X-makas (4 motor); motor sayısı içseldir, raporda gösterilmez. CAD'den okurken yakın 2 motor
 // = 1 S-makas, yakın 4 motor = 1 X-makas.
 
 export interface HazirHat {
-  key: "mevcut" | "etap1" | "etap2" | "birlesik";
+  key: "mevcut" | "etap1" | "etap2" | "birlesik" | "samsun";
   ad: string;
   veri: ProjeVerisi;
 }
+
+// ————————————————————————————————————————————————
+// ⑤ SAMSUN TRAMVAYI — GERÇEK OSM verisi (SAMULAŞ · OMÜ Rektörlük ↔ Gar ↔ Tekkeköy)
+// ————————————————————————————————————————————————
+// Bu hat, RaySim'in KENDİ "OSM'den hat kur" yetkinliğiyle üretildi (src/lib/anaray/osmHat.ts +
+// /api/geometri/osm/rota): OpenStreetMap tram route relation'larından (rel 15351430 "1: OMÜ
+// Rektörlük→Gar" + rel 15351429 "2: Gar→Tekkeköy") SIRALI duraklar çekilip ortak Gar durağından
+// birleştirildi; durak-arası mesafeler istasyon koordinatlarından haversine ile hesaplandı
+// (~27,0 km, 35 istasyon). Koordinat GÖMÜLÜ DEĞİL — Konya "Mevcut" hattı gibi osmBbox'tan CANLI
+// çekilir (istasyon adları OSM'le birebir → tam eşleşme) + gerçek kavisli geometri. Makas/sinyal
+// OSM'de yok → yalnız iki uçta (OMÜ/Eczaneler & Tekkeköy) mühendislik varsayılanı U-dönüş +
+// Gar aktarma kavşağında crossover; kullanıcı Ringler'de düzenler. © OpenStreetMap · ODbL.
+const SAMSUN_DURAK = [
+  "Eczaneler", "Körfez", "Pelitköy", "Kurupelit", "Yeni Mahalle", "Atakent", "Çobanlı",
+  "Ömürevleri", "Türk-İş", "Mimar Sinan", "Atakum Belediyesi", "Denizevleri", "Karayolları",
+  "Güzel Sanatlar", "Baruthane - Kalkancı", "Samsun Müzesi / Fener", "Gençlik Parkı", "Liman",
+  "Büyük Cami / Opera", "Cumhuriyet Meydanı", "Gar", "Kılıçdede", "Samsunspor", "Belediye Evleri",
+  "Mavi Işıklar", "Balıkçı Barınağı", "Asarağaç", "Kirazlık", "Örnek Sanayi", "İlkadım Sanayi",
+  "19 Mayıs Sanayi", "Organize Sanayi", "Kerimbey", "Cumhuriyet", "Tekkeköy",
+];
+// GERÇEK durak arası mesafeler (m) — OSM istasyon koordinatlarından haversine.
+const SAMSUN_MESAFE = [
+  536, 631, 769, 483, 1060, 817, 603, 1041, 1017, 483,
+  865, 827, 681, 714, 1605, 672, 624, 449, 617, 534,
+  665, 1023, 894, 721, 702, 2521, 475, 663, 637, 670,
+  630, 449, 867, 1096,
+];
+// Samsun OSM bölgesi [güney,batı,kuzey,doğu] — koordinat + geometri buradan CANLI çekilir.
+const SAMSUN_BBOX: [number, number, number, number] = [41.205, 36.205, 41.391, 36.473];
 
 export function hazirHatlar(): HazirHat[] {
   const cfg = { ...varsayilanConfig };
@@ -478,13 +508,46 @@ export function hazirHatlar(): HazirHat[] {
     },
   };
 
+  // ⑤ SAMSUN TRAMVAYI — sistemin OSM'den-hat-kur yetkinliğiyle üretilmiş gerçek hat.
+  // Makas/sinyal OSM'de yok → yalnız iki uçta U-dönüş (mühendislik varsayılanı) + Gar
+  // aktarma kavşağında crossover. Koordinat/geometri SAMSUN_BBOX'tan CANLI çekilir.
+  const samsunEk: Record<number, RingEk> = {
+    0: { fromDepot: true, makas: [{ tip: "udonus", konumOran: 0.35, sayi: 1, crossover: "s" }], dwell: 40 },   // OMÜ/Eczaneler ucu — terminus U-dönüş
+    20: { makas: [{ tip: "karsilasmali", konumOran: 0.06, sayi: 1, crossover: "s" }] },                        // Gar aktarma kavşağı — crossover
+    33: { makas: [{ tip: "udonus", konumOran: 0.7, sayi: 1, crossover: "s" }], dwell: 40 },                    // Tekkeköy ucu — terminus U-dönüş
+  };
+  const samsunRings = hatKur(SAMSUN_DURAK, SAMSUN_MESAFE, samsunEk);
+  const samsun: HazirHat = {
+    key: "samsun",
+    ad: "Samsun Tramvayı — OMÜ Rektörlük–Tekkeköy (OSM)",
+    veri: {
+      rings: samsunRings, cfg, arac: varsayilanArac,
+      isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 8, turnaroundDk: 4, terminalBas: term(1, 0), terminalSon: term(1, 0) },
+      meta: meta({
+        projeAdi: "Samsun Tramvayı Sinyalizasyon (OMÜ Rektörlük – Tekkeköy)",
+        hatAdi: "Samsun Tramvayı · OMÜ Rektörlük (Eczaneler) – Tekkeköy (~27,0 km · 35 istasyon)",
+        idare: "Samsun Büyükşehir Belediyesi · SAMULAŞ",
+        yuklenici: "Yüklenici Firma",
+        musavir: "Müşavir Firma",
+        sinyalizasyonFirmasi: "RaySim",
+        dokumanNo: "SAM-TRM-AKS-001",
+        revizyon: "v1.0 — RaySim 'OSM'den hat kur' yetkinliğiyle üretildi: OpenStreetMap tram rotalarından (rel 15351430 + 15351429) sıralı durak; mesafeler istasyon koordinatlarından haversine; koordinat/geometri canlı OSM'den (© OpenStreetMap · ODbL). Makas/sinyal OSM'de yok → uçlarda U-dönüş + Gar crossover mühendislik varsayılanı.",
+        hazirlayan: "Tasarım Mühendisi",
+        onaylayan: "Firma Yetkilisi",
+        sunumModu: false,
+      }),
+    },
+  };
+
   const hatlar = [mevcut, etap1, etap2, birlesik];
-  // GÖMÜLÜ koordinat YOK — hazır hatlara Konya OSM bölgesi (bbox) verilir; koordinat +
+  // GÖMÜLÜ koordinat YOK — hazır hatlara OSM bölgesi (bbox) verilir; koordinat +
   // geometri ilk yükte SUNUCU tarafı OSM'den (Vercel IP) çekilir + kalıcı cache'lenir.
   const KONYA_BBOX: [number, number, number, number] = [37.78, 32.38, 38.08, 32.72];
   for (const h of hatlar) {
     h.veri.isletme = { ...(h.veri.isletme ?? varsayilanIsletme), osmBbox: KONYA_BBOX };
   }
+  // Samsun kendi bbox'ını alır (Konya değil) → OMÜ↔Tekkeköy koridoru canlı OSM'den.
+  samsun.veri.isletme = { ...(samsun.veri.isletme ?? varsayilanIsletme), osmBbox: SAMSUN_BBOX };
   // 1. Etap istasyonları OSM'de YOK → GÖMÜLÜ koordinat KOYMUYORUZ. Bunun yerine CAD güzergâh
   // (HAT1 alignment) + kilometrajdan üretilmiş GTFS asset'i (public/konya/etap1.zip) verilir;
   // kullanıcı "tek tıkla içe aktar" ile gerçek koordinat + geometriyi PROJESİNE (Firestore)
@@ -494,5 +557,5 @@ export function hazirHatlar(): HazirHat[] {
   etap2.veri.isletme = { ...(etap2.veri.isletme ?? varsayilanIsletme), gtfsHazir: "/konya/etap2.zip" };
   // Bütünleşik (30 durak): mevcut OSM + etap1 CAD + etap2 OSM-koridor birleşik GTFS.
   birlesik.veri.isletme = { ...(birlesik.veri.isletme ?? varsayilanIsletme), gtfsHazir: "/konya/birlesik.zip" };
-  return hatlar;
+  return [...hatlar, samsun];
 }
