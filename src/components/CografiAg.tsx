@@ -283,6 +283,34 @@ export function CografiAg({
   const panUp = () => { if (panRef.current?.moved) { justPanned.current = true; setTimeout(() => { justPanned.current = false; }, 60); } panRef.current = null; setPanning(false); };
   const yakinMi = vb.w < g.vb.w - 1;
 
+  // İSTASYON ETİKET YERLEŞİMİ — üst üste binmeyi önle: snap'lenmiş konum + çakışmasız
+  // etiket yeri (üst→alt aday; ikisi de çakışırsa etiket GİZLENİR, nokta kalır). Memoize:
+  // sim her karede yeniden koşmasın (snapRay + O(n²) çakışma yalnız hat değişince).
+  // Ölçek = viewBox / tam-genişlik (1 = uzak, <1 = yakın). Etiketler EKRAN-SABİT boyutlu
+  // (fontSize × ölçek) → yakınlaştırınca viewBox-biriminde küçülür, daha çoğu çakışmadan sığar.
+  const etiketOlcek = Math.min(1, vb.w / g.vb.w);
+  const etiketFz = 7.5 * etiketOlcek;
+  const istYerlesim = useMemo(() => {
+    const yerlesmis: { x0: number; y0: number; x1: number; y1: number }[] = [];
+    const carpisir = (b: { x0: number; y0: number; x1: number; y1: number }) =>
+      yerlesmis.some((o) => !(b.x1 < o.x0 || b.x0 > o.x1 || b.y1 < o.y0 || b.y0 > o.y1));
+    const gap = 8 * etiketOlcek, gapAlt = 13 * etiketOlcek, h = 8 * etiketOlcek;
+    return g.istasyonlar.map((s) => {
+      const sp = gercekGeo ? snapRay(s.nokta.x, s.nokta.y) : null;
+      const sx = sp ? sp.x : s.nokta.x, sy = sp ? sp.y : s.nokta.y;
+      let etiket: { x: number; y: number } | null = null;
+      if (!s.tip || s.tip === "istasyon" || s.depot) {
+        const w = Math.max(10 * etiketOlcek, s.ad.length * 3.9 * etiketOlcek); // ~kar. genişliği × ölçek
+        for (const a of [{ x: sx, y: sy - gap }, { x: sx, y: sy + gapAlt }]) { // üst, sonra alt
+          const box = { x0: a.x - w / 2, y0: a.y - h, x1: a.x + w / 2, y1: a.y };
+          if (!carpisir(box)) { yerlesmis.push(box); etiket = a; break; }
+        }
+      }
+      return { s, sx, sy, etiket };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [g, gercekGeo, etiketOlcek]);
+
   return (
     <div>
       {/* Kip rozeti + kontroller */}
@@ -432,23 +460,19 @@ export function CografiAg({
             );
           })}
 
-          {/* İstasyonlar — raya snap (koordinatsız/yaklaşık olanlar da rayın üstüne otursun) */}
-          {g.istasyonlar.map((s, i) => {
-            const sp = gercekGeo ? snapRay(s.nokta.x, s.nokta.y) : null;
-            const sx = sp ? sp.x : s.nokta.x, sy = sp ? sp.y : s.nokta.y;
-            return (
-              <g key={`s${i}`}>
-                {s.depot ? (
-                  <rect x={sx - 4.5} y={sy - 4.5} width={9} height={9} fill={brand.ink} stroke="#fff" strokeWidth={1.4} />
-                ) : (
-                  <circle cx={sx} cy={sy} r={s.tip && s.tip !== "istasyon" ? 2.6 : 4} fill={s.tip && s.tip !== "istasyon" ? brand.muted : "#fff"} stroke={brand.ink} strokeWidth={1.6} />
-                )}
-                {(!s.tip || s.tip === "istasyon" || s.depot) && (
-                  <text x={sx} y={sy - 8} textAnchor="middle" fontSize={7.5} fontWeight={600} fill={brand.inkSoft}>{s.ad}</text>
-                )}
-              </g>
-            );
-          })}
+          {/* İstasyonlar — raya snap + çakışmasız etiket (üst üste binen adlar gizlenir) */}
+          {istYerlesim.map(({ s, sx, sy, etiket }, i) => (
+            <g key={`s${i}`}>
+              {s.depot ? (
+                <rect x={sx - 4.5} y={sy - 4.5} width={9} height={9} fill={brand.ink} stroke="#fff" strokeWidth={1.4} />
+              ) : (
+                <circle cx={sx} cy={sy} r={s.tip && s.tip !== "istasyon" ? 2.6 : 4} fill={s.tip && s.tip !== "istasyon" ? brand.muted : "#fff"} stroke={brand.ink} strokeWidth={1.6} />
+              )}
+              {etiket && (
+                <text x={etiket.x} y={etiket.y} textAnchor="middle" fontSize={etiketFz} fontWeight={600} fill={brand.inkSoft}>{s.ad}</text>
+              )}
+            </g>
+          ))}
 
           {/* Trenler — durum halkası (ne yaptığı) + no + tıkla→detay */}
           {trenler.map((tr, i) => {
