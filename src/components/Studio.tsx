@@ -800,7 +800,10 @@ function StudioIc() {
                 )}
               </div>
             </div>
-            <div className="mt-1.5 text-[0.64rem]" style={{ color: brand.faint }}>Sahte konum üretilmez — koordinat yalnız gerçek kaynaktan (OSM ya da CAD) gelir.</div>
+            <div className="mt-1.5 text-[0.64rem]" style={{ color: brand.faint }}>
+              Sahte konum üretilmez — koordinat yalnız gerçek kaynaktan (OSM ya da CAD) gelir.
+              <b style={{ color: brand.muted }}> Bu iki buton hattını DEĞİŞTİRMEZ</b> — kurduğun durak/mesafe/makas/sinyal aynen kalır; yalnız duraklara <b>koordinat + harita hizası</b> eklenir. OSM eşleşmesi <b>durak ADINA</b> göredir (adlar gerçek/OSM'de kayıtlı olmalı).
+            </div>
           </div>
         )}
         {agGorunum === "harita" && (

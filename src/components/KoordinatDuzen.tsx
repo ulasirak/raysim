@@ -94,6 +94,7 @@ export function KoordinatDuzen({
         <b style={{ color: brand.inkSoft }}>Gerçek hattı haritada görmenin 3 yolu:</b>
         <div className="mt-0.5">① <b>GTFS içe aktar</b> (transit verisi — gerçek geometri otomatik gelir) · ② <b>koordinat gir</b> + <b>“OSM'den çek”</b> (yukarıdaki yeşil buton) · ③ elle koordinat (düz-çizgi harita).</div>
         <div className="mt-0.5"><b>Tüm</b> istasyonlar koordinatlı olunca Canlı Ağ <b>Harita</b> modunda gerçek konumda çizilir. Koordinat + geometri <b>kalıcı</b> kaydolur (© OpenStreetMap · ODbL).</div>
+        <div className="mt-0.5" style={{ color: brand.inkSoft }}><b>Bunların hiçbiri kurduğun hattı değiştirmez</b> — durak/mesafe/makas/sinyal aynen kalır (simülasyon senin mesafelerini kullanır); yalnız <b>harita için</b> koordinat + hiza eklenir. OSM eşleşmesi <b>durak adına</b> göredir.</div>
       </div>
     </div>
   );
