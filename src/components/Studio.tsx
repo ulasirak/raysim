@@ -17,6 +17,7 @@ import { etkinArac, type Isletme } from "@/lib/anaray/config";
 import { osmKoordinatEsle } from "@/lib/anaray/adEsle";
 import { parseGtfsZip, gtfsRotalar, gtfsYonler, gtfsHatKur } from "@/lib/anaray/gtfs";
 import { cakismaTespit } from "@/lib/anaray/cakisma";
+import { cakismaCoz } from "@/lib/anaray/cakismaCozum";
 import { gecikmeYayilim } from "@/lib/anaray/gecikmeYayilim";
 import { ortakKesimAnaliz } from "@/lib/anaray/ortakKesim";
 import { tersIsletmeAnaliz } from "@/lib/anaray/tersisletme";
@@ -126,6 +127,7 @@ function StudioIc() {
   const [mcRunning, setMcRunning] = useState(false);
   const [talepPopup, setTalepPopup] = useState(false); // yolcu verisi yokken talep-öneri uyarısı
   const [agGorunum, setAgGorunum] = useState<"sematik" | "harita">("sematik"); // Canlı Ağ: şematik şerit / coğrafi harita
+  const [cakismasizCizelge, setCakismasizCizelge] = useState(false); // çakışma çözücüsü offset'lerini canlı sime UYGULA (opt-in, vars. kapalı)
   const [koordAcik, setKoordAcik] = useState(false); // istasyon koordinat giriş paneli açık mı
   const [haritaBilgi, setHaritaBilgi] = useState(false); // harita bilgilendirme paneli (değer önerisi) açık mı — vars. kapalı
   const [gtfsYukle, setGtfsYukle] = useState<"bos" | "yukleniyor" | "hata">("bos"); // gtfsHazir tek-tıkla import durumu
@@ -247,20 +249,35 @@ function StudioIc() {
     () => loopYorunge(line, reverseLine, stockSim, { peronIsgaliBas: peronBas, peronIsgaliSon: peronSon }),
     [line, reverseLine, stockSim, peronBas, peronSon]
   );
+  // Çizelge çakışma tespiti (#2) — tek-hat karşılaşmaları + sistemik headway<hMin.
+  // (dagitim'den ÖNCE: çakışmasız çizelge modu bunun çözümünü kalkışlara uygular.)
+  const cakisma = useMemo(
+    () => cakismaTespit(rings, stock, cfg, loopY, filo, isletme),
+    [rings, stock, cfg, loopY, filo, isletme]
+  );
+  // Çakışma çözümü (advisory) — tek-hat çakışması varsa optimize kalkış offset'leri.
+  const cakismaCozum = useMemo(
+    () => (cakisma.spanOzet.length ? cakismaCoz(cakisma.spanlar, loopY, filo) : null),
+    [cakisma, loopY, filo]
+  );
+
   // Depo dağıtımı — SADE ve TEK TİP: bütün tramvaylar AYNI başlangıç noktasından
   // (depo/başlangıç terminali), AYNI yönde (gidiş, alt şerit), SIRAYLA (headway aralığı)
   // yola çıkar; her biri tam turu (gidiş→dönüş) yapıp sırayla çıktığı yere döner. Karşı-şerit
   // başlangıcı YOK → 2,4,6.. trenler 1,3,5.. ile aynı hareket eder; iki şerit, trenler
   // turnback'e ulaştıkça DOĞAL olarak dolar (gerçek işletmede depodan öyle çıkarlar).
+  // ÇAKIŞMASIZ ÇİZELGE (opt-in): açık ve çözülebiliyorsa dispatchT = çözücü offset'i
+  // (uneven) → sim tek-hat çakışmasını gidermiş çizelgeyi koşar. Kapalıyken k×headway (even).
+  const cozOffsetler = cakismasizCizelge && cakismaCozum?.cozuldu ? cakismaCozum.offsetler : null;
   const dagitim = useMemo(() => {
     const origins = gidisOrigins ?? [];
     const orn = loopY.ornekler;
     const sToT = (hedefS: number) => { let en = 0, bd = Infinity; for (const o of orn) { const dd = Math.abs(o.s - hedefS); if (dd < bd) { bd = dd; en = o.t; } } return en; };
     return Array.from({ length: filo }, (_, k) => {
       const parkPos = origins.length > 0 ? origins[k % origins.length] : 0;
-      return { parkPos, gidis: true, dispatchT: k * ulasilanHeadwaySn, startPhase: sToT(Math.min(loopY.L, parkPos)) };
+      return { parkPos, gidis: true, dispatchT: cozOffsetler ? cozOffsetler[k] : k * ulasilanHeadwaySn, startPhase: sToT(Math.min(loopY.L, parkPos)) };
     });
-  }, [gidisOrigins, filo, loopY, ulasilanHeadwaySn]);
+  }, [gidisOrigins, filo, loopY, ulasilanHeadwaySn, cozOffsetler]);
   const loopVeri = useMemo(
     () => ({ ...loopY, count: filo, offset: loopY.periyot / Math.max(1, filo), dagitim }),
     [loopY, filo, dagitim]
@@ -396,11 +413,6 @@ function StudioIc() {
     setGtfsYukle("hata"); setGtfsMesaj("OSM'den çekilemedi (Overpass yoğun olabilir) — birazdan tekrar deneyin.");
   };
 
-  // Çizelge çakışma tespiti (#2) — tek-hat karşılaşmaları + sistemik headway<hMin.
-  const cakisma = useMemo(
-    () => cakismaTespit(rings, stock, cfg, loopY, filo, isletme),
-    [rings, stock, cfg, loopY, filo, isletme]
-  );
   // Gecikme yayılımı / knock-on (#3) — hedef trene birincil gecikme → ardışık zincir.
   const knockOn = useMemo(
     () => gecikmeYayilim(line, stockSim, { headway: ulasilanHeadwaySn, count: filo, sinyaller: sinyalSimKonum }, koHedef, koGecikme),
@@ -712,6 +724,22 @@ function StudioIc() {
             style={{ border: `1px solid ${haritaTam ? "#16794C" : brand.border}`, color: haritaTam ? "#16794C" : brand.ink }}>
             ⌖ Koordinat gir {haritaTam ? "✓" : agKoordSay > 0 ? `${agKoordSay}/${agIstasyonlar.length}` : ""}
           </button>
+          {/* Çakışmasız çizelge (opt-in): tek-hat çakışması varsa çözücü offset'lerini canlı sime uygular. */}
+          {cakisma.spanOzet.length > 0 && cakismaCozum && (
+            cakismaCozum.cozuldu ? (
+              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1 text-xs font-semibold"
+                style={{ border: `1px solid ${cakismasizCizelge ? CK.good : brand.border}`, color: cakismasizCizelge ? CK.good : brand.ink }}
+                title="Tek-hat çakışmasını gideren kalkış-offset çizelgesini (öneri) canlı simülasyona uygular; kapalıyken eşit-aralık kalkış.">
+                <input type="checkbox" checked={cakismasizCizelge} onChange={(e) => setCakismasizCizelge(e.target.checked)} />
+                Çakışmasız çizelge
+              </label>
+            ) : (
+              <span className="rounded-md px-3 py-1 text-[0.7rem] font-semibold" style={{ background: CK.amberBg, color: CK.amberInk, border: `1px solid ${CK.amber}` }}
+                title="Bu filoda tek-hat çakışması kalkış kaydırmasıyla giderilemiyor; Sistem Merkezi’ndeki çözücü çakışmasız maksimum filoyu gösterir.">
+                ⚠ Çakışma bu filoda giderilemez
+              </span>
+            )
+          )}
           {gtfsMesaj && <span className="text-[0.7rem] font-medium" style={{ color: gtfsYukle === "hata" ? CK.red : CK.good }}>{gtfsMesaj}</span>}
           {agGorunum === "harita" && haritaTam && (
             (isletme.koordinatKaynak === "iceaktar" || isletme.koordinatYaklasik) ? (
