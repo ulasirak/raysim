@@ -88,7 +88,7 @@ function stitch(segmentler: OsmSegment[]): { duraklar: OsmDurak[]; geometri: [nu
       }
     }
     if (enIyi < 0 || !ekle || enIyiMesafe > BAGLANTI_ESIK) {
-      uyarilar.push(`${kalan.length} rota mevcut hatta bağlanamadı (uçlar ${Math.round(enIyiMesafe)} m uzak) — ayrı kaldı.`);
+      uyarilar.push(`${kalan.length} rota mevcut hatta bağlanamadı (en yakın uçlar ${Math.round(enIyiMesafe)} m uzak, ${Math.round(BAGLANTI_ESIK)} m eşiğini aşıyor) — İÇE AKTARILMADI (atlandı). Bu rotaları AYRI hat olarak aktarın.`);
       break;
     }
     const { dur, g, onEk } = ekle;

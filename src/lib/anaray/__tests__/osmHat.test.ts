@@ -62,6 +62,20 @@ describe("osmHatKur", () => {
     expect(r.duraklar.map((d) => d.ad)).toEqual(["A", "B", "Gar", "D", "E"]);
   });
 
+  it("KOPUK rota (eşik aşan) İÇE AKTARILMAZ — atlanır + uyarı verir", () => {
+    const s1 = seg(["A", "B", "C"], 41.3, 36.30, 0.01);         // ~36.30–36.32
+    const uzak: OsmSegment = {                                    // ~15 km doğuda, bağlanamaz
+      ad: "uzak",
+      duraklar: [{ ad: "X", lat: 41.3, lon: 36.50 }, { ad: "Y", lat: 41.3, lon: 36.51 }],
+      geometri: [[41.3, 36.50], [41.3, 36.51]],
+    };
+    const r = osmHatKur([s1, uzak]);
+    // Yalnız bağlı ilk rota kalır; uzak rota düşürülür.
+    expect(r.duraklar.map((d) => d.ad)).toEqual(["A", "B", "C"]);
+    expect(r.rings).toHaveLength(2);
+    expect(r.uyarilar.some((u) => /İÇE AKTARILMADI/i.test(u))).toBe(true);
+  });
+
   it("2 duraktan az → hata", () => {
     expect(() => osmHatKur([{ ad: "x", duraklar: [{ ad: "A", lat: 41, lon: 36 }], geometri: [] }])).toThrow();
   });

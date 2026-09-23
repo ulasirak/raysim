@@ -138,7 +138,16 @@ export function RingEditor() {
   const iceAktarUygula = async (yeni: DurakArasiRing[], ad: string, mod: IceAktarMod, koord?: Record<string, { lat: number; lon: number }>, geometri?: { insaat?: boolean; noktalar: [number, number][] }[]) => {
     // koord: GTFS durak lat/lon (GTFS export için); geometri: GTFS shape (gerçek harita hizası).
     if (mod === "degistir") { silHatirla(() => yeni); patchMeta({ hatAdi: ad }); patchIsletme({ istasyonKoordinat: koord ?? {}, hatGeometri: geometri, koordinatKaynak: "iceaktar" }); }
-    else if (mod === "ekle") { silHatirla((rs) => [...rs, ...yeni]); if (koord) patchIsletme({ istasyonKoordinat: { ...(isletme.istasyonKoordinat ?? {}), ...koord }, koordinatKaynak: "iceaktar" }); }
+    else if (mod === "ekle") {
+      silHatirla((rs) => [...rs, ...yeni]);
+      // Koordinat + geometri BİRLEŞTİR (değiştir'in aksine üzerine yazma) → harita eklenen
+      // kısımla tutarlı kalır. Geometri = polyline dizisi; eklenen polyline'lar sona eklenir.
+      if (koord || geometri) patchIsletme({
+        istasyonKoordinat: { ...(isletme.istasyonKoordinat ?? {}), ...(koord ?? {}) },
+        hatGeometri: [...(isletme.hatGeometri ?? []), ...(geometri ?? [])],
+        koordinatKaynak: "iceaktar",
+      });
+    }
     else if (mod === "yeniHat") {
       setIceMesgul(true);
       try { await projeYeni(ad); setRings(() => yeni); patchMeta({ hatAdi: ad }); patchIsletme({ istasyonKoordinat: koord ?? {}, hatGeometri: geometri, koordinatKaynak: "iceaktar" }); }
@@ -158,6 +167,14 @@ export function RingEditor() {
     return !!k && Number.isFinite(k.lat) && Number.isFinite(k.lon);
   });
   const koordSayisi = duraklar.filter((d) => { const k = isletme.istasyonKoordinat?.[d.ad]; return !!k && Number.isFinite(k.lat) && Number.isFinite(k.lon); }).length;
+  // "Ekle" süreklilik kontrolü için mevcut hattın SON durak koordinatı (varsa) — HatIceAktar,
+  // eklenecek hattın başıyla arasındaki boşluğu ölçüp kopuksa uyarır.
+  const mevcutSonKoord = useMemo(() => {
+    if (!rings.length || !duraklar.length) return null;
+    const son = duraklar[duraklar.length - 1];
+    const k = son && isletme.istasyonKoordinat?.[son.ad];
+    return k && Number.isFinite(k.lat) && Number.isFinite(k.lon) ? { ad: son.ad, lat: k.lat, lon: k.lon } : null;
+  }, [rings.length, duraklar, isletme.istasyonKoordinat]);
   const koordGuncelle = (ad: string, alan: "lat" | "lon", v: number) => {
     const cur = isletme.istasyonKoordinat ?? {};
     const mevcut = cur[ad] ?? { lat: NaN, lon: NaN };
@@ -306,7 +323,7 @@ export function RingEditor() {
       {/* GTFS içe aktarma — bir toplu taşıma ağının .zip'inden hattı otomatik kurar
           (mevcut hattın üzerine yazar; "Silmeyi geri al" ile dönülebilir). */}
       {!yukleniyor && (
-        <HatIceAktar onIceAktar={iceAktarUygula} disabled={!yazilabilir} mesgulDis={iceMesgul} />
+        <HatIceAktar onIceAktar={iceAktarUygula} mevcutSonKoord={mevcutSonKoord} disabled={!yazilabilir} mesgulDis={iceMesgul} />
       )}
 
       {/* ŞUBE / TALİ HAT EDİTÖRÜ (dallanma, #1) — ana hattan ayrılan tali hatlar */}

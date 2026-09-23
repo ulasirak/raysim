@@ -25,12 +25,25 @@ import type { DurakArasiRing } from "@/lib/anaray/ring";
 export type IceAktarMod = "degistir" | "ekle" | "yeniHat";
 interface HatSonuc { rings: DurakArasiRing[]; ad: string; durakSayisi: number; toplamKm: number; uyarilar: string[]; yol?: { x: number; y: number }[]; duraklar?: { ad: string; km: number; x: number; y: number }[]; }
 
-export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false }: {
+// "Ekle" süreklilik eşiği — mevcut hattın sonu ile eklenecek hattın başı bundan uzaksa KOPUK
+// sayılır (osmHat.stitch BAGLANTI_ESIK ile aynı). Bu değerin üstünde "ekle" ışınlanma yaratır.
+const KOPUK_ESIK = 1600;
+function haversineM(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
+  if (![a.lat, a.lon, b.lat, b.lon].every(Number.isFinite)) return NaN;
+  const r = (d: number) => (d * Math.PI) / 180;
+  const dLat = r(b.lat - a.lat), dLon = r(b.lon - a.lon);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dLon / 2) ** 2;
+  return 2 * 6371000 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, mevcutSonKoord = null }: {
   onIceAktar: (rings: DurakArasiRing[], ad: string, mod: IceAktarMod, koord?: Record<string, { lat: number; lon: number }>, geometri?: { insaat?: boolean; noktalar: [number, number][] }[]) => void | Promise<void>;
   disabled?: boolean;
   mesgulDis?: boolean;
   /** Gömülü (ör. "+ Yeni hat" modalı): daima YENİ hat modu, mod seçici + details sarmalı yok. */
   gomulu?: boolean;
+  /** Mevcut hattın SON durak koordinatı — "Ekle" modunda süreklilik (kopukluk) kontrolü için. */
+  mevcutSonKoord?: { ad: string; lat: number; lon: number } | null;
 }) {
   const [kaynak, setKaynak] = useState<"gtfs" | "railml" | "cad" | "osm" | null>(null);
   const [feed, setFeed] = useState<GtfsFeed | null>(null);
@@ -171,6 +184,14 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false }:
   const sonuc: HatSonuc | null = kaynak === "gtfs" ? gtfsSonuc : kaynak === "railml" ? railmlSonuc : kaynak === "osm" ? osmSonuc : cadSonuc.sonuc;
   const kurHata = kaynak === "cad" ? cadSonuc.hata : null;
 
+  // "Ekle" SÜREKLİLİK KONTROLÜ: eklenecek hattın İLK durağının koordinatı (yalnız koordinatlı
+  // kaynaklarda: OSM/GTFS). Mevcut hattın son durağından KOPUK_ESIK'ten uzaksa "ekle" ışınlanma
+  // yaratır → önizlemede kırmızı uyarı + Uygula'da ek onay. Koordinat yoksa kontrol atlanır.
+  const ilkImportKoord = kaynak === "osm" ? osmFull?.duraklar?.[0] : kaynak === "gtfs" ? gtfsFull?.duraklar?.[0] : null;
+  const ekleKopukMesafe = (mod === "ekle" && mevcutSonKoord && ilkImportKoord)
+    ? haversineM(mevcutSonKoord, ilkImportKoord) : NaN;
+  const ekleKopuk = Number.isFinite(ekleKopukMesafe) && ekleKopukMesafe > KOPUK_ESIK;
+
   const katmanTikla = (k: string, alan: "guzergahKatman" | "durakKatman") =>
     setEsle((e) => ({ ...e, [alan]: e[alan].includes(k) ? e[alan].filter((x) => x !== k) : [...e[alan], k] }));
 
@@ -179,6 +200,10 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false }:
   const uygula = async () => {
     if (!sonuc) return;
     if (!confirm(`“${sonuc.ad}” (${sonuc.durakSayisi} durak) içe aktarılsın mı?\n\n${modAd[mod]}`)) return;
+    // Ekle + kopuk: mevcut hatla eklenen hat fiziksel olarak bağlı değil → ek onay iste.
+    if (ekleKopuk && !confirm(
+      `⚠ KOPUK EKLEME\n\nEklenecek hattın başı (“${ilkImportKoord!.ad ?? "?"}”), mevcut hattın sonundan (“${mevcutSonKoord!.ad}”) ~${(ekleKopukMesafe / 1000).toFixed(1)} km uzak.\n\nBunlar fiziksel olarak BAĞLI DEĞİL — “Ekle” dersen sistem aralarında ışınlanma olan tek bir hat kurar. Genelde bunun yerine “Değiştir” veya “Yeni hat” istenir.\n\nYine de birleştirilsin mi?`,
+    )) return;
     // GTFS ise durak koordinatlarını (lat/lon) da geçir → GTFS export için saklanır.
     let koord: Record<string, { lat: number; lon: number }> | undefined;
     if (kaynak === "gtfs" && gtfsFull?.duraklar?.length) {
@@ -337,6 +362,15 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false }:
                 ))}
               </div>
             </div>
+            )}
+
+            {/* "Ekle" süreklilik uyarısı — eklenecek hattın başı mevcut hattın sonundan çok uzaksa */}
+            {ekleKopuk && (
+              <div className="mt-2 rounded-md border-l-4 px-3 py-2 text-xs" style={{ borderColor: CK.red, background: "#FDF2F4", color: brand.inkSoft }}>
+                <b style={{ color: CK.red }}>⚠ Kopuk ekleme.</b> Eklenecek hattın başı (“{ilkImportKoord?.ad ?? "?"}”) mevcut hattın sonundan
+                (“{mevcutSonKoord?.ad}”) <b>~{(ekleKopukMesafe / 1000).toFixed(1)} km</b> uzak — fiziksel olarak bağlı değil.
+                “Ekle” dersen aralarında ışınlanma olan tek hat kurulur; genelde <b>Değiştir</b> ya da <b>Yeni hat</b> istenir.
+              </div>
             )}
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
