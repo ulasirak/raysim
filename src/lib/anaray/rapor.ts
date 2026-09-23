@@ -16,6 +16,8 @@ import { bolumDahil, type RaporSecim } from "@/lib/raporFiyat";
 import { dogrulamaCalistir } from "./dogrulama";
 import { MOTOR_SURUMU, MOTOR_ADI, YONTEM_STANDARTLARI } from "./surum";
 import { kilitlemeTablosu, kilitlemeOzet } from "./kilitleme";
+import { aspectDizilim } from "./aspectDizilim";
+import { paretoAnaliz } from "./pareto";
 import { seferTersEntegre } from "./seferters";
 import { maksimumTren } from "./kapasite";
 import { tarifeUret } from "./tarife";
@@ -550,6 +552,33 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   <div class="gs" style="font-size:9pt">${not}</div>`;
   })() : "";
 
+  // 3.3 Aspect Dizilimi (Signal Aspect Sequence) — sinyallerden 3-aspect blok dizilimi + görüş/fren denetimi (G).
+  const aspectSub = dahil("aspect") ? (() => {
+    const ad = aspectDizilim(rings, cfg);
+    if (!ad.bloklar.length) return "";
+    const yetersizler = ad.bloklar.filter((b) => !b.yeterli);
+    const giris = en
+      ? `Classic 3-aspect sequence derived from the outbound signals: a train approaching an occupied block sees Stop → Caution → Proceed. For adequate sighting/braking, every warning (caution) block must be at least the service braking distance at line design speed (v²/2b). Design speed <b>${Math.round(ad.tasarimHizKmh)} km/h</b> · braking distance <b>≈${Math.round(ad.frenMesafesi)} m</b> · <b>${ad.bloklar.length}</b> blocks · shortest block ${Math.round(ad.minBlok)} m · <b style="color:${ad.yetersizBlok ? RED : "#2E7D57"}">${ad.yetersizBlok}</b> block(s) shorter than the braking distance.`
+      : `İleri-yön sinyallerinden türetilen klasik 3-aspect dizilim: işgal edilen bloğa yaklaşan tren Dur → Tedbir → Yol görür. Yeterli görüş/fren için her uyarı (Tedbir) bloğu, hattın tasarım hızındaki servis-fren mesafesinden (v²/2b) uzun olmalıdır. Tasarım hızı <b>${Math.round(ad.tasarimHizKmh)} km/h</b> · fren mesafesi <b>≈${Math.round(ad.frenMesafesi)} m</b> · <b>${ad.bloklar.length}</b> blok · en kısa blok ${Math.round(ad.minBlok)} m · <b style="color:${ad.yetersizBlok ? RED : "#2E7D57"}">${ad.yetersizBlok}</b> blok fren mesafesinden kısa.`;
+    const tabloBlok = yetersizler.length
+      ? tbl(
+          [en ? "Block" : "Blok", en ? "Chainage (start–end)" : "Kilometraj (baş–son)", en ? "Length" : "Uzunluk", en ? "Braking dist." : "Fren mesafesi", en ? "Assessment" : "Değerlendirme"],
+          yetersizler.map((b) => [
+            `<b>B${b.no}</b>`, `k${kmFmt(b.basKm)} – k${kmFmt(b.sonKm)}`, `${b.uzunluk} m`, `≈${Math.round(ad.frenMesafesi)} m`,
+            `<b style="color:${RED}">${en ? "Insufficient sighting/braking" : "Görüş/fren yetersiz"}</b>`,
+          ]),
+          { first: true },
+        )
+      : `<div class="gs ok" style="font-size:10pt">${en ? "All warning blocks are longer than the braking distance — the aspect spacing provides sufficient sighting/braking at design speed." : "Tüm uyarı blokları fren mesafesinden uzun — aspect aralığı tasarım hızında yeterli görüş/fren sağlar."}</div>`;
+    const not = en
+      ? "Blocks are bounded by stations and outbound signals; design speed = main-line maximum. A caution block shorter than the braking distance means a driver seeing Caution cannot stop before the Stop signal at the block end — the block length / sighting must be increased."
+      : "Bloklar istasyon sınırları ve ileri-yön sinyallerle sınırlanır; tasarım hızı = ana hat azami. Fren mesafesinden kısa bir uyarı bloğu, Tedbir gören sürücünün blok sonundaki Dur'a yetişemeden duramayacağı anlamına gelir — blok uzunluğu / görüş artırılmalıdır.";
+    return `<h3 class="sub">${en ? "3.3 Signal Aspect Sequence" : "3.3 Aspect Dizilimi (Signal Aspect Sequence)"}</h3>
+  <div class="gs" style="font-size:10pt">${giris}</div>
+  ${tabloBlok}
+  <div class="gs" style="font-size:9pt">${not}</div>`;
+  })() : "";
+
   const sinyalBolum = `
   <div class="banner"><span class="no">03</span>${lang === "en" ? "SIGNALLING — SIGNAL LAMPS (SG)" : "SİNYALİZASYON — SİNYAL LAMBALARI (SG)"}</div>
   <p>${lang === "en"
@@ -557,6 +586,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
     : `Hat, <b>${sinyalSayisi} adet sinyal lambası</b> ile korunur; her giden yön sinyali bir <b>blok sınırıdır</b>. Aşağıda sinyal düzeninin özeti verilmiştir; tam metraj listesi (sinyal-başı kilometraj) tasarım modelinde tutulur.`}</p>
   ${sinyalListe.length ? tbl(lang === "en" ? ["Indicator", "Value"] : ["Gösterge", "Değer"], sinyalOzetRows, { first: true }) : `<p class="muted">${lang === "en" ? "No signal lamps defined on this line yet (positions are entered in the Ringler module)." : "Bu hatta henüz sinyal lambası tanımlı değil (konumlar Ringler modülünde girilir)."}</p>`}
   ${kilitlemeSub}
+  ${aspectSub}
 `;
 
 
@@ -929,6 +959,56 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   ${tbl([en ? "Quantity" : "Büyüklük", en ? "Value" : "Değer", en ? "Inputs" : "Girdiler", en ? "Method" : "Yöntem", en ? "Section" : "Bölüm"], izRows, { first: true })}`;
   })() : "";
 
+  // ——— ÇOK-AMAÇLI OPTİMİZASYON (PARETO) — bölüm 11 (Büyük sıçrama F) ———
+  // Filo kararının çakışan amaçlarını (maliyet ↔ yolcu bekleme ↔ doluluk) birlikte
+  // değerlendirir: Pareto-etkin cephe + diz (matematiksel dirsek) + ağırlıklı optimum
+  // (dengeli %50 maliyet/servis) + KONFOR KISITI (optimum, doluluk ≤ tavan kümesinde).
+  // Motordan (maksimumTren: çevrim, hMin, nMax) türer — uydurma yok.
+  const paretoBolum = dahil("pareto") && maks.gecerli ? (() => {
+    const pr = paretoAnaliz({
+      cevrimSn: maks.cevrimSuresi, hMinSn: maks.hMin, nMax: maks.nTeorik,
+      pikYolcuSaat: isletme.pikYolcuSaat, aracKapasite: isletme.aracYolcuKapasite,
+      konforTavani: isletme.dolulukHedefi, agirlik: 0.5,
+    });
+    if (!pr.noktalar.length) return "";
+    const YESIL = "#2E7D57";
+    const hw = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+    const nk = (f: number) => pr.noktalar.find((n) => n.filo === f);
+    const dol = (n?: { doluluk: number | null }) => (n && n.doluluk != null ? `%${Math.round(n.doluluk * 100)}` : "—");
+    const satir = (rol: string, f: number, vurgu?: string) => {
+      const n = nk(f);
+      if (!n) return null;
+      return [
+        vurgu ? `<b style="color:${vurgu}">${rol}</b>` : `<b>${rol}</b>`,
+        `${f}`, hw(n.headwaySn), `${n.beklemeDk.toFixed(1)} dk`, dol(n),
+      ];
+    };
+    const rows = [
+      satir(en ? "Knee (best balance)" : "Diz (en iyi denge)", pr.dizFilo),
+      ...(pr.demandVar && pr.konforFilo ? [satir(en ? "Comfort limit" : "Konfor sınırı", pr.konforFilo)] : []),
+      satir(en ? "Weighted optimum" : "Ağırlıklı optimum", pr.optimumFilo, YESIL),
+      satir(en ? "Capacity wall" : "Kapasite duvarı", pr.duvarFilo, RED),
+    ].filter((r): r is string[] => !!r);
+    const giris = en
+      ? `Fleet sizing has conflicting objectives: more vehicles raise cost but cut passenger waiting${pr.demandVar ? " and crowding" : ""}. Beyond the capacity wall (${pr.duvarFilo} vehicles) extra fleet no longer cuts waiting (headway floors at the minimum) — those points are dominated (over-fleeting). The weighted optimum below balances cost and service equally (½ / ½)${pr.demandVar ? "; a comfort constraint keeps the optimum within the fleets whose occupancy stays under the target, so it never recommends an over-crowded service" : ""}.`
+      : `Filo boyutlandırması çakışan amaçlar taşır: daha çok araç maliyeti artırır ama yolcu beklemesini${pr.demandVar ? " ve doluluğu" : ""} düşürür. Kapasite duvarını (${pr.duvarFilo} araç) aşan filo beklemeyi artık düşürmez (headway fiziksel minimuma dayanır) — o noktalar baskındır (aşırı filo). Aşağıdaki ağırlıklı optimum maliyet ile servisi eşit (½ / ½) dengeler${pr.demandVar ? "; konfor kısıtı optimumu, doluluğu hedefin altında tutan filolarla sınırlar → aşırı-kalabalık servis önerilmez" : ""}.`;
+    const konforNot = pr.demandVar
+      ? (pr.konforSaglanabilir
+          ? (en
+              ? `Comfort (occupancy ≤ %${Math.round(pr.konforTavani * 100)}) requires at least ${pr.konforFilo} vehicles; the optimum (${pr.optimumFilo}) satisfies it at ${dol(nk(pr.optimumFilo))} occupancy.`
+              : `Konfor (doluluk ≤ %${Math.round(pr.konforTavani * 100)}) için en az ${pr.konforFilo} araç gerekir; optimum (${pr.optimumFilo}) bunu ${dol(nk(pr.optimumFilo))} dolulukla sağlar.`)
+          : (en
+              ? `Even at the capacity wall (${pr.duvarFilo} vehicles) occupancy exceeds the comfort target (%${Math.round(pr.konforTavani * 100)}) — larger vehicles or higher line capacity are required.`
+              : `Kapasite duvarında (${pr.duvarFilo} araç) bile doluluk konfor tavanını (%${Math.round(pr.konforTavani * 100)}) aşıyor — daha büyük araç veya daha yüksek hat kapasitesi gerekir.`))
+      : (en
+          ? "Knee = the most balanced point (nearest the utopia). Optimum = best under the equal cost/service weight."
+          : "Diz = en dengeli nokta (ütopyaya en yakın). Optimum = eşit maliyet/servis ağırlığında en iyi.");
+    return `<div class="banner breakbefore"><span class="no">11</span>${en ? "MULTI-OBJECTIVE OPTIMIZATION (PARETO)" : "ÇOK-AMAÇLI OPTİMİZASYON (PARETO)"}</div>
+  <p>${giris}</p>
+  ${tbl([en ? "Role" : "Rol", en ? "Fleet" : "Filo", en ? "Interval" : "Aralık", en ? "Wait" : "Bekleme", en ? "Occupancy" : "Doluluk"], rows, { first: true })}
+  <div class="gs${pr.demandVar && !pr.konforSaglanabilir ? "" : " ok"}" style="font-size:10pt">${konforNot}</div>`;
+  })() : "";
+
   // ——— GRAFİKLER (Görsel Analiz) — bölüm 08 ———
   // TÜM şekiller burada toplanır; yalnız "grafikler" seçiliyken (g) üretilir. Böylece
   // kullanıcı sadece grafikleri seçtiğinde dahi dolu, tek başına anlamlı bir görsel bölüm
@@ -1202,7 +1282,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
       ${dahil("ozet") ? `<li><b>00</b>${en ? "Executive Summary" : "Yönetici Özeti"}</li>` : ""}
       <li><b>01</b>${L.s1}</li>
       ${(dahil("hat") || dahil("kurpKonfor")) ? `<li><b>02</b>${L.s2}<ul>${dahil("hat") ? `<li>2.1 ${en ? "Per-cell Constraint Analysis" : "Ring Bazında Kısıt Analizi"}</li>` : ""}${dahil("kurpKonfor") ? `<li>2.2 ${en ? "Curve & Lateral Comfort" : "Kurp & Yanal Konfor"}</li>` : ""}</ul></li>` : ""}
-      <li><b>03</b>${en ? "Signalling — Signal Lamps (SG)" : "Sinyalizasyon — Sinyal Lambaları (SG)"}${dahil("kilitleme") ? `<ul><li>3.2 ${en ? "Interlocking Control Table" : "Kilitleme Kontrol Tablosu"}</li></ul>` : ""}</li>
+      <li><b>03</b>${en ? "Signalling — Signal Lamps (SG)" : "Sinyalizasyon — Sinyal Lambaları (SG)"}${(dahil("kilitleme") || dahil("aspect")) ? `<ul>${dahil("kilitleme") ? `<li>3.2 ${en ? "Interlocking Control Table" : "Kilitleme Kontrol Tablosu"}</li>` : ""}${dahil("aspect") ? `<li>3.3 ${en ? "Signal Aspect Sequence" : "Aspect Dizilimi"}</li>` : ""}</ul>` : ""}</li>
       ${dahil("kapasite") ? `<li><b>04</b>${L.s4}<ul><li>4.1 Blocking-Time (Sperrzeitentreppe)</li></ul></li>` : ""}
       ${dahil("isletme") ? `<li><b>05</b>${en ? "Operations & Demand Analysis" : "İşletme & Talep Analizi"}<ul>
         <li>5.1 ${en ? "Passenger Load Profiles" : "Yolcu Yük Profilleri"}</li>
@@ -1215,6 +1295,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
       ${g ? `<li><b>08</b>${en ? "Visual Analysis (Charts)" : "Görsel Analiz (Grafikler)"}</li>` : ""}
       ${dahil("dogrulama") ? `<li><b>09</b>${en ? "Verification & Validation" : "Doğrulama & Geçerleme"}</li>` : ""}
       ${dahil("izlenebilirlik") ? `<li><b>10</b>${en ? "Traceability & Reproducibility" : "İzlenebilirlik & Tekrar-Üretilebilirlik"}</li>` : ""}
+      ${dahil("pareto") ? `<li><b>11</b>${en ? "Multi-Objective Optimization (Pareto)" : "Çok-Amaçlı Optimizasyon (Pareto)"}</li>` : ""}
     </ol>
     ${g ? `<div class="toc-fig">${en ? "Figures" : "Şekiller"}<ul>
       <li>${en ? "Fig. 1 — Line schematic" : "Şekil 1 — Hat şeması"}</li>
@@ -1280,6 +1361,9 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
 
   <!-- 10: İzlenebilirlik & Tekrar-Üretilebilirlik — motor sürümü + girdi künyesi + sayı→yöntem izi -->
   ${izlenebilirlikBolum}
+
+  <!-- 11: Çok-Amaçlı Optimizasyon (Pareto) — maliyet↔bekleme↔doluluk cephe + diz + optimum + konfor kısıtı -->
+  ${paretoBolum}
 
   ${cekirdekNot}
 
