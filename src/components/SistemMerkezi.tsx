@@ -132,6 +132,8 @@ export function SistemMerkezi() {
         </div>
       )}
 
+      {!bosHat && <Grup no="1" baslik="Kapasite, Kısıt & Sinyalizasyon" alt="Hattı fiziksel olarak hangi kısıt bağlıyor — blok işgali (Sperrzeit), rakip headway kısıtları, sinyal ve kilitleme." />}
+
       {/* Blocking-Time (Sperrzeitentreppe) + UIC 406 */}
       {bt && (
       <Panel baslik="Blocking-Time / Sperrzeitentreppe (blok işgal süresi) & UIC 406 Kapasite" aciklama="Her sinyal bloğunun rezerve süresi = 6 bileşen (rota kurma + görme + yaklaşma + seyir + temizleme + release). En yüksek blocking-time'lı blok min headway'i belirler; UIC 406 doluluk = min headway / hedef headway.">
@@ -272,6 +274,11 @@ export function SistemMerkezi() {
         </Panel>
       )}
 
+      {/* Kilitleme (Interlocking) Kontrol Tablosu — sinyalizasyon kümesinde (rota/makas/kilit). */}
+      <div className="mt-6"><KilitlemePaneli /></div>
+
+      {!bosHat && <Grup no="2" baslik="Terminal & Yol Etkileri" alt="Terminal dönüş (turnback) kapasitesi ve sokak geçitlerinin (hemzemin/TSP) tur süresine katkısı." />}
+
       {/* TERMİNAL TURNBACK KAPASİTESİ — iki ucun makas geometrisi → dönüş kapasitesi */}
       {rings.length > 0 && (<>
       <Panel baslik="Terminal Turnback Kapasitesi" aciklama="Her uçtaki dönüş (turnback) kapasitesi, makas geometrisinden (S/X sayısı), peron sayısından ve boğaz işgalinden hesaplanır. Tramvay hatlarında hattın kapasitesini çoğu kez terminal dönüşü bağlar; iki uç yan yana, hangisinin ve hangi alt-etkenin (peron mu boğaz/makas mı) bağladığı gösterilir.">
@@ -284,14 +291,15 @@ export function SistemMerkezi() {
       </Panel>
       </>)}
 
+      {!bosHat && <Grup no="3" baslik="Motor Doğruluğu & Duyarlılık" alt="Sonuçların hangi girdiye ne kadar duyarlı olduğu (tornado) ve motorun analitik referanslara karşı doğrulanması (V&V)." />}
+
       {/* Duyarlılık (tornado) — hangi parametre kapasiteyi en çok oynatıyor. */}
       <Duyarlilik ringsHam={ringsHam} stock={stock} cfg={cfg} isletme={isletme} />
 
       {/* Doğrulama & Geçerleme — motorun analitik referanslara karşı doğruluk sertifikasyonu. */}
       <div className="mt-6"><DogrulamaPaneli /></div>
 
-      {/* Kilitleme (Interlocking) Kontrol Tablosu — rota tesisi/makas konumu/kilit (G). */}
-      <div className="mt-6"><KilitlemePaneli /></div>
+      {!bosHat && <Grup no="4" baslik="Filo & Kapasite Kararı" alt="Aynı temel kapasiteden üç karar: operasyonel (istenen aralık), ekonomik (₺ toplam maliyet), risk (dayanıklılık) — ve tek-hat çakışma çözümü." />}
 
       {/* FİLO & KAPASİTE KARARI — üç panelin ORTAK temeli tek yerde (tekrarı önler). */}
       {maks?.gecerli && (
@@ -335,6 +343,20 @@ export function SistemMerkezi() {
 }
 
 // ————— yardımcılar —————
+/** Grup başlığı — Sistem Merkezi'nin panellerini mantıksal bölümlere ayırır (yerleşim/netlik;
+ *  panel içeriği değişmez). Numara + başlık + tek satır "ne işe yarar" açıklaması. */
+function Grup({ no, baslik, alt }: { no: string; baslik: string; alt?: string }) {
+  return (
+    <div className="mt-10 mb-2 border-t pt-5" style={{ borderColor: brand.borderStrong }}>
+      <div className="flex items-baseline gap-2">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: brand.ink }}>{no}</span>
+        <h2 className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{baslik}</h2>
+      </div>
+      {alt && <p className="mt-0.5 ml-8 max-w-2xl text-xs" style={{ color: brand.muted }}>{alt}</p>}
+    </div>
+  );
+}
+
 /** Çekmece (drawer) — blok analizi ağır alt-bölümleri; tek tuşla aşağı açılıp kapanır. */
 function BlokCekmece({ baslik, ozet, acik, onToggle, children }: { baslik: string; ozet?: ReactNode; acik: boolean; onToggle: () => void; children: ReactNode }) {
   return (
