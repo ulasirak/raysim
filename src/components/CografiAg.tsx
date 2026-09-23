@@ -283,33 +283,41 @@ export function CografiAg({
   const panUp = () => { if (panRef.current?.moved) { justPanned.current = true; setTimeout(() => { justPanned.current = false; }, 60); } panRef.current = null; setPanning(false); };
   const yakinMi = vb.w < g.vb.w - 1;
 
-  // İSTASYON ETİKET YERLEŞİMİ — üst üste binmeyi önle: snap'lenmiş konum + çakışmasız
-  // etiket yeri (üst→alt aday; ikisi de çakışırsa etiket GİZLENİR, nokta kalır). Memoize:
-  // sim her karede yeniden koşmasın (snapRay + O(n²) çakışma yalnız hat değişince).
-  // Ölçek = viewBox / tam-genişlik (1 = uzak, <1 = yakın). Etiketler EKRAN-SABİT boyutlu
-  // (fontSize × ölçek) → yakınlaştırınca viewBox-biriminde küçülür, daha çoğu çakışmadan sığar.
-  const etiketOlcek = Math.min(1, vb.w / g.vb.w);
-  const etiketFz = 7.5 * etiketOlcek;
+  // İstasyon konumları (raya snap'li) — pan/zoom'da YENİDEN hesaplanmasın (snapRay pahalı);
+  // yalnız hat/geometri değişince. Etiket yerleşimi bunun üzerine hafif geçer.
+  const istKonum = useMemo(
+    () => g.istasyonlar.map((s) => {
+      const sp = gercekGeo ? snapRay(s.nokta.x, s.nokta.y) : null;
+      return { s, sx: sp ? sp.x : s.nokta.x, sy: sp ? sp.y : s.nokta.y };
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [g, gercekGeo, geoSegmentler]
+  );
+
+  // İSTASYON ETİKET YERLEŞİMİ — YAKLAŞTIRINCA KÜÇÜLMEZ: font viewBox-SABİT (raylarla/noktalarla
+  // birlikte ekranda doğal büyür). Üst üste binmeyi önlemek için çakışma YALNIZ GÖRÜNÜR pencerede
+  // hesaplanır → yakınlaşınca o bölgede daha az istasyon görünür, daha ÇOĞUNUN adı açılır (hepsi
+  // tam okunur boyutta). Üst→alt aday; ikisi de çakışırsa ad GİZLENİR (nokta kalır).
+  const etiketFz = 8.6;                                     // viewBox-sabit (zoom'la ekranda büyür)
   const istYerlesim = useMemo(() => {
     const yerlesmis: { x0: number; y0: number; x1: number; y1: number }[] = [];
     const carpisir = (b: { x0: number; y0: number; x1: number; y1: number }) =>
       yerlesmis.some((o) => !(b.x1 < o.x0 || b.x0 > o.x1 || b.y1 < o.y0 || b.y0 > o.y1));
-    const gap = 8 * etiketOlcek, gapAlt = 13 * etiketOlcek, h = 8 * etiketOlcek;
-    return g.istasyonlar.map((s) => {
-      const sp = gercekGeo ? snapRay(s.nokta.x, s.nokta.y) : null;
-      const sx = sp ? sp.x : s.nokta.x, sy = sp ? sp.y : s.nokta.y;
+    const gapUst = 6.5, gapAlt = 6.5 + etiketFz, h = etiketFz;
+    const mx = vb.w * 0.06, my = vb.h * 0.06;               // görünür pencere payı
+    const gorunur = (x: number, y: number) => x >= vb.x - mx && x <= vb.x + vb.w + mx && y >= vb.y - my && y <= vb.y + vb.h + my;
+    return istKonum.map(({ s, sx, sy }) => {
       let etiket: { x: number; y: number } | null = null;
-      if (!s.tip || s.tip === "istasyon" || s.depot) {
-        const w = Math.max(10 * etiketOlcek, s.ad.length * 3.9 * etiketOlcek); // ~kar. genişliği × ölçek
-        for (const a of [{ x: sx, y: sy - gap }, { x: sx, y: sy + gapAlt }]) { // üst, sonra alt
+      if ((!s.tip || s.tip === "istasyon" || s.depot) && gorunur(sx, sy)) {
+        const w = Math.max(12, s.ad.length * 4.7);          // ~kar. genişliği (fontSize≈8.6)
+        for (const a of [{ x: sx, y: sy - gapUst }, { x: sx, y: sy + gapAlt }]) { // üst, sonra alt
           const box = { x0: a.x - w / 2, y0: a.y - h, x1: a.x + w / 2, y1: a.y };
           if (!carpisir(box)) { yerlesmis.push(box); etiket = a; break; }
         }
       }
       return { s, sx, sy, etiket };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [g, gercekGeo, etiketOlcek]);
+  }, [istKonum, vb.x, vb.y, vb.w, vb.h]);
 
   return (
     <div>
@@ -375,21 +383,26 @@ export function CografiAg({
           {/* İz — gerçek OSM geometrisi varsa onu (kavisli hiza), yoksa düz istasyon-çizgisi */}
           {gercekGeo ? (
             <>
-              {/* kılıf (beyaz) */}
+              {/* balast (zemin) — yumuşak sıcak-gri geniş taban: hat zeminden kalkar, derinlik */}
+              {geoYollar.map((y, i) => (y.insaat ? null : (
+                <path key={`gz${i}`} d={y.d} fill="none" stroke="#B7C0C8" strokeWidth={9.5} strokeOpacity={0.4} strokeLinejoin="round" strokeLinecap="round" />
+              )))}
+              {/* kılıf (beyaz) — track'i balasttan/diğer hatlardan ayırır */}
               {geoYollar.map((y, i) => (
-                <path key={`gc${i}`} d={y.d} fill="none" stroke="#fff" strokeWidth={y.insaat ? 4.5 : 6} strokeLinejoin="round" strokeLinecap="round" />
+                <path key={`gc${i}`} d={y.d} fill="none" stroke="#fff" strokeWidth={y.insaat ? 4.5 : 6.6} strokeLinejoin="round" strokeLinecap="round" />
               ))}
               {/* gerçek track: operasyonel düz, inşaat kesikli. Yön rayları çizilince taban
                   soluklaşır (çift-hat baskın olsun); inşaat hatları tam kalır (bilgi). */}
               {geoYollar.map((y, i) => (
-                <path key={`g${i}`} d={y.d} fill="none" stroke={y.insaat ? CK.amber : brand.route} strokeWidth={y.insaat ? 1.8 : 2.6}
-                  strokeOpacity={y.insaat ? 0.8 : (loop && periyot > 0 ? 0.35 : 1)} strokeDasharray={y.insaat ? "5 4" : undefined} strokeLinejoin="round" strokeLinecap="round" />
+                <path key={`g${i}`} d={y.d} fill="none" stroke={y.insaat ? CK.amber : brand.route} strokeWidth={y.insaat ? 1.8 : 2.9}
+                  strokeOpacity={y.insaat ? 0.8 : (loop && periyot > 0 ? 0.32 : 1)} strokeDasharray={y.insaat ? "5 4" : undefined} strokeLinejoin="round" strokeLinecap="round" />
               ))}
             </>
           ) : (
             <>
-              <path d={yolD} fill="none" stroke="#fff" strokeWidth={7} strokeLinejoin="round" strokeLinecap="round" />
-              <path d={yolD} fill="none" stroke={brand.route} strokeWidth={3} strokeOpacity={loop && periyot > 0 ? 0.35 : 1} strokeLinejoin="round" strokeLinecap="round" />
+              <path d={yolD} fill="none" stroke="#B7C0C8" strokeWidth={10} strokeOpacity={0.38} strokeLinejoin="round" strokeLinecap="round" />
+              <path d={yolD} fill="none" stroke="#fff" strokeWidth={7.4} strokeLinejoin="round" strokeLinecap="round" />
+              <path d={yolD} fill="none" stroke={brand.route} strokeWidth={3.2} strokeOpacity={loop && periyot > 0 ? 0.32 : 1} strokeLinejoin="round" strokeLinecap="round" />
             </>
           )}
 
@@ -398,10 +411,10 @@ export function CografiAg({
               dönüş turuncu) + periyodik yön chevron'ları (▶ gidiş / ◀ dönüş). */}
           {loop && periyot > 0 && (
             <>
-              <path d={seritler.gidis} fill="none" stroke="#fff" strokeWidth={3.6} strokeLinecap="round" strokeLinejoin="round" />
-              <path d={seritler.donus} fill="none" stroke="#fff" strokeWidth={3.6} strokeLinecap="round" strokeLinejoin="round" />
-              <path d={seritler.gidis} fill="none" stroke={UP_COL} strokeWidth={1.9} strokeOpacity={0.8} strokeLinecap="round" strokeLinejoin="round" />
-              <path d={seritler.donus} fill="none" stroke={DOWN} strokeWidth={1.9} strokeOpacity={0.8} strokeLinecap="round" strokeLinejoin="round" />
+              <path d={seritler.gidis} fill="none" stroke="#fff" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" />
+              <path d={seritler.donus} fill="none" stroke="#fff" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" />
+              <path d={seritler.gidis} fill="none" stroke={UP_COL} strokeWidth={2.1} strokeOpacity={0.9} strokeLinecap="round" strokeLinejoin="round" />
+              <path d={seritler.donus} fill="none" stroke={DOWN} strokeWidth={2.1} strokeOpacity={0.9} strokeLinecap="round" strokeLinejoin="round" />
               {seritler.oklarGidis.map((o, i) => (
                 <g key={`og${i}`} transform={`translate(${o.x.toFixed(1)} ${o.y.toFixed(1)}) rotate(${o.aci.toFixed(1)})`}>
                   <path d="M-2,-2.4 L2.4,0 L-2,2.4" fill="none" stroke={UP_COL} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
@@ -469,7 +482,8 @@ export function CografiAg({
                 <circle cx={sx} cy={sy} r={s.tip && s.tip !== "istasyon" ? 2.6 : 4} fill={s.tip && s.tip !== "istasyon" ? brand.muted : "#fff"} stroke={brand.ink} strokeWidth={1.6} />
               )}
               {etiket && (
-                <text x={etiket.x} y={etiket.y} textAnchor="middle" fontSize={etiketFz} fontWeight={600} fill={brand.inkSoft}>{s.ad}</text>
+                <text x={etiket.x} y={etiket.y} textAnchor="middle" fontSize={etiketFz} fontWeight={600} fill={brand.ink}
+                  stroke="#fff" strokeWidth={2.4} paintOrder="stroke" strokeLinejoin="round" style={{ pointerEvents: "none" }}>{s.ad}</text>
               )}
             </g>
           ))}
