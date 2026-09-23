@@ -18,6 +18,7 @@ import { AspectDizilimPaneli } from "@/components/AspectDizilimPaneli";
 import { KararDestekPaneli } from "@/components/KararDestekPaneli";
 import { ParetoPaneli } from "@/components/ParetoPaneli";
 import { RobustFiloPaneli } from "@/components/RobustFiloPaneli";
+import { CakismaCozumPaneli } from "@/components/CakismaCozumPaneli";
 import { Kart } from "@/components/Kart";
 import { Kpi } from "@/components/Kpi";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
@@ -304,6 +305,9 @@ export function SistemMerkezi() {
 
       {/* Robustluk-Kısıtlı Filo — kapasite × Monte-Carlo; %X güvenilirlik + konfor altında min filo. */}
       <div className="mt-6"><RobustFiloPaneli /></div>
+
+      {/* Çakışma Çözücüsü — tek-hat meet/pass; kalkış-offset optimizasyonuyla çakışmasız çizelge. */}
+      <div className="mt-6"><CakismaCozumPaneli /></div>
 
       {/* Parametre düzenleme TEK yerde: header'daki ⚙ Parametreler. Burada tekrar
           gösterilmez (çift giriş kafa karıştırıyordu) — yalnız yönlendirme. */}
