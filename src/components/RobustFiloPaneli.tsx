@@ -120,7 +120,10 @@ export function RobustFiloPaneli() {
   return (
     <div className="ds-card">
       <div className="border-b px-5 py-4" style={{ borderColor: brand.border }}>
-        <div className="field-label">Robustluk-Kısıtlı Filo (Kapasite × Monte-Carlo)</div>
+        <div className="flex items-center gap-2">
+          <span className="ds-chip" style={{ background: CK.amberBg, color: CK.amberInk, border: `1px solid ${CK.amber}` }}>Risk</span>
+          <div className="field-label">Robustluk-Kısıtlı Filo (Kapasite × Monte-Carlo)</div>
+        </div>
         <h3 className="font-brand mt-0.5 text-lg font-semibold" style={{ color: brand.ink }}>%{hedef} güvenilirlik altında minimum filo</h3>
         <p className="mt-1 max-w-2xl text-xs" style={{ color: brand.inkSoft }}>
           Her filo için Monte-Carlo, gecikmelerin ne kadar dakik (eşik ≤2 dk) taşındığını ölçer. Daha çok filo = daha kısa aralık = daha az tampon → <b>güvenilirlik düşer</b>;

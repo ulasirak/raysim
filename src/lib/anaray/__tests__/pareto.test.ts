@@ -63,4 +63,52 @@ describe("paretoAnaliz", () => {
     expect(r.konforFilo).toBe(null);
     expect(r.noktalar.every((n) => n.doluluk === null && n.konforUygun)).toBe(true);
   });
+
+  // ——— EKONOMİK OPTİMUM (jenerik maliyet çanağı) ———
+  const eko = { ...g, pikYolcuSaat: 3000, aracKapasite: 220, konforTavani: 0.85, zamanDegeriYolcuSaat: 100, aracSaatMaliyet: 800 };
+
+  it("jenerik maliyet = işletmeci + yolcu; toplamın alt noktası ekonomik optimum (U çanağı)", () => {
+    const r = paretoAnaliz(eko);
+    expect(r.ekoVar).toBe(true);
+    // VoT=100, Cveh=800, talep=3000 → min f=8 (elle: jen(8)=12650 < jen(7)=12743 < jen(9)=12756).
+    expect(r.ekoOptimumFilo).toBe(8);
+    const opt = r.noktalar.find((n) => n.ekoOptimum)!;
+    // döküm tutarlı: toplam = işletmeci + yolcu.
+    expect(opt.jenerikMaliyet!).toBeCloseTo(opt.isletmeciMaliyet! + opt.yolcuMaliyet!, 6);
+    // gerçekten minimum: komşulardan küçük-eşit.
+    const jen = (f: number) => r.noktalar.find((n) => n.filo === f)!.jenerikMaliyet!;
+    expect(jen(8)).toBeLessThanOrEqual(jen(7));
+    expect(jen(8)).toBeLessThanOrEqual(jen(9));
+    // optimum daima kapasite duvarını (nMax=10) aşmaz.
+    expect(r.ekoOptimumFilo!).toBeLessThanOrEqual(10);
+    // konfor-uygun: optimumun doluluğu tavanı (%85) aşmaz (aşırı kalabalık önerilmez).
+    expect(opt.doluluk!).toBeLessThanOrEqual(0.85 + 1e-9);
+    expect(r.ekoOptimumFilo!).toBeGreaterThanOrEqual(r.konforFilo!);
+  });
+
+  it("kısıtsız maliyet minimumu konfor tavanını aşarsa optimum konfor sınırına çekilir (bağlı)", () => {
+    // Pahalı araç + düşük VoT → kısıtsız maliyet minimumu (f*≈√(500·VoT/Cveh)) konfor sınırının (6) altına iner.
+    const r = paretoAnaliz({ ...eko, zamanDegeriYolcuSaat: 20, aracSaatMaliyet: 2000 });
+    expect(r.ekoSerbestFilo!).toBeLessThan(r.konforFilo!);   // kısıtsız min aşırı kalabalık
+    expect(r.ekoKonforBagli).toBe(true);
+    expect(r.ekoOptimumFilo).toBe(r.konforFilo);             // öneri konfor sınırına çekildi
+    expect(r.noktalar.find((n) => n.ekoOptimum)!.doluluk!).toBeLessThanOrEqual(0.85 + 1e-9);
+  });
+
+  it("zaman değeri artınca optimum filo ARTAR; araç maliyeti artınca AZALIR", () => {
+    const dusukVoT = paretoAnaliz({ ...eko, zamanDegeriYolcuSaat: 30 }).ekoOptimumFilo!;
+    const yuksekVoT = paretoAnaliz({ ...eko, zamanDegeriYolcuSaat: 200 }).ekoOptimumFilo!;
+    expect(yuksekVoT).toBeGreaterThanOrEqual(dusukVoT);
+    const ucuzArac = paretoAnaliz({ ...eko, aracSaatMaliyet: 300 }).ekoOptimumFilo!;
+    const pahaliArac = paretoAnaliz({ ...eko, aracSaatMaliyet: 2000 }).ekoOptimumFilo!;
+    expect(pahaliArac).toBeLessThanOrEqual(ucuzArac);
+  });
+
+  it("iki ₺ girdi (VoT/araç-saat) yoksa jenerik maliyet YOK (ekoVar=false, alanlar null)", () => {
+    const r = paretoAnaliz({ ...g, pikYolcuSaat: 3000, aracKapasite: 220 }); // ₺ girdi yok
+    expect(r.ekoVar).toBe(false);
+    expect(r.ekoOptimumFilo).toBe(null);
+    expect(r.ekoMaliyet).toBe(null);
+    expect(r.noktalar.every((n) => n.jenerikMaliyet === null && !n.ekoOptimum)).toBe(true);
+  });
 });

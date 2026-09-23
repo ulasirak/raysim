@@ -269,6 +269,10 @@ export interface Isletme {
   pikYolcuSaat: number;         // pik saatte toplam biniş (yolcu/saat, tek yön talep tabanı)
   dolulukHedefi: number;        // hedef doluluk faktörü (0..1) — bu oranın üstü "tıkanma"
   aracYolcuKapasite: number;    // araç yolcu kapasitesi (kişi) — tıkanmadan taşınan
+  // Ekonomik optimizasyon (jenerik maliyet = işletmeci + yolcu zaman maliyeti). DÜZENLENEBİLİR
+  // VARSAYIM — uydurma değil, projenin kendi rakamıyla değiştirilir; kalıcı saklanır.
+  zamanDegeriYolcuSaat?: number; // ₺/yolcu-saat — yolcu bekleme zamanının değeri (Value of Time)
+  aracSaatMaliyet?: number;      // ₺/araç-saat — hatta çalışan araç başı işletme maliyeti (enerji+personel+bakım)
   talepAgirliklari?: Record<string, number>; // durak-başı talep ağırlığı override (ad→ağırlık); yoksa rolden tahmin
   /** "Her istasyon" modunda durak-başı yolcu (yolcu/saat): ad→{binen,inen}. Girili değilse
    *  rolden tahmin edilen değerle doldurulur. DWELL'i ETKİLEMEZ (ayrı alan) — kapasiteyi bozmaz. */
@@ -336,6 +340,8 @@ export const varsayilanIsletme: Isletme = {
   pikYolcuSaat: 3000,
   dolulukHedefi: 0.85,
   aracYolcuKapasite: 220,
+  zamanDegeriYolcuSaat: 50,   // ₺/yolcu-saat — düzenlenebilir varsayım (projenin kendi VoT'si girilir)
+  aracSaatMaliyet: 800,       // ₺/araç-saat — düzenlenebilir varsayım (enerji+personel+bakım)
 };
 
 // ————————————————————————————————————————————————

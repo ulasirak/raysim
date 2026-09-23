@@ -297,13 +297,29 @@ export function SistemMerkezi() {
       {/* Aspect Dizilimi (Signal Aspect Sequence) — 3-aspect blok dizilimi + görüş/fren denetimi (G). */}
       <div className="mt-6"><AspectDizilimPaneli /></div>
 
-      {/* Karar Destek & Optimizasyon — filo↔headway ödünleşimi + hedef-arama (F). */}
-      <div className="mt-6"><KararDestekPaneli /></div>
+      {/* FİLO & KAPASİTE KARARI — üç panelin ORTAK temeli tek yerde (tekrarı önler). */}
+      {maks?.gecerli && (
+        <div className="mt-8 rounded-lg border px-4 py-3" style={{ borderColor: brand.border, background: "#F8FAFC" }}>
+          <div className="field-label">Filo &amp; Kapasite kararı — temel kapasite (aşağıdaki üç panel bunu farklı açıdan kullanır)</div>
+          <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <MiniStat etiket="Çevrim (RTT)" deger={sure(maks.cevrimSuresi)} />
+            <MiniStat etiket="Min headway (duvar)" deger={sure(maks.hMin)} />
+            <MiniStat etiket="Kapasite duvarı" deger={`${maks.nTeorik} araç`} />
+            <MiniStat etiket="Önerilen (sürdürülebilir)" deger={`${maks.nSurdurulebilir} araç`} vurgu={OK} />
+          </div>
+          <div className="mt-1.5 text-[0.68rem]" style={{ color: brand.muted }}>
+            Aynı temel → üç farklı karar: <b style={{ color: "#2350B8" }}>Operasyonel</b> (istenen aralığı hangi filo verir) · <b style={{ color: OK }}>Ekonomik</b> (₺ toplam maliyeti en düşük filo) · <b>Risk</b> (gecikmeye rağmen güvenilirlik+konfor için min filo).
+          </div>
+        </div>
+      )}
 
-      {/* Çok-Amaçlı Optimizasyon (Pareto) — maliyet↔bekleme↔doluluk cephe + diz + ağırlık (F). */}
+      {/* Karar Destek & Optimizasyon — OPERASYONEL: filo↔headway ödünleşimi + hedef-arama (F). */}
+      <div className="mt-4"><KararDestekPaneli /></div>
+
+      {/* Ekonomik Optimizasyon — jenerik (toplam) maliyet çanağı + ekonomik optimum (F). */}
       <div className="mt-6"><ParetoPaneli /></div>
 
-      {/* Robustluk-Kısıtlı Filo — kapasite × Monte-Carlo; %X güvenilirlik + konfor altında min filo. */}
+      {/* Robustluk-Kısıtlı Filo — RİSK: kapasite × Monte-Carlo; %X güvenilirlik + konfor altında min filo. */}
       <div className="mt-6"><RobustFiloPaneli /></div>
 
       {/* Çakışma Çözücüsü — tek-hat meet/pass; kalkış-offset optimizasyonuyla çakışmasız çizelge. */}

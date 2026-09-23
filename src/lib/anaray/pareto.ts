@@ -19,6 +19,11 @@ export interface ParetoNokta {
   diz: boolean;            // diz (knee) noktası — en iyi denge (matematiksel dirsek)
   optimum: boolean;        // ağırlıklı optimum (konfor-uygun kümede)
   skor: number;            // ağırlıklı normalize skor (küçük = iyi)
+  // Jenerik (toplam) maliyet dökümü — ₺/saat; iki ekonomik girdi + talep varsa hesaplanır.
+  isletmeciMaliyet: number | null; // filo × araç-saat maliyet (↑ filo ile artar)
+  yolcuMaliyet: number | null;     // talep × bekleme(saat) × zaman-değeri (↓ filo ile azalır)
+  jenerikMaliyet: number | null;   // toplam = işletmeci + yolcu (U eğrisi); ekonomik optimum bunu minimize eder
+  ekoOptimum: boolean;             // jenerik maliyeti minimize eden filo (gerçek ekonomik optimum)
 }
 
 export interface ParetoSonuc {
@@ -33,6 +38,14 @@ export interface ParetoSonuc {
   konforTavani: number;    // dolulukHedefi — bu oranın üstü "tıkanma"
   cevrimSn: number;
   hMinSn: number;
+  // Ekonomik (jenerik maliyet) optimum — talep + iki ₺ girdi varsa
+  ekoVar: boolean;                 // jenerik maliyet hesaplanabildi mi (talep>0 + VoT>0 + araç-saat>0)
+  ekoOptimumFilo: number | null;   // ÖNERİLEN ekonomik optimum (konfor-uygun kümede min jenerik maliyet)
+  ekoSerbestFilo: number | null;   // kısıtsız maliyet minimumu (konfor tavanı yoksa) — bilgi/çizim
+  ekoKonforBagli: boolean;         // konfor kısıtı bağlıyor mu (kısıtsız min aşırı kalabalık)
+  ekoMaliyet: { isletmeci: number; yolcu: number; toplam: number } | null; // optimumdaki ₺/saat döküm
+  zamanDegeriYolcuSaat: number;    // ₺/yolcu-saat (kullanılan VoT)
+  aracSaatMaliyet: number;         // ₺/araç-saat (kullanılan işletme maliyeti)
 }
 
 export interface ParetoGirdi {
@@ -44,6 +57,8 @@ export interface ParetoGirdi {
   konforTavani?: number;        // dolulukHedefi (0..1)
   agirlik?: number;             // 0..1 (maliyet↔servis), varsayılan 0,5
   ustFilo?: number;             // üst filo taraması (baskın kuyruğu göstermek için)
+  zamanDegeriYolcuSaat?: number; // ₺/yolcu-saat (VoT) — jenerik maliyet için
+  aracSaatMaliyet?: number;      // ₺/araç-saat işletme — jenerik maliyet için
 }
 
 /** A, B'yi baskılar mı? (tüm amaçlarda ≤ ve en az birinde <). */
@@ -63,13 +78,19 @@ export function paretoAnaliz(g: ParetoGirdi): ParetoSonuc {
   const agirlik = Math.min(1, Math.max(0, g.agirlik ?? 0.5));
   const demandVar = !!(g.pikYolcuSaat && g.pikYolcuSaat > 0 && g.aracKapasite && g.aracKapasite > 0);
   const konforTavani = Math.min(1, Math.max(0, g.konforTavani ?? 0.85));
+  // Ekonomik (jenerik maliyet) parametreleri — talep + iki pozitif ₺ girdi varsa geçerli.
+  const VoT = Math.max(0, g.zamanDegeriYolcuSaat ?? 0);       // ₺/yolcu-saat
+  const Cveh = Math.max(0, g.aracSaatMaliyet ?? 0);          // ₺/araç-saat
+  const talep = demandVar ? g.pikYolcuSaat! : 0;            // yolcu/saat
+  const ekoVar = demandVar && VoT > 0 && Cveh > 0;
 
   // Baskın kuyruğu görünür olsun diye duvarın ötesine birkaç filo tara.
   const kuyruk = Math.max(3, Math.round(nMax * 0.3));
   const ust = Math.max(1, Math.min(80, g.ustFilo ? Math.round(g.ustFilo) : nMax + kuyruk));
 
-  // Ham noktalar + amaç vektörleri.
-  type Ham = { filo: number; hw: number; bek: number; mal: number; dol: number | null; amac: number[] };
+  // Ham noktalar + amaç vektörleri + jenerik maliyet dökümü.
+  type Ham = { filo: number; hw: number; bek: number; mal: number; dol: number | null; amac: number[];
+    isl: number | null; yol: number | null; jen: number | null };
   const ham: Ham[] = [];
   for (let f = 1; f <= ust; f++) {
     const hw = Math.max(hMin, cevrim / f);              // etkin headway (duvarda sabitlenir)
@@ -77,7 +98,11 @@ export function paretoAnaliz(g: ParetoGirdi): ParetoSonuc {
     const mal = f;
     const dol = demandVar ? (g.pikYolcuSaat! * (hw / 3600)) / g.aracKapasite! : null;
     const amac = demandVar ? [mal, bek, dol!] : [mal, bek];
-    ham.push({ filo: f, hw, bek, mal, dol, amac });
+    // Jenerik maliyet (₺/saat): işletmeci = filo × araç-saat; yolcu = talep × bekleme(saat) × VoT.
+    const isl = ekoVar ? f * Cveh : null;
+    const yol = ekoVar ? talep * (hw / 2 / 3600) * VoT : null;
+    const jen = ekoVar ? isl! + yol! : null;
+    ham.push({ filo: f, hw, bek, mal, dol, amac, isl, yol, jen });
   }
 
   // Pareto-etkinlik (baskın altında olmayanlar).
@@ -116,6 +141,26 @@ export function paretoAnaliz(g: ParetoGirdi): ParetoSonuc {
     }
   });
 
+  // Ekonomik optimum: jenerik (toplam) maliyeti minimize eden filo. İşletmeci maliyeti filo ile
+  // DOĞRUSAL artar, yolcu maliyeti headway ile (≈1/filo) azalır → toplam U biçimlidir; alt nokta
+  // kısıtsız maliyet minimumudur (Newell/Vuchic). ANCAK bu nokta konfor/kapasite tavanını aşabilir
+  // (doluluk > tavan = araç binilemez, "bekleme=headway/2" modeli orada geçersiz) → ÖNERİLEN optimum
+  // KONFOR-UYGUN kümeyle sınırlanır (sistemin geri kalanıyla tutarlı — aşırı kalabalık önerilmez).
+  let ekoSerbestFilo: number | null = null, serbestMin = Infinity; // kısıtsız min (bilgi/çizim)
+  let ekoOptimumFilo: number | null = null, ekoMin = Infinity;      // konfor-kısıtlı öneri
+  if (ekoVar) {
+    for (const p of ham) {
+      if (p.jen == null) continue;
+      if (p.jen < serbestMin - 1e-6) { serbestMin = p.jen; ekoSerbestFilo = p.filo; }
+      const uygun = !konforSaglanabilir || konforBayrak[p.filo - 1];
+      if (uygun && p.jen < ekoMin - 1e-6) { ekoMin = p.jen; ekoOptimumFilo = p.filo; }
+    }
+  }
+  // Konfor kısıtı BAĞLIYOR mu? (kısıtsız min, konfor sınırının altında = aşırı kalabalık)
+  const ekoKonforBagli = ekoVar && ekoSerbestFilo != null && ekoOptimumFilo != null && ekoSerbestFilo < ekoOptimumFilo;
+  const ekoNokta = ekoOptimumFilo != null ? ham[ekoOptimumFilo - 1] : null;
+  const ekoMaliyet = ekoNokta ? { isletmeci: ekoNokta.isl!, yolcu: ekoNokta.yol!, toplam: ekoNokta.jen! } : null;
+
   const noktalar: ParetoNokta[] = ham.map((p, i) => ({
     filo: p.filo,
     headwaySn: p.hw,
@@ -127,6 +172,10 @@ export function paretoAnaliz(g: ParetoGirdi): ParetoSonuc {
     diz: p.filo === dizFilo,
     optimum: p.filo === optimumFilo,
     skor: skorlar[i],
+    isletmeciMaliyet: p.isl,
+    yolcuMaliyet: p.yol,
+    jenerikMaliyet: p.jen,
+    ekoOptimum: ekoOptimumFilo != null && p.filo === ekoOptimumFilo,
   }));
 
   return {
@@ -141,5 +190,12 @@ export function paretoAnaliz(g: ParetoGirdi): ParetoSonuc {
     konforTavani,
     cevrimSn: cevrim,
     hMinSn: hMin,
+    ekoVar,
+    ekoOptimumFilo,
+    ekoSerbestFilo,
+    ekoKonforBagli,
+    ekoMaliyet,
+    zamanDegeriYolcuSaat: VoT,
+    aracSaatMaliyet: Cveh,
   };
 }
