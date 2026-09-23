@@ -57,7 +57,6 @@ export function ParetoPaneli() {
 
   const etkinler = r.noktalar.filter((n) => n.etkin);
   const cephe = etkinler.map((p, i) => `${i === 0 ? "M" : "L"}${X(p.filo).toFixed(1)},${Y(p.beklemeDk).toFixed(1)}`).join(" ");
-  const tikanma = (n: typeof r.noktalar[number]) => r.demandVar && n.doluluk != null && n.doluluk > r.konforTavani + 1e-9;
 
   return (
     <div className="ds-card">
@@ -77,6 +76,15 @@ export function ParetoPaneli() {
             {/* eksenler */}
             <line x1={padL} y1={padT + ch} x2={padL + cw} y2={padT + ch} stroke={brand.border} strokeWidth={1} />
             <line x1={padL} y1={padT} x2={padL} y2={padT + ch} stroke={brand.border} strokeWidth={1} />
+            {/* konfor-dışı (tıkanma) bölgesi: konfor sınırının solu — doluluk tavanı aşan filolar */}
+            {r.demandVar && r.konforFilo && r.konforFilo > 1 && (
+              <g>
+                <rect x={padL} y={padT} width={Math.max(0, X(r.konforFilo) - padL)} height={ch} fill={CK.amber} opacity={0.07} />
+                <line x1={X(r.konforFilo)} y1={padT} x2={X(r.konforFilo)} y2={padT + ch} stroke={CK.amber} strokeWidth={1} strokeDasharray="3 3" />
+                <text x={X(r.konforFilo) + 3} y={padT + 20} fontSize={8} fill={CK.amberInk}>konfor sınırı ({r.konforFilo})</text>
+                <text x={padL + 3} y={padT + ch - 5} fontSize={7.5} fill={CK.amberInk}>← tıkanma (doluluk &gt; %{Math.round(r.konforTavani * 100)})</text>
+              </g>
+            )}
             {/* kapasite duvarı */}
             <line x1={X(r.duvarFilo)} y1={padT} x2={X(r.duvarFilo)} y2={padT + ch} stroke={CK.red} strokeWidth={1.2} strokeDasharray="4 3" strokeOpacity={0.6} />
             <text x={X(r.duvarFilo) - 3} y={padT + 10} textAnchor="end" fontSize={8} fill={CK.red}>kapasite duvarı ({r.duvarFilo})</text>
@@ -86,12 +94,7 @@ export function ParetoPaneli() {
             {r.noktalar.map((n) => {
               const cx = X(n.filo), cy = Y(n.beklemeDk);
               if (!n.etkin) return <circle key={n.filo} cx={cx} cy={cy} r={2.4} fill="none" stroke={brand.faint} strokeWidth={1} />;
-              return (
-                <g key={n.filo}>
-                  <circle cx={cx} cy={cy} r={2.8} fill={brand.ink} />
-                  {tikanma(n) && <circle cx={cx} cy={cy} r={5.5} fill="none" stroke={CK.amber} strokeWidth={1.3} />}
-                </g>
-              );
+              return <circle key={n.filo} cx={cx} cy={cy} r={2.8} fill={brand.ink} />;
             })}
             {/* diz noktası */}
             <circle cx={X(diz.filo)} cy={Y(diz.beklemeDk)} r={6} fill="none" stroke={CK.gold} strokeWidth={2} />
@@ -127,16 +130,16 @@ export function ParetoPaneli() {
             <Kpi etiket="Kapasite duvarı" deger={`${r.duvarFilo}`} boyut="sm" alt={`min aralık ${sure(r.hMinSn)}`} />
           </div>
           {r.demandVar && (
-            <div className="rounded-md p-2.5 text-[0.7rem]" style={{ background: tikanma(opt) ? CK.amberBg : CK.track, border: `1px solid ${tikanma(opt) ? CK.amber : brand.border}` }}>
-              <span style={{ color: tikanma(opt) ? CK.amberInk : brand.muted }}>
-                {tikanma(opt)
-                  ? `⚠ Optimumda araç doluluğu (%${Math.round(opt.doluluk! * 100)}) konfor tavanını (%${Math.round(r.konforTavani * 100)}) aşıyor — daha çok filo veya daha büyük araç gerekir.`
-                  : `Optimumda doluluk (%${Math.round(opt.doluluk! * 100)}) konfor tavanının (%${Math.round(r.konforTavani * 100)}) altında.`}
+            <div className="rounded-md p-2.5 text-[0.7rem]" style={{ background: r.konforSaglanabilir ? CK.track : CK.amberBg, border: `1px solid ${r.konforSaglanabilir ? brand.border : CK.amber}` }}>
+              <span style={{ color: r.konforSaglanabilir ? brand.muted : CK.amberInk }}>
+                {!r.konforSaglanabilir
+                  ? `⚠ Kapasite duvarında (${r.duvarFilo} araç) bile araç doluluğu konfor tavanını (%${Math.round(r.konforTavani * 100)}) aşıyor — araç kapasitesini büyüt veya hat kapasitesini artır.`
+                  : `Konfor tavanı (%${Math.round(r.konforTavani * 100)}) için en az ${r.konforFilo} araç gerekir; optimum (${opt.filo}) bunu sağlar (doluluk %${Math.round(opt.doluluk! * 100)}). Konfor kısıtı optimuma uygulanır — aşırı-kalabalık filo önerilmez.`}
               </span>
             </div>
           )}
           <p className="text-[0.68rem] leading-snug" style={{ color: brand.muted }}>
-            <b style={{ color: CK.gold }}>Diz</b> = amaçların en dengeli olduğu nokta (ütopyaya en yakın). <b style={{ color: CK.good }}>Optimum</b> = ağırlığa göre en iyi.
+            <b style={{ color: CK.gold }}>Diz</b> = amaçların en dengeli (matematiksel dirsek) noktası. <b style={{ color: CK.good }}>Optimum</b> = ağırlığa göre en iyi{r.demandVar ? " (konfor-uygun kümede)" : ""}.
             İçi boş noktalar <b>baskın</b> (aşırı filo): maliyet artar, servis kazancı yok.
           </p>
         </div>

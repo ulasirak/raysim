@@ -52,6 +52,15 @@ export function AspectDizilimPaneli() {
 
   const lampColor = (a: Aspect) => ASPEKT[a];
 
+  // Çok blokta etiketler üst üste binmesin: seyrek stride + önemli bloklar (işgal/uyarı/yetersiz) daima.
+  const n = r.bloklar.length;
+  const etStride = Math.max(1, Math.ceil(n / 16));   // en çok ~16 blok-no etiketi
+  const kmStride = Math.max(1, Math.ceil(n / 10));   // en çok ~10 km etiketi
+  const onemli = (no: number) => no === r.isgalBlok || no === r.isgalBlok - 1;
+  const noGoster = (b: { no: number; yeterli: boolean }) =>
+    (b.no - 1) % etStride === 0 || onemli(b.no) || !b.yeterli;
+  const uzunlukGoster = (b: { no: number; yeterli: boolean }) => onemli(b.no) || !b.yeterli;
+
   return (
     <div className="ds-card">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4" style={{ borderColor: brand.border }}>
@@ -103,13 +112,17 @@ export function AspectDizilimPaneli() {
               <g key={b.no} style={{ cursor: "pointer" }} onClick={() => setIsgalSecim(b.no)}>
                 <rect x={bx} y={trackY - 12} width={bw} height={24} fill={fill}
                   stroke={isgal ? "rgba(200,16,46,0.35)" : "transparent"} strokeWidth={1} rx={2} />
-                {/* blok no + uzunluk */}
-                <text x={bx + bw / 2} y={trackY + 60} textAnchor="middle" fontFamily={CK.sans} fontSize={9}
-                  fontWeight={isgal ? 700 : 500} fill={isgal ? CK.red : brand.ink}>B{b.no}</text>
-                <text x={bx + bw / 2} y={trackY + 72} textAnchor="middle" fontFamily={CK.sans} fontSize={8}
-                  fill={b.yeterli ? CK.muted : CK.amberInk} style={{ fontVariantNumeric: "tabular-nums" }}>
-                  {b.uzunluk} m{b.yeterli ? "" : " ⚠"}
-                </text>
+                {/* blok no + uzunluk (seyreltilmiş — kalabalıkta yalnız önemli/örneklenen) */}
+                {noGoster(b) && (
+                  <text x={bx + bw / 2} y={trackY + 60} textAnchor="middle" fontFamily={CK.sans} fontSize={9}
+                    fontWeight={isgal ? 700 : 500} fill={isgal ? CK.red : brand.ink}>B{b.no}</text>
+                )}
+                {uzunlukGoster(b) && (
+                  <text x={bx + bw / 2} y={trackY + 72} textAnchor="middle" fontFamily={CK.sans} fontSize={8}
+                    fill={b.yeterli ? CK.muted : CK.amberInk} style={{ fontVariantNumeric: "tabular-nums" }}>
+                    {b.uzunluk} m{b.yeterli ? "" : " ⚠"}
+                  </text>
+                )}
               </g>
             );
           })}
@@ -127,17 +140,19 @@ export function AspectDizilimPaneli() {
           )}
 
           {/* sinyaller (her blok girişi) + aspect lambası */}
-          {r.sinyaller.map((s) => (
+          {r.sinyaller.map((s, i) => (
             <g key={s.no}>
-              <line x1={x(s.km)} y1={mastTop} x2={x(s.km)} y2={trackY - 12} stroke={CK.ink2} strokeWidth={1.5} />
-              <circle cx={x(s.km)} cy={lampY} r={7} fill={lampColor(s.aspect)}
+              <line x1={x(s.km)} y1={mastTop} x2={x(s.km)} y2={trackY - 12} stroke={CK.ink2} strokeWidth={s.aspect === "yesil" ? 1 : 1.5} strokeOpacity={s.aspect === "yesil" ? 0.5 : 1} />
+              <circle cx={x(s.km)} cy={lampY} r={s.aspect === "yesil" ? 5.5 : 7} fill={lampColor(s.aspect)}
                 stroke={brand.ink} strokeOpacity={0.25} strokeWidth={1} />
               {s.aspect !== "yesil" && (
                 <text x={x(s.km)} y={lampY - 12} textAnchor="middle" fontFamily={CK.sans} fontSize={8.5}
                   fontWeight={700} fill={lampColor(s.aspect)}>{ASPECT_AD[s.aspect]}</text>
               )}
-              <text x={x(s.km)} y={trackY + 20} textAnchor="middle" fontFamily={CK.sans} fontSize={7.5}
-                fill={CK.faint} style={{ fontVariantNumeric: "tabular-nums" }}>{kmFmt(s.km)}</text>
+              {((i % kmStride === 0) || s.aspect !== "yesil") && (
+                <text x={x(s.km)} y={trackY + 20} textAnchor="middle" fontFamily={CK.sans} fontSize={7.5}
+                  fill={CK.faint} style={{ fontVariantNumeric: "tabular-nums" }}>{kmFmt(s.km)}</text>
+              )}
             </g>
           ))}
         </svg>

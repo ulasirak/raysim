@@ -42,9 +42,25 @@ describe("paretoAnaliz", () => {
     expect(d1).toBeGreaterThan(d10);
   });
 
-  it("talep yoksa doluluk null + amaç yalnız maliyet/bekleme", () => {
+  it("konfor KISITI: optimum konforu (doluluk ≤ tavan) sağlayan filolarda kalır", () => {
+    // dol(f) = 4,545/f (f≤10) → ≤0,85 için f ≥ 6 → konforFilo = 6.
+    const d = { ...g, pikYolcuSaat: 3000, aracKapasite: 220, konforTavani: 0.85 };
+    const r = paretoAnaliz(d);
+    expect(r.konforFilo).toBe(6);
+    expect(r.konforSaglanabilir).toBe(true);
+    expect(r.noktalar.find((n) => n.filo === 5)!.konforUygun).toBe(false);
+    expect(r.noktalar.find((n) => n.filo === 6)!.konforUygun).toBe(true);
+    // maliyet önceliğinde bile optimum konfor sınırının (6) altına inmez — aşırı kalabalık önermez.
+    expect(paretoAnaliz({ ...d, agirlik: 0 }).optimumFilo).toBe(6);
+    // optimumun doluluğu tavanı aşmaz.
+    const opt = paretoAnaliz(d).noktalar.find((n) => n.optimum)!;
+    expect(opt.doluluk!).toBeLessThanOrEqual(0.85 + 1e-9);
+  });
+
+  it("talep yoksa doluluk null + konfor kısıtı yok + amaç yalnız maliyet/bekleme", () => {
     const r = paretoAnaliz(g);
     expect(r.demandVar).toBe(false);
-    expect(r.noktalar.every((n) => n.doluluk === null)).toBe(true);
+    expect(r.konforFilo).toBe(null);
+    expect(r.noktalar.every((n) => n.doluluk === null && n.konforUygun)).toBe(true);
   });
 });

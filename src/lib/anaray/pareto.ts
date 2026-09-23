@@ -14,17 +14,20 @@ export interface ParetoNokta {
   beklemeDk: number;       // yolcu ortalama bekleme = headway ÷ 2 (dk)
   maliyet: number;         // işletme yükü göstergesi = filo
   doluluk: number | null;  // araç doluluğu (0..1+); talep yoksa null
+  konforUygun: boolean;    // doluluk ≤ konfor tavanı (talep yoksa daima true)
   etkin: boolean;          // Pareto-etkin (baskın altında değil)
-  diz: boolean;            // diz (knee) noktası — en iyi denge
-  optimum: boolean;        // ağırlıklı optimum
+  diz: boolean;            // diz (knee) noktası — en iyi denge (matematiksel dirsek)
+  optimum: boolean;        // ağırlıklı optimum (konfor-uygun kümede)
   skor: number;            // ağırlıklı normalize skor (küçük = iyi)
 }
 
 export interface ParetoSonuc {
   noktalar: ParetoNokta[];
   duvarFilo: number;       // nMax — kapasite duvarındaki en fazla anlamlı filo
-  dizFilo: number;         // diz noktası filosu
-  optimumFilo: number;     // ağırlıklı optimum filo
+  dizFilo: number;         // diz noktası filosu (matematiksel dirsek)
+  optimumFilo: number;     // ağırlıklı optimum filo (konfor-uygun kümede)
+  konforFilo: number | null; // konforu (doluluk ≤ tavan) sağlayan en az filo; talep yoksa/hiç yoksa null
+  konforSaglanabilir: boolean; // etkin küme içinde konfor sağlanabiliyor mu
   agirlik: number;         // 0 = maliyet önceliği .. 1 = servis (bekleme) önceliği
   demandVar: boolean;
   konforTavani: number;    // dolulukHedefi — bu oranın üstü "tıkanma"
@@ -79,6 +82,14 @@ export function paretoAnaliz(g: ParetoGirdi): ParetoSonuc {
 
   // Pareto-etkinlik (baskın altında olmayanlar).
   const etkinBayrak = ham.map((p) => !ham.some((q) => q !== p && baskilar(q.amac, p.amac)));
+  // Konfor uygunluğu: doluluk ≤ tavan (talep yoksa daima uygun).
+  const konforBayrak = ham.map((p) => !demandVar || p.dol == null || p.dol <= konforTavani + 1e-9);
+
+  // Konforu sağlayan EN AZ filo (doluluk filo arttıkça düşer → ilk uygun = en az).
+  const ilkKonfor = demandVar ? ham.find((p) => konforBayrak[p.filo - 1]) : undefined;
+  const konforFilo = ilkKonfor ? ilkKonfor.filo : null;
+  // Etkin küme içinde konfor sağlanabiliyor mu.
+  const konforSaglanabilir = !demandVar || etkinBayrak.some((e, i) => e && konforBayrak[i]);
 
   // Normalizasyon (maliyet & bekleme) — diz + ağırlıklı skor için.
   const malMin = 1, malMax = ust;
@@ -86,9 +97,10 @@ export function paretoAnaliz(g: ParetoGirdi): ParetoSonuc {
   const bekMin = Math.min(...bekVals), bekMax = Math.max(...bekVals);
   const nrm = (v: number, lo: number, hi: number) => (hi - lo < 1e-9 ? 0 : (v - lo) / (hi - lo));
 
-  // Diz noktası: etkin noktalar içinde ütopyaya (0,0) en yakın (maliyet,bekleme normalize).
+  // Diz noktası: TÜM etkin frontte ütopyaya (0,0) en yakın nokta (matematiksel dirsek — bilgi).
   let dizFilo = 1, dizEnYakin = Infinity;
-  // Ağırlıklı optimum: skor = w·nBekleme + (1−w)·nMaliyet, etkinler arasında en küçük.
+  // Ağırlıklı optimum: skor = w·nBekleme + (1−w)·nMaliyet. KONFOR KISITI: uygun küme içinde ara
+  // (konfor sağlanamıyorsa tüm etkin kümeye düş). Böylece optimum aşırı-kalabalık filo önermez.
   let optimumFilo = 1, optEnKucuk = Infinity;
   const skorlar: number[] = [];
   ham.forEach((p, i) => {
@@ -99,7 +111,8 @@ export function paretoAnaliz(g: ParetoGirdi): ParetoSonuc {
     if (etkinBayrak[i]) {
       const uzak = Math.hypot(nm, nb);
       if (uzak < dizEnYakin - 1e-9) { dizEnYakin = uzak; dizFilo = p.filo; }
-      if (skor < optEnKucuk - 1e-9) { optEnKucuk = skor; optimumFilo = p.filo; }
+      const optUygun = etkinBayrak[i] && (!konforSaglanabilir || konforBayrak[i]);
+      if (optUygun && skor < optEnKucuk - 1e-9) { optEnKucuk = skor; optimumFilo = p.filo; }
     }
   });
 
@@ -109,6 +122,7 @@ export function paretoAnaliz(g: ParetoGirdi): ParetoSonuc {
     beklemeDk: p.bek,
     maliyet: p.mal,
     doluluk: p.dol,
+    konforUygun: konforBayrak[i],
     etkin: etkinBayrak[i],
     diz: p.filo === dizFilo,
     optimum: p.filo === optimumFilo,
@@ -120,6 +134,8 @@ export function paretoAnaliz(g: ParetoGirdi): ParetoSonuc {
     duvarFilo: nMax,
     dizFilo,
     optimumFilo,
+    konforFilo,
+    konforSaglanabilir,
     agirlik,
     demandVar,
     konforTavani,
