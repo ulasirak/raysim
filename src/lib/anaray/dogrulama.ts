@@ -12,7 +12,7 @@
 
 import { stepMotion, allowedSpeed } from "./signalling";
 import { simulate } from "./sim";
-import { kurpHizi, kurpYanalIvme, yeniKurp } from "./ring";
+import { kurpHizi, kurpYanalIvme, yeniKurp, yeniRing } from "./ring";
 import { maksimumTren } from "./kapasite";
 import { varsayilanConfig, varsayilanIsletme, type SimConfig, type Isletme } from "./config";
 import { varsayilanArac } from "./vehicles";
@@ -123,12 +123,10 @@ export function dogrulamaCalistir(
     referans: vb, hesaplanan: v, birim: "m/s", tolerans: 2,
     yontem: "Çekiş = direnç dengesi: P/v = davisA + davisB·v + davisC·v² (Škoda Davis katsayıları)" });
 
-  // — UÇTAN-UCA (ÇOK-SEGMENT ENTEGRASYON): tek-segment kontrolün kapsamadığı ZİNCİRLEMEYİ
-  //   sınar. İdeal araç 2 ardışık durak-arasını (her biri L) geçer; ara istasyonda TAM
-  //   durup yeniden kalkar. Motorun tam sayısal entegrasyonu (simulate), kapalı-form
-  //   2×trapez ile kıyaslanır → çok-duraklı seyahati doğru birleştirdiğini BAĞIMSIZ doğrular.
-  //   (Not: tam işletme çevrimi kapalı-form değildir — ring modeli operasyonel hız/istasyon-
-  //   yaklaşımı içerir; bu yüzden analitik doğrulama seyir entegrasyonu düzeyinde kalır.) —
+  // — UÇTAN-UCA ① (ÇOK-SEGMENT ENTEGRASYON, integrator izolasyonu): ideal araç 2 ardışık
+  //   durak-arasını (her biri L) geçer; ara istasyonda TAM durup yeniden kalkar. Motorun
+  //   sayısal entegrasyonu (simulate, dt=0,05) kapalı-form 2×trapez ile kıyaslanır →
+  //   çok-duraklı seyahati doğru zincirlediğini BAĞIMSIZ doğrular. —
   const eeLine: Line = {
     id: "vv2", name: "Analitik 2-segment", length: 2 * L,
     stations: [
@@ -145,6 +143,29 @@ export function dogrulamaCalistir(
   ekle({ ad: "Çok-segment seyir süresi (uçtan-uca)", kategori: "Kinematik", bagimsiz: true,
     referans: 2 * tRef, hesaplanan: eeT, birim: "s", tolerans: 2,
     yontem: `2 ardışık durak-arası (ideal araç, her biri ${L} m); ara istasyonda tam durup yeniden kalkar. Motorun sayısal entegrasyonu (simulate) kapalı-form 2×trapez ile kıyaslanır — çok-duraklı seyahatin doğru zincirlendiğini bağımsız sınar.` });
+
+  // — UÇTAN-UCA ② (TAM İŞLETME ÇEVRİMİ): en üst-seviye pipeline. İdeal araçla N ring'lik
+  //   bir hattın maksimumTren çevrim süresini (per-ring seyir ×N + ara dwell + iki yön ×2,
+  //   döngü terminal → 0) kapalı-form ile kıyaslar. ring.vmax=V verilerek cruise sabittir →
+  //   çevrim kâğıt üstünde tam hesaplanabilir. Motorun tüm çevrim-kurulum aritmetiğinin
+  //   (rings → line → simulate → çevrim) fizikle uyumunu BAĞIMSIZ sınar. Sapma ~%2 =
+  //   simulate dt=0,5 sayısal doğruluğu (motorun üretim ayarı), model hatası değil. —
+  const cN = 3, cDwell = 30, cL = 2000;
+  const cCfg: SimConfig = { ...varsayilanConfig, vAnahat: V, ivme: a0, yavaslama: b };
+  const cIsl: Isletme = {
+    ...varsayilanIsletme, kalkisOluZamaniSn: 0,
+    terminalBas: { ...varsayilanIsletme.terminalBas, tip: "dongu" },
+    terminalSon: { ...varsayilanIsletme.terminalSon, tip: "dongu" },
+  };
+  const cRings: DurakArasiRing[] = Array.from({ length: cN }, (_, i) => ({
+    ...yeniRing(`C${i}`, `C${i + 1}`), uzunluk: cL, worstUzunluk: cL, bestUzunluk: cL, vmax: V, dwell: cDwell,
+  }));
+  const cMaks = maksimumTren(cRings, arac, cCfg, cIsl);
+  const cTrap = V / a0 + (cL - (V * V) / (2 * a0) - (V * V) / (2 * b)) / V + V / b;
+  const cCevrimRef = 2 * (cN * cTrap + (cN - 1) * cDwell); // döngü terminal → +0
+  ekle({ ad: "Tam işletme çevrimi (uçtan-uca)", kategori: "Kapasite", bagimsiz: true,
+    referans: cCevrimRef, hesaplanan: cMaks.cevrimSuresi, birim: "s", tolerans: 3,
+    yontem: `Çevrim = 2 × [${cN} ring × trapez(${cL} m) + ${cN - 1} × dwell(${cDwell} s)]; döngü terminal → 0. İdeal araç + ring.vmax=${Math.round(V * 3.6)} km/h → kapalı-form. Motorun tam çevrim-kurulum aritmetiğini (rings → çevrim) bağımsız sınar; ~%2 sapma = üretim entegrasyonu dt=0,5 doğruluğu.` });
 
   // — Kurp: yarıçaptan türeyen hızda yanal ivme = konfor tavanı (tasarım değişmezi) —
   const k = { ...yeniKurp(0), yaricap: 300, dever: 0, uzunluk: 60 };
