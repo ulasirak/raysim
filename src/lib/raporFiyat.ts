@@ -22,7 +22,6 @@ export const RAPOR_BOLUM_KREDI = {
   tarife: 1,      // 6. Tarife
   duyarlilik: 1,  // 7. Duyarlılık (tornado)
   kilitleme: 1,   // 3.2 Kilitleme (Interlocking) Kontrol Tablosu — rota/makas konumu/kilit
-  aspect: 1,      // 3.3 Aspect Dizilimi (Signal Aspect Sequence) — 3-aspect blok dizilimi + görüş/fren denetimi
   pareto: 1,      // 11. Çok-Amaçlı Optimizasyon (Pareto) — maliyet↔bekleme↔doluluk cephe + diz + optimum + konfor kısıtı
   dogrulama: 1,   // 9. Doğrulama & Geçerleme (V&V) — motorun analitik referanslara karşı sertifikasyonu
   izlenebilirlik: 1, // 10. İzlenebilirlik & Tekrar-Üretilebilirlik — motor sürümü + girdi künyesi + her sayının yöntem kaynağı
@@ -57,7 +56,6 @@ export const RAPOR_BOLUM_AD: Record<RaporBolum, { tr: string; en: string }> = {
   tarife: { tr: "Tarife", en: "Timetable" },
   duyarlilik: { tr: "Duyarlılık (Tornado)", en: "Sensitivity (Tornado)" },
   kilitleme: { tr: "Kilitleme Kontrol Tablosu (Interlocking)", en: "Interlocking Control Table" },
-  aspect: { tr: "Aspect Dizilimi (Signal Aspect Sequence)", en: "Signal Aspect Sequence" },
   pareto: { tr: "Çok-Amaçlı Optimizasyon (Pareto)", en: "Multi-Objective Optimization (Pareto)" },
   dogrulama: { tr: "Doğrulama & Geçerleme (V&V)", en: "Verification & Validation" },
   izlenebilirlik: { tr: "İzlenebilirlik & Tekrar-Üretilebilirlik", en: "Traceability & Reproducibility" },

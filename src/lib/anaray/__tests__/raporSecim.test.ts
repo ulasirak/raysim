@@ -108,13 +108,13 @@ describe("Rapor bölüm seçimi — her varyasyon kusursuz", () => {
     const yalnizGrafik = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, b === "grafikler"])) as RaporSecim;
     expect(raporKredi(yalnizGrafik)).toBe(RAPOR_TABAN_KREDI + 3);
   });
-  it("raporKredi: grafiksiz tam rapor = taban 3 + 12 bölüm = 15 kredi", () => {
+  it("raporKredi: grafiksiz tam rapor = taban 3 + 11 bölüm = 14 kredi", () => {
     const secim = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, b !== "grafikler"])) as RaporSecim;
-    expect(raporKredi(secim)).toBe(15);
+    expect(raporKredi(secim)).toBe(14);
   });
-  it("raporKredi: her şey açık = 3 + 12 + grafikler(3) = 18 kredi", () => {
+  it("raporKredi: her şey açık = 3 + 11 + grafikler(3) = 17 kredi", () => {
     const secim = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, true])) as RaporSecim;
-    expect(raporKredi(secim)).toBe(18);
+    expect(raporKredi(secim)).toBe(17);
   });
 
   // İZLENEBİLİRLİK (Büyük sıçrama B) — motor sürümü DAİMA kapakta; seçilince bölüm 10
@@ -139,18 +139,6 @@ describe("Rapor bölüm seçimi — her varyasyon kusursuz", () => {
     const secim = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, b !== "kilitleme"])) as RaporSecim;
     const html = uret(secim);
     expect(html).not.toContain("Kilitleme Kontrol Tablosu");
-  }, TO);
-  it("aspect seçilince 3.3 Aspect Dizilimi render olur", () => {
-    const secim = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, b === "aspect"])) as RaporSecim;
-    const html = uret(secim);
-    saglamHtml(html);
-    expect(html).toContain("Aspect Dizilimi");            // 3.3 alt başlık
-    expect(html).toContain("fren mesafesi");              // görüş/fren denetimi metni
-  }, TO);
-  it("aspect kapalıyken dizilim render olmaz", () => {
-    const secim = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, b !== "aspect"])) as RaporSecim;
-    const html = uret(secim);
-    expect(html).not.toContain("Aspect Dizilimi");
   }, TO);
   it("pareto seçilince bölüm 11 (Pareto optimizasyon) render olur", () => {
     const secim = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, b === "pareto"])) as RaporSecim;

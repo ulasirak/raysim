@@ -14,7 +14,6 @@ import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimCon
 import { Duyarlilik } from "@/components/Duyarlilik";
 import { DogrulamaPaneli } from "@/components/DogrulamaPaneli";
 import { KilitlemePaneli } from "@/components/KilitlemePaneli";
-import { AspectDizilimPaneli } from "@/components/AspectDizilimPaneli";
 import { KararDestekPaneli } from "@/components/KararDestekPaneli";
 import { ParetoPaneli } from "@/components/ParetoPaneli";
 import { RobustFiloPaneli } from "@/components/RobustFiloPaneli";
@@ -293,9 +292,6 @@ export function SistemMerkezi() {
 
       {/* Kilitleme (Interlocking) Kontrol Tablosu — rota tesisi/makas konumu/kilit (G). */}
       <div className="mt-6"><KilitlemePaneli /></div>
-
-      {/* Aspect Dizilimi (Signal Aspect Sequence) — 3-aspect blok dizilimi + görüş/fren denetimi (G). */}
-      <div className="mt-6"><AspectDizilimPaneli /></div>
 
       {/* FİLO & KAPASİTE KARARI — üç panelin ORTAK temeli tek yerde (tekrarı önler). */}
       {maks?.gecerli && (

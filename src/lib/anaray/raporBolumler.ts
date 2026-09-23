@@ -8,7 +8,6 @@ import type { DurakArasiRing } from "./ring";
 import type { SimConfig, Isletme, ProjeMeta } from "./config";
 import { tbl, esc, kmFmt, RED } from "./raporCizim";
 import { kilitlemeTablosu, kilitlemeOzet } from "./kilitleme";
-import { aspectDizilim } from "./aspectDizilim";
 import { dogrulamaCalistir } from "./dogrulama";
 import { paretoAnaliz } from "./pareto";
 import type { maksimumTren } from "./kapasite";
@@ -40,33 +39,6 @@ export function bolumKilitleme(rings: DurakArasiRing[], en: boolean): string {
   return `<h3 class="sub">${en ? "3.2 Interlocking Control Table" : "3.2 Kilitleme Kontrol Tablosu"}</h3>
   <div class="gs" style="font-size:10pt">${giris}</div>
   ${tbl([en ? "Switch / location" : "Makas / konum", en ? "Route" : "Rota", en ? "Switch" : "Konum", en ? "Locked (conflicting)" : "Kilitlenen (çakışan)", en ? "Flank / Overlap" : "Flank / Overlap", en ? "Set/Rel/Lock (s)" : "Tanzim/Serbest/Kilit (s)"], rows, { first: true })}
-  <div class="gs" style="font-size:9pt">${not}</div>`;
-}
-
-/** 3.3 Aspect Dizilimi (Signal Aspect Sequence). */
-export function bolumAspect(rings: DurakArasiRing[], cfg: SimConfig, en: boolean): string {
-  const ad = aspectDizilim(rings, cfg);
-  if (!ad.bloklar.length) return "";
-  const yetersizler = ad.bloklar.filter((b) => !b.yeterli);
-  const giris = en
-    ? `Classic 3-aspect sequence derived from the outbound signals: a train approaching an occupied block sees Stop → Caution → Proceed. For adequate sighting/braking, every warning (caution) block must be at least the service braking distance at line design speed (v²/2b). Design speed <b>${Math.round(ad.tasarimHizKmh)} km/h</b> · braking distance <b>≈${Math.round(ad.frenMesafesi)} m</b> · <b>${ad.bloklar.length}</b> blocks · shortest block ${Math.round(ad.minBlok)} m · <b style="color:${ad.yetersizBlok ? RED : "#2E7D57"}">${ad.yetersizBlok}</b> block(s) shorter than the braking distance.`
-    : `İleri-yön sinyallerinden türetilen klasik 3-aspect dizilim: işgal edilen bloğa yaklaşan tren Dur → Tedbir → Yol görür. Yeterli görüş/fren için her uyarı (Tedbir) bloğu, hattın tasarım hızındaki servis-fren mesafesinden (v²/2b) uzun olmalıdır. Tasarım hızı <b>${Math.round(ad.tasarimHizKmh)} km/h</b> · fren mesafesi <b>≈${Math.round(ad.frenMesafesi)} m</b> · <b>${ad.bloklar.length}</b> blok · en kısa blok ${Math.round(ad.minBlok)} m · <b style="color:${ad.yetersizBlok ? RED : "#2E7D57"}">${ad.yetersizBlok}</b> blok fren mesafesinden kısa.`;
-  const tabloBlok = yetersizler.length
-    ? tbl(
-        [en ? "Block" : "Blok", en ? "Chainage (start–end)" : "Kilometraj (baş–son)", en ? "Length" : "Uzunluk", en ? "Braking dist." : "Fren mesafesi", en ? "Assessment" : "Değerlendirme"],
-        yetersizler.map((b) => [
-          `<b>B${b.no}</b>`, `k${kmFmt(b.basKm)} – k${kmFmt(b.sonKm)}`, `${b.uzunluk} m`, `≈${Math.round(ad.frenMesafesi)} m`,
-          `<b style="color:${RED}">${en ? "Insufficient sighting/braking" : "Görüş/fren yetersiz"}</b>`,
-        ]),
-        { first: true },
-      )
-    : `<div class="gs ok" style="font-size:10pt">${en ? "All warning blocks are longer than the braking distance — the aspect spacing provides sufficient sighting/braking at design speed." : "Tüm uyarı blokları fren mesafesinden uzun — aspect aralığı tasarım hızında yeterli görüş/fren sağlar."}</div>`;
-  const not = en
-    ? "Blocks are bounded by stations and outbound signals; design speed = main-line maximum. A caution block shorter than the braking distance means a driver seeing Caution cannot stop before the Stop signal at the block end — the block length / sighting must be increased."
-    : "Bloklar istasyon sınırları ve ileri-yön sinyallerle sınırlanır; tasarım hızı = ana hat azami. Fren mesafesinden kısa bir uyarı bloğu, Tedbir gören sürücünün blok sonundaki Dur'a yetişemeden duramayacağı anlamına gelir — blok uzunluğu / görüş artırılmalıdır.";
-  return `<h3 class="sub">${en ? "3.3 Signal Aspect Sequence" : "3.3 Aspect Dizilimi (Signal Aspect Sequence)"}</h3>
-  <div class="gs" style="font-size:10pt">${giris}</div>
-  ${tabloBlok}
   <div class="gs" style="font-size:9pt">${not}</div>`;
 }
 

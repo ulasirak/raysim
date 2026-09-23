@@ -31,7 +31,7 @@ import { hatOzellikleri, sinyalKonumlari, kavsakliRingler, subeEfektifRingler } 
 import {
   INK, RED, GOLD, esc, s0, kmFmt, qrSvg, tbl, ringSemaSvg, blockingBarSvg, reverseLineOf, bildfahrplanSvg, kisitBarSvg, hizProfilSvg, yukDwellSvg, turnbackTbl, hemzeminSvg, seferTersSvg, sperrzeitSvg, mcHistSvg, mcYayilimSvg, raporStil,
 } from "./raporCizim";
-import { bolumKilitleme, bolumAspect, bolumDogrulama, bolumIzlenebilirlik, bolumPareto } from "./raporBolumler";
+import { bolumKilitleme, bolumDogrulama, bolumIzlenebilirlik, bolumPareto } from "./raporBolumler";
 
 
 
@@ -527,9 +527,6 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   // 3.2 Kilitleme (Interlocking) Kontrol Tablosu — makaslardan türetilir; seçiliyse eklenir (G).
   const kilitlemeSub = dahil("kilitleme") ? bolumKilitleme(rings, en) : "";
 
-  // 3.3 Aspect Dizilimi (Signal Aspect Sequence) — sinyallerden 3-aspect blok dizilimi + görüş/fren denetimi (G).
-  const aspectSub = dahil("aspect") ? bolumAspect(rings, cfg, en) : "";
-
   const sinyalBolum = `
   <div class="banner"><span class="no">03</span>${lang === "en" ? "SIGNALLING — SIGNAL LAMPS (SG)" : "SİNYALİZASYON — SİNYAL LAMBALARI (SG)"}</div>
   <p>${lang === "en"
@@ -537,7 +534,6 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
     : `Hat, <b>${sinyalSayisi} adet sinyal lambası</b> ile korunur; her giden yön sinyali bir <b>blok sınırıdır</b>. Aşağıda sinyal düzeninin özeti verilmiştir; tam metraj listesi (sinyal-başı kilometraj) tasarım modelinde tutulur.`}</p>
   ${sinyalListe.length ? tbl(lang === "en" ? ["Indicator", "Value"] : ["Gösterge", "Değer"], sinyalOzetRows, { first: true }) : `<p class="muted">${lang === "en" ? "No signal lamps defined on this line yet (positions are entered in the Ringler module)." : "Bu hatta henüz sinyal lambası tanımlı değil (konumlar Ringler modülünde girilir)."}</p>`}
   ${kilitlemeSub}
-  ${aspectSub}
 `;
 
 
@@ -931,7 +927,7 @@ ${raporStil(INK, RED, GOLD)}</head>
       ${dahil("ozet") ? `<li><b>00</b>${en ? "Executive Summary" : "Yönetici Özeti"}</li>` : ""}
       <li><b>01</b>${L.s1}</li>
       ${(dahil("hat") || dahil("kurpKonfor")) ? `<li><b>02</b>${L.s2}<ul>${dahil("hat") ? `<li>2.1 ${en ? "Per-cell Constraint Analysis" : "Ring Bazında Kısıt Analizi"}</li>` : ""}${dahil("kurpKonfor") ? `<li>2.2 ${en ? "Curve & Lateral Comfort" : "Kurp & Yanal Konfor"}</li>` : ""}</ul></li>` : ""}
-      <li><b>03</b>${en ? "Signalling — Signal Lamps (SG)" : "Sinyalizasyon — Sinyal Lambaları (SG)"}${(dahil("kilitleme") || dahil("aspect")) ? `<ul>${dahil("kilitleme") ? `<li>3.2 ${en ? "Interlocking Control Table" : "Kilitleme Kontrol Tablosu"}</li>` : ""}${dahil("aspect") ? `<li>3.3 ${en ? "Signal Aspect Sequence" : "Aspect Dizilimi"}</li>` : ""}</ul>` : ""}</li>
+      <li><b>03</b>${en ? "Signalling — Signal Lamps (SG)" : "Sinyalizasyon — Sinyal Lambaları (SG)"}${dahil("kilitleme") ? `<ul><li>3.2 ${en ? "Interlocking Control Table" : "Kilitleme Kontrol Tablosu"}</li></ul>` : ""}</li>
       ${dahil("kapasite") ? `<li><b>04</b>${L.s4}<ul><li>4.1 Blocking-Time (Sperrzeitentreppe)</li></ul></li>` : ""}
       ${dahil("isletme") ? `<li><b>05</b>${en ? "Operations & Demand Analysis" : "İşletme & Talep Analizi"}<ul>
         <li>5.1 ${en ? "Passenger Load Profiles" : "Yolcu Yük Profilleri"}</li>
