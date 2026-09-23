@@ -11,6 +11,7 @@
 // tanımıyla uyumu — güvenilirlik göstergesi ama bağımsız kanıt değil). İkisi ayrı sunulur.
 
 import { stepMotion, allowedSpeed } from "./signalling";
+import { simulate } from "./sim";
 import { kurpHizi, kurpYanalIvme, yeniKurp } from "./ring";
 import { maksimumTren } from "./kapasite";
 import { varsayilanConfig, varsayilanIsletme, type SimConfig, type Isletme } from "./config";
@@ -121,6 +122,29 @@ export function dogrulamaCalistir(
   ekle({ ad: "Direnç denge (terminal) hızı", kategori: "Direnç", bagimsiz: true,
     referans: vb, hesaplanan: v, birim: "m/s", tolerans: 2,
     yontem: "Çekiş = direnç dengesi: P/v = davisA + davisB·v + davisC·v² (Škoda Davis katsayıları)" });
+
+  // — UÇTAN-UCA (ÇOK-SEGMENT ENTEGRASYON): tek-segment kontrolün kapsamadığı ZİNCİRLEMEYİ
+  //   sınar. İdeal araç 2 ardışık durak-arasını (her biri L) geçer; ara istasyonda TAM
+  //   durup yeniden kalkar. Motorun tam sayısal entegrasyonu (simulate), kapalı-form
+  //   2×trapez ile kıyaslanır → çok-duraklı seyahati doğru birleştirdiğini BAĞIMSIZ doğrular.
+  //   (Not: tam işletme çevrimi kapalı-form değildir — ring modeli operasyonel hız/istasyon-
+  //   yaklaşımı içerir; bu yüzden analitik doğrulama seyir entegrasyonu düzeyinde kalır.) —
+  const eeLine: Line = {
+    id: "vv2", name: "Analitik 2-segment", length: 2 * L,
+    stations: [
+      { id: "a", name: "A", position: 0, dwell: 0 },
+      { id: "m", name: "M", position: L, dwell: 0 },
+      { id: "b", name: "B", position: 2 * L, dwell: 0 },
+    ],
+    segments: [
+      { start: 0, end: L, vmax: V, gradient: 0 },
+      { start: L, end: 2 * L, vmax: V, gradient: 0 },
+    ],
+  };
+  const eeT = simulate(eeLine, arac, 0.05).totalTime;
+  ekle({ ad: "Çok-segment seyir süresi (uçtan-uca)", kategori: "Kinematik", bagimsiz: true,
+    referans: 2 * tRef, hesaplanan: eeT, birim: "s", tolerans: 2,
+    yontem: `2 ardışık durak-arası (ideal araç, her biri ${L} m); ara istasyonda tam durup yeniden kalkar. Motorun sayısal entegrasyonu (simulate) kapalı-form 2×trapez ile kıyaslanır — çok-duraklı seyahatin doğru zincirlendiğini bağımsız sınar.` });
 
   // — Kurp: yarıçaptan türeyen hızda yanal ivme = konfor tavanı (tasarım değişmezi) —
   const k = { ...yeniKurp(0), yaricap: 300, dever: 0, uzunluk: 60 };
