@@ -853,7 +853,7 @@ function StudioIc() {
                 <div className="flex items-center gap-2">
                   <span style={{ color: brand.red }}>✗</span>
                   <span style={{ color: brand.inkSoft }}>Tramvay sayısı belirlenmemiş — kaç tren koşacak?</span>
-                  <a href="#" onClick={(e) => { e.preventDefault(); document.querySelector('[data-filo-paneli]')?.scrollIntoView({ behavior: "smooth" }); }} className="rounded px-2 py-0.5 text-xs font-semibold text-white" style={{ background: brand.ink }}>↑ Filo & Öneri'de filo sayınızı onaylayın</a>
+                  <a href="#filo-paneli" onClick={(e) => { e.preventDefault(); const el = document.getElementById("filo-paneli"); if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); el.style.outline = `2px solid ${brand.ink}`; el.style.outlineOffset = "3px"; el.style.borderRadius = "10px"; setTimeout(() => { el.style.outline = ""; el.style.outlineOffset = ""; }, 1800); } }} className="rounded px-2 py-0.5 text-xs font-semibold text-white" style={{ background: brand.ink }}>↑ Filo & Öneri'de filo sayınızı onaylayın</a>
                 </div>
               )}
               {filoHazir && <div className="flex items-center gap-2"><span style={{ color: "#16794C" }}>✓</span><span style={{ color: brand.muted }}>Filo onaylı ({filoTek} araç).</span></div>}
