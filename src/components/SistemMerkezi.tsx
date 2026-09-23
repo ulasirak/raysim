@@ -17,6 +17,7 @@ import { KilitlemePaneli } from "@/components/KilitlemePaneli";
 import { AspectDizilimPaneli } from "@/components/AspectDizilimPaneli";
 import { KararDestekPaneli } from "@/components/KararDestekPaneli";
 import { ParetoPaneli } from "@/components/ParetoPaneli";
+import { RobustFiloPaneli } from "@/components/RobustFiloPaneli";
 import { Kart } from "@/components/Kart";
 import { Kpi } from "@/components/Kpi";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
@@ -300,6 +301,9 @@ export function SistemMerkezi() {
 
       {/* Çok-Amaçlı Optimizasyon (Pareto) — maliyet↔bekleme↔doluluk cephe + diz + ağırlık (F). */}
       <div className="mt-6"><ParetoPaneli /></div>
+
+      {/* Robustluk-Kısıtlı Filo — kapasite × Monte-Carlo; %X güvenilirlik + konfor altında min filo. */}
+      <div className="mt-6"><RobustFiloPaneli /></div>
 
       {/* Parametre düzenleme TEK yerde: header'daki ⚙ Parametreler. Burada tekrar
           gösterilmez (çift giriş kafa karıştırıyordu) — yalnız yönlendirme. */}
