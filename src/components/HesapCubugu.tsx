@@ -51,7 +51,7 @@ export function HesapKontrolleri() {
   } = useHesap();
   const { bakiye, krediSatinAl } = useCuzdan();
   // "+ Yeni hat" → dosyadan içe aktararak yeni proje kurma için (mevcut import motoru).
-  const { setRings, patchMeta } = useProje();
+  const { setRings, patchMeta, meta } = useProje();
   const { patchIsletme } = useIsletme();
 
   const [yeniAcik, setYeniAcik] = useState(false);
@@ -164,6 +164,20 @@ export function HesapKontrolleri() {
       {odemeHata && (
         <span className="max-w-xs truncate" title={odemeHata} style={{ color: koyu.kotu }}>⚠ {odemeHata}</span>
       )}
+
+      {/* Sade Görünüm — müşteri/sunum görünümü (grafikler + derin analiz gizli). Tek tık.
+          meta.sunumModu'yu değiştirir; salt gösterim, motor/rapor verisi değişmez. */}
+      <button type="button" onClick={() => patchMeta({ sunumModu: !meta.sunumModu })}
+        aria-pressed={!!meta.sunumModu}
+        title={meta.sunumModu
+          ? "Sade Görünüm AÇIK — grafikler/tornado/V&V gizli (müşteri görünümü). Uzman görünüm için tıkla."
+          : "Sade Görünüm — grafikleri/derin analizi gizle; yalnız sonuç + karar + canlı harita (müşteri görünümü)"}
+        className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-medium transition"
+        style={meta.sunumModu
+          ? { background: koyu.iyi, borderColor: koyu.iyi, color: "#0B2E1A" }
+          : { background: koyu.yuzey, borderColor: koyu.kenar, color: koyu.metinYumusak }}>
+        {meta.sunumModu ? "◐ Sade: açık" : "◐ Sade"}
+      </button>
 
       {/* Kredi bakiyesi — ücretli rapor/proje yükleme bu krediden düşer */}
       <span title="Kredi bakiyeniz — rapor ve proje yükleme bundan düşer"
