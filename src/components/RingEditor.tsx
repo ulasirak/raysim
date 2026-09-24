@@ -264,6 +264,7 @@ export function RingEditor() {
           <div className="field-label">Durak Arası Ring Editörü — Gerçek-Hayat İşletim Hücreleri</div>
           <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>{meta.hatAdi || "Adsız Hat"} · Loop (Çevrim) Şartları</h1>
         </div>
+        {!meta.sunumModu && (
         <button
           onClick={() => {
             if (rings.length > 0 && !confirm("Bu hattın tüm ringleri silinsin mi? (geri alınamaz)")) return;
@@ -272,6 +273,7 @@ export function RingEditor() {
           className="rounded-md border px-3 py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
           🗑 Hattı temizle
         </button>
+        )}
       </div>
 
 
@@ -286,17 +288,18 @@ export function RingEditor() {
       )}
 
       {/* GTFS içe aktarma — bir toplu taşıma ağının .zip'inden hattı otomatik kurar
-          (mevcut hattın üzerine yazar; "Silmeyi geri al" ile dönülebilir). */}
-      {!yukleniyor && (
+          (mevcut hattın üzerine yazar; "Silmeyi geri al" ile dönülebilir).
+          SADE GÖRÜNÜM'de inşa/aktarım araçları gizlenir (müşteri görünümü). */}
+      {!yukleniyor && !meta.sunumModu && (
         <HatIceAktar onIceAktar={iceAktarUygula} mevcutSonKoord={mevcutSonKoord} disabled={!yazilabilir} mesgulDis={iceMesgul} />
       )}
 
       {/* ŞUBE / TALİ HAT EDİTÖRÜ (dallanma, #1) — ana hattan ayrılan tali hatlar */}
-      {!yukleniyor && rings.length > 0 && <SubeEditor />}
+      {!yukleniyor && rings.length > 0 && !meta.sunumModu && <SubeEditor />}
 
       {/* railML DIŞA AKTARMA — hattı endüstri-standart railML 2.x XML olarak indir
-          (OpenTrack/RailSys köprüsü). Salt-okunur görünümde de açık (veri değişmez). */}
-      {!yukleniyor && rings.length > 0 && (
+          (OpenTrack/RailSys köprüsü). SADE GÖRÜNÜM'de gizli. */}
+      {!yukleniyor && rings.length > 0 && !meta.sunumModu && (
         <details className="mt-4 rounded-lg border bg-white" style={{ borderColor: brand.border }}>
           <summary className="flex cursor-pointer select-none items-center gap-2 p-4">
             <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
@@ -394,7 +397,7 @@ export function RingEditor() {
           Yükleme sırasında gizli (aşağıdaki "Hat yükleniyor…" gösterilir). */}
       {!yukleniyor && (
         <div className="mt-4">
-          <Panel baslik="Duraklar & Mesafeler" aciklama="Hattın başladığı yer: durakları ve aralarındaki mesafe/hızları buradan gir. Başa · ortaya · sona durak ekle, adları düzenle. Her durak-arası bir işletim hücresi (ring) oluşturur — detaylı şartlar aşağıdaki kartlarda. Değişiklikler anında kaydedilir.">
+          <Panel katlanir acik ozet={`${rings.length} durak-arası (ring)`} baslik="Duraklar & Mesafeler" aciklama="Hattın başladığı yer: durakları ve aralarındaki mesafe/hızları buradan gir. Başa · ortaya · sona durak ekle, adları düzenle. Her durak-arası bir işletim hücresi (ring) oluşturur — detaylı şartlar aşağıdaki kartlarda. Değişiklikler anında kaydedilir.">
             {duraklar.length === 0 ? (
               <div className="rounded-md border-2 border-dashed px-6 py-6" style={{ borderColor: brand.border }}>
                 <div className="text-center">
@@ -430,7 +433,9 @@ export function RingEditor() {
               </div>
             ) : (
             <>
-            {/* Ekleme mesafesi + başa/sona ekle — yeni durak SEÇTİĞİN mesafeyle eklenir. */}
+            {/* Ekleme mesafesi + başa/sona ekle — yeni durak SEÇTİĞİN mesafeyle eklenir.
+                SADE GÖRÜNÜM'de gizli (istasyon ekleme = inşa aracı, müşteri görünümü değil). */}
+            {!meta.sunumModu && (
             <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
               <span className="text-xs font-medium" style={{ color: brand.inkSoft }}>Yeni durak mesafesi</span>
               <input type="number" min={50} step={50} value={ekMesafe} onChange={(e) => setEkMesafe(Math.max(50, parseFloat(e.target.value) || 0))}
@@ -443,6 +448,7 @@ export function RingEditor() {
                   className="rounded-md border px-3 py-1 text-xs font-medium transition hover:bg-white" style={{ borderColor: brand.borderStrong, color: brand.ink }}>Sona ekle ⇥</button>
               </div>
             </div>
+            )}
             <div className="flex flex-col">
               {duraklar.map((d, i) => (
                 <div key={`durak-${i}`}>
@@ -598,7 +604,7 @@ export function RingEditor() {
           En az 2 durak olunca anlamlı; boş hatta gösterilmez. */}
       {duraklar.length >= 2 && (
         <div className="mt-4">
-          <Panel baslik="Maksimum Tramvay Kapasitesi" aciklama="Hat çift hat, gidiş-dönüş çalışır (tramvay gider, döner, tekrar gider — sürekli çevrim). Terminal dönüş şartlarını gir; sistem bu hatta aynı anda en fazla kaç tramvayın sığacağını hesaplar. Darboğaz otomatik isimlenir.">
+          <Panel katlanir ozet={maks.gecerli ? `${maks.nTeorik} tramvay · sürd. ${maks.nSurdurulebilir}` : "terminal dönüş kapasitesi"} baslik="Maksimum Tramvay Kapasitesi" aciklama="Hat çift hat, gidiş-dönüş çalışır (tramvay gider, döner, tekrar gider — sürekli çevrim). Terminal dönüş şartlarını gir; sistem bu hatta aynı anda en fazla kaç tramvayın sığacağını hesaplar. Darboğaz otomatik isimlenir.">
             {/* Bilgilendirme: neden makaslı turnback hesabı */}
             <div className="mb-2 rounded border-l-4 px-3 py-2 text-xs leading-relaxed" style={{ background: CK.goodBgSoft, borderColor: brand.ink, color: brand.inkSoft }}>
               ℹ️ <b>Neden makaslı hesap?</b> Tramvay uçta dönmek için karşı hatta <b>makasla (crossover)</b> geçmek zorundadır — yoksa gelen hatla <b>kafa kafaya çarpışır</b>. Terminalin en fazla kaç tramvay çevirebileceğini asıl bu makasın tipi belirler:
@@ -838,7 +844,7 @@ export function RingEditor() {
           gör/kur, sonra iyileştirme tavsiyesi (dolu hatta sayfa artık öneriyle açılmaz). */}
       {oneriler.length > 0 && !meta.sunumModu && (
         <div className="mt-6">
-          <Panel baslik="Eşit Şartlar — Dengeleme Önerileri" aciklama="Best-case yakın-mesafe hedefi: durak-çiftleri arası worst-case süreler eşitlendikçe headway kararlı olur. Ortalamadan sapan ringler ve öneriler:">
+          <Panel katlanir ozet="durak-çiftleri denge önerileri" baslik="Eşit Şartlar — Dengeleme Önerileri" aciklama="Best-case yakın-mesafe hedefi: durak-çiftleri arası worst-case süreler eşitlendikçe headway kararlı olur. Ortalamadan sapan ringler ve öneriler:">
             <div className="flex flex-col gap-1.5">
               {oneriler.map((o) => (
                 <div key={o.ringId} className="flex items-start gap-2 rounded border px-3 py-2 text-sm" style={{ borderColor: o.fark > 0 ? brand.red + "55" : OK + "55", background: o.fark > 0 ? CK.badBgSoft : CK.goodBgSoft }}>

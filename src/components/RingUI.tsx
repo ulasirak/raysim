@@ -43,7 +43,25 @@ export function MiniStat({ etiket, deger, alt, vurgu }: { etiket: string; deger:
   );
 }
 
-export function Panel({ baslik, aciklama, children }: { baslik: string; aciklama?: string; children: React.ReactNode }) {
+export function Panel({ baslik, aciklama, children, katlanir = false, ozet, acik = false }: { baslik: string; aciklama?: string; children: React.ReactNode; katlanir?: boolean; ozet?: React.ReactNode; acik?: boolean }) {
+  // Katlanır (çekmece) — native <details> (JS/state YOK → freeze yok). Varsayılan
+  // kapalı (acik=true → açık); başlıkta tek satır özet; tıkla → detay.
+  if (katlanir) {
+    return (
+      <details className="group ds-card" style={{ overflow: "hidden" }} open={acik}>
+        <summary className="flex cursor-pointer select-none items-baseline gap-2 p-5">
+          <span className="h-4 w-[3px] shrink-0" style={{ background: brand.red }} aria-hidden="true" />
+          <h2 className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{baslik}</h2>
+          {ozet && <span className="ml-auto text-right text-xs" style={{ color: brand.muted }}>{ozet}</span>}
+          <span className="ml-2 shrink-0 text-xs" style={{ color: brand.muted }}><span className="group-open:hidden">▸</span><span className="hidden group-open:inline">▾</span></span>
+        </summary>
+        <div className="px-5 pb-5">
+          {aciklama && <p className="mb-4 text-xs" style={{ color: brand.muted }}>{aciklama}</p>}
+          {children}
+        </div>
+      </details>
+    );
+  }
   return (
     <div className="ds-card p-5">
       <div className="mb-4 flex items-baseline gap-2">
