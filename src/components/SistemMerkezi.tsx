@@ -19,6 +19,7 @@ import { RobustFiloPaneli } from "@/components/RobustFiloPaneli";
 import { CakismaCozumPaneli } from "@/components/CakismaCozumPaneli";
 import { Kart } from "@/components/Kart";
 import { MiniStat } from "@/components/Kpi";
+import { TabBar } from "@/components/Tabs";
 import { Kaynak } from "@/components/Kaynak";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import { blockingTimeRing, type BlokSperr } from "@/lib/anaray/blockingtime";
@@ -33,23 +34,10 @@ import { CK, RAMP_BLUE, SERI } from "@/lib/anaray/chartkit";
 
 const OK = CK.good;
 
-// Sekmeli gruplar — SAF CSS (radio :checked ~ sibling), JS/state YOK → freeze yok.
-// Radiolar + .smx-bar + .smx-panel'ler aynı düzeyde kardeş; biri seçiliyken ilgili
-// panel görünür, diğerleri display:none. Başlık/parametre/footer sarmalanmadığı için
-// her zaman görünür. (Kapalı panel içerikleri DOM'da render olur; hesap yükü değişmez.)
-const SM_TAB_CSS = `
-.smx-panel{display:none}
-#smx-t1:checked~.smx-panel[data-t="1"],
-#smx-t2:checked~.smx-panel[data-t="2"],
-#smx-t3:checked~.smx-panel[data-t="3"],
-#smx-t4:checked~.smx-panel[data-t="4"]{display:block}
-.smx-tab{cursor:pointer;user-select:none;white-space:nowrap;border-bottom:2px solid transparent;padding:.55rem 1rem;font-size:.8rem;font-weight:600;color:#6B7A8A;transition:color .15s,border-color .15s}
-.smx-tab:hover{color:#0C2233}
-#smx-t1:checked~.smx-bar label[for="smx-t1"],
-#smx-t2:checked~.smx-bar label[for="smx-t2"],
-#smx-t3:checked~.smx-bar label[for="smx-t3"],
-#smx-t4:checked~.smx-bar label[for="smx-t4"]{color:#0C2233;border-bottom-color:#C8102E}
-`;
+// Sekmeli gruplar — paylaşılan TabBar (saf CSS, freeze-güvenli, önek "sm"). Bkz. Tabs.tsx.
+// TabBar radioları + .sm-bar ile .sm-panel'ler AYNI kapsayıcının kardeşidir; biri
+// seçiliyken ilgili panel görünür. Başlık/parametre/footer sarmalanmadığı için her
+// zaman görünür. (Kapalı panel içerikleri DOM'da render olur; hesap yükü değişmez.)
 // Blocking-time 6 bileşeni ZAMAN SIRALI → kategorik değil ordinal rampa (raporla aynı).
 const BT_PARCA: [string, string][] = [
   ["Setup (rota kurma)", RAMP_BLUE[0]], ["Görme", RAMP_BLUE[1]], ["Yaklaşma", RAMP_BLUE[2]],
@@ -150,19 +138,9 @@ export function SistemMerkezi() {
       )}
 
       {!bosHat && (<>
-      <style>{SM_TAB_CSS}</style>
-      <input id="smx-t1" type="radio" name="smx-grp" defaultChecked className="sr-only" aria-label="Kapasite & Kısıt" />
-      <input id="smx-t2" type="radio" name="smx-grp" className="sr-only" aria-label="Terminal & Yol" />
-      <input id="smx-t3" type="radio" name="smx-grp" className="sr-only" aria-label="Motor Doğruluğu" />
-      <input id="smx-t4" type="radio" name="smx-grp" className="sr-only" aria-label="Filo & Kapasite Kararı" />
-      <div className="smx-bar mb-6 mt-1 flex gap-1 overflow-x-auto border-b" style={{ borderColor: brand.border }} role="tablist">
-        <label htmlFor="smx-t1" className="smx-tab">① Kapasite &amp; Kısıt</label>
-        <label htmlFor="smx-t2" className="smx-tab">② Terminal &amp; Yol</label>
-        <label htmlFor="smx-t3" className="smx-tab">③ Motor Doğruluğu</label>
-        <label htmlFor="smx-t4" className="smx-tab">④ Filo Kararı</label>
-      </div>
+      <TabBar pre="sm" etiketler={["① Kapasite & Kısıt", "② Terminal & Yol", "③ Motor Doğruluğu", "④ Filo Kararı"]} />
 
-      <section className="smx-panel" data-t="1">
+      <section className="sm-panel" data-t="1">
       <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>Hattı fiziksel olarak hangi kısıt bağlıyor — blok işgali (Sperrzeit), rakip headway kısıtları, sinyal ve kilitleme.</p>
 
       {/* Blocking-Time (Sperrzeitentreppe) + UIC 406 */}
@@ -301,7 +279,7 @@ export function SistemMerkezi() {
       <Kapanir baslik="Kilitleme (Interlocking) Kontrol Tablosu" ozet="rota tesisi · makas konumu · kilit"><KilitlemePaneli /></Kapanir>
       </section>
 
-      <section className="smx-panel" data-t="2">
+      <section className="sm-panel" data-t="2">
       <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>Terminal dönüş (turnback) kapasitesi ve sokak geçitlerinin (hemzemin/TSP) tur süresine katkısı.</p>
 
       {/* TERMİNAL TURNBACK KAPASİTESİ — iki ucun makas geometrisi → dönüş kapasitesi */}
@@ -319,7 +297,7 @@ export function SistemMerkezi() {
       </>)}
       </section>
 
-      <section className="smx-panel" data-t="3">
+      <section className="sm-panel" data-t="3">
       <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>Sonuçların hangi girdiye ne kadar duyarlı olduğu (tornado) ve motorun analitik referanslara karşı doğrulanması (V&V). Derin analiz — açılır bloklarda.</p>
 
         {/* Duyarlılık (tornado) — hangi parametre kapasiteyi en çok oynatıyor. */}
@@ -332,7 +310,7 @@ export function SistemMerkezi() {
 
       </section>
 
-      <section className="smx-panel" data-t="4">
+      <section className="sm-panel" data-t="4">
       <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>Aynı temel kapasiteden iki karar: operasyonel (istenen aralık) ve risk (dayanıklılık) — ve tek-hat çakışma çözümü.</p>
 
       {/* FİLO & KAPASİTE KARARI — iki panelin ORTAK temeli tek yerde (tekrarı önler). */}

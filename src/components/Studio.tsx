@@ -31,6 +31,7 @@ import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimCon
 import { BosHat } from "@/components/BosHat";
 import { Kart } from "@/components/Kart";
 import { Kpi, MiniStat } from "@/components/Kpi";
+import { TabBar } from "@/components/Tabs";
 import { CografiAg } from "@/components/CografiAg";
 import { KoordinatDuzen } from "@/components/KoordinatDuzen";
 import { LiveNetwork } from "@/components/LiveNetwork";
@@ -63,20 +64,6 @@ const BOS_SEBEKE: RailNetwork = {
 };
 const BOS_ROTA: Route = { id: "rota_bos", name: "—", edgeIds: ["bos_e"], startNodeId: "bos_a" };
 
-/** Sefer sayfası grup başlığı — bölümleri mantıksal kümelere ayırır (yerleşim/netlik;
- *  bölüm içeriği/sırası değişmez). Numara + başlık + tek satır "ne işe yarar". */
-function SefGrup({ no, baslik, alt, ilk }: { no: string; baslik: string; alt?: string; ilk?: boolean }) {
-  return (
-    <div className={ilk ? "mb-2" : "mt-10 mb-2 border-t pt-5"} style={ilk ? undefined : { borderColor: brand.borderStrong }}>
-      <div className="flex items-baseline gap-2">
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: brand.ink }}>{no}</span>
-        <h2 className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{baslik}</h2>
-      </div>
-      {alt && <p className="mt-0.5 ml-8 max-w-2xl text-xs" style={{ color: brand.muted }}>{alt}</p>}
-    </div>
-  );
-}
-
 export function Studio() {
   const { rings } = useProje();
   // Proje hattı boşken sahte bir örnek şebeke göstermek yanıltıcı olur.
@@ -87,7 +74,6 @@ export function Studio() {
 function StudioIc() {
   const { cfg } = useSimConfig();
   const { rings: ringsHam, meta, subeler } = useProje();
-  const sunum = !!meta.sunumModu; // Sade Görünüm: açıkken mühendislik grafikleri + dayanıklılık gizli
   // Araç ve işletme parametreleri KALICI (projeye kayıtlı) — tek kaynak, uçucu değil.
   const { arac: stock, patchArac, setArac } = useArac();
   const { isletme, patchIsletme } = useIsletme();
@@ -510,7 +496,10 @@ function StudioIc() {
         </div>
       </div>
 
-      <SefGrup ilk no="1" baslik="Kurulum & Filo Kararı" alt="Aracı, yolcu dinamiğini ve filoyu belirle: önerilen tramvay → onayla → sefer sıklığı." />
+      <TabBar pre="sf" etiketler={["① Kurulum & Filo", "② Canlı Simülasyon", "③ Mühendislik Grafikleri", "④ Etkiler & Dayanıklılık"]} />
+
+      <div className="sf-panel" data-t="1">
+      <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>Aracı, yolcu dinamiğini ve filoyu belirle: önerilen tramvay → onayla → sefer sıklığı.</p>
 
       {/* ①②③ FİLO & ÖNERİ — akışın ilk adımı: öneri → onayla → filo → parklanma */}
       {maks.gecerli && (
@@ -729,7 +718,10 @@ function StudioIc() {
       {/* Canlı ağ simülasyonu (kahraman) — TAM GENİŞLİK: takip ekranı sayfanın dar
           kolonundan (max-w-6xl) taşıp ekrana yayılır → çok daha büyük görünür.
           Negatif marj tekniği (w-screen yok) → yatay kaydırma çubuğu oluşmaz. */}
-      <SefGrup no="2" baslik="Canlı Simülasyon" alt="Trenleri canlı izle (şematik/harita), ters işletme kısa dönüşleri ve zaman çizelgesi (tarife)." />
+      </div>
+
+      <div className="sf-panel" data-t="2">
+      <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>Trenleri canlı izle (şematik/harita), ters işletme kısa dönüşleri ve zaman çizelgesi (tarife).</p>
 
       <div id="canli" className="mt-6 ml-[calc(-50vw+50%)] mr-[calc(-50vw+50%)] px-4 sm:px-8">
       <div className="mx-auto max-w-[1600px]">
@@ -925,9 +917,10 @@ function StudioIc() {
         </section>
       )}
 
-      {/* SADE GÖRÜNÜM (sunum): mühendislik grafikleri + dayanıklılık gizlenir — Kurulum/Filo + Canlı Simülasyon kalır. */}
-      {!sunum && (<>
-      <SefGrup no="3" baslik="Mühendislik Grafikleri" alt="Klasik demiryolu analizi: Bildfahrplan (zaman–mesafe), gecikme yayılımı, hız profili, yük & duruş, talep→doluluk. Veriler canlı sim ile birebir aynı." />
+      </div>
+
+      <div className="sf-panel" data-t="3">
+      <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>Klasik demiryolu analizi: Bildfahrplan (zaman–mesafe), gecikme yayılımı, hız profili, yük & duruş, talep→doluluk. Veriler canlı sim ile birebir aynı.</p>
 
       {/* BİLDFAHRPLAN — canlı sim ile aynı loop yörüngesinden zaman-mesafe tren grafiği */}
       {simHazir && (
@@ -1032,7 +1025,10 @@ function StudioIc() {
         </Panel>
       )}
 
-      <SefGrup no="4" baslik="Etkiler & Dayanıklılık" alt="Filoyu oynattıkça canlı etkiler ve gecikmelere karşı sağlamlık (Monte-Carlo)." />
+      </div>
+
+      <div className="sf-panel" data-t="4">
+      <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>Filoyu oynattıkça canlı etkiler ve gecikmelere karşı sağlamlık (Monte-Carlo).</p>
 
       {/* ⑤ CANLI ETKİLER — filo oynadıkça bağlı olduğu her durum canlı güncellenir */}
       {maks.gecerli && (
@@ -1125,7 +1121,7 @@ function StudioIc() {
           )}
         </Panel>
       </section>
-      </>)}
+      </div>
 
     </div>
   );
