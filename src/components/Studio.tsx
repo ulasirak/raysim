@@ -627,7 +627,7 @@ function StudioIc() {
                 <b>Teorik maksimum</b>: darboğazın izin verdiği fiziksel tavan — sıfır pay, her tren sürekli tam kapasite. <b>Sürdürülebilir</b>: UIC 406 doluluk tavanıyla (blok başına ~%60–75 kullanım) <b>her gün güvenle</b> çalıştırılabilen sayı — küçük gecikmeler birbirini tetiklemesin, toparlanma payı kalsın diye teorikten düşüktür (gerçek işletme bu değeri hedefler).
               </p>
               <p className="mt-1 text-xs" style={{ color: brand.inkSoft }}>
-                Bu hatta aynı anda en fazla <b>{maks.nTeorik}</b> tramvay sığar. Darboğaz: <b>{maks.baglayanAd}</b> · min. aralık {sure(maks.hMin)} · çevrim {sure(maks.cevrimSuresi)}. Kısıt dökümü ve terminal girdileri <Link href="/#ringler" className="underline">Ringler</Link>’de.
+                Bu hatta aynı anda en fazla <b>{maks.nTeorik}</b> tramvay sığar. Darboğaz: <b>{maks.baglayanAd}</b> · min. aralık {sure(maks.hMin)} · çevrim {sure(maks.cevrimSuresi)}. <span style={{ color: brand.faint }}>Aynı sayı Ringler ve Sistem Merkezi'nde de görünür — tek kaynaktan.</span> Terminal girdileri <Link href="/#ringler" className="underline">Ringler</Link>’de; tam kısıt & blocking-time dökümü <Link href="/#sistem" className="underline">Sistem Merkezi</Link>’nde.
               </p>
               {/* Gereken tren = ⌈RTT ÷ hedef headway⌉ — kullanıcının hedef sıklığı için filo */}
               <p className="mt-1 text-xs" style={{ color: brand.ink }}>

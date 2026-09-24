@@ -7,6 +7,7 @@
 // darboğazı anında yeniden hesaplanır. Hücreler bir loop (kapalı hat) oluşturur.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 
 import { useSimConfig, useProje, useArac, useIsletme, useHesap } from "@/components/SimConfigProvider";
 import { HatIceAktar, type IceAktarMod } from "@/components/HatIceAktar";
@@ -740,6 +741,7 @@ export function RingEditor() {
                 </p>
                 <p className="mt-1 text-xs" style={{ color: brand.inkSoft }}>
                   Darboğaz: <b>{maks.baglayanAd}</b> · min. aralık {sure(maks.hMin)} · çevrim {sure(maks.cevrimSuresi)}
+                  <span style={{ color: brand.faint }}> · aynı sayı Sefer'de de görünür (tek kaynak); tam kısıt & blocking-time dökümü <Link href="/#sistem" className="underline">Sistem Merkezi</Link>'nde.</span>
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {maks.kisitlar.map((k) => (
