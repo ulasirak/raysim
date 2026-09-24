@@ -515,7 +515,7 @@ function StudioIc() {
       {/* ①②③ FİLO & ÖNERİ — akışın ilk adımı: öneri → onayla → filo → parklanma */}
       {maks.gecerli && (
       <div id="filo-paneli">
-      <Panel baslik="Filo & Öneri" aciklama="Sistem, girdiğin tüm verilere göre gereken tramvay sayısını önerir. Onaylayınca filo öneriye eşitlenir; sonra filoyu elle oynarsın. Filo = parklanma alanına dizdiğin araç sayısıdır; ulaşılan sefer aralığı = çevrim ÷ filo.">
+      <Panel katlanir acik ozet={<>önerilen <b>{oneriTramvay}</b> · filo {filo} · aralık {sure(ulasilanHeadwaySn)}</>} baslik="Filo & Öneri" aciklama="Sistem, girdiğin tüm verilere göre gereken tramvay sayısını önerir. Onaylayınca filo öneriye eşitlenir; sonra filoyu elle oynarsın. Filo = parklanma alanına dizdiğin araç sayısıdır; ulaşılan sefer aralığı = çevrim ÷ filo.">
         {/* ① Önerilen tramvay + Onayla */}
         <div className="rounded-lg border-2 p-4" style={{ borderColor: brand.ink, background: CK.goodBgSoft }}>
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -544,6 +544,7 @@ function StudioIc() {
                 ? <>Öneri sürdürülebilir seviyeyi ({maks.nSurdurulebilir}) <b>aşıyor</b> ama fiziksel tavana ({maks.nTeorik}) <b>sığıyor</b> → çalışır, fakat toparlanma payı dar (küçük gecikmeler zincirlenebilir). Dayanıklı işletme için ya aralığı biraz büyüt ya da darboğazı iyileştir.</>
                 : <>Öneri fiziksel tavanı ({maks.nTeorik}) da <b>aşıyor</b> — bu sıklık hatta <b>sığmaz</b>; aralığı büyütmen ya da darboğazı iyileştirmen şart.</>}{" "}
             <span style={{ color: brand.faint }}>İşletme kapasitesi (~{(3600 / Math.max(1, maks.hMin) * (maks.dolulukTavani || 1)).toFixed(0)} tren/saat) = sürdürülebilir sayının <i>akış</i> karşılığı: {maks.nSurdurulebilir} = “aynı anda hatta kaç tramvay” (stok), tren/saat = “bir noktadan saatte kaç tren geçer” (akış). İkisi çevrimle bağlıdır (stok ≈ akış × çevrim).</span>
+            <Kaynak etiket="Öneriyi belirleyen girdiler" yerler={["parametreler", { ad: "Durak/mesafe/makas → Ringler", href: "/#ringler" }]} />
           </div>
         </div>
 
@@ -610,7 +611,7 @@ function StudioIc() {
       )}
 
       <section className="mt-6">
-        <Panel baslik="Sefer Sıklığı" aciklama="Hat çift hat, gidiş-dönüş çalışır. Sabit blok sinyal sistemi — tren dolu bloğa giremez (kırmızı sinyalde durur). Dönüş Bekleme çevrim süresini ve gereken filoyu besler.">
+        <Panel katlanir ozet="çift hat · dönüş bekleme → çevrim" baslik="Sefer Sıklığı" aciklama="Hat çift hat, gidiş-dönüş çalışır. Sabit blok sinyal sistemi — tren dolu bloğa giremez (kırmızı sinyalde durur). Dönüş Bekleme çevrim süresini ve gereken filoyu besler.">
 
           {/* TEK SONUÇ — bu hatta en fazla kaç tramvay (Ringler ile birebir aynı) */}
           {maks.gecerli && (
@@ -666,7 +667,7 @@ function StudioIc() {
       {/* ÇEKEN ARAÇ — Sefer'in tek düzenleme yüzeyi. Hat (istasyon/mesafe/hız/makas/
           depo) düzenlemesi Ringler'de (KUR) → ikili düzenleme sadeleştirildi. */}
       <div id="ceken-arac" className="mt-6 scroll-mt-28">
-        <Panel baslik="Çeken Araç" aciklama="Simülasyonda kullanılan aracı seç veya özelliklerini ayarla — değişiklik anında projeye kaydedilir. İstasyon, mesafe, hız limiti, makas ve parklanma düzenlemesi Ringler (KUR) bölümünde yapılır.">
+        <Panel katlanir ozet={stock.name || "araç fiziği"} baslik="Çeken Araç" aciklama="Simülasyonda kullanılan aracı seç veya özelliklerini ayarla — değişiklik anında projeye kaydedilir. İstasyon, mesafe, hız limiti, makas ve parklanma düzenlemesi Ringler (KUR) bölümünde yapılır.">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <label className="block sm:col-span-2 lg:col-span-1">
               <span className="field-label">Araç</span>
@@ -693,11 +694,12 @@ function StudioIc() {
             Hattı düzenlemek mi istiyorsun? İstasyon / mesafe / hız / makas / parklanma alanı{" "}
             <Link href="/#ringler" className="underline" style={{ color: brand.red }}>Ringler (KUR)</Link> bölümünde — orada yapılan değişiklikler burada anında yansır.
           </p>
+          <Kaynak etiket="İlgili girdiler" yerler={["parametreler", { ad: "Hız limitleri → Ringler", href: "/#ringler" }]} />
         </Panel>
       </div>
 
       <section className="mt-6">
-        <Panel baslik="Yolcu Dinamiği & Duruş Süresi" aciklama="İstasyon duruş süresi (dwell) keyfi değil, yolcu akışından hesaplanır: araç kapı sayısı/genişliği + konfor + istasyon başına inen/binen → yolcu akış süresi → dwell. Duraklarda inen/binen sayısını Ringler'de girersin; her durak ayrı hesaplanıp tur süresine (RTT) kümülatif eklenir.">
+        <Panel katlanir ozet="dwell = yolcu akışından (kapı/konfor)" baslik="Yolcu Dinamiği & Duruş Süresi" aciklama="İstasyon duruş süresi (dwell) keyfi değil, yolcu akışından hesaplanır: araç kapı sayısı/genişliği + konfor + istasyon başına inen/binen → yolcu akış süresi → dwell. Duraklarda inen/binen sayısını Ringler'de girersin; her durak ayrı hesaplanıp tur süresine (RTT) kümülatif eklenir.">
           <div className="mb-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div><Num label="Kapı sayısı" suffix="kapı" step={1} max={12} value={stock.kapiSayisi ?? 4}
               onChange={(v) => patchArac({ kapiSayisi: Math.max(1, Math.round(v)) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>araç başı iniş-biniş kapısı</span></div>
@@ -929,7 +931,7 @@ function StudioIc() {
 
       {/* BİLDFAHRPLAN — canlı sim ile aynı loop yörüngesinden zaman-mesafe tren grafiği */}
       {simHazir && (
-        <Panel baslik="Bildfahrplan — Zaman–Mesafe Grafiği" aciklama="Demiryolu mühendisliğinin klasik grafiği (Marey diyagramı): yatay = zaman (bir tam çevrim), dikey = mesafe (istasyonlar ızgara). Her tren bir çizgidir — eğim hızı, yatay kısım duruşu, gidiş↔dönüş çizgilerinin kesişimi karşılaşma noktasını gösterir. Çizgiler arası eşit dikey aralık düzenli headway'i, bozulması öbekleşmeyi (bunching) ortaya koyar. Veri canlı sim ile birebir aynıdır.">
+        <Panel katlanir ozet="zaman–mesafe tren grafiği (Marey)" baslik="Bildfahrplan — Zaman–Mesafe Grafiği" aciklama="Demiryolu mühendisliğinin klasik grafiği (Marey diyagramı): yatay = zaman (bir tam çevrim), dikey = mesafe (istasyonlar ızgara). Her tren bir çizgidir — eğim hızı, yatay kısım duruşu, gidiş↔dönüş çizgilerinin kesişimi karşılaşma noktasını gösterir. Çizgiler arası eşit dikey aralık düzenli headway'i, bozulması öbekleşmeyi (bunching) ortaya koyar. Veri canlı sim ile birebir aynıdır.">
           <GrafikCerceve baslik="Bildfahrplan — Zaman–Mesafe Grafiği"><Bildfahrplan loop={loopVeri} line={line} cakismalar={cakisma.cakismalar} /></GrafikCerceve>
           {/* Çakışma özeti (#2) — çakışma varsa uyarı + somut çözüm; yoksa yeşil onay. */}
           <div className="mt-3 rounded-lg border px-4 py-3 text-sm" style={{
@@ -956,7 +958,7 @@ function StudioIc() {
 
       {/* GECİKME YAYILIMI — knock-on zinciri (deterministik): hedef trene birincil gecikme */}
       {simHazir && filo >= 2 && (
-        <Panel baslik="Gecikme Yayılımı — Knock-on Zinciri" aciklama="Bir trene birincil gecikme ver; sinyalizasyon simülasyonu bu gecikmenin ARDIŞIK trenlere ne kadar yansıdığını (ikincil/knock-on gecikme) ve tarifenin onu hangi trende yuttuğunu (sönümleme) deterministik olarak hesaplar. Monte-Carlo'nun ortalamada erittiği tek-olay zincirini yalıtır. Hedef treni ve gecikmeyi oynat.">
+        <Panel katlanir ozet="knock-on gecikme zinciri" baslik="Gecikme Yayılımı — Knock-on Zinciri" aciklama="Bir trene birincil gecikme ver; sinyalizasyon simülasyonu bu gecikmenin ARDIŞIK trenlere ne kadar yansıdığını (ikincil/knock-on gecikme) ve tarifenin onu hangi trende yuttuğunu (sönümleme) deterministik olarak hesaplar. Monte-Carlo'nun ortalamada erittiği tek-olay zincirini yalıtır. Hedef treni ve gecikmeyi oynat.">
           <div className="flex flex-wrap items-end gap-4 mb-3">
             <label className="text-sm" style={{ color: brand.inkSoft }}>
               Hedef tren
@@ -1011,21 +1013,21 @@ function StudioIc() {
 
       {/* HIZ PROFİLİ — hat boyunca gerçek hız + limit zarfı (canlı sim yörüngesinden) */}
       {simHazir && (
-        <Panel baslik="Hız Profili — v(x)" aciklama="Hat boyunca (gidiş yönünde) tramvayın gerçek hızı ile hız-limiti zarfı. Mavi eğri gerçek hız (canlı sim ile aynı yörüngeden, ds/dt), gri kesikli çizgi segment hız limiti. Dip noktaları istasyon duruşlarıdır; limitin altındaki kısımlar hızlanma/frenleme bölgeleridir. Nerede hangi kısıtın (istasyon, makas, viraj) hızı bağladığı görünür.">
+        <Panel katlanir ozet="v(x) hız zarfı + limitler" baslik="Hız Profili — v(x)" aciklama="Hat boyunca (gidiş yönünde) tramvayın gerçek hızı ile hız-limiti zarfı. Mavi eğri gerçek hız (canlı sim ile aynı yörüngeden, ds/dt), gri kesikli çizgi segment hız limiti. Dip noktaları istasyon duruşlarıdır; limitin altındaki kısımlar hızlanma/frenleme bölgeleridir. Nerede hangi kısıtın (istasyon, makas, viraj) hızı bağladığı görünür.">
           <GrafikCerceve baslik="Hız Profili — v(x)"><HizProfili loop={loopVeri} line={line} /></GrafikCerceve>
         </Panel>
       )}
 
       {/* YÜK & DURUŞ ANALİZİ — hat boyu yük profili (doluluk-renkli) + dwell dökümü */}
       {tersRapor && tersRapor.duraklar.length > 1 && (
-        <Panel baslik="Yük & Duruş Analizi" aciklama="Hat boyunca (ortak mesafe ekseninde) iki grafik: üstte YÜK PROFİLİ — her durakta tepe araç yükü (yolcu/saat), doluluğa göre renkli (yeşil<%50 · sarı %50–85 · kırmızı>%85), tepe durak işaretli; altta DURUŞ (dwell) DÖKÜMÜ — her durakta sürenin kapı-açma / yolcu-değişimi / kapı-kapama kırılımı. Tramvay dwell-baskın olduğundan zamanın nereye gittiğini ve hattın en kalabalık kesimini bir bakışta gösterir.">
+        <Panel katlanir ozet="yük profili + dwell dökümü" baslik="Yük & Duruş Analizi" aciklama="Hat boyunca (ortak mesafe ekseninde) iki grafik: üstte YÜK PROFİLİ — her durakta tepe araç yükü (yolcu/saat), doluluğa göre renkli (yeşil<%50 · sarı %50–85 · kırmızı>%85), tepe durak işaretli; altta DURUŞ (dwell) DÖKÜMÜ — her durakta sürenin kapı-açma / yolcu-değişimi / kapı-kapama kırılımı. Tramvay dwell-baskın olduğundan zamanın nereye gittiğini ve hattın en kalabalık kesimini bir bakışta gösterir.">
           <GrafikCerceve baslik="Yük & Duruş Analizi"><YukDwellAnaliz duraklar={tersRapor.duraklar} rings={rings} /></GrafikCerceve>
         </Panel>
       )}
 
       {/* TALEP → FİLO → DOLULUK ZİNCİRİ — yolcu talebi işletmeyi nasıl belirler */}
       {tersRapor && tersRapor.duraklar.length > 1 && (
-        <Panel baslik="Talep → Gereken Filo → Doluluk Zinciri" aciklama="Yolcu talebinin işletmeyi nasıl belirlediği üç aşamada: tepe talep → (hedef dolulukta) gereken filo → (mevcut filoda) ulaşılan doluluk. Filo azsa doluluk hedefi aşılır, fazlaysa düşer.">
+        <Panel katlanir ozet="talep → gereken filo → doluluk" baslik="Talep → Gereken Filo → Doluluk Zinciri" aciklama="Yolcu talebinin işletmeyi nasıl belirlediği üç aşamada: tepe talep → (hedef dolulukta) gereken filo → (mevcut filoda) ulaşılan doluluk. Filo azsa doluluk hedefi aşılır, fazlaysa düşer.">
           <TalepZinciri t={tersRapor} dolulukHedefi={isletme.dolulukHedefi || 0.85} />
         </Panel>
       )}
@@ -1034,7 +1036,7 @@ function StudioIc() {
 
       {/* ⑤ CANLI ETKİLER — filo oynadıkça bağlı olduğu her durum canlı güncellenir */}
       {maks.gecerli && (
-      <Panel baslik="Canlı Etkiler & Öneriler" aciklama="Filoyu oynattıkça bağlı olduğu her durum burada canlı güncellenir — ulaşılan sıklık, kapasite/park aşımı, tıkanan duraklar/dönüş ihtiyacı ve makaslarda ters işletme ihtiyacı.">
+      <Panel katlanir ozet="filo oynadıkça canlı sonuçlar" baslik="Canlı Etkiler & Öneriler" aciklama="Filoyu oynattıkça bağlı olduğu her durum burada canlı güncellenir — ulaşılan sıklık, kapasite/park aşımı, tıkanan duraklar/dönüş ihtiyacı ve makaslarda ters işletme ihtiyacı.">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Kart ic="sm">
             <Kpi etiket="Ulaşılan sıklık" deger={sure(ulasilanHeadwaySn)}
@@ -1099,7 +1101,7 @@ function StudioIc() {
 
       {/* Monte-Carlo gecikme analizi */}
       <section className="mt-6">
-        <Panel baslik="Monte-Carlo Gecikme Analizi (Robustluk / sağlamlık)" aciklama="Rastgele giriş gecikmesi + durak sapmalarıyla çok sayıda sefer simüle edilir; birincil gecikmelerin sonraki trenlere yayılımı ölçülür.">
+        <Panel katlanir ozet="rastgele gecikmelerle robustluk" baslik="Monte-Carlo Gecikme Analizi (Robustluk / sağlamlık)" aciklama="Rastgele giriş gecikmesi + durak sapmalarıyla çok sayıda sefer simüle edilir; birincil gecikmelerin sonraki trenlere yayılımı ölçülür.">
           <div className="mb-4 flex flex-wrap items-end gap-4">
             <div className="w-36"><Num label="Ort. Giriş Gecikmesi" suffix="sn" step={5} value={meanEntry} onChange={(v) => setMeanEntry(Math.max(0, v))} /></div>
             <div className="w-36"><Num label="Ort. Durak Sapması" suffix="sn" step={1} value={meanDwell} onChange={(v) => setMeanDwell(Math.max(0, v))} /></div>
@@ -1305,16 +1307,17 @@ function VeriKaynaklari() {
 }
 
 
-function Panel({ baslik, aciklama, children, katlanir = false }: { baslik: string; aciklama?: string; children: React.ReactNode; katlanir?: boolean }) {
-  // Katlanır panel: örtüşen/ikincil görünümler (kapsamlı olanın alt kümesi)
-  // varsayılan kapalı durur — akış sadeleşir, bilgi kaybı olmaz (açınca tam görünür).
+function Panel({ baslik, aciklama, children, katlanir = false, ozet, acik = false }: { baslik: string; aciklama?: string; children: React.ReactNode; katlanir?: boolean; ozet?: React.ReactNode; acik?: boolean }) {
+  // Katlanır panel — native <details> (JS/state YOK → freeze yok). Varsayılan kapalı
+  // (acik=true ile açık): başlıkta tek satır özet; tıkla → detay. Bilgi kaybı yok.
   if (katlanir) {
     return (
-      <details className="group rounded-lg border bg-white" style={{ borderColor: brand.border }}>
+      <details className="group rounded-lg border bg-white" style={{ borderColor: brand.border }} open={acik}>
         <summary className="flex cursor-pointer select-none items-baseline gap-2 p-5">
-          <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
+          <span className="h-4 w-[3px] shrink-0" style={{ background: brand.red }} aria-hidden="true" />
           <h2 className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{baslik}</h2>
-          <span className="ml-auto text-xs" style={{ color: brand.muted }}>detay <span className="group-open:hidden">▸</span><span className="hidden group-open:inline">▾</span></span>
+          {ozet && <span className="ml-auto text-right text-xs" style={{ color: brand.muted }}>{ozet}</span>}
+          <span className="ml-2 shrink-0 text-xs" style={{ color: brand.muted }}><span className="group-open:hidden">▸</span><span className="hidden group-open:inline">▾</span></span>
         </summary>
         <div className="px-5 pb-5">
           {aciklama && <p className="mb-4 text-xs" style={{ color: brand.muted }}>{aciklama}</p>}
