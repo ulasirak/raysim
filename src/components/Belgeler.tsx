@@ -12,7 +12,6 @@ import { sure } from "@/lib/anaray/format";
 import { useSimConfig, useProje, useArac, useIsletme, useHesap } from "@/components/SimConfigProvider";
 import { PROJE_META_ALANLAR } from "@/lib/anaray/config";
 import { loopDenge, olceklenme, ringChallenge, ringDogrula, loopTamMi } from "@/lib/anaray/ring";
-import { OzetSerit } from "@/components/OzetSerit";
 import { MiniStat } from "@/components/Kpi";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import { type RaporDil } from "@/lib/anaray/rapor";
@@ -212,8 +211,6 @@ export function Belgeler() {
           Proje künyeni gir; mevcut hat (ringler), filo ve parametrelerden amblemli, baskıya hazır <b>PDF rapor</b> üretilir. Hat şeması, ringler, sinyalizasyon, kapasite ve blocking-time bölümlerinin tamamı <b>senin projenden türer</b>.
         </p>
       </div>
-
-      <OzetSerit />
 
       {/* Proje künyesi */}
       <Panel baslik="Proje Künyesi" aciklama={yazilabilir

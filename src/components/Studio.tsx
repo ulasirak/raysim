@@ -31,7 +31,6 @@ import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimCon
 import { BosHat } from "@/components/BosHat";
 import { Kart } from "@/components/Kart";
 import { Kpi, MiniStat } from "@/components/Kpi";
-import { OzetSerit } from "@/components/OzetSerit";
 import { CografiAg } from "@/components/CografiAg";
 import { KoordinatDuzen } from "@/components/KoordinatDuzen";
 import { LiveNetwork } from "@/components/LiveNetwork";
@@ -510,8 +509,6 @@ function StudioIc() {
           <Link href="/#ringler" className="underline">Ringler (KUR)</Link> bölümüne gidin — değişiklikler burada anında yansır.
         </div>
       </div>
-
-      <OzetSerit />
 
       <SefGrup ilk no="1" baslik="Kurulum & Filo Kararı" alt="Aracı, yolcu dinamiğini ve filoyu belirle: önerilen tramvay → onayla → sefer sıklığı." />
 

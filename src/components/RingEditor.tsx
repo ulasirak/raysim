@@ -27,7 +27,6 @@ import { Num, SubBaslik, Panel } from "@/components/RingUI";
 
 import { KMH, OK, Kucuk } from "@/components/ringEditorOrtak";
 import { RingKart } from "@/components/RingKart";
-import { OzetSerit } from "@/components/OzetSerit";
 
 const DONUS_TIP_AD: Record<DonusTip, string> = {
   korTerminal: "Kör terminal (stub)",
@@ -274,8 +273,6 @@ export function RingEditor() {
           🗑 Hattı temizle
         </button>
       </div>
-
-      <OzetSerit />
 
       {/* Silme GERİ AL çubuğu — yanlış silinen durak/ring tek tıkla geri gelir. */}
       {geriAl && (

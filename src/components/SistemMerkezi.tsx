@@ -20,7 +20,6 @@ import { RobustFiloPaneli } from "@/components/RobustFiloPaneli";
 import { CakismaCozumPaneli } from "@/components/CakismaCozumPaneli";
 import { Kart } from "@/components/Kart";
 import { MiniStat } from "@/components/Kpi";
-import { OzetSerit } from "@/components/OzetSerit";
 import { Kaynak } from "@/components/Kaynak";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import { blockingTimeRing, type BlokSperr } from "@/lib/anaray/blockingtime";
@@ -124,8 +123,6 @@ export function SistemMerkezi() {
           <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>RaySim Canlı Durum & Bilgi Merkezi</h1>
         </div>
       </div>
-
-      <OzetSerit />
 
       {bosHat && (
         <div className="mb-6 rounded border-l-4 px-4 py-3 text-sm" style={{ borderColor: CK.amber, background: CK.amberBg, color: CK.amberInk }}>
