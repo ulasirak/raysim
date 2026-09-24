@@ -62,6 +62,20 @@ const BOS_SEBEKE: RailNetwork = {
 };
 const BOS_ROTA: Route = { id: "rota_bos", name: "—", edgeIds: ["bos_e"], startNodeId: "bos_a" };
 
+/** Sefer sayfası grup başlığı — bölümleri mantıksal kümelere ayırır (yerleşim/netlik;
+ *  bölüm içeriği/sırası değişmez). Numara + başlık + tek satır "ne işe yarar". */
+function SefGrup({ no, baslik, alt, ilk }: { no: string; baslik: string; alt?: string; ilk?: boolean }) {
+  return (
+    <div className={ilk ? "mb-2" : "mt-10 mb-2 border-t pt-5"} style={ilk ? undefined : { borderColor: brand.borderStrong }}>
+      <div className="flex items-baseline gap-2">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: brand.ink }}>{no}</span>
+        <h2 className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{baslik}</h2>
+      </div>
+      {alt && <p className="mt-0.5 ml-8 max-w-2xl text-xs" style={{ color: brand.muted }}>{alt}</p>}
+    </div>
+  );
+}
+
 export function Studio() {
   const { rings } = useProje();
   // Proje hattı boşken sahte bir örnek şebeke göstermek yanıltıcı olur.
@@ -494,6 +508,8 @@ function StudioIc() {
         </div>
       </div>
 
+      <SefGrup ilk no="1" baslik="Kurulum & Filo Kararı" alt="Aracı, yolcu dinamiğini ve filoyu belirle: önerilen tramvay → onayla → sefer sıklığı." />
+
       {/* ①②③ FİLO & ÖNERİ — akışın ilk adımı: öneri → onayla → filo → parklanma */}
       {maks.gecerli && (
       <div id="filo-paneli">
@@ -708,6 +724,8 @@ function StudioIc() {
       {/* Canlı ağ simülasyonu (kahraman) — TAM GENİŞLİK: takip ekranı sayfanın dar
           kolonundan (max-w-6xl) taşıp ekrana yayılır → çok daha büyük görünür.
           Negatif marj tekniği (w-screen yok) → yatay kaydırma çubuğu oluşmaz. */}
+      <SefGrup no="2" baslik="Canlı Simülasyon" alt="Trenleri canlı izle (şematik/harita), ters işletme kısa dönüşleri ve zaman çizelgesi (tarife)." />
+
       <div id="canli" className="mt-6 ml-[calc(-50vw+50%)] mr-[calc(-50vw+50%)] px-4 sm:px-8">
       <div className="mx-auto max-w-[1600px]">
       <Panel baslik="Canlı Ağ Simülasyonu" aciklama="Trenler PARKLANMA ALANINDAN çıkar: hepsi AYNI yerden, GİDİŞ yönünde (alt şerit), SIRAYLA (headway aralığıyla) yola çıkar; sıra bekleyenler ⏸ parkta durur. Hat DÖNGÜdür (lastik): tren gidiş şeridini yürür → terminalde peron işgali süresi kadar DÖNER (turnback) → dönüş şeridinden geri gelir → başta döner → tekrar. İki şerit, trenler turnback'e ulaştıkça DOĞAL olarak dolar (gerçek işletmede depodan öyle çıkarlar). Her trenin üstünde o an ne yaşadığı (⤵ hız kısıtı · ⏸ istasyon duruşu · 🔄 terminal dönüşü · ↗ hızlanma · → seyir) rozetle görünür; bir trene TIKLA → bir tam turda hangi nedene kaç saniye geçirdiğinin dökümü açılır. Sinyaller blok sınırlarında 3-aspekt yanar. Oynat ▶">
@@ -902,6 +920,8 @@ function StudioIc() {
         </section>
       )}
 
+      <SefGrup no="3" baslik="Mühendislik Grafikleri" alt="Klasik demiryolu analizi: Bildfahrplan (zaman–mesafe), gecikme yayılımı, hız profili, yük & duruş, talep→doluluk. Veriler canlı sim ile birebir aynı." />
+
       {/* BİLDFAHRPLAN — canlı sim ile aynı loop yörüngesinden zaman-mesafe tren grafiği */}
       {simHazir && (
         <Panel baslik="Bildfahrplan — Zaman–Mesafe Grafiği" aciklama="Demiryolu mühendisliğinin klasik grafiği (Marey diyagramı): yatay = zaman (bir tam çevrim), dikey = mesafe (istasyonlar ızgara). Her tren bir çizgidir — eğim hızı, yatay kısım duruşu, gidiş↔dönüş çizgilerinin kesişimi karşılaşma noktasını gösterir. Çizgiler arası eşit dikey aralık düzenli headway'i, bozulması öbekleşmeyi (bunching) ortaya koyar. Veri canlı sim ile birebir aynıdır.">
@@ -1004,6 +1024,8 @@ function StudioIc() {
           <TalepZinciri t={tersRapor} dolulukHedefi={isletme.dolulukHedefi || 0.85} />
         </Panel>
       )}
+
+      <SefGrup no="4" baslik="Etkiler & Dayanıklılık" alt="Filoyu oynattıkça canlı etkiler ve gecikmelere karşı sağlamlık (Monte-Carlo)." />
 
       {/* ⑤ CANLI ETKİLER — filo oynadıkça bağlı olduğu her durum canlı güncellenir */}
       {maks.gecerli && (
