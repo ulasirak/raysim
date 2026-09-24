@@ -27,6 +27,7 @@ import { Num, SubBaslik, Panel } from "@/components/RingUI";
 
 import { KMH, OK, Kucuk } from "@/components/ringEditorOrtak";
 import { RingKart } from "@/components/RingKart";
+import { OzetSerit } from "@/components/OzetSerit";
 
 const DONUS_TIP_AD: Record<DonusTip, string> = {
   korTerminal: "Kör terminal (stub)",
@@ -264,7 +265,6 @@ export function RingEditor() {
           <div className="field-label">Durak Arası Ring Editörü — Gerçek-Hayat İşletim Hücreleri</div>
           <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>{meta.hatAdi || "Adsız Hat"} · Loop (Çevrim) Şartları</h1>
         </div>
-        {!meta.sunumModu && (
         <button
           onClick={() => {
             if (rings.length > 0 && !confirm("Bu hattın tüm ringleri silinsin mi? (geri alınamaz)")) return;
@@ -273,9 +273,9 @@ export function RingEditor() {
           className="rounded-md border px-3 py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
           🗑 Hattı temizle
         </button>
-        )}
       </div>
 
+      <OzetSerit />
 
       {/* Silme GERİ AL çubuğu — yanlış silinen durak/ring tek tıkla geri gelir. */}
       {geriAl && (
@@ -288,18 +288,17 @@ export function RingEditor() {
       )}
 
       {/* GTFS içe aktarma — bir toplu taşıma ağının .zip'inden hattı otomatik kurar
-          (mevcut hattın üzerine yazar; "Silmeyi geri al" ile dönülebilir).
-          SADE GÖRÜNÜM'de inşa/aktarım araçları gizlenir (müşteri görünümü). */}
-      {!yukleniyor && !meta.sunumModu && (
+          (mevcut hattın üzerine yazar; "Silmeyi geri al" ile dönülebilir). */}
+      {!yukleniyor && (
         <HatIceAktar onIceAktar={iceAktarUygula} mevcutSonKoord={mevcutSonKoord} disabled={!yazilabilir} mesgulDis={iceMesgul} />
       )}
 
       {/* ŞUBE / TALİ HAT EDİTÖRÜ (dallanma, #1) — ana hattan ayrılan tali hatlar */}
-      {!yukleniyor && rings.length > 0 && !meta.sunumModu && <SubeEditor />}
+      {!yukleniyor && rings.length > 0 && <SubeEditor />}
 
       {/* railML DIŞA AKTARMA — hattı endüstri-standart railML 2.x XML olarak indir
-          (OpenTrack/RailSys köprüsü). SADE GÖRÜNÜM'de gizli. */}
-      {!yukleniyor && rings.length > 0 && !meta.sunumModu && (
+          (OpenTrack/RailSys köprüsü). */}
+      {!yukleniyor && rings.length > 0 && (
         <details className="mt-4 rounded-lg border bg-white" style={{ borderColor: brand.border }}>
           <summary className="flex cursor-pointer select-none items-center gap-2 p-4">
             <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
@@ -433,9 +432,7 @@ export function RingEditor() {
               </div>
             ) : (
             <>
-            {/* Ekleme mesafesi + başa/sona ekle — yeni durak SEÇTİĞİN mesafeyle eklenir.
-                SADE GÖRÜNÜM'de gizli (istasyon ekleme = inşa aracı, müşteri görünümü değil). */}
-            {!meta.sunumModu && (
+            {/* Ekleme mesafesi + başa/sona ekle — yeni durak SEÇTİĞİN mesafeyle eklenir. */}
             <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
               <span className="text-xs font-medium" style={{ color: brand.inkSoft }}>Yeni durak mesafesi</span>
               <input type="number" min={50} step={50} value={ekMesafe} onChange={(e) => setEkMesafe(Math.max(50, parseFloat(e.target.value) || 0))}
@@ -448,7 +445,6 @@ export function RingEditor() {
                   className="rounded-md border px-3 py-1 text-xs font-medium transition hover:bg-white" style={{ borderColor: brand.borderStrong, color: brand.ink }}>Sona ekle ⇥</button>
               </div>
             </div>
-            )}
             <div className="flex flex-col">
               {duraklar.map((d, i) => (
                 <div key={`durak-${i}`}>
@@ -812,7 +808,6 @@ export function RingEditor() {
             isletme={isletme}
             doluluk={dolulukByRing[r.id]}
             ringBasiKm={ringBasiKm[i]}
-            sunum={!!meta.sunumModu}
             duzenlenebilir={yazilabilir}
             onToggle={() => setAcik((a) => ({ ...a, [r.id]: !a[r.id] }))}
             onPatch={(p) => patch(r.id, p)}
@@ -842,7 +837,7 @@ export function RingEditor() {
 
       {/* Eşit şartlar — durak-çiftleri dengeleme önerisi. Hattın ALTINDA: önce hattı
           gör/kur, sonra iyileştirme tavsiyesi (dolu hatta sayfa artık öneriyle açılmaz). */}
-      {oneriler.length > 0 && !meta.sunumModu && (
+      {oneriler.length > 0 && (
         <div className="mt-6">
           <Panel katlanir ozet="durak-çiftleri denge önerileri" baslik="Eşit Şartlar — Dengeleme Önerileri" aciklama="Best-case yakın-mesafe hedefi: durak-çiftleri arası worst-case süreler eşitlendikçe headway kararlı olur. Ortalamadan sapan ringler ve öneriler:">
             <div className="flex flex-col gap-1.5">

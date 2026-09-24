@@ -19,7 +19,8 @@ import { ParetoPaneli } from "@/components/ParetoPaneli";
 import { RobustFiloPaneli } from "@/components/RobustFiloPaneli";
 import { CakismaCozumPaneli } from "@/components/CakismaCozumPaneli";
 import { Kart } from "@/components/Kart";
-import { Kpi } from "@/components/Kpi";
+import { MiniStat } from "@/components/Kpi";
+import { OzetSerit } from "@/components/OzetSerit";
 import { Kaynak } from "@/components/Kaynak";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import { blockingTimeRing, type BlokSperr } from "@/lib/anaray/blockingtime";
@@ -42,9 +43,8 @@ const BT_PARCA: [string, string][] = [
 // Bir bloğun blocking-time'ını NE tıkıyor? 6 bileşeni 3 düzeltilebilir gruba
 // indirger, baskın olanı bulur ve KULLANICININ nereden düzelteceğini söyler.
 // hedef: hangi modül bölümüne yönlendirileceği (#slug ankoru).
-// `nedenSunum`: sunum modunda gösterilen NÖTR ifade — bloğun rezerve süresini neyin
-// belirlediğini "tıkıyor/baskın/darboğaz" gibi sorun diliyle değil, olağan tasarım
-// bilgisi olarak anlatır (hat hatasız/onaylı sunulur).
+// `nedenSunum`: bloğun rezerve süresini "tıkıyor/baskın/darboğaz" sorun diliyle değil,
+// olağan tasarım bilgisi olarak anlatan NÖTR ifade — müşteri sunumu (PDF) için saklanır.
 type BlokNeden = { grup: string; icon: string; neden: string; nedenSunum: string; cozum: string; hedef: "ringler" | "sefer" };
 function blokNeden(b: BlokSperr): BlokNeden {
   const seyir = b.tRunning + b.tApproach;   // mesafe + hız
@@ -76,20 +76,20 @@ function blokNeden(b: BlokSperr): BlokNeden {
 
 export function SistemMerkezi() {
   const { cfg } = useSimConfig();
-  const { rings: ringsHam, meta } = useProje();
+  const { rings: ringsHam } = useProje();
   const { arac: stock } = useArac();
   const { isletme } = useIsletme();
   // Yolcu dinamiği: dwell OTO ringlerin dwell'i hesaplanır → blocking-time / teşhis
   // panelleri de hesaplı dwell'i kullanır (kapasite ile tutarlı).
   const rings = useMemo(() => dwellUygulanmisRings(ringsHam, stock, isletme), [ringsHam, stock, isletme]);
   const maks = useMemo(() => (rings.length ? maksimumTren(rings, stock, cfg, isletme) : null), [rings, stock, cfg, isletme]);
-  // Sunum modu: "İHLAL / hedefi aşıyor" ihlal işaretleri gösterilmez. Ayrıca min
-  // headway'i belirleyen blok "KRİTİK" (kırmızı) yerine "belirleyici" (nötr altın)
-  // olarak sunulur — analiz aynı, yalnız dil/renk yumuşar. Bkz. rapor.ts.
-  const sunum = !!meta.sunumModu;
-  const kritikRenk = sunum ? "#A8842C" : CK.red;   // nötr altın vurgu
-  const kritikAd = sunum ? "belirleyici" : "kritik";
-  const kritikBg = sunum ? CK.track : CK.badBgSoft;
+  // Ekran HER ZAMAN gerçek değerleri gösterir (mod yok): İHLAL/aşım işaretleri ve
+  // min headway'i belirleyen "KRİTİK" blok kırmızıyla açıkça gösterilir. Müşteriye
+  // "onaylı tasarım" olarak sunma (greenwashing) yalnız PDF dışa-aktarımına özgüdür
+  // ve Belgeler'deki "müşteri sunumu" seçeneğiyle rapor.ts içinde uygulanır.
+  const kritikRenk = CK.red;
+  const kritikAd = "kritik";
+  const kritikBg = CK.badBgSoft;
 
   // Hat boşken (yeni hesap / yeni proje) çözülecek bir şey yoktur: canlı durum ve
   // blocking-time panelleri gizlenir, parametre girişi açık kalır.
@@ -125,6 +125,8 @@ export function SistemMerkezi() {
         </div>
       </div>
 
+      <OzetSerit />
+
       {bosHat && (
         <div className="mb-6 rounded border-l-4 px-4 py-3 text-sm" style={{ borderColor: CK.amber, background: CK.amberBg, color: CK.amberInk }}>
           ▲ Bu hatta henüz ring (durak arası hücre) yok — canlı durum ve kapasite panelleri gizlendi.
@@ -137,13 +139,13 @@ export function SistemMerkezi() {
 
       {/* Blocking-Time (Sperrzeitentreppe) + UIC 406 */}
       {bt && (
-      <Panel katlanir ozet={<>min headway <b>{sure(bt.minHeadway)}</b> · {bt.pratikKapasite.toFixed(0)}/sa · {(bt.hedefUygun || sunum) ? "UYGUN" : "İHLAL"}</>} baslik="Blocking-Time / Sperrzeitentreppe (blok işgal süresi) & UIC 406 Kapasite" aciklama="Her sinyal bloğunun rezerve süresi = 6 bileşen (rota kurma + görme + yaklaşma + seyir + temizleme + release). En yüksek blocking-time'lı blok min headway'i belirler; UIC 406 doluluk = min headway / hedef headway.">
+      <Panel katlanir ozet={<>min headway <b>{sure(bt.minHeadway)}</b> · {bt.pratikKapasite.toFixed(0)}/sa · {bt.hedefUygun ? "UYGUN" : "İHLAL"}</>} baslik="Blocking-Time / Sperrzeitentreppe (blok işgal süresi) & UIC 406 Kapasite" aciklama="Her sinyal bloğunun rezerve süresi = 6 bileşen (rota kurma + görme + yaklaşma + seyir + temizleme + release). En yüksek blocking-time'lı blok min headway'i belirler; UIC 406 doluluk = min headway / hedef headway.">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <MiniStat etiket={`Min headway (${kritikAd} blok)`} deger={sure(bt.minHeadway)} alt={`blok #${bt.kritikBlok}${bt.bloklar[bt.kritikBlok]?.makasBlok ? " (makas)" : ""}`} vurgu={kritikRenk} />
           <MiniStat etiket="Teorik kapasite" deger={`${bt.teorikKapasite.toFixed(0)}/sa`} alt="tren/saat üst sınır" />
           <MiniStat etiket="İşletme kapasitesi" deger={`${bt.pratikKapasite.toFixed(0)}/sa`} alt={`UIC 406 %${(bt.dolulukTavani * 100).toFixed(0)} tavan`} vurgu={OK} />
-          <MiniStat etiket="UIC 406 doluluk" deger={`%${bt.dolulukHedef.toFixed(0)}`} alt={`hedef ${bt.hedefHeadway} s`} vurgu={sunum ? OK : (bt.dolulukHedef > 80 ? CK.red : bt.dolulukHedef > 60 ? CK.amber : OK)} />
-          <MiniStat etiket="Hedef headway" deger={(bt.hedefUygun || sunum) ? "UYGUN" : "İHLAL"} vurgu={(bt.hedefUygun || sunum) ? OK : brand.red} />
+          <MiniStat etiket="UIC 406 doluluk" deger={`%${bt.dolulukHedef.toFixed(0)}`} alt={`hedef ${bt.hedefHeadway} s`} vurgu={bt.dolulukHedef > 80 ? CK.red : bt.dolulukHedef > 60 ? CK.amber : OK} />
+          <MiniStat etiket="Hedef headway" deger={bt.hedefUygun ? "UYGUN" : "İHLAL"} vurgu={bt.hedefUygun ? OK : brand.red} />
         </div>
 
         {/* Sperrzeitentreppe — GERÇEK zaman-mesafe merdiveni (kanonik) */}
@@ -193,28 +195,19 @@ export function SistemMerkezi() {
 
         {/* Blok teşhisi & çözüm — her blok hangi durak-arasına düşüyor, darboğazın
             nedeni ne ve nereden düzeltilir; buton doğrudan o ring'e/bölüme götürür. */}
-        <BlokCekmece baslik={sunum ? "📊 Blok Analizi" : "🔧 Blok Teşhisi & Çözüm"} acik={blokAcik.teshis} onToggle={() => blokTopla("teshis")}
-          ozet={<span>{teshis.length} blok{!sunum && bt && teshis.some((t) => t.b.toplam > bt.hedefHeadway) ? " · aşım" : ""}</span>}>
+        <BlokCekmece baslik="🔧 Blok Teşhisi & Çözüm" acik={blokAcik.teshis} onToggle={() => blokTopla("teshis")}
+          ozet={<span>{teshis.length} blok{bt && teshis.some((t) => t.b.toplam > bt.hedefHeadway) ? " · aşım" : ""}</span>}>
           <p className="mb-2.5 text-xs" style={{ color: brand.muted }}>
-            {sunum ? (
-              <>Her blok, düştüğü <b>durak-arası (ring)</b> ile adlandırılır; min headway&apos;i <b>belirleyen</b> blok en üstte. Her bloğun rezerve süresi ve ilgili bölüm yanında.</>
-            ) : (
-              <>Her blok, düştüğü <b>durak-arası (ring)</b> ile adlandırılır; en kritik blok en üstte.
-              Darboğazın nedeni ve nereden düzelteceğin yanında — <b>buton doğrudan o ring&apos;e/bölüme götürür</b>.</>
-            )}
+            Her blok, düştüğü <b>durak-arası (ring)</b> ile adlandırılır; en kritik blok en üstte.
+            Darboğazın nedeni ve nereden düzelteceğin yanında — <b>buton doğrudan o ring&apos;e/bölüme götürür</b>.
           </p>
-          {sunum && teshis.length > 0 && (
-            <div className="mb-2.5 rounded border-l-4 px-3 py-2 text-xs" style={{ borderColor: CK.good, background: CK.goodBgSoft, color: brand.ink }}>
-              ✓ Blok analizi <b>uygun</b>: tüm bloklar hedef headway ({cfg.headway} s) içinde — sınır aşımı yok. Tasarım onaylı.
-            </div>
-          )}
           {teshis.length === 0 ? (
             <p className="text-xs" style={{ color: brand.muted }}>Değerlendirilecek blok yok.</p>
           ) : (
             <div className="flex flex-col gap-1.5">
               {teshis.map((t) => {
                 const kritik = bt && t.b.i === bt.kritikBlok;
-                const asiyor = sunum ? false : (bt ? t.b.toplam > bt.hedefHeadway : false);
+                const asiyor = bt ? t.b.toplam > bt.hedefHeadway : false;
                 const renk = kritik || asiyor ? kritikRenk : brand.border;
                 const href = t.hedef === "ringler" && t.ring ? `/#ring-${t.ring.id}` : "/#sefer";
                 return (
@@ -223,14 +216,14 @@ export function SistemMerkezi() {
                       <span className="rounded px-1.5 py-0.5 font-mono font-semibold" style={{ background: kritik ? kritikRenk : CK.track, color: kritik ? "#fff" : brand.inkSoft }}>Blok {t.b.i}</span>
                       <span className="font-medium" style={{ color: brand.ink }}>{t.ad}</span>
                       <span className="font-mono" style={{ color: asiyor ? CK.red : brand.muted }}>{sure(t.b.toplam)}</span>
-                      {kritik && <span className="rounded px-1.5 py-0.5 text-[0.6rem] font-semibold" style={{ background: kritikRenk, color: "#fff" }}>{sunum ? "min headway'i belirleyen" : "KRİTİK — min headway"}</span>}
+                      {kritik && <span className="rounded px-1.5 py-0.5 text-[0.6rem] font-semibold" style={{ background: kritikRenk, color: "#fff" }}>KRİTİK — min headway</span>}
                       {asiyor && !kritik && <span className="rounded px-1.5 py-0.5 text-[0.6rem] font-semibold" style={{ background: CK.amberBg, color: CK.amberInk }}>hedefi aşıyor</span>}
                       <a href={href} className="ml-auto rounded-md px-2.5 py-1 text-xs font-medium text-white transition hover:opacity-90" style={{ background: brand.ink }}>
-                        {sunum ? (t.hedef === "ringler" ? "→ Ringler'de aç" : "→ Sefer'de aç") : (t.hedef === "ringler" ? "→ Ringler'de düzelt" : "→ Sefer'de düzelt")}
+                        {t.hedef === "ringler" ? "→ Ringler'de düzelt" : "→ Sefer'de düzelt"}
                       </a>
                     </div>
                     <div className="mt-1.5" style={{ color: brand.inkSoft }}>
-                      <b>{t.icon} {t.grup}:</b> {sunum ? t.nedenSunum : t.neden}{!sunum && <span style={{ color: brand.muted }}> · Çözüm: {t.cozum}</span>}
+                      <b>{t.icon} {t.grup}:</b> {t.neden}<span style={{ color: brand.muted }}> · Çözüm: {t.cozum}</span>
                     </div>
                   </div>
                 );
@@ -295,8 +288,9 @@ export function SistemMerkezi() {
       </Panel>
       </>)}
 
-      {/* SADE GÖRÜNÜM (sunum): tornado + V&V derin analizi gizlenir — sonuç/karar kalır. */}
-      {!bosHat && !sunum && (<>
+      {/* Derin analiz (tornado + V&V) her zaman erişilebilir; varsayılan KAPALI açılır
+          bloklarda durduğu için ekranı kalabalıklaştırmaz — mod gerektirmez. */}
+      {!bosHat && (<>
         <Grup no="3" baslik="Motor Doğruluğu & Duyarlılık" alt="Sonuçların hangi girdiye ne kadar duyarlı olduğu (tornado) ve motorun analitik referanslara karşı doğrulanması (V&V)." />
 
         {/* Duyarlılık (tornado) — hangi parametre kapasiteyi en çok oynatıyor. */}
@@ -397,13 +391,6 @@ function BlokCekmece({ baslik, ozet, acik, onToggle, children }: { baslik: strin
   );
 }
 
-function MiniStat({ etiket, deger, alt, vurgu }: { etiket: string; deger: string; alt?: string; vurgu?: string }) {
-  return (
-    <Kart ic="sm">
-      <Kpi etiket={etiket} deger={deger} alt={alt} renk={vurgu} title={alt} />
-    </Kart>
-  );
-}
 function Panel({ baslik, aciklama, children, katlanir = false, ozet }: { baslik: string; aciklama?: string; children: React.ReactNode; katlanir?: boolean; ozet?: ReactNode }) {
   // Katlanır (çekmece) panel — native <details> (JS/state YOK → freeze riski yok).
   // Varsayılan KAPALI: başlıkta tek satır sonuç özeti; tıkla → detay açılır. Sistem

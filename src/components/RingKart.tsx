@@ -15,7 +15,8 @@ import { CK, SERI } from "@/lib/anaray/chartkit";
 import { kmh, sure } from "@/lib/anaray/format";
 
 import { MAKAS_TIP_AD, ringChallenge, ringDogrula, ringKisitDizisi, ringSenaryo, tccGerekli, kurpHizi, kurpKonforAnaliz, type KurpKonforSatir, type DurakArasiRing, type SinyalLambasi, type HemzeminTip, type KisitTur, type MakasTip, type Kurp } from "@/lib/anaray/ring";
-import { Num, Rozet, SubBaslik, MiniStat } from "@/components/RingUI";
+import { Num, Rozet, SubBaslik } from "@/components/RingUI";
+import { MiniStat } from "@/components/Kpi";
 import { KisitSeridi, EkleFormu, SeritEkleBtn, KisitRozet, MakasEkleMenu, type EkleTur } from "@/components/RingSerit";
 import { yaricapKirisVersine } from "@/lib/anaray/kurpBul";
 
@@ -32,8 +33,6 @@ interface KartProps {
   doluluk?: number;
   /** Bu ringin hat başından kümülatif başlangıç kilometrajı (m) — kurp mutlak km gösterimi. */
   ringBasiKm?: number;
-  /** Sunum modu: ring kartındaki "Challenge (zorluk senaryosu)" listesi gizlenir. */
-  sunum: boolean;
   onToggle: () => void;
   onPatch: (p: Partial<DurakArasiRing>) => void;
   onSil: () => void;
@@ -57,7 +56,7 @@ interface KartProps {
 }
 
 export function RingKart(p: KartProps) {
-  const { ring, index, stock, cfg, isletme, sunum } = p;
+  const { ring, index, stock, cfg, isletme } = p;
   // Kurp konfor değerlendirmesi — GERÇEK doluluğa bağlı (PDF 2.2 ile aynı fonksiyon).
   const konforByKurp = useMemo(() => {
     const map: Record<string, KurpKonforSatir> = {};
@@ -221,8 +220,8 @@ export function RingKart(p: KartProps) {
             )}
           </div>
 
-          {/* Challenge (karşılaşılabilecek zorluklar) — sunum modunda gizli */}
-          {challenge.length > 0 && !sunum && (
+          {/* Challenge (karşılaşılabilecek zorluklar) — ekranda her zaman gösterilir */}
+          {challenge.length > 0 && (
             <div className="mt-4 border-t pt-3" style={{ borderColor: brand.border }}>
               <SubBaslik>Challenge (zorluk senaryosu) — Karşılaşılabilecek Durumlar</SubBaslik>
               <div className="mt-2 flex flex-col gap-1.5">

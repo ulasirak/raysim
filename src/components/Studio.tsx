@@ -30,7 +30,8 @@ import { CK } from "@/lib/anaray/chartkit";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { BosHat } from "@/components/BosHat";
 import { Kart } from "@/components/Kart";
-import { Kpi } from "@/components/Kpi";
+import { Kpi, MiniStat } from "@/components/Kpi";
+import { OzetSerit } from "@/components/OzetSerit";
 import { CografiAg } from "@/components/CografiAg";
 import { KoordinatDuzen } from "@/components/KoordinatDuzen";
 import { LiveNetwork } from "@/components/LiveNetwork";
@@ -509,6 +510,8 @@ function StudioIc() {
           <Link href="/#ringler" className="underline">Ringler (KUR)</Link> bölümüne gidin — değişiklikler burada anında yansır.
         </div>
       </div>
+
+      <OzetSerit />
 
       <SefGrup ilk no="1" baslik="Kurulum & Filo Kararı" alt="Aracı, yolcu dinamiğini ve filoyu belirle: önerilen tramvay → onayla → sefer sıklığı." />
 
@@ -1258,15 +1261,6 @@ function Num({ label, value, onChange, step, suffix, max }: { label: string; val
   );
 }
 
-function MiniStat({ etiket, deger, alt }: { etiket: string; deger: string; alt?: string }) {
-  return (
-    <div className="rounded border p-2.5" style={{ borderColor: brand.border }}>
-      <div className="field-label" style={{ fontSize: "0.6rem" }}>{etiket}</div>
-      <div className="mt-0.5 text-lg font-semibold" style={{ color: brand.ink }}>{deger}</div>
-      {alt && <div className="text-xs" style={{ color: brand.faint }}>{alt}</div>}
-    </div>
-  );
-}
 
 function Field({ etiket, deger, birim, alt }: { etiket: string; deger: string; birim?: string; alt?: string }) {
   return (

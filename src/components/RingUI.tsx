@@ -33,16 +33,6 @@ export function SubBaslik({ children }: { children: React.ReactNode }) {
   return <div className="field-label border-b pb-1" style={{ borderColor: brand.border }}>{children}</div>;
 }
 
-export function MiniStat({ etiket, deger, alt, vurgu }: { etiket: string; deger: string; alt?: string; vurgu?: string }) {
-  return (
-    <div className="rounded border p-2.5" style={{ borderColor: brand.border }}>
-      <div className="field-label" style={{ fontSize: "0.6rem" }}>{etiket}</div>
-      <div className="mt-0.5 text-lg font-semibold" style={{ color: vurgu ?? brand.ink }}>{deger}</div>
-      {alt && <div className="text-xs" style={{ color: brand.faint }}>{alt}</div>}
-    </div>
-  );
-}
-
 export function Panel({ baslik, aciklama, children, katlanir = false, ozet, acik = false }: { baslik: string; aciklama?: string; children: React.ReactNode; katlanir?: boolean; ozet?: React.ReactNode; acik?: boolean }) {
   // Katlanır (çekmece) — native <details> (JS/state YOK → freeze yok). Varsayılan
   // kapalı (acik=true → açık); başlıkta tek satır özet; tıkla → detay.

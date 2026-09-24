@@ -12,6 +12,8 @@ import { sure } from "@/lib/anaray/format";
 import { useSimConfig, useProje, useArac, useIsletme, useHesap } from "@/components/SimConfigProvider";
 import { PROJE_META_ALANLAR } from "@/lib/anaray/config";
 import { loopDenge, olceklenme, ringChallenge, ringDogrula, loopTamMi } from "@/lib/anaray/ring";
+import { OzetSerit } from "@/components/OzetSerit";
+import { MiniStat } from "@/components/Kpi";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import { type RaporDil } from "@/lib/anaray/rapor";
 import { RAPOR_BOLUMLER, RAPOR_BOLUM_KREDI, RAPOR_BOLUM_AD, RAPOR_TABAN_KREDI, raporKredi, type RaporBolum } from "@/lib/raporFiyat";
@@ -211,6 +213,8 @@ export function Belgeler() {
         </p>
       </div>
 
+      <OzetSerit />
+
       {/* Proje künyesi */}
       <Panel baslik="Proje Künyesi" aciklama={yazilabilir
         ? "Belgelerin kapağında ve künyesinde görünür. Hesabınıza otomatik kaydedilir."
@@ -347,50 +351,36 @@ export function Belgeler() {
           )}
         </div>
 
-        {/* Belge içeriği özeti */}
+        {/* Belge içeriği özeti — ekranda HER ZAMAN gerçek değerler (mod yok). */}
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <MiniStat etiket="Durak arası hücre" deger={`${ozet.ring}`} alt={`${ozet.makas} makas`} />
-          {sunum
-            ? <MiniStat etiket="Değerlendirme" deger="Uygun" alt="tasarım onaylı" vurgu={CK.good} />
-            : <MiniStat etiket="Challenge (zorluk) kaydı" deger={`${ozet.chSayi}`} alt={`${ozet.kritik} kritik`} vurgu={ozet.kritik > 0 ? brand.red : undefined} />}
-          <MiniStat etiket={sunum ? "Belirleyici hücre" : "Darboğaz"} deger={ozet.darbogaz ? sure(ozet.darbogaz.worstToplam) : "—"} alt={ozet.darbogaz?.ad} vurgu={sunum ? undefined : brand.red} />
+          <MiniStat etiket="Challenge (zorluk) kaydı" deger={`${ozet.chSayi}`} alt={`${ozet.kritik} kritik`} vurgu={ozet.kritik > 0 ? brand.red : undefined} />
+          <MiniStat etiket="Darboğaz" deger={ozet.darbogaz ? sure(ozet.darbogaz.worstToplam) : "—"} alt={ozet.darbogaz?.ad} vurgu={brand.red} />
         </div>
-        <div className="mt-2 text-xs" style={{ color: rings.length === 0 ? brand.muted : (sunum || (ozet.headwayUygun && ozet.dengeli)) ? CK.good : CK.amber }}>
+        <div className="mt-2 text-xs" style={{ color: rings.length === 0 ? brand.muted : (ozet.headwayUygun && ozet.dengeli) ? CK.good : CK.amber }}>
           {rings.length === 0
             ? "Hat kurulduğunda burada headway/denge değerlendirmesi görünür."
-            : (sunum || (ozet.headwayUygun && ozet.dengeli)) ? "✓ Belge: tüm hücreler headway'e uygun ve dengeli." : "▲ Belge, headway ihlali / dengesizlik uyarılarını içerecek."}
+            : (ozet.headwayUygun && ozet.dengeli) ? "✓ Belge: tüm hücreler headway'e uygun ve dengeli." : "▲ Belge, headway ihlali / dengesizlik uyarılarını içerecek."}
+          {sunum && <span style={{ color: brand.muted }}> · Not: PDF <b>müşteri sunumu</b> olarak, onaylı tasarım dilinde üretilecek.</span>}
         </div>
       </Panel>
 
-      {/* Sunum modu anahtarı — SADECE düzenleme modunda (yazilabilir) ve VARSAYILAN
-          KAPALI bir açılır blok içinde: sunum sırasında ekranda göze çarpmaz; demo/
-          paylaşım görünümünde (yazilabilir=false) hiç render edilmez. */}
+      {/* MÜŞTERİ SUNUMU (yalnız PDF) — ekranı DEĞİŞTİRMEZ; sadece üretilecek PDF'in
+          dilini belirler. Düzenlenebilir bağlamda görünür; paylaşım/demo görünümünde
+          (yazilabilir=false) hiç render edilmez. */}
       {yazilabilir && (
-        <details className="mt-6 text-xs">
-          <summary className="cursor-pointer select-none" style={{ color: brand.faint }}>⚙ Düzenleme araçları</summary>
-          <label className="mt-2 flex items-start gap-2 rounded border p-2.5" style={{ borderColor: brand.border, color: brand.inkSoft }}>
-            <input type="checkbox" checked={sunum} onChange={(e) => patchMeta({ sunumModu: e.target.checked })} className="mt-0.5 shrink-0" />
-            <span>
-              <b>Sunum / Sade Görünüm</b> — açıkken (1) uyarı/risk/denge işaretleri gizlenir, hat uygun/onaylı görünür; (2) <b>arayüz sadeleşir</b>: mühendislik grafikleri, tornado ve V&V gibi derin analizler gizlenir — yalnız sonuç, karar ve canlı harita kalır (müşteri görünümü). Uzman görünümü için KAPAT.
-              <span style={{ color: brand.faint }}> Değer düzenlerken KAPAT → gerçek headway/denge/kritik uyarılarını ve tüm analiz panellerini görürsün; sunumdan önce tekrar AÇ.</span>
-            </span>
-          </label>
-        </details>
+        <label className="mt-6 flex items-start gap-2 rounded border p-2.5 text-xs" style={{ borderColor: sunum ? CK.good : brand.border, background: sunum ? CK.goodBgSoft : "transparent", color: brand.inkSoft }}>
+          <input type="checkbox" checked={sunum} onChange={(e) => patchMeta({ sunumModu: e.target.checked })} className="mt-0.5 shrink-0" />
+          <span>
+            <b>PDF&apos;i müşteri sunumu olarak üret</b> — üretilecek raporda ihlal/risk/denge uyarıları, hat <b>onaylı/kesinleşmiş tasarım</b> dilinde sunulur (belirleyici kısıt nötr anlatılır).
+            <span style={{ color: brand.faint }}> Bu seçenek yalnızca PDF çıktısını etkiler; <b>ekranda her zaman gerçek</b> headway/denge/kritik değerleri görürsünüz. Mühendislik teslimi için KAPALI bırakın.</span>
+          </span>
+        </label>
       )}
 
       <footer className="mt-10 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
         RaySim · Belge üretici — hat verisi Ringler modülünden, parametreler Sistem Merkezi&apos;nden gelir; belgeler bu tek kaynaktan üretilir.
       </footer>
-    </div>
-  );
-}
-
-function MiniStat({ etiket, deger, alt, vurgu }: { etiket: string; deger: string; alt?: string; vurgu?: string }) {
-  return (
-    <div className="rounded border p-2.5" style={{ borderColor: brand.border }}>
-      <div className="field-label" style={{ fontSize: "0.6rem" }}>{etiket}</div>
-      <div className="mt-0.5 text-lg font-semibold" style={{ color: vurgu ?? brand.ink }}>{deger}</div>
-      {alt && <div className="truncate text-xs" style={{ color: brand.faint }} title={alt}>{alt}</div>}
     </div>
   );
 }

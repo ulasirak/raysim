@@ -6,6 +6,7 @@
 // tek dile getirir → aynı punto, aynı hiza, aynı renk mantığı.
 
 import { brand, ds } from "@/lib/anaray/brand";
+import { Kart } from "@/components/Kart";
 
 type Ton = "notr" | "danger" | "success" | "warn";
 
@@ -62,5 +63,31 @@ export function Kpi({
         </span>
       )}
     </div>
+  );
+}
+
+/**
+ * MiniStat — küçük istatistik kutusu: kurumsal `Kart` (ic="sm") içinde tek `Kpi`.
+ * Modüllerdeki dağınık yerel `MiniStat` (`rounded border p-2.5` + elle field-label)
+ * kopyalarının TEK ORTAK kaynağıdır → aynı yüzey, aynı punto, aynı renk mantığı.
+ * `vurgu`: hesaplanmış durum rengi (chartkit CK.* vb.), Kpi'nin `renk`ine geçer.
+ */
+export function MiniStat({
+  etiket,
+  deger,
+  alt,
+  vurgu,
+  birim,
+}: {
+  etiket: React.ReactNode;
+  deger: React.ReactNode;
+  alt?: React.ReactNode;
+  vurgu?: string;
+  birim?: React.ReactNode;
+}) {
+  return (
+    <Kart ic="sm">
+      <Kpi etiket={etiket} deger={deger} birim={birim} alt={alt} renk={vurgu} title={typeof alt === "string" ? alt : undefined} />
+    </Kart>
   );
 }

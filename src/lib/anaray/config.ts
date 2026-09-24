@@ -362,9 +362,10 @@ export interface ProjeMeta {
   hatAdi: string;
   hazirlayan: string;
   onaylayan: string;
-  /** Sunum modu: hat onaylı/kesinleşmiş tasarım gibi sunulur — rapor ve arayüzde
-   *  challenge (risk/uyarı) bayrakları, denge sapması ve "ihlal" işaretleri
-   *  gösterilmez; göstergeler uygun/dengeli yansıtılır. Opsiyonel (varsayılan kapalı). */
+  /** Müşteri sunumu (YALNIZ PDF): açıkken üretilen rapor hattı onaylı/kesinleşmiş
+   *  tasarım gibi sunar — challenge (risk/uyarı), denge sapması ve "ihlal" işaretleri
+   *  nötrlenir. EKRANI ETKİLEMEZ (arayüz her zaman gerçek değerleri gösterir); yalnız
+   *  rapor.ts okur. Belgeler'deki onay kutusuyla ayarlanır. Opsiyonel (varsayılan kapalı). */
   sunumModu?: boolean;
   /** Müşavir/firma logosu — PDF kapağına basılır (küçültülmüş PNG data URI).
    *  Boşsa firma adı / ASLS amblemi gösterilir. Kalıcılık için küçültülür. */
