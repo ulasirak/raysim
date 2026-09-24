@@ -271,3 +271,23 @@ html::-webkit-scrollbar {
     --ray-nav-h: 64px;
   }
 }
+
+/* Sunum Modu spot vurgusu — rehberli turda o an anlatılan bölümü altın halkayla
+   çerçeveler; yapışkan nav+sekme altında kalmasın diye scroll-margin bırakır. */
+.sunum-vurgu {
+  outline: 3px solid #a8842c;
+  outline-offset: 8px;
+  border-radius: 16px;
+  box-shadow: 0 12px 48px rgba(168, 132, 44, 0.18);
+  scroll-margin-top: 128px;
+  transition: outline-color 0.25s ease, box-shadow 0.25s ease;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sunum-vurgu {
+    animation: sunumPuls 1.8s ease-in-out 0.2s 2;
+  }
+}
+@keyframes sunumPuls {
+  0%, 100% { box-shadow: 0 12px 48px rgba(168, 132, 44, 0.18); }
+  50% { box-shadow: 0 12px 60px rgba(168, 132, 44, 0.42); }
+}
