@@ -32,6 +32,24 @@ import { GrafikCerceve } from "@/components/GrafikCerceve";
 import { CK, RAMP_BLUE, SERI } from "@/lib/anaray/chartkit";
 
 const OK = CK.good;
+
+// Sekmeli gruplar — SAF CSS (radio :checked ~ sibling), JS/state YOK → freeze yok.
+// Radiolar + .smx-bar + .smx-panel'ler aynı düzeyde kardeş; biri seçiliyken ilgili
+// panel görünür, diğerleri display:none. Başlık/parametre/footer sarmalanmadığı için
+// her zaman görünür. (Kapalı panel içerikleri DOM'da render olur; hesap yükü değişmez.)
+const SM_TAB_CSS = `
+.smx-panel{display:none}
+#smx-t1:checked~.smx-panel[data-t="1"],
+#smx-t2:checked~.smx-panel[data-t="2"],
+#smx-t3:checked~.smx-panel[data-t="3"],
+#smx-t4:checked~.smx-panel[data-t="4"]{display:block}
+.smx-tab{cursor:pointer;user-select:none;white-space:nowrap;border-bottom:2px solid transparent;padding:.55rem 1rem;font-size:.8rem;font-weight:600;color:#6B7A8A;transition:color .15s,border-color .15s}
+.smx-tab:hover{color:#0C2233}
+#smx-t1:checked~.smx-bar label[for="smx-t1"],
+#smx-t2:checked~.smx-bar label[for="smx-t2"],
+#smx-t3:checked~.smx-bar label[for="smx-t3"],
+#smx-t4:checked~.smx-bar label[for="smx-t4"]{color:#0C2233;border-bottom-color:#C8102E}
+`;
 // Blocking-time 6 bileşeni ZAMAN SIRALI → kategorik değil ordinal rampa (raporla aynı).
 const BT_PARCA: [string, string][] = [
   ["Setup (rota kurma)", RAMP_BLUE[0]], ["Görme", RAMP_BLUE[1]], ["Yaklaşma", RAMP_BLUE[2]],
@@ -131,11 +149,25 @@ export function SistemMerkezi() {
         </div>
       )}
 
-      {!bosHat && <Grup no="1" baslik="Kapasite, Kısıt & Sinyalizasyon" alt="Hattı fiziksel olarak hangi kısıt bağlıyor — blok işgali (Sperrzeit), rakip headway kısıtları, sinyal ve kilitleme." />}
+      {!bosHat && (<>
+      <style>{SM_TAB_CSS}</style>
+      <input id="smx-t1" type="radio" name="smx-grp" defaultChecked className="sr-only" aria-label="Kapasite & Kısıt" />
+      <input id="smx-t2" type="radio" name="smx-grp" className="sr-only" aria-label="Terminal & Yol" />
+      <input id="smx-t3" type="radio" name="smx-grp" className="sr-only" aria-label="Motor Doğruluğu" />
+      <input id="smx-t4" type="radio" name="smx-grp" className="sr-only" aria-label="Filo & Kapasite Kararı" />
+      <div className="smx-bar mb-6 mt-1 flex gap-1 overflow-x-auto border-b" style={{ borderColor: brand.border }} role="tablist">
+        <label htmlFor="smx-t1" className="smx-tab">① Kapasite &amp; Kısıt</label>
+        <label htmlFor="smx-t2" className="smx-tab">② Terminal &amp; Yol</label>
+        <label htmlFor="smx-t3" className="smx-tab">③ Motor Doğruluğu</label>
+        <label htmlFor="smx-t4" className="smx-tab">④ Filo Kararı</label>
+      </div>
+
+      <section className="smx-panel" data-t="1">
+      <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>Hattı fiziksel olarak hangi kısıt bağlıyor — blok işgali (Sperrzeit), rakip headway kısıtları, sinyal ve kilitleme.</p>
 
       {/* Blocking-Time (Sperrzeitentreppe) + UIC 406 */}
       {bt && (
-      <Panel katlanir ozet={<>min headway <b>{sure(bt.minHeadway)}</b> · {bt.pratikKapasite.toFixed(0)}/sa · {bt.hedefUygun ? "UYGUN" : "İHLAL"}</>} baslik="Blocking-Time / Sperrzeitentreppe (blok işgal süresi) & UIC 406 Kapasite" aciklama="Her sinyal bloğunun rezerve süresi = 6 bileşen (rota kurma + görme + yaklaşma + seyir + temizleme + release). En yüksek blocking-time'lı blok min headway'i belirler; UIC 406 doluluk = min headway / hedef headway.">
+      <Panel ozet={<>min headway <b>{sure(bt.minHeadway)}</b> · {bt.pratikKapasite.toFixed(0)}/sa · {bt.hedefUygun ? "UYGUN" : "İHLAL"}</>} baslik="Blocking-Time / Sperrzeitentreppe (blok işgal süresi) & UIC 406 Kapasite" aciklama="Her sinyal bloğunun rezerve süresi = 6 bileşen (rota kurma + görme + yaklaşma + seyir + temizleme + release). En yüksek blocking-time'lı blok min headway'i belirler; UIC 406 doluluk = min headway / hedef headway.">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <MiniStat etiket={`Min headway (${kritikAd} blok)`} deger={sure(bt.minHeadway)} alt={`blok #${bt.kritikBlok}${bt.bloklar[bt.kritikBlok]?.makasBlok ? " (makas)" : ""}`} vurgu={kritikRenk} />
           <MiniStat etiket="Teorik kapasite" deger={`${bt.teorikKapasite.toFixed(0)}/sa`} alt="tren/saat üst sınır" />
@@ -232,7 +264,7 @@ export function SistemMerkezi() {
 
       {/* BELİRLEYİCİ KISIT — hMin'i oluşturan rakip headway kısıtları yan yana (hangisi bağlar) */}
       {maks && maks.gecerli && maks.kisitlar.length > 0 && (
-        <Panel katlanir ozet={<><b>{maks.baglayanAd}</b> bağlıyor · {sure(maks.hMin)}</>} baslik="Belirleyici Kısıt — Rakip Headway Kısıtları" aciklama="Min headway (hMin) beş rakip kısıdın EN YÜKSEĞİdir: blok (Sperrzeit) · terminal turnback (makas geometrisi) · tek hat · kavşak · sinyal. En uzun çubuk hattı bağlar. Diğerlerinin ne kadar geride olduğu, o kısıtta ne kadar pay (headway marjı) olduğunu gösterir — bir kısıt iyileştirilirse sıradaki bağlar. Tramvay hatlarında çoğu kez terminal turnback bağlar.">
+        <Panel ozet={<><b>{maks.baglayanAd}</b> bağlıyor · {sure(maks.hMin)}</>} baslik="Belirleyici Kısıt — Rakip Headway Kısıtları" aciklama="Min headway (hMin) beş rakip kısıdın EN YÜKSEĞİdir: blok (Sperrzeit) · terminal turnback (makas geometrisi) · tek hat · kavşak · sinyal. En uzun çubuk hattı bağlar. Diğerlerinin ne kadar geride olduğu, o kısıtta ne kadar pay (headway marjı) olduğunu gösterir — bir kısıt iyileştirilirse sıradaki bağlar. Tramvay hatlarında çoğu kez terminal turnback bağlar.">
           <KisitKarsilastirma kisitlar={maks.kisitlar} kritikRenk={kritikRenk} />
           <Kaynak etiket="Bağlayan kısıtı nereden iyileştirirsin" yerler={[{ ad: "Ringler (makas/terminal/sinyal)", href: "/#ringler" }, "parametreler"]} />
 
@@ -267,27 +299,28 @@ export function SistemMerkezi() {
 
       {/* Kilitleme (Interlocking) Kontrol Tablosu — sinyalizasyon kümesinde (rota/makas/kilit). */}
       <Kapanir baslik="Kilitleme (Interlocking) Kontrol Tablosu" ozet="rota tesisi · makas konumu · kilit"><KilitlemePaneli /></Kapanir>
+      </section>
 
-      {!bosHat && <Grup no="2" baslik="Terminal & Yol Etkileri" alt="Terminal dönüş (turnback) kapasitesi ve sokak geçitlerinin (hemzemin/TSP) tur süresine katkısı." />}
+      <section className="smx-panel" data-t="2">
+      <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>Terminal dönüş (turnback) kapasitesi ve sokak geçitlerinin (hemzemin/TSP) tur süresine katkısı.</p>
 
       {/* TERMİNAL TURNBACK KAPASİTESİ — iki ucun makas geometrisi → dönüş kapasitesi */}
       {rings.length > 0 && (<>
-      <Panel katlanir ozet="iki uç · makas/peron → dönüş kapasitesi" baslik="Terminal Turnback Kapasitesi" aciklama="Her uçtaki dönüş (turnback) kapasitesi, makas geometrisinden (S/X sayısı), peron sayısından ve boğaz işgalinden hesaplanır. Tramvay hatlarında hattın kapasitesini çoğu kez terminal dönüşü bağlar; iki uç yan yana, hangisinin ve hangi alt-etkenin (peron mu boğaz/makas mı) bağladığı gösterilir.">
+      <Panel ozet="iki uç · makas/peron → dönüş kapasitesi" baslik="Terminal Turnback Kapasitesi" aciklama="Her uçtaki dönüş (turnback) kapasitesi, makas geometrisinden (S/X sayısı), peron sayısından ve boğaz işgalinden hesaplanır. Tramvay hatlarında hattın kapasitesini çoğu kez terminal dönüşü bağlar; iki uç yan yana, hangisinin ve hangi alt-etkenin (peron mu boğaz/makas mı) bağladığı gösterilir.">
         <TurnbackKapasite terminalBas={isletme.terminalBas} terminalSon={isletme.terminalSon} cfg={cfg} />
         <Kaynak etiket="Terminal girdileri" yerler={[{ ad: "Makas/peron → Ringler (Maksimum Tramvay)", href: "/#ringler" }, "parametreler"]} />
       </Panel>
 
       {/* HEMZEMİN GEÇİT & TSP GECİKME — sokak geçitlerinin tur süresine katkısı */}
-      <Panel katlanir ozet="geçit yavaşlama + bekleme (TSP) → tur süresi" baslik="Hemzemin Geçit & Sinyal Önceliği (TSP) Gecikmesi" aciklama="Tramvay sokakta çok geçitli çalışır. Her geçit iki gecikme üretir: yavaşlama (geçit hızına düşme) ve karayolu geçidinde bekleme (trafik/sinyal önceliği). Bekleme, TSP'nin doğrudan ölçüsüdür — iyi öncelik düşük bekleme demektir. Grafik geçitlerin tur süresine katkısını hat boyunca gösterir.">
+      <Panel ozet="geçit yavaşlama + bekleme (TSP) → tur süresi" baslik="Hemzemin Geçit & Sinyal Önceliği (TSP) Gecikmesi" aciklama="Tramvay sokakta çok geçitli çalışır. Her geçit iki gecikme üretir: yavaşlama (geçit hızına düşme) ve karayolu geçidinde bekleme (trafik/sinyal önceliği). Bekleme, TSP'nin doğrudan ölçüsüdür — iyi öncelik düşük bekleme demektir. Grafik geçitlerin tur süresine katkısını hat boyunca gösterir.">
         <GrafikCerceve baslik="Hemzemin Geçit & TSP Gecikmesi"><HemzeminAnaliz rings={rings} cfg={cfg} cevrimSn={maks?.gecerli ? maks.cevrimSuresi : 0} /></GrafikCerceve>
         <Kaynak etiket="Geçit girdileri" yerler={[{ ad: "Geçit yeri/tipi → Ringler", href: "/#ringler" }, "parametreler"]} />
       </Panel>
       </>)}
+      </section>
 
-      {/* Derin analiz (tornado + V&V) her zaman erişilebilir; varsayılan KAPALI açılır
-          bloklarda durduğu için ekranı kalabalıklaştırmaz — mod gerektirmez. */}
-      {!bosHat && (<>
-        <Grup no="3" baslik="Motor Doğruluğu & Duyarlılık" alt="Sonuçların hangi girdiye ne kadar duyarlı olduğu (tornado) ve motorun analitik referanslara karşı doğrulanması (V&V)." />
+      <section className="smx-panel" data-t="3">
+      <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>Sonuçların hangi girdiye ne kadar duyarlı olduğu (tornado) ve motorun analitik referanslara karşı doğrulanması (V&V). Derin analiz — açılır bloklarda.</p>
 
         {/* Duyarlılık (tornado) — hangi parametre kapasiteyi en çok oynatıyor. */}
         <Kapanir baslik="Duyarlılık (Tornado)" ozet="hangi girdi kapasiteyi en çok oynatıyor">
@@ -296,11 +329,13 @@ export function SistemMerkezi() {
 
         {/* Doğrulama & Geçerleme — motorun analitik referanslara karşı doğruluk sertifikasyonu. */}
         <Kapanir baslik="Doğrulama & Geçerleme (V&V)" ozet="motor analitik referanslara karşı sertifikasyon"><DogrulamaPaneli /></Kapanir>
-      </>)}
 
-      {!bosHat && <Grup no="4" baslik="Filo & Kapasite Kararı" alt="Aynı temel kapasiteden iki karar: operasyonel (istenen aralık) ve risk (dayanıklılık) — ve tek-hat çakışma çözümü." />}
+      </section>
 
-      {/* FİLO & KAPASİTE KARARI — üç panelin ORTAK temeli tek yerde (tekrarı önler). */}
+      <section className="smx-panel" data-t="4">
+      <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>Aynı temel kapasiteden iki karar: operasyonel (istenen aralık) ve risk (dayanıklılık) — ve tek-hat çakışma çözümü.</p>
+
+      {/* FİLO & KAPASİTE KARARI — iki panelin ORTAK temeli tek yerde (tekrarı önler). */}
       {maks?.gecerli && (
         <div className="mt-8 rounded-lg border px-4 py-3" style={{ borderColor: brand.border, background: "#F8FAFC" }}>
           <div className="field-label">Filo &amp; Kapasite kararı — temel kapasite (aşağıdaki iki panel bunu farklı açıdan kullanır)</div>
@@ -325,6 +360,8 @@ export function SistemMerkezi() {
 
       {/* Çakışma Çözücüsü — tek-hat meet/pass; kalkış-offset optimizasyonuyla çakışmasız çizelge. */}
       <Kapanir baslik="Çakışma Çözücüsü (tek hat)" ozet="kalkış-offset ile çakışmasız çizelge"><CakismaCozumPaneli /></Kapanir>
+      </section>
+      </>)}
 
       {/* Parametre düzenleme TEK yerde: header'daki ⚙ Parametreler. Burada tekrar
           gösterilmez (çift giriş kafa karıştırıyordu) — yalnız yönlendirme. */}
@@ -340,20 +377,6 @@ export function SistemMerkezi() {
 }
 
 // ————— yardımcılar —————
-/** Grup başlığı — Sistem Merkezi'nin panellerini mantıksal bölümlere ayırır (yerleşim/netlik;
- *  panel içeriği değişmez). Numara + başlık + tek satır "ne işe yarar" açıklaması. */
-function Grup({ no, baslik, alt }: { no: string; baslik: string; alt?: string }) {
-  return (
-    <div className="mt-10 mb-2 border-t pt-5" style={{ borderColor: brand.borderStrong }}>
-      <div className="flex items-baseline gap-2">
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: brand.ink }}>{no}</span>
-        <h2 className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{baslik}</h2>
-      </div>
-      {alt && <p className="mt-0.5 ml-8 max-w-2xl text-xs" style={{ color: brand.muted }}>{alt}</p>}
-    </div>
-  );
-}
-
 /** Bileşen paneli çekmecesi — ayrı bileşenleri (kendi kartı olanlar: Kilitleme, karar
  *  panelleri, V&V, tornado…) native <details> ile katlar. Kenarlıksız: kapalıyken yalnız
  *  başlık çubuğu, açıkken bileşenin kendi kartı altında görünür. JS/state YOK → freeze yok. */
