@@ -291,15 +291,18 @@ export function SistemMerkezi() {
       </Panel>
       </>)}
 
-      {!bosHat && <Grup no="3" baslik="Motor Doğruluğu & Duyarlılık" alt="Sonuçların hangi girdiye ne kadar duyarlı olduğu (tornado) ve motorun analitik referanslara karşı doğrulanması (V&V)." />}
+      {/* SADE GÖRÜNÜM (sunum): tornado + V&V derin analizi gizlenir — sonuç/karar kalır. */}
+      {!bosHat && !sunum && (<>
+        <Grup no="3" baslik="Motor Doğruluğu & Duyarlılık" alt="Sonuçların hangi girdiye ne kadar duyarlı olduğu (tornado) ve motorun analitik referanslara karşı doğrulanması (V&V)." />
 
-      {/* Duyarlılık (tornado) — hangi parametre kapasiteyi en çok oynatıyor. */}
-      <Kapanir baslik="Duyarlılık (Tornado)" ozet="hangi girdi kapasiteyi en çok oynatıyor">
-        <Duyarlilik ringsHam={ringsHam} stock={stock} cfg={cfg} isletme={isletme} />
-      </Kapanir>
+        {/* Duyarlılık (tornado) — hangi parametre kapasiteyi en çok oynatıyor. */}
+        <Kapanir baslik="Duyarlılık (Tornado)" ozet="hangi girdi kapasiteyi en çok oynatıyor">
+          <Duyarlilik ringsHam={ringsHam} stock={stock} cfg={cfg} isletme={isletme} />
+        </Kapanir>
 
-      {/* Doğrulama & Geçerleme — motorun analitik referanslara karşı doğruluk sertifikasyonu. */}
-      <Kapanir baslik="Doğrulama & Geçerleme (V&V)" ozet="motor analitik referanslara karşı sertifikasyon"><DogrulamaPaneli /></Kapanir>
+        {/* Doğrulama & Geçerleme — motorun analitik referanslara karşı doğruluk sertifikasyonu. */}
+        <Kapanir baslik="Doğrulama & Geçerleme (V&V)" ozet="motor analitik referanslara karşı sertifikasyon"><DogrulamaPaneli /></Kapanir>
+      </>)}
 
       {!bosHat && <Grup no="4" baslik="Filo & Kapasite Kararı" alt="Aynı temel kapasiteden üç karar: operasyonel (istenen aralık), ekonomik (₺ toplam maliyet), risk (dayanıklılık) — ve tek-hat çakışma çözümü." />}
 

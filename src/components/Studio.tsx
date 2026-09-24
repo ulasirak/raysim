@@ -86,6 +86,7 @@ export function Studio() {
 function StudioIc() {
   const { cfg } = useSimConfig();
   const { rings: ringsHam, meta, subeler } = useProje();
+  const sunum = !!meta.sunumModu; // Sade Görünüm: açıkken mühendislik grafikleri + dayanıklılık gizli
   // Araç ve işletme parametreleri KALICI (projeye kayıtlı) — tek kaynak, uçucu değil.
   const { arac: stock, patchArac, setArac } = useArac();
   const { isletme, patchIsletme } = useIsletme();
@@ -920,6 +921,8 @@ function StudioIc() {
         </section>
       )}
 
+      {/* SADE GÖRÜNÜM (sunum): mühendislik grafikleri + dayanıklılık gizlenir — Kurulum/Filo + Canlı Simülasyon kalır. */}
+      {!sunum && (<>
       <SefGrup no="3" baslik="Mühendislik Grafikleri" alt="Klasik demiryolu analizi: Bildfahrplan (zaman–mesafe), gecikme yayılımı, hız profili, yük & duruş, talep→doluluk. Veriler canlı sim ile birebir aynı." />
 
       {/* BİLDFAHRPLAN — canlı sim ile aynı loop yörüngesinden zaman-mesafe tren grafiği */}
@@ -1118,6 +1121,7 @@ function StudioIc() {
           )}
         </Panel>
       </section>
+      </>)}
 
     </div>
   );

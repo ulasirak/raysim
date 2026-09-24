@@ -371,8 +371,8 @@ export function Belgeler() {
           <label className="mt-2 flex items-start gap-2 rounded border p-2.5" style={{ borderColor: brand.border, color: brand.inkSoft }}>
             <input type="checkbox" checked={sunum} onChange={(e) => patchMeta({ sunumModu: e.target.checked })} className="mt-0.5 shrink-0" />
             <span>
-              <b>Sunum modu</b> — açıkken rapor ve arayüzde uyarı/risk/denge işaretleri gizlenir, hat uygun/onaylı görünür.
-              <span style={{ color: brand.faint }}> Değer düzenlerken KAPAT → gerçek headway/denge/kritik uyarılarını görürsün; sunumdan önce tekrar AÇ.</span>
+              <b>Sunum / Sade Görünüm</b> — açıkken (1) uyarı/risk/denge işaretleri gizlenir, hat uygun/onaylı görünür; (2) <b>arayüz sadeleşir</b>: mühendislik grafikleri, tornado ve V&V gibi derin analizler gizlenir — yalnız sonuç, karar ve canlı harita kalır (müşteri görünümü). Uzman görünümü için KAPAT.
+              <span style={{ color: brand.faint }}> Değer düzenlerken KAPAT → gerçek headway/denge/kritik uyarılarını ve tüm analiz panellerini görürsün; sunumdan önce tekrar AÇ.</span>
             </span>
           </label>
         </details>
