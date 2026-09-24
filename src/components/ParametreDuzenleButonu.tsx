@@ -12,10 +12,18 @@ import { useEffect, useState } from "react";
 import { brand } from "@/lib/anaray/brand";
 import { useSimConfig } from "@/components/SimConfigProvider";
 import { ParametreEditoru } from "@/components/ParametreEditoru";
+import { PARAMETRELER_AC } from "@/components/Kaynak";
 
 export function ParametreDuzenleButonu() {
   const { sifirla, yazilabilir } = useSimConfig();
   const [acik, setAcik] = useState(false);
+
+  // Panellerdeki "⚙ Parametreler →" kısayolları bu olayla modalı açar (aşağı inmeden).
+  useEffect(() => {
+    const ac = () => setAcik(true);
+    window.addEventListener(PARAMETRELER_AC, ac);
+    return () => window.removeEventListener(PARAMETRELER_AC, ac);
+  }, []);
 
   // Esc ile kapan; modal açıkken arka plan kaymasın.
   useEffect(() => {

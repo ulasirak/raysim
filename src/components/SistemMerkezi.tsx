@@ -20,6 +20,7 @@ import { RobustFiloPaneli } from "@/components/RobustFiloPaneli";
 import { CakismaCozumPaneli } from "@/components/CakismaCozumPaneli";
 import { Kart } from "@/components/Kart";
 import { Kpi } from "@/components/Kpi";
+import { Kaynak } from "@/components/Kaynak";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import { blockingTimeRing, type BlokSperr } from "@/lib/anaray/blockingtime";
 import { maksimumTren } from "@/lib/anaray/kapasite";
@@ -244,6 +245,7 @@ export function SistemMerkezi() {
       {maks && maks.gecerli && maks.kisitlar.length > 0 && (
         <Panel katlanir ozet={<><b>{maks.baglayanAd}</b> bağlıyor · {sure(maks.hMin)}</>} baslik="Belirleyici Kısıt — Rakip Headway Kısıtları" aciklama="Min headway (hMin) beş rakip kısıdın EN YÜKSEĞİdir: blok (Sperrzeit) · terminal turnback (makas geometrisi) · tek hat · kavşak · sinyal. En uzun çubuk hattı bağlar. Diğerlerinin ne kadar geride olduğu, o kısıtta ne kadar pay (headway marjı) olduğunu gösterir — bir kısıt iyileştirilirse sıradaki bağlar. Tramvay hatlarında çoğu kez terminal turnback bağlar.">
           <KisitKarsilastirma kisitlar={maks.kisitlar} kritikRenk={kritikRenk} />
+          <Kaynak etiket="Bağlayan kısıtı nereden iyileştirirsin" yerler={[{ ad: "Ringler (makas/terminal/sinyal)", href: "/#ringler" }, "parametreler"]} />
 
           {/* KAVŞAK SPERRZEIT DÖKÜMÜ — kritik düz kavşağın blocking-time bileşenleri.
               Kavşak kısıtı varsa gösterilir: neden bu kadar? Tren boyu kavşağı ne kadar
@@ -319,6 +321,7 @@ export function SistemMerkezi() {
           <div className="mt-1.5 text-[0.68rem]" style={{ color: brand.muted }}>
             Aynı temel → üç farklı karar: <b style={{ color: "#2350B8" }}>Operasyonel</b> (istenen aralığı hangi filo verir) · <b style={{ color: OK }}>Ekonomik</b> (₺ toplam maliyeti en düşük filo) · <b>Risk</b> (gecikmeye rağmen güvenilirlik+konfor için min filo).
           </div>
+          <Kaynak etiket="Bu kapasiteyi belirleyen girdiler" yerler={["parametreler", { ad: "Ringler (durak/makas/sinyal)", href: "/#ringler" }]} />
         </div>
       )}
 

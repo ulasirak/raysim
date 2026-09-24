@@ -15,6 +15,7 @@ import { tramvaylar } from "@/lib/anaray/vehicles";
 import { maksimumTren } from "@/lib/anaray/kapasite";
 import { etkinArac, type Isletme } from "@/lib/anaray/config";
 import { osmKoordinatEsle } from "@/lib/anaray/adEsle";
+import { Kaynak } from "@/components/Kaynak";
 import { parseGtfsZip, gtfsRotalar, gtfsYonler, gtfsHatKur } from "@/lib/anaray/gtfs";
 import { cakismaTespit } from "@/lib/anaray/cakisma";
 import { cakismaCoz } from "@/lib/anaray/cakismaCozum";
@@ -719,6 +720,7 @@ function StudioIc() {
             <br />Dwell = max(<b>min duruş</b>, <i>(inen+binen) ÷ (kapı×genişlik×akış)</i>) + kapı aç + kapı kapa. Her durakta ayrı → RTT'ye kümülatif.
             <br />ℹ️ Dwell <b>otomatik</b> (yolcu akışından) gelir ama zorunlu değil — istersen her durakta <b>elle</b> de girebilirsin: <Link href="/#ringler" className="underline">Ringler → Duraklar &amp; Mesafeler</Link>’de o durağın <b>“oto dwell”</b> kutusunu kapatıp değeri yaz. Oto açıkken alt sınır yukarıdaki <b>min duruş süresi</b>dir.
           </div>
+          <Kaynak etiket="Bu panelde OLMAYAN girdiler" yerler={[{ ad: "İniş/biniş → Ringler", href: "/#ringler" }, { ad: "Araç kapıları → Çeken Araç", href: "/#ceken-arac" }]} />
         </Panel>
       </section>
 
