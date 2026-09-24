@@ -17,8 +17,10 @@ const RENK_METIN = "#6B7A8A";
 const RENK_AKTIF = "#0C2233";
 const RENK_CIZGI = "#C8102E";
 const RENK_KENAR = "#DCE1E7";
+const RENK_UYARI = "#C77700";
 
-// Öneke göre sekme CSS'i üretir (id/sınıf çakışmasını önler).
+// Öneke göre sekme CSS'i üretir (id/sınıf çakışmasını önler). Çubuk YAPIŞKAN:
+// kaydırırken metro-nav'ın (--ray-nav-h) hemen altında sabit kalır → gezinme hep elde.
 function tabCss(pre: string): string {
   const idx = [1, 2, 3, 4, 5, 6];
   const goster = idx.map((i) => `#${pre}-t${i}:checked~.${pre}-panel[data-t="${i}"]`).join(",\n");
@@ -26,9 +28,14 @@ function tabCss(pre: string): string {
   return `
 .${pre}-panel{display:none}
 ${goster}{display:block}
-.${pre}-tab{cursor:pointer;user-select:none;white-space:nowrap;border-bottom:2px solid transparent;padding:.55rem 1rem;font-size:.8rem;font-weight:600;color:${RENK_METIN};transition:color .15s,border-color .15s}
+.${pre}-bar{position:sticky;top:var(--ray-nav-h,88px);z-index:10;background:#fff}
+.${pre}-tab{display:inline-flex;align-items:center;cursor:pointer;user-select:none;white-space:nowrap;border-bottom:2px solid transparent;padding:.55rem 1rem;font-size:.8rem;font-weight:600;color:${RENK_METIN};transition:color .15s,border-color .15s}
 .${pre}-tab:hover{color:${RENK_AKTIF}}
 ${aktif}{color:${RENK_AKTIF};border-bottom-color:${RENK_CIZGI}}
+.smx-dot{display:inline-block;width:7px;height:7px;border-radius:9999px;margin-left:6px}
+.smx-dot-uyari{background:${RENK_UYARI}}
+.smx-dot-ihlal{background:${RENK_CIZGI}}
+@media (max-width:640px){.${pre}-tab{padding:.5rem .6rem;font-size:.72rem}}
 `;
 }
 
@@ -37,8 +44,10 @@ ${aktif}{color:${RENK_AKTIF};border-bottom-color:${RENK_CIZGI}}
  * çocukları (radiolar + .${pre}-bar) çağıran kapsayıcının doğrudan çocuğu olur, böylece
  * ardından gelen `.${pre}-panel[data-t]` kardeşlerini `:checked ~` ile hedefler.
  * `pre`: modüle özgü benzersiz önek (ör. "sm", "sf") — tek sayfada çakışmayı önler.
+ * `durumlar`: isteğe bağlı — her sekmenin yanına durum noktası (o sekmede
+ *   uyarı/ihlal varsa) koyar; kullanıcı hangi sekmede sorun olduğunu açmadan görür.
  */
-export function TabBar({ pre, etiketler }: { pre: string; etiketler: React.ReactNode[] }) {
+export function TabBar({ pre, etiketler, durumlar }: { pre: string; etiketler: React.ReactNode[]; durumlar?: ("" | "uyari" | "ihlal")[] }) {
   return (
     <>
       <style>{tabCss(pre)}</style>
@@ -54,9 +63,15 @@ export function TabBar({ pre, etiketler }: { pre: string; etiketler: React.React
         />
       ))}
       <div className={`${pre}-bar mb-6 mt-1 flex gap-1 overflow-x-auto border-b`} style={{ borderColor: RENK_KENAR }} role="tablist">
-        {etiketler.map((e, i) => (
-          <label key={i} htmlFor={`${pre}-t${i + 1}`} className={`${pre}-tab`}>{e}</label>
-        ))}
+        {etiketler.map((e, i) => {
+          const d = durumlar?.[i];
+          return (
+            <label key={i} htmlFor={`${pre}-t${i + 1}`} className={`${pre}-tab`}>
+              {e}
+              {d ? <span className={`smx-dot smx-dot-${d}`} title={d === "ihlal" ? "İhlal var" : "Uyarı var"} /> : null}
+            </label>
+          );
+        })}
       </div>
     </>
   );

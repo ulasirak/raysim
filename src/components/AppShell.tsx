@@ -6,7 +6,7 @@
 // Masthead künyesi ve rota buradan beslenir. Sayfalar yalnız içeriklerini döner.
 
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Masthead } from "@/components/Masthead";
 import { SimConfigProvider } from "@/components/SimConfigProvider";
 import { AuthProvider } from "@/components/AuthProvider";
@@ -186,6 +186,21 @@ function Govde({ children }: { children: React.ReactNode }) {
   const ilerleme = anaSayfa ? kaydirma : aktifIndex / Math.max(1, MODULLER.length - 1);
   const genisEkran = useGenisEkran();
 
+  // Yapışkan metro-nav'ın GERÇEK yüksekliğini `--ray-nav-h` CSS değişkenine yazar →
+  // modüllerin yapışkan sekme çubukları (TabBar) tam nav altına oturur. ResizeObserver
+  // ile breakpoint/etiket-sarma/yeniden-boyut değişimlerinde kendini günceller.
+  const navRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = navRef.current;
+    if (!el) return;
+    const yaz = () => document.documentElement.style.setProperty("--ray-nav-h", `${Math.round(el.getBoundingClientRect().height)}px`);
+    yaz();
+    const ro = new ResizeObserver(yaz);
+    ro.observe(el);
+    window.addEventListener("resize", yaz);
+    return () => { ro.disconnect(); window.removeEventListener("resize", yaz); };
+  }, [icerikVar, genisEkran]);
+
   // ÇIPLAK sayfa (/canli) — QR'dan gelen mobil ziyaretçi için nav/masthead YOK; sade tam
   // ekran canlı simülasyon (paylaşım görünümü Kapı'yı açar, oturum gerekmez).
   if (pathname.startsWith("/canli")) {
@@ -207,6 +222,7 @@ function Govde({ children }: { children: React.ReactNode }) {
           kaydırır; eski rotalarda ana sayfadaki bölüme döner. */}
       {icerikVar && (
       <nav
+        ref={navRef}
         className="sticky top-0 z-20 border-b backdrop-blur"
         style={{
           background: "linear-gradient(180deg, #0F2B40 0%, #0C2233 100%)",

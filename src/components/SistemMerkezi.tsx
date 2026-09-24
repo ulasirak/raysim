@@ -18,7 +18,7 @@ import { KararDestekPaneli } from "@/components/KararDestekPaneli";
 import { RobustFiloPaneli } from "@/components/RobustFiloPaneli";
 import { CakismaCozumPaneli } from "@/components/CakismaCozumPaneli";
 import { Kart } from "@/components/Kart";
-import { MiniStat } from "@/components/Kpi";
+import { MiniStat, Durum } from "@/components/Kpi";
 import { TabBar } from "@/components/Tabs";
 import { Kaynak } from "@/components/Kaynak";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
@@ -138,20 +138,22 @@ export function SistemMerkezi() {
       )}
 
       {!bosHat && (<>
-      <TabBar pre="sm" etiketler={["① Kapasite & Kısıt", "② Terminal & Yol", "③ Motor Doğruluğu", "④ Filo Kararı"]} />
+      <TabBar pre="sm"
+        etiketler={["① Kapasite & Kısıt", "② Terminal & Yol", "③ Motor Doğruluğu", "④ Filo Kararı"]}
+        durumlar={[bt ? (!bt.hedefUygun ? "ihlal" : bt.dolulukHedef > 80 ? "uyari" : "") : "", "", "", ""]} />
 
       <section className="sm-panel" data-t="1">
       <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>Hattı fiziksel olarak hangi kısıt bağlıyor — blok işgali (Sperrzeit), rakip headway kısıtları, sinyal ve kilitleme.</p>
 
       {/* Blocking-Time (Sperrzeitentreppe) + UIC 406 */}
       {bt && (
-      <Panel ozet={<>min headway <b>{sure(bt.minHeadway)}</b> · {bt.pratikKapasite.toFixed(0)}/sa · {bt.hedefUygun ? "UYGUN" : "İHLAL"}</>} baslik="Blocking-Time / Sperrzeitentreppe (blok işgal süresi) & UIC 406 Kapasite" aciklama="Her sinyal bloğunun rezerve süresi = 6 bileşen (rota kurma + görme + yaklaşma + seyir + temizleme + release). En yüksek blocking-time'lı blok min headway'i belirler; UIC 406 doluluk = min headway / hedef headway.">
+      <Panel baslik="Blocking-Time / Sperrzeitentreppe (blok işgal süresi) & UIC 406 Kapasite" aciklama="Her sinyal bloğunun rezerve süresi = 6 bileşen (rota kurma + görme + yaklaşma + seyir + temizleme + release). En yüksek blocking-time'lı blok min headway'i belirler; UIC 406 doluluk = min headway / hedef headway.">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <MiniStat etiket={`Min headway (${kritikAd} blok)`} deger={sure(bt.minHeadway)} alt={`blok #${bt.kritikBlok}${bt.bloklar[bt.kritikBlok]?.makasBlok ? " (makas)" : ""}`} vurgu={kritikRenk} />
           <MiniStat etiket="Teorik kapasite" deger={`${bt.teorikKapasite.toFixed(0)}/sa`} alt="tren/saat üst sınır" />
           <MiniStat etiket="İşletme kapasitesi" deger={`${bt.pratikKapasite.toFixed(0)}/sa`} alt={`UIC 406 %${(bt.dolulukTavani * 100).toFixed(0)} tavan`} vurgu={OK} />
           <MiniStat etiket="UIC 406 doluluk" deger={`%${bt.dolulukHedef.toFixed(0)}`} alt={`hedef ${bt.hedefHeadway} s`} vurgu={bt.dolulukHedef > 80 ? CK.red : bt.dolulukHedef > 60 ? CK.amber : OK} />
-          <MiniStat etiket="Hedef headway" deger={bt.hedefUygun ? "UYGUN" : "İHLAL"} vurgu={bt.hedefUygun ? OK : brand.red} />
+          <MiniStat etiket="Hedef headway" deger={<Durum tip={bt.hedefUygun ? "uygun" : "ihlal"} />} />
         </div>
 
         {/* Sperrzeitentreppe — GERÇEK zaman-mesafe merdiveni (kanonik) */}

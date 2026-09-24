@@ -32,6 +32,10 @@
   --ds-info: #0c2233;
   --ds-info-soft: #e8eef3;
 
+  /* Yapışkan sekme çubuğu offset'i = metro-nav (AppShell) yüksekliği. TabBar `top`
+     bunu kullanır; mobilde nav daha kısadır (aşağıdaki media query günceller). */
+  --ray-nav-h: 92px;
+
   /* Boşluk ritmi (4px temelli) */
   --ds-space-xs: 4px;
   --ds-space-sm: 8px;
@@ -258,5 +262,12 @@ html::-webkit-scrollbar {
   * {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
+  }
+}
+
+/* Mobilde metro-nav daha kısa → yapışkan sekme offset'i küçülür (AppShell mobil nav). */
+@media (max-width: 1023px) {
+  :root {
+    --ray-nav-h: 64px;
   }
 }

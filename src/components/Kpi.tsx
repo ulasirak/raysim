@@ -72,6 +72,24 @@ export function Kpi({
  * kopyalarının TEK ORTAK kaynağıdır → aynı yüzey, aynı punto, aynı renk mantığı.
  * `vurgu`: hesaplanmış durum rengi (chartkit CK.* vb.), Kpi'nin `renk`ine geçer.
  */
+// ————— Durum rozeti —————
+// Tek tip sonuç göstergesi: ✓ Uygun / ▲ Uyarı / ⚠ İhlal. Her panel/başlıkta aynı dil,
+// aynı renk → hattın sağlığı tek bakışta okunur. Dağınık "UYGUN/İHLAL" metinleri yerine.
+const DURUM_STIL: Record<"uygun" | "uyari" | "ihlal", { ik: string; et: string; fg: string; bg: string }> = {
+  uygun: { ik: "✓", et: "Uygun", fg: ds.status.success, bg: "#EAF7F0" },
+  uyari: { ik: "▲", et: "Uyarı", fg: "#8A5A00", bg: "#FBF3E2" },
+  ihlal: { ik: "⚠", et: "İhlal", fg: ds.status.danger, bg: "#FBE9EC" },
+};
+
+export function Durum({ tip, metin, className = "" }: { tip: "uygun" | "uyari" | "ihlal"; metin?: React.ReactNode; className?: string }) {
+  const d = DURUM_STIL[tip];
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.7rem] font-semibold ${className}`.trim()} style={{ background: d.bg, color: d.fg }}>
+      {d.ik} {metin ?? d.et}
+    </span>
+  );
+}
+
 export function MiniStat({
   etiket,
   deger,

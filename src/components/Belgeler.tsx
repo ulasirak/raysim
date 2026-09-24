@@ -12,7 +12,7 @@ import { sure } from "@/lib/anaray/format";
 import { useSimConfig, useProje, useArac, useIsletme, useHesap } from "@/components/SimConfigProvider";
 import { PROJE_META_ALANLAR } from "@/lib/anaray/config";
 import { loopDenge, olceklenme, ringChallenge, ringDogrula, loopTamMi } from "@/lib/anaray/ring";
-import { MiniStat } from "@/components/Kpi";
+import { MiniStat, Durum } from "@/components/Kpi";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import { type RaporDil } from "@/lib/anaray/rapor";
 import { RAPOR_BOLUMLER, RAPOR_BOLUM_KREDI, RAPOR_BOLUM_AD, RAPOR_TABAN_KREDI, raporKredi, type RaporBolum } from "@/lib/raporFiyat";
@@ -354,10 +354,11 @@ export function Belgeler() {
           <MiniStat etiket="Challenge (zorluk) kaydı" deger={`${ozet.chSayi}`} alt={`${ozet.kritik} kritik`} vurgu={ozet.kritik > 0 ? brand.red : undefined} />
           <MiniStat etiket="Darboğaz" deger={ozet.darbogaz ? sure(ozet.darbogaz.worstToplam) : "—"} alt={ozet.darbogaz?.ad} vurgu={brand.red} />
         </div>
-        <div className="mt-2 text-xs" style={{ color: rings.length === 0 ? brand.muted : (ozet.headwayUygun && ozet.dengeli) ? CK.good : CK.amber }}>
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs" style={{ color: rings.length === 0 ? brand.muted : (ozet.headwayUygun && ozet.dengeli) ? CK.good : CK.amber }}>
+          {rings.length > 0 && <Durum tip={(ozet.headwayUygun && ozet.dengeli) ? "uygun" : "uyari"} />}
           {rings.length === 0
             ? "Hat kurulduğunda burada headway/denge değerlendirmesi görünür."
-            : (ozet.headwayUygun && ozet.dengeli) ? "✓ Belge: tüm hücreler headway'e uygun ve dengeli." : "▲ Belge, headway ihlali / dengesizlik uyarılarını içerecek."}
+            : (ozet.headwayUygun && ozet.dengeli) ? "Belge: tüm hücreler headway'e uygun ve dengeli." : "Belge, headway ihlali / dengesizlik uyarılarını içerecek."}
           {sunum && <span style={{ color: brand.muted }}> · Not: PDF <b>müşteri sunumu</b> olarak, onaylı tasarım dilinde üretilecek.</span>}
         </div>
       </Panel>

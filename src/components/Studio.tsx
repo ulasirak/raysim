@@ -496,7 +496,9 @@ function StudioIc() {
         </div>
       </div>
 
-      <TabBar pre="sf" etiketler={["① Kurulum & Filo", "② Canlı Simülasyon", "③ Mühendislik Grafikleri", "④ Etkiler & Dayanıklılık"]} />
+      <TabBar pre="sf"
+        etiketler={["① Kurulum & Filo", "② Canlı Simülasyon", "③ Mühendislik Grafikleri", "④ Etkiler & Dayanıklılık"]}
+        durumlar={[filoAsim ? "ihlal" : "", "", "", (yolcuVeriVar && tersRapor && tersRapor.donusIhtiyaclari.length > 0) ? "ihlal" : ""]} />
 
       <div className="sf-panel" data-t="1">
       <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>Aracı, yolcu dinamiğini ve filoyu belirle: önerilen tramvay → onayla → sefer sıklığı.</p>
