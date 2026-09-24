@@ -285,11 +285,13 @@ export function SistemMerkezi() {
       {rings.length > 0 && (<>
       <Panel katlanir ozet="iki uç · makas/peron → dönüş kapasitesi" baslik="Terminal Turnback Kapasitesi" aciklama="Her uçtaki dönüş (turnback) kapasitesi, makas geometrisinden (S/X sayısı), peron sayısından ve boğaz işgalinden hesaplanır. Tramvay hatlarında hattın kapasitesini çoğu kez terminal dönüşü bağlar; iki uç yan yana, hangisinin ve hangi alt-etkenin (peron mu boğaz/makas mı) bağladığı gösterilir.">
         <TurnbackKapasite terminalBas={isletme.terminalBas} terminalSon={isletme.terminalSon} cfg={cfg} />
+        <Kaynak etiket="Terminal girdileri" yerler={[{ ad: "Makas/peron → Ringler (Maksimum Tramvay)", href: "/#ringler" }, "parametreler"]} />
       </Panel>
 
       {/* HEMZEMİN GEÇİT & TSP GECİKME — sokak geçitlerinin tur süresine katkısı */}
       <Panel katlanir ozet="geçit yavaşlama + bekleme (TSP) → tur süresi" baslik="Hemzemin Geçit & Sinyal Önceliği (TSP) Gecikmesi" aciklama="Tramvay sokakta çok geçitli çalışır. Her geçit iki gecikme üretir: yavaşlama (geçit hızına düşme) ve karayolu geçidinde bekleme (trafik/sinyal önceliği). Bekleme, TSP'nin doğrudan ölçüsüdür — iyi öncelik düşük bekleme demektir. Grafik geçitlerin tur süresine katkısını hat boyunca gösterir.">
         <GrafikCerceve baslik="Hemzemin Geçit & TSP Gecikmesi"><HemzeminAnaliz rings={rings} cfg={cfg} cevrimSn={maks?.gecerli ? maks.cevrimSuresi : 0} /></GrafikCerceve>
+        <Kaynak etiket="Geçit girdileri" yerler={[{ ad: "Geçit yeri/tipi → Ringler", href: "/#ringler" }, "parametreler"]} />
       </Panel>
       </>)}
 
