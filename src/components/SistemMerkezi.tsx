@@ -15,7 +15,6 @@ import { Duyarlilik } from "@/components/Duyarlilik";
 import { DogrulamaPaneli } from "@/components/DogrulamaPaneli";
 import { KilitlemePaneli } from "@/components/KilitlemePaneli";
 import { KararDestekPaneli } from "@/components/KararDestekPaneli";
-import { ParetoPaneli } from "@/components/ParetoPaneli";
 import { RobustFiloPaneli } from "@/components/RobustFiloPaneli";
 import { CakismaCozumPaneli } from "@/components/CakismaCozumPaneli";
 import { Kart } from "@/components/Kart";
@@ -299,12 +298,12 @@ export function SistemMerkezi() {
         <Kapanir baslik="Doğrulama & Geçerleme (V&V)" ozet="motor analitik referanslara karşı sertifikasyon"><DogrulamaPaneli /></Kapanir>
       </>)}
 
-      {!bosHat && <Grup no="4" baslik="Filo & Kapasite Kararı" alt="Aynı temel kapasiteden üç karar: operasyonel (istenen aralık), ekonomik (₺ toplam maliyet), risk (dayanıklılık) — ve tek-hat çakışma çözümü." />}
+      {!bosHat && <Grup no="4" baslik="Filo & Kapasite Kararı" alt="Aynı temel kapasiteden iki karar: operasyonel (istenen aralık) ve risk (dayanıklılık) — ve tek-hat çakışma çözümü." />}
 
       {/* FİLO & KAPASİTE KARARI — üç panelin ORTAK temeli tek yerde (tekrarı önler). */}
       {maks?.gecerli && (
         <div className="mt-8 rounded-lg border px-4 py-3" style={{ borderColor: brand.border, background: "#F8FAFC" }}>
-          <div className="field-label">Filo &amp; Kapasite kararı — temel kapasite (aşağıdaki üç panel bunu farklı açıdan kullanır)</div>
+          <div className="field-label">Filo &amp; Kapasite kararı — temel kapasite (aşağıdaki iki panel bunu farklı açıdan kullanır)</div>
           <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <MiniStat etiket="Çevrim (RTT)" deger={sure(maks.cevrimSuresi)} />
             <MiniStat etiket="Min headway (duvar)" deger={sure(maks.hMin)} />
@@ -312,7 +311,7 @@ export function SistemMerkezi() {
             <MiniStat etiket="Önerilen (sürdürülebilir)" deger={`${maks.nSurdurulebilir} araç`} vurgu={OK} />
           </div>
           <div className="mt-1.5 text-[0.68rem]" style={{ color: brand.muted }}>
-            Aynı temel → üç farklı karar: <b style={{ color: "#2350B8" }}>Operasyonel</b> (istenen aralığı hangi filo verir) · <b style={{ color: OK }}>Ekonomik</b> (₺ toplam maliyeti en düşük filo) · <b>Risk</b> (gecikmeye rağmen güvenilirlik+konfor için min filo).
+            Aynı temel → iki farklı karar: <b style={{ color: "#2350B8" }}>Operasyonel</b> (istenen aralığı hangi filo verir) · <b>Risk</b> (gecikmeye rağmen güvenilirlik+konfor için min filo).
           </div>
           <Kaynak etiket="Bu kapasiteyi belirleyen girdiler" yerler={["parametreler", { ad: "Ringler (durak/makas/sinyal)", href: "/#ringler" }]} />
         </div>
@@ -320,9 +319,6 @@ export function SistemMerkezi() {
 
       {/* Karar Destek & Optimizasyon — OPERASYONEL: filo↔headway ödünleşimi + hedef-arama (F). */}
       <Kapanir baslik="Operasyonel — Filo ↔ Sefer Aralığı" ozet="istenen aralığı hangi filo verir + hedef-arama"><KararDestekPaneli /></Kapanir>
-
-      {/* Ekonomik Optimizasyon — jenerik (toplam) maliyet çanağı + ekonomik optimum (F). */}
-      <Kapanir baslik="Ekonomik — Toplam Maliyet Optimumu" ozet="₺ işletmeci + yolcu = en düşük toplam filo"><ParetoPaneli /></Kapanir>
 
       {/* Robustluk-Kısıtlı Filo — RİSK: kapasite × Monte-Carlo; %X güvenilirlik + konfor altında min filo. */}
       <Kapanir baslik="Risk — Robustluk-Kısıtlı Filo" ozet="gecikmeye rağmen güvenilirlik+konfor için min filo"><RobustFiloPaneli /></Kapanir>
