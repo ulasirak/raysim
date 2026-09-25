@@ -291,3 +291,13 @@ html::-webkit-scrollbar {
   0%, 100% { box-shadow: 0 12px 48px rgba(168, 132, 44, 0.18); }
   50% { box-shadow: 0 12px 60px rgba(168, 132, 44, 0.42); }
 }
+
+/* Sunum Modu açılış hareketleri — kapak yumuşak belirir, şerit alttan kayar. */
+@keyframes sunumKapakGir { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sunumKapakIc { from { opacity: 0; transform: translateY(10px) scale(0.985); } to { opacity: 1; transform: none; } }
+@keyframes sunumSeritGir { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: no-preference) {
+  .sunum-kapak { animation: sunumKapakGir 0.35s ease-out; }
+  .sunum-kapak-ic { animation: sunumKapakIc 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.04s both; }
+  .sunum-serit { animation: sunumSeritGir 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+}

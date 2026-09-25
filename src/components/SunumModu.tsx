@@ -187,7 +187,14 @@ export function SunumModu() {
   const [aktif, setAktif] = useState(false);
   const [i, setI] = useState(0);
   const [oto, setOto] = useState(false);
-  const [dil, setDil] = useState<Dil>("tr");
+  // Kayıtlı dil tercihini lazy okur. `dil` yalnız sunum AÇIKKEN (mount sonrası
+  // kullanıcı etkileşimiyle) render edilir → hidrasyon uyuşmazlığı olmaz. SSR'de
+  // window yok → TR.
+  const [dil, setDilState] = useState<Dil>(() => {
+    if (typeof window === "undefined") return "tr";
+    try { const v = localStorage.getItem("raysim-sunum-dil"); return (v === "tr" || v === "en" || v === "de") ? v : "tr"; } catch { return "tr"; }
+  });
+  const setDil = (d: Dil) => { setDilState(d); try { localStorage.setItem("raysim-sunum-dil", d); } catch { /* yok say */ } };
 
   const git = (n: number) => setI(Math.max(0, Math.min(TOPLAM - 1, n)));
   const kapat = () => { setOto(false); setAktif(false); };
@@ -253,12 +260,13 @@ export function SunumModu() {
   // ——— KAPAK KARTI (giriş / kapanış) ———
   if (a.kapak) {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-6 text-center" data-noprint
+      <div className="sunum-kapak fixed inset-0 z-50 flex flex-col items-center justify-center p-6 text-center" data-noprint
         style={{ background: "radial-gradient(130% 130% at 50% 0%, #123048 0%, #0A1826 55%, #060D16 100%)" }}>
         <button type="button" onClick={kapat} aria-label={t.cik}
           className="absolute right-5 top-5 rounded-md px-2.5 py-1.5 text-sm" style={{ color: "#8494A3" }}>✕</button>
         <div className="absolute left-1/2 top-6 -translate-x-1/2"><DilSecici dil={dil} setDil={setDil} koyu /></div>
 
+        <div className="sunum-kapak-ic flex flex-col items-center">
         <div className="font-brand text-[0.72rem] font-bold tracking-[0.32em]" style={{ color: "#E7D9B0" }}>{m.faz}</div>
         <h1 className="font-brand mt-3 text-5xl font-semibold tracking-tight text-white sm:text-6xl">{m.baslik}</h1>
         <p className="mt-5 max-w-2xl text-sm leading-relaxed sm:text-base" style={{ color: "#C4D2DE" }}>{m.anlatim}</p>
@@ -282,6 +290,7 @@ export function SunumModu() {
               className="rounded-lg px-4 py-2.5 text-sm font-semibold" style={{ border: "1px solid #31536B", color: "#fff" }}>◁ {t.geri}</button>
           )}
         </div>
+        </div>
 
         <div className="absolute bottom-8"><Noktalar i={i} git={git} dil={dil} /></div>
       </div>
@@ -290,7 +299,7 @@ export function SunumModu() {
 
   // ——— ANLATIM ŞERİDİ (orta adımlar) ———
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 border-t-2 shadow-2xl" data-noprint
+    <div className="sunum-serit fixed inset-x-0 bottom-0 z-50 border-t-2 shadow-2xl" data-noprint
       style={{ background: "linear-gradient(180deg,#0F2B40 0%,#0C2233 100%)", borderColor: brand.gold }}>
       {/* Genel ilerleme çizgisi */}
       <div className="absolute inset-x-0 top-0 h-[3px]" style={{ background: "#12314A" }}>
