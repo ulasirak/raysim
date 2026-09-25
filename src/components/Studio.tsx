@@ -11,7 +11,7 @@ import type { RailNetwork, Route } from "@/lib/anaray/types";
 import { flattenRoute, ringlerdenSebeke, hemzeminDuruslari, duruslariEkle, kalkisEkle, hatOzellikleri, kavsakliRingler, subeEfektifRingler } from "@/lib/anaray/network";
 import { simulate } from "@/lib/anaray/sim";
 import { simulateSignalled, reverseRoute, monteCarlo, planDepotDispatch, loopYorunge, type MonteCarloResult } from "@/lib/anaray/signalling";
-import { tramvaylar } from "@/lib/anaray/vehicles";
+import { tramvaylar, aracDogrula } from "@/lib/anaray/vehicles";
 import { maksimumTren } from "@/lib/anaray/kapasite";
 import { etkinArac, type Isletme } from "@/lib/anaray/config";
 import { osmKoordinatEsle } from "@/lib/anaray/adEsle";
@@ -35,7 +35,7 @@ import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimCon
 import { useDil } from "@/components/DilProvider";
 import { BosHat } from "@/components/BosHat";
 import { Kart } from "@/components/Kart";
-import { Kpi, MiniStat } from "@/components/Kpi";
+import { Kpi, MiniStat, Durum } from "@/components/Kpi";
 import { TabBar } from "@/components/Tabs";
 import { CografiAg } from "@/components/CografiAg";
 import { KoordinatDuzen } from "@/components/KoordinatDuzen";
@@ -450,6 +450,8 @@ function StudioIc() {
   // Araç (çeken) düzenlemesi — anında kalıcı (patchArac). Hat düzenlemesi Sefer'de
   // YAPILMAZ; Ringler'de yapılır (ikili düzenleme sadeleştirildi).
   const patchStock = patchArac;
+  // Özel/seçili aracın parametre tutarlılık denetimi (onay akışı; motoru değiştirmez).
+  const aracUyari = aracDogrula(stock);
 
   const vmax = Math.max(...result.points.map((p) => p.v));
   const ortHiz = line.length / result.totalTime;
@@ -692,6 +694,37 @@ function StudioIc() {
             <Num label={t({ tr: "Kütle", en: "Mass", de: "Masse" })} suffix="t" step={1} value={round(stock.mass / 1000)} onChange={(v) => patchStock({ mass: v * 1000 })} />
             <Num label={t({ tr: "Fren", en: "Braking", de: "Bremsung" })} suffix="m/s²" step={0.1} value={round(stock.maxBraking, 1)} onChange={(v) => patchStock({ maxBraking: v })} />
           </div>
+
+          {/* Gelişmiş: çekiş & direnç — ÖZEL ARAÇ için tam parametre. Motor bunları
+              birebir kullanır (hız profili · RTT · enerji); preset'ten miras kalmaz. */}
+          <details className="group mt-3 overflow-hidden rounded-md border" style={{ borderColor: brand.border }}>
+            <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-xs font-semibold [&::-webkit-details-marker]:hidden" style={{ color: brand.ink, background: CK.track }}>
+              <span>{t({ tr: "Gelişmiş: çekiş & direnç (özel araç)", en: "Advanced: traction & resistance (custom vehicle)", de: "Erweitert: Traktion & Widerstand (eigenes Fahrzeug)" })}</span>
+              <span className="text-[0.6rem] transition-transform duration-150 group-open:rotate-90" style={{ color: brand.muted }} aria-hidden="true">▸</span>
+            </summary>
+            <div className="border-t px-3 py-3" style={{ borderColor: brand.border }}>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+                <Num label={t({ tr: "Çekiş kuvveti", en: "Tractive effort", de: "Zugkraft" })} suffix="kN" step={1} value={round(stock.startingTractiveEffort / 1000)} onChange={(v) => patchStock({ startingTractiveEffort: Math.max(1000, v * 1000) })} />
+                <Num label={t({ tr: "Sürekli güç", en: "Continuous power", de: "Dauerleistung" })} suffix="kW" step={10} value={round(stock.power / 1000)} onChange={(v) => patchStock({ power: Math.max(10000, v * 1000) })} />
+                <Num label={t({ tr: "Dönen kütle ρ", en: "Rotating mass ρ", de: "Rotierende Masse ρ" })} suffix="" step={0.01} value={round(stock.rotatingMassFactor, 2)} onChange={(v) => patchStock({ rotatingMassFactor: Math.max(0, Math.min(0.3, v)) })} />
+                <Num label="Davis A" suffix="N" step={100} value={round(stock.davisA)} onChange={(v) => patchStock({ davisA: Math.max(0, v) })} />
+                <Num label="Davis B" suffix="N·s/m" step={5} value={round(stock.davisB)} onChange={(v) => patchStock({ davisB: Math.max(0, v) })} />
+                <Num label="Davis C" suffix="N·s²/m²" step={0.5} value={round(stock.davisC, 1)} onChange={(v) => patchStock({ davisC: Math.max(0, v) })} />
+              </div>
+              <p className="mt-2 text-[0.65rem]" style={{ color: brand.muted }}>{t({ tr: "Çekiş, P/v (yüksek hız) ile kalkış kuvveti F₀ arasında sınırlanır; yuvarlanma/aero direnç R(v)=A+B·v+C·v². Motor bu değerleri birebir kullanır — hız profili, tur süresi (RTT) ve enerji buradan türer. Kesin datasheet varsa oradan gir.", en: "Traction is bounded by P/v (high speed) and the starting force F₀; rolling/aero resistance R(v)=A+B·v+C·v². The engine uses these verbatim — speed profile, round-trip time (RTT) and energy derive from them. Enter exact figures from a datasheet if you have one.", de: "Traktion ist begrenzt durch P/v (hohe Geschwindigkeit) und die Anfahrkraft F₀; Roll-/Luftwiderstand R(v)=A+B·v+C·v². Die Engine nutzt diese direkt — Geschwindigkeitsprofil, Umlaufzeit (RTT) und Energie leiten sich daraus ab. Geben Sie exakte Werte aus einem Datenblatt ein, falls vorhanden." })}</p>
+            </div>
+          </details>
+
+          {/* Onay: parametre tutarlılık denetimi (özel araç güvenli mi?) */}
+          <div className="mt-3">
+            <Durum tip={aracUyari.length === 0 ? "uygun" : "uyari"} metin={aracUyari.length === 0 ? t({ tr: "Araç parametreleri tutarlı — simülasyona hazır", en: "Vehicle parameters consistent — ready to simulate", de: "Fahrzeugparameter konsistent — simulationsbereit" }) : `${aracUyari.length} ${t({ tr: "uyarı", en: "warnings", de: "Warnungen" })}`} />
+            {aracUyari.length > 0 && (
+              <ul className="mt-1.5 ml-4 list-disc text-[0.7rem]" style={{ color: CK.amberInk }}>
+                {aracUyari.map((w, i) => <li key={i}>{t(w.ad)}</li>)}
+              </ul>
+            )}
+          </div>
+
           <p className="mt-4 border-t pt-3 text-xs" style={{ borderColor: brand.border, color: brand.muted }}>
             {t({ tr: "Hattı düzenlemek mi istiyorsun? İstasyon / mesafe / hız / makas / parklanma alanı", en: "Want to edit the line? Station / distance / speed / turnout / parking area are in", de: "Möchten Sie die Linie bearbeiten? Station / Distanz / Geschwindigkeit / Weiche / Abstellbereich finden Sie in" })}{" "}
             <Link href="/#ringler" className="underline" style={{ color: brand.red }}>{t({ tr: "Ringler (KUR)", en: "Rings (BUILD)", de: "Ringe (BAUEN)" })}</Link> {t({ tr: "bölümünde — orada yapılan değişiklikler burada anında yansır.", en: "— changes made there are reflected here instantly.", de: "— dort vorgenommene Änderungen werden hier sofort übernommen." })}

@@ -7,7 +7,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
-import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
+import { dwellUygulanmisRings, maxYolcuKapasitesi } from "@/lib/anaray/yolcu";
 import { tersIsletmeAnaliz, tavsiyeTramvaySayisi } from "@/lib/anaray/tersisletme";
 import { Num, SubBaslik } from "@/components/RingUI";
 import { brand } from "@/lib/anaray/brand";
@@ -181,7 +181,7 @@ export function TersIsletme() {
           <div><Num label={t({ tr: "Pik saat yolcu (toplam)", en: "Peak-hour passengers (total)", de: "Fahrgäste Spitzenstunde (gesamt)" })} suffix={t({ tr: "yolcu/sa", en: "pax/h", de: "Fahrgäste/h" })} step={100} value={isletme.pikYolcuSaat}
             onChange={(v) => patchIsletme({ pikYolcuSaat: Math.max(0, Math.round(v)) })} /><Kucuk>{t({ tr: "toplam talep tabanı — rolden duraklara dağıtılır", en: "total demand base — distributed to stations by role", de: "Nachfragebasis gesamt — nach Rolle auf Haltestellen verteilt" })}{gercekVar ? ` · ${t({ tr: "girili toplam", en: "entered total", de: "eingegebene Summe" })} ≈ ${toplamBinen} ${t({ tr: "biniş/sa", en: "boardings/h", de: "Einstiege/h" })}` : ""}</Kucuk></div>
           <div><Num label={t({ tr: "Araç yolcu kapasitesi", en: "Vehicle passenger capacity", de: "Fahrgastkapazität Fahrzeug" })} suffix={t({ tr: "kişi", en: "pax", de: "Pers." })} step={10} value={isletme.aracYolcuKapasite}
-            onChange={(v) => patchIsletme({ aracYolcuKapasite: Math.max(1, Math.round(v)) })} /><Kucuk>{t({ tr: "tıkanmadan taşınan (Škoda 28T ~220 / 364 crush)", en: "carried without crowding (Škoda 28T ~220 / 364 crush)", de: "ohne Überfüllung befördert (Škoda 28T ~220 / 364 crush)" })}</Kucuk></div>
+            onChange={(v) => patchIsletme({ aracYolcuKapasite: Math.max(1, Math.round(v)) })} /><Kucuk>{t({ tr: "tıkanmadan taşınan — seçili araç", en: "carried without crowding — selected vehicle", de: "ohne Überfüllung befördert — gewähltes Fahrzeug" })} <b>{stock.name}</b> ~{maxYolcuKapasitesi(stock, isletme.konforIndeksi)}</Kucuk></div>
           <div><Num label={t({ tr: "Doluluk hedefi", en: "Occupancy target", de: "Auslastungsziel" })} suffix="%" step={5} value={Math.round(hedef * 100)}
             onChange={(v) => patchIsletme({ dolulukHedefi: Math.min(1, Math.max(0.3, v / 100)) })} /><Kucuk>{t({ tr: 'bu oranın üstü "tıkanma"', en: 'above this ratio is "crowding"', de: 'über diesem Wert "Überfüllung"' })}</Kucuk></div>
         </div>

@@ -121,7 +121,7 @@ export function dogrulamaCalistir(
   }
   ekle({ ad: "Direnç denge (terminal) hızı", kategori: "Direnç", bagimsiz: true,
     referans: vb, hesaplanan: v, birim: "m/s", tolerans: 2,
-    yontem: "Çekiş = direnç dengesi: P/v = davisA + davisB·v + davisC·v² (Škoda Davis katsayıları)" });
+    yontem: `Çekiş = direnç dengesi: P/v = davisA + davisB·v + davisC·v² (${dArac.name} Davis katsayıları)` });
 
   // — UÇTAN-UCA ① (ÇOK-SEGMENT ENTEGRASYON, integrator izolasyonu): ideal araç 2 ardışık
   //   durak-arasını (her biri L) geçer; ara istasyonda TAM durup yeniden kalkar. Motorun
