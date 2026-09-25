@@ -10,6 +10,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { brand } from "@/lib/anaray/brand";
 import { sure, kmh } from "@/lib/anaray/format";
+import { AutoAciklama } from "@/components/AutoAciklama";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { Duyarlilik } from "@/components/Duyarlilik";
 import { DogrulamaPaneli } from "@/components/DogrulamaPaneli";
@@ -407,7 +408,7 @@ function Panel({ baslik, aciklama, children, katlanir = false, ozet }: { baslik:
           <span className="ml-2 shrink-0 text-xs" style={{ color: brand.faint }}><span className="group-open:hidden">▸</span><span className="hidden group-open:inline">▾</span></span>
         </summary>
         <div className="border-t px-4 pb-4 pt-3" style={{ borderColor: brand.border }}>
-          {aciklama && <p className="mb-4 text-xs" style={{ color: brand.muted }}>{aciklama}</p>}
+          <AutoAciklama metin={aciklama} className="mb-4 text-xs" style={{ color: brand.muted }} />
           {children}
         </div>
       </details>
@@ -419,7 +420,7 @@ function Panel({ baslik, aciklama, children, katlanir = false, ozet }: { baslik:
         <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
         <h2 className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{baslik}</h2>
       </div>
-      {aciklama && <p className="-mt-3 mb-4 pl-[11px] text-xs" style={{ color: brand.muted }}>{aciklama}</p>}
+      <AutoAciklama metin={aciklama} className="-mt-3 mb-4 pl-[11px] text-xs" style={{ color: brand.muted }} />
       {children}
     </Kart>
   );

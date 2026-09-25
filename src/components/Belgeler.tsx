@@ -7,6 +7,7 @@
 
 import { useMemo, useState } from "react";
 import { brand } from "@/lib/anaray/brand";
+import { AutoAciklama } from "@/components/AutoAciklama";
 import { CK } from "@/lib/anaray/chartkit";
 import { sure } from "@/lib/anaray/format";
 import { useSimConfig, useProje, useArac, useIsletme, useHesap } from "@/components/SimConfigProvider";
@@ -411,7 +412,7 @@ function Panel({ baslik, aciklama, children }: { baslik: string; aciklama?: stri
         <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
         <h2 className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{baslik}</h2>
       </div>
-      {aciklama && <p className="-mt-3 mb-4 pl-[11px] text-xs" style={{ color: brand.muted }}>{aciklama}</p>}
+      <AutoAciklama metin={aciklama} className="-mt-3 mb-4 pl-[11px] text-xs" style={{ color: brand.muted }} />
       {children}
     </div>
   );

@@ -5,6 +5,7 @@
 
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
+import { AutoAciklama } from "@/components/AutoAciklama";
 
 const OK = CK.good;
 
@@ -46,7 +47,7 @@ export function Panel({ baslik, aciklama, children, katlanir = false, ozet, acik
           <span className="ml-2 shrink-0 text-xs" style={{ color: brand.muted }}><span className="group-open:hidden">▸</span><span className="hidden group-open:inline">▾</span></span>
         </summary>
         <div className="px-5 pb-5">
-          {aciklama && <p className="mb-4 text-xs" style={{ color: brand.muted }}>{aciklama}</p>}
+          <AutoAciklama metin={aciklama} className="mb-4 text-xs" style={{ color: brand.muted }} />
           {children}
         </div>
       </details>
@@ -58,7 +59,7 @@ export function Panel({ baslik, aciklama, children, katlanir = false, ozet, acik
         <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
         <h2 className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{baslik}</h2>
       </div>
-      {aciklama && <p className="-mt-3 mb-4 pl-[11px] text-xs" style={{ color: brand.muted }}>{aciklama}</p>}
+      <AutoAciklama metin={aciklama} className="-mt-3 mb-4 pl-[11px] text-xs" style={{ color: brand.muted }} />
       {children}
     </div>
   );
