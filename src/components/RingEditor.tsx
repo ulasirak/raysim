@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import { useSimConfig, useProje, useArac, useIsletme, useHesap } from "@/components/SimConfigProvider";
+import { useDil } from "@/components/DilProvider";
 import { HatIceAktar, type IceAktarMod } from "@/components/HatIceAktar";
 import { SubeEditor } from "@/components/SubeEditor";
 import { etkinBogazIsgali, terminalDonusParalel, etkinPeronSayisi, terminalMakasSayilari, terminalSeriDonus, type DonusTip, type TerminalConfig } from "@/lib/anaray/config";
@@ -44,6 +45,9 @@ const DONUS_TIP_ACIKLAMA: Record<DonusTip, string> = {
 };
 
 export function RingEditor() {
+  const { t } = useDil();
+  // Alias: terminal .map bloğunda `const t = isletme[uc]` çevirmeni gölgeler → orada `tt`.
+  const tt = t;
   const { cfg } = useSimConfig();
   const { rings, setRings, sifirlaRings, meta, patchMeta, yukleniyor, yazilabilir } = useProje();
   const { projeYeni } = useHesap();
@@ -116,7 +120,7 @@ export function RingEditor() {
     else if (mod === "yeniHat") {
       setIceMesgul(true);
       try { await projeYeni(ad); setRings(() => yeni); patchMeta({ hatAdi: ad }); patchIsletme({ istasyonKoordinat: koord ?? {}, hatGeometri: geometri, koordinatKaynak: "iceaktar" }); }
-      catch (e) { alert(e instanceof Error ? e.message : "Yeni hat oluşturulamadı."); }
+      catch (e) { alert(e instanceof Error ? e.message : t({ tr: "Yeni hat oluşturulamadı.", en: "Could not create new line.", de: "Neue Strecke konnte nicht erstellt werden." })); }
       finally { setIceMesgul(false); }
     }
   };
@@ -261,25 +265,25 @@ export function RingEditor() {
       {/* Başlık */}
       <div className="mb-6 flex items-end justify-between border-b pb-4" style={{ borderColor: brand.border }}>
         <div>
-          <div className="field-label">Durak Arası Ring Editörü — Gerçek-Hayat İşletim Hücreleri</div>
-          <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>{meta.hatAdi || "Adsız Hat"} · Loop (Çevrim) Şartları</h1>
+          <div className="field-label">{t({ tr: "Durak Arası Ring Editörü — Gerçek-Hayat İşletim Hücreleri", en: "Inter-Stop Section Editor — Real-Life Operating Cells", de: "Editor für Streckenabschnitte — Betriebszellen aus der Praxis" })}</div>
+          <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>{meta.hatAdi || t({ tr: "Adsız Hat", en: "Untitled Line", de: "Unbenannte Strecke" })} · {t({ tr: "Loop (Çevrim) Şartları", en: "Loop (Cycle) Conditions", de: "Umlauf-Bedingungen" })}</h1>
         </div>
         <button
           onClick={() => {
-            if (rings.length > 0 && !confirm("Bu hattın tüm ringleri silinsin mi? (geri alınamaz)")) return;
+            if (rings.length > 0 && !confirm(t({ tr: "Bu hattın tüm ringleri silinsin mi? (geri alınamaz)", en: "Delete all sections of this line? (cannot be undone)", de: "Alle Abschnitte dieser Strecke löschen? (nicht widerrufbar)" }))) return;
             sifirla();
           }}
           className="rounded-md border px-3 py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
-          🗑 Hattı temizle
+          {t({ tr: "🗑 Hattı temizle", en: "🗑 Clear line", de: "🗑 Strecke leeren" })}
         </button>
       </div>
 
       {/* Silme GERİ AL çubuğu — yanlış silinen durak/ring tek tıkla geri gelir. */}
       {geriAl && (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-md border-l-4 px-4 py-2 text-sm" style={{ background: CK.amberBg, borderColor: CK.amber, color: brand.ink }}>
-          <span>↩︎ Silme işlemi yapıldı. Yanlışlıkla mı? Geri alabilirsin.</span>
+          <span>{t({ tr: "↩︎ Silme işlemi yapıldı. Yanlışlıkla mı? Geri alabilirsin.", en: "↩︎ A deletion was made. By accident? You can undo it.", de: "↩︎ Eine Löschung wurde vorgenommen. Versehentlich? Sie können sie rückgängig machen." })}</span>
           <button onClick={geriAlUygula} className="shrink-0 rounded-md px-3 py-1 text-xs font-semibold text-white transition hover:opacity-90" style={{ background: brand.ink }}>
-            ↺ Silmeyi geri al
+            {t({ tr: "↺ Silmeyi geri al", en: "↺ Undo deletion", de: "↺ Löschung rückgängig" })}
           </button>
         </div>
       )}
@@ -299,8 +303,8 @@ export function RingEditor() {
         <details className="mt-4 rounded-lg border bg-white" style={{ borderColor: brand.border }}>
           <summary className="flex cursor-pointer select-none items-center gap-2 p-4">
             <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
-            <span className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>Dışa Aktar</span>
-            <span className="ml-2 text-xs" style={{ color: brand.muted }}>railML 2.2 (altyapı + araç + çizelge) · GTFS (çift yön + servis)</span>
+            <span className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{t({ tr: "Dışa Aktar", en: "Export", de: "Export" })}</span>
+            <span className="ml-2 text-xs" style={{ color: brand.muted }}>{t({ tr: "railML 2.2 (altyapı + araç + çizelge) · GTFS (çift yön + servis)", en: "railML 2.2 (infrastructure + rolling stock + timetable) · GTFS (both directions + service)", de: "railML 2.2 (Infrastruktur + Fahrzeuge + Fahrplan) · GTFS (beide Richtungen + Betrieb)" })}</span>
           </summary>
           <div className="border-t px-4 pb-4 pt-3" style={{ borderColor: brand.border }}>
             <p className="mb-3 text-xs" style={{ color: brand.muted }}>
@@ -318,10 +322,10 @@ export function RingEditor() {
                   indir(new Blob([xml], { type: "application/xml" }), `${ad}.railml.xml`);
                 }}
                 className="rounded-md px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: brand.ink }}>
-                ⬆ railML (.xml)
+                {t({ tr: "⬆ railML (.xml)", en: "⬆ railML (.xml)", de: "⬆ railML (.xml)" })}
               </button>
               <button type="button" disabled={!gtfsKoordVar}
-                title={gtfsKoordVar ? "GTFS .zip indir (duraklar + RaySim çizelgesi)" : "GTFS için durak koordinatı (lat/lon) gerekli — hattı GTFS'ten içe aktarın"}
+                title={gtfsKoordVar ? t({ tr: "GTFS .zip indir (duraklar + RaySim çizelgesi)", en: "Download GTFS .zip (stops + RaySim timetable)", de: "GTFS-.zip herunterladen (Haltestellen + RaySim-Fahrplan)" }) : t({ tr: "GTFS için durak koordinatı (lat/lon) gerekli — hattı GTFS'ten içe aktarın", en: "Stop coordinates (lat/lon) required for GTFS — import the line from GTFS", de: "Für GTFS sind Haltestellenkoordinaten (lat/lon) erforderlich — Strecke aus GTFS importieren" })}
                 onClick={() => {
                   const kmap = isletme.istasyonKoordinat ?? {};
                   const dz: GtfsDurakZaman[] = [];
@@ -349,12 +353,12 @@ export function RingEditor() {
                 }}
                 className="rounded-md border px-4 py-2 text-sm font-semibold transition enabled:hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45"
                 style={{ borderColor: brand.borderStrong, color: brand.ink }}>
-                ⬆ GTFS (.zip)
+                {t({ tr: "⬆ GTFS (.zip)", en: "⬆ GTFS (.zip)", de: "⬆ GTFS (.zip)" })}
               </button>
             </div>
             {!gtfsKoordVar && (
               <p className="mt-2 text-[0.7rem]" style={{ color: brand.muted }}>
-                GTFS için durakların <b>coğrafi koordinatı (lat/lon)</b> gerekir — GTFS&apos;ten içe aktarınca otomatik gelir, ya da <b>aşağıdan elle gir</b>. railML her hatta çalışır.
+                {t({ tr: "GTFS için durakların ", en: "For GTFS, the stops need their ", de: "Für GTFS benötigen die Haltestellen ihre " })}<b>{t({ tr: "coğrafi koordinatı (lat/lon)", en: "geographic coordinates (lat/lon)", de: "geografischen Koordinaten (lat/lon)" })}</b>{t({ tr: " gerekir — GTFS'ten içe aktarınca otomatik gelir, ya da ", en: " — they come automatically when importing from GTFS, or ", de: " — sie kommen automatisch beim Import aus GTFS, oder " })}<b>{t({ tr: "aşağıdan elle gir", en: "enter them manually below", de: "unten manuell eingeben" })}</b>{t({ tr: ". railML her hatta çalışır.", en: ". railML works for every line.", de: ". railML funktioniert für jede Strecke." })}
               </p>
             )}
 
@@ -364,18 +368,18 @@ export function RingEditor() {
             {yazilabilir && duraklar.length > 0 && (
               <details className="mt-3 rounded border" style={{ borderColor: brand.border }}>
                 <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium" style={{ color: brand.ink }}>
-                  İstasyon koordinatları (GTFS için) — <span style={{ color: koordSayisi === duraklar.length ? "#16794C" : CK.amberInk }}>{koordSayisi}/{duraklar.length}</span> girildi
+                  {t({ tr: "İstasyon koordinatları (GTFS için) — ", en: "Station coordinates (for GTFS) — ", de: "Stationskoordinaten (für GTFS) — " })}<span style={{ color: koordSayisi === duraklar.length ? "#16794C" : CK.amberInk }}>{koordSayisi}/{duraklar.length}</span> {t({ tr: "girildi", en: "entered", de: "eingegeben" })}
                 </summary>
                 <div className="max-h-64 overflow-auto border-t px-3 py-2" style={{ borderColor: brand.border }}>
-                  <p className="mb-2 text-[0.68rem]" style={{ color: brand.muted }}>Enlem/boylam (WGS84, ondalık derece). Tümü dolunca GTFS indirilebilir. <b>İpucu:</b> Google Maps&apos;te durağa sağ tık → koordinat çiftini kopyala.</p>
+                  <p className="mb-2 text-[0.68rem]" style={{ color: brand.muted }}>{t({ tr: "Enlem/boylam (WGS84, ondalık derece). Tümü dolunca GTFS indirilebilir. ", en: "Latitude/longitude (WGS84, decimal degrees). Once all are filled, GTFS can be downloaded. ", de: "Breite/Länge (WGS84, Dezimalgrad). Sobald alle ausgefüllt sind, kann GTFS heruntergeladen werden. " })}<b>{t({ tr: "İpucu:", en: "Tip:", de: "Tipp:" })}</b>{t({ tr: " Google Maps'te durağa sağ tık → koordinat çiftini kopyala.", en: " In Google Maps, right-click the stop → copy the coordinate pair.", de: " In Google Maps mit Rechtsklick auf die Haltestelle → das Koordinatenpaar kopieren." })}</p>
                   {duraklar.map((d, i) => {
                     const k = isletme.istasyonKoordinat?.[d.ad];
                     return (
                       <div key={i} className="flex items-center gap-2 py-0.5 text-xs">
                         <span className="w-40 shrink-0 truncate" title={d.ad} style={{ color: brand.inkSoft }}>{i + 1}. {d.ad}</span>
-                        <input type="number" step="0.000001" placeholder="enlem" value={k && Number.isFinite(k.lat) ? k.lat : ""} onChange={(e) => koordGuncelle(d.ad, "lat", parseFloat(e.target.value))}
+                        <input type="number" step="0.000001" placeholder={t({ tr: "enlem", en: "latitude", de: "Breite" })} value={k && Number.isFinite(k.lat) ? k.lat : ""} onChange={(e) => koordGuncelle(d.ad, "lat", parseFloat(e.target.value))}
                           className="w-28 rounded border px-1.5 py-0.5" style={{ borderColor: brand.border, color: brand.ink }} />
-                        <input type="number" step="0.000001" placeholder="boylam" value={k && Number.isFinite(k.lon) ? k.lon : ""} onChange={(e) => koordGuncelle(d.ad, "lon", parseFloat(e.target.value))}
+                        <input type="number" step="0.000001" placeholder={t({ tr: "boylam", en: "longitude", de: "Länge" })} value={k && Number.isFinite(k.lon) ? k.lon : ""} onChange={(e) => koordGuncelle(d.ad, "lon", parseFloat(e.target.value))}
                           className="w-28 rounded border px-1.5 py-0.5" style={{ borderColor: brand.border, color: brand.ink }} />
                       </div>
                     );
@@ -393,20 +397,19 @@ export function RingEditor() {
           Yükleme sırasında gizli (aşağıdaki "Hat yükleniyor…" gösterilir). */}
       {!yukleniyor && (
         <div className="mt-4">
-          <Panel katlanir acik ozet={`${rings.length} durak-arası (ring)`} baslik="Duraklar & Mesafeler" aciklama="Hattın başladığı yer: durakları ve aralarındaki mesafe/hızları buradan gir. Başa · ortaya · sona durak ekle, adları düzenle. Her durak-arası bir işletim hücresi (ring) oluşturur — detaylı şartlar aşağıdaki kartlarda. Değişiklikler anında kaydedilir.">
+          <Panel katlanir acik ozet={`${rings.length} ${t({ tr: "durak-arası (ring)", en: "inter-stop sections", de: "Streckenabschnitte" })}`} baslik={t({ tr: "Duraklar & Mesafeler", en: "Stops & Distances", de: "Haltestellen & Entfernungen" })} aciklama={t({ tr: "Hattın başladığı yer: durakları ve aralarındaki mesafe/hızları buradan gir. Başa · ortaya · sona durak ekle, adları düzenle. Her durak-arası bir işletim hücresi (ring) oluşturur — detaylı şartlar aşağıdaki kartlarda. Değişiklikler anında kaydedilir.", en: "Where the line begins: enter the stops and the distances/speeds between them here. Add a stop at the start · middle · end, edit names. Each inter-stop span forms an operating cell (section) — detailed conditions are in the cards below. Changes are saved instantly.", de: "Wo die Strecke beginnt: hier die Haltestellen und die Entfernungen/Geschwindigkeiten dazwischen eingeben. Haltestelle am Anfang · in der Mitte · am Ende hinzufügen, Namen bearbeiten. Jeder Abschnitt zwischen zwei Haltestellen bildet eine Betriebszelle — detaillierte Bedingungen in den Karten unten. Änderungen werden sofort gespeichert." })}>
             {duraklar.length === 0 ? (
               <div className="rounded-md border-2 border-dashed px-6 py-6" style={{ borderColor: brand.border }}>
                 <div className="text-center">
-                  <div className="font-brand text-base font-semibold" style={{ color: brand.ink }}>Hattınız boş — buradan başlayın</div>
+                  <div className="font-brand text-base font-semibold" style={{ color: brand.ink }}>{t({ tr: "Hattınız boş — buradan başlayın", en: "Your line is empty — start here", de: "Ihre Strecke ist leer — hier beginnen" })}</div>
                   <p className="mx-auto mt-1 max-w-lg text-xs leading-relaxed" style={{ color: brand.muted }}>
-                    <b>Toplam uzunluk + durak sayısı</b> gir → hat eşit bölünür; sonra adları ve mesafeleri tek tek düzenlersin.
-                    (Tek tek de başlayabilirsin.)
+                    <b>{t({ tr: "Toplam uzunluk + durak sayısı", en: "Total length + number of stops", de: "Gesamtlänge + Anzahl der Haltestellen" })}</b>{t({ tr: " gir → hat eşit bölünür; sonra adları ve mesafeleri tek tek düzenlersin. (Tek tek de başlayabilirsin.)", en: " → the line is split evenly; then you edit names and distances one by one. (You can also start one by one.)", de: " → die Strecke wird gleichmäßig aufgeteilt; danach bearbeiten Sie Namen und Entfernungen einzeln. (Sie können auch einzeln beginnen.)" })}
                   </p>
                 </div>
                 {/* Hızlı kurulum: toplam + sayı → eşit böl */}
                 <div className="mx-auto mt-4 flex max-w-md flex-wrap items-end justify-center gap-3">
                   <label className="block">
-                    <span className="field-label">Toplam uzunluk</span>
+                    <span className="field-label">{t({ tr: "Toplam uzunluk", en: "Total length", de: "Gesamtlänge" })}</span>
                     <div className="mt-1 flex items-center gap-1">
                       <input type="number" min={100} step={100} value={hizliToplam} onChange={(e) => setHizliToplam(Math.max(100, parseFloat(e.target.value) || 0))}
                         className="w-24 rounded border px-2 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
@@ -414,32 +417,32 @@ export function RingEditor() {
                     </div>
                   </label>
                   <label className="block">
-                    <span className="field-label">Durak sayısı</span>
+                    <span className="field-label">{t({ tr: "Durak sayısı", en: "Number of stops", de: "Anzahl der Haltestellen" })}</span>
                     <input type="number" min={2} step={1} value={hizliSayi} onChange={(e) => setHizliSayi(Math.max(2, Math.round(parseFloat(e.target.value) || 2)))}
                       className="mt-1 w-20 rounded border px-2 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
                   </label>
                   <button onClick={() => setRings(duraklardanHat(hizliToplam, hizliSayi))}
                     className="rounded-md px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: brand.red }}>
-                    Hattı kur ({hizliSayi} durak · {Math.round(hizliToplam / Math.max(1, hizliSayi - 1))} m ara)
+                    {t({ tr: "Hattı kur (", en: "Build line (", de: "Strecke aufbauen (" })}{hizliSayi} {t({ tr: "durak · ", en: "stops · ", de: "Haltestellen · " })}{Math.round(hizliToplam / Math.max(1, hizliSayi - 1))} {t({ tr: "m ara)", en: "m spacing)", de: "m Abstand)" })}
                   </button>
                 </div>
                 <div className="mt-3 text-center">
-                  <button onClick={() => ekleUygula((rs) => durakEkleSon(rs))} className="text-xs underline" style={{ color: brand.muted }}>veya tek durak-arasıyla başla →</button>
+                  <button onClick={() => ekleUygula((rs) => durakEkleSon(rs))} className="text-xs underline" style={{ color: brand.muted }}>{t({ tr: "veya tek durak-arasıyla başla →", en: "or start with a single inter-stop section →", de: "oder mit einem einzelnen Abschnitt beginnen →" })}</button>
                 </div>
               </div>
             ) : (
             <>
             {/* Ekleme mesafesi + başa/sona ekle — yeni durak SEÇTİĞİN mesafeyle eklenir. */}
             <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
-              <span className="text-xs font-medium" style={{ color: brand.inkSoft }}>Yeni durak mesafesi</span>
+              <span className="text-xs font-medium" style={{ color: brand.inkSoft }}>{t({ tr: "Yeni durak mesafesi", en: "New stop distance", de: "Entfernung neue Haltestelle" })}</span>
               <input type="number" min={50} step={50} value={ekMesafe} onChange={(e) => setEkMesafe(Math.max(50, parseFloat(e.target.value) || 0))}
                 className="w-24 rounded border px-2 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
               <span className="text-xs" style={{ color: brand.muted }}>m</span>
               <div className="ml-auto flex gap-2">
                 <button onClick={() => ekleUygula((rs) => durakEkleBas(rs, ekMesafe))}
-                  className="rounded-md border px-3 py-1 text-xs font-medium transition hover:bg-white" style={{ borderColor: brand.borderStrong, color: brand.ink }}>⇤ Başa ekle</button>
+                  className="rounded-md border px-3 py-1 text-xs font-medium transition hover:bg-white" style={{ borderColor: brand.borderStrong, color: brand.ink }}>{t({ tr: "⇤ Başa ekle", en: "⇤ Add to start", de: "⇤ Am Anfang hinzufügen" })}</button>
                 <button onClick={() => ekleUygula((rs) => durakEkleSon(rs, ekMesafe))}
-                  className="rounded-md border px-3 py-1 text-xs font-medium transition hover:bg-white" style={{ borderColor: brand.borderStrong, color: brand.ink }}>Sona ekle ⇥</button>
+                  className="rounded-md border px-3 py-1 text-xs font-medium transition hover:bg-white" style={{ borderColor: brand.borderStrong, color: brand.ink }}>{t({ tr: "Sona ekle ⇥", en: "Add to end ⇥", de: "Am Ende hinzufügen ⇥" })}</button>
               </div>
             </div>
             <div className="flex flex-col">
@@ -450,16 +453,16 @@ export function RingEditor() {
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[0.6rem] font-semibold text-white" style={{ background: brand.ink }}>{i + 1}</span>
                     <input value={d.ad} onChange={(e) => setRings((rs) => durakAdiDegistir(rs, i, e.target.value))}
                       className="min-w-0 flex-1 rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
-                    <span className="shrink-0 font-mono text-xs" style={{ color: brand.faint }} title="Hat başından uzaklık">{km(d.konum)} km</span>
+                    <span className="shrink-0 font-mono text-xs" style={{ color: brand.faint }} title={t({ tr: "Hat başından uzaklık", en: "Distance from line start", de: "Entfernung vom Streckenanfang" })}>{km(d.konum)} km</span>
                     {i > 0 && (
-                      <div className="flex shrink-0 items-center gap-1" title="Bu durakta toplam bekleme (dwell) = kapı aç + yolcu + kapı kapa (aşağıdan düzenle)">
-                        <span className="text-[0.65rem] font-medium" style={{ color: brand.inkSoft }}>bekleme</span>
+                      <div className="flex shrink-0 items-center gap-1" title={t({ tr: "Bu durakta toplam bekleme (dwell) = kapı aç + yolcu + kapı kapa (aşağıdan düzenle)", en: "Total dwell at this stop = door open + passengers + door close (edit below)", de: "Gesamte Haltezeit an dieser Haltestelle = Tür auf + Fahrgäste + Tür zu (unten bearbeiten)" })}>
+                        <span className="text-[0.65rem] font-medium" style={{ color: brand.inkSoft }}>{t({ tr: "bekleme", en: "dwell", de: "Haltezeit" })}</span>
                         <span className="text-xs font-semibold" style={{ color: rings[i - 1].dwellOto ? CK.good : brand.ink }}>{Math.round(etkinDwell(rings[i - 1]))}</span>
-                        <span className="text-[0.65rem]" style={{ color: brand.muted }}>sn{rings[i - 1].dwellOto ? " (oto)" : ""}</span>
+                        <span className="text-[0.65rem]" style={{ color: brand.muted }}>sn{rings[i - 1].dwellOto ? t({ tr: " (oto)", en: " (auto)", de: " (auto)" }) : ""}</span>
                       </div>
                     )}
                     {duraklar.length > 2 ? (
-                      <button onClick={() => silHatirla((rs) => durakSil(rs, i))} title="Durağı sil (orta durak → komşu ringleri birleştirir)"
+                      <button onClick={() => silHatirla((rs) => durakSil(rs, i))} title={t({ tr: "Durağı sil (orta durak → komşu ringleri birleştirir)", en: "Delete stop (middle stop → merges neighboring sections)", de: "Haltestelle löschen (mittlere Haltestelle → verbindet benachbarte Abschnitte)" })}
                         className="shrink-0 rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
                     ) : (<span className="w-6 shrink-0" />)}
                   </div>
@@ -471,36 +474,36 @@ export function RingEditor() {
                       const yolcuHesap = Math.max(isletme.minDurusSuresi, yolcuAkisSuresi(r.inenYolcu ?? 0, r.binenYolcu ?? 0, stock, isletme.yolcuAkisHizi));
                       return (
                         <>
-                          <label className="flex items-center gap-1" title="Dwell'i yolcu akışından otomatik hesapla: (inen+binen) ÷ (kapı sayısı × genişlik × akış hızı)">
+                          <label className="flex items-center gap-1" title={t({ tr: "Dwell'i yolcu akışından otomatik hesapla: (inen+binen) ÷ (kapı sayısı × genişlik × akış hızı)", en: "Auto-compute dwell from passenger flow: (alighting+boarding) ÷ (door count × width × flow rate)", de: "Haltezeit automatisch aus dem Fahrgastfluss berechnen: (Aussteiger+Einsteiger) ÷ (Türanzahl × Breite × Flussrate)" })}>
                             <input type="checkbox" checked={oto} onChange={(e) => patch(r.id, { dwellOto: e.target.checked })} />
-                            <span style={{ color: oto ? CK.good : brand.muted }}>oto dwell</span>
+                            <span style={{ color: oto ? CK.good : brand.muted }}>{t({ tr: "oto dwell", en: "auto dwell", de: "Auto-Haltezeit" })}</span>
                           </label>
-                          <span className="flex items-center gap-1" title="Kapı açma süresi (s)">kapı aç
+                          <span className="flex items-center gap-1" title={t({ tr: "Kapı açma süresi (s)", en: "Door opening time (s)", de: "Türöffnungszeit (s)" })}>{t({ tr: "kapı aç", en: "door open", de: "Tür auf" })}
                             <input type="number" min={0} step={1} value={Math.round(dwellBilesen(r).ac)}
                               onChange={(e) => patchDwell(r, "ac", parseFloat(e.target.value) || 0)}
                               className="w-11 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
                           {oto ? (
                             <>
-                              <span className="flex items-center gap-1" title="Bu durakta inen yolcu">inen
+                              <span className="flex items-center gap-1" title={t({ tr: "Bu durakta inen yolcu", en: "Passengers alighting at this stop", de: "Aussteigende Fahrgäste an dieser Haltestelle" })}>{t({ tr: "inen", en: "alighting", de: "Aussteiger" })}
                                 <input type="number" min={0} step={5} value={Math.round(r.inenYolcu ?? 0)}
                                   onChange={(e) => patch(r.id, { inenYolcu: Math.max(0, parseFloat(e.target.value) || 0) })}
                                   className="w-12 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
-                              <span className="flex items-center gap-1" title="Bu durakta binen yolcu">binen
+                              <span className="flex items-center gap-1" title={t({ tr: "Bu durakta binen yolcu", en: "Passengers boarding at this stop", de: "Einsteigende Fahrgäste an dieser Haltestelle" })}>{t({ tr: "binen", en: "boarding", de: "Einsteiger" })}
                                 <input type="number" min={0} step={5} value={Math.round(r.binenYolcu ?? 0)}
                                   onChange={(e) => patch(r.id, { binenYolcu: Math.max(0, parseFloat(e.target.value) || 0) })}
                                   className="w-12 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
-                              <span title="Yolcu akışından hesaplanan bölüm" style={{ color: CK.good }}>yolcu {Math.round(yolcuHesap)}s ✓</span>
+                              <span title={t({ tr: "Yolcu akışından hesaplanan bölüm", en: "Portion computed from passenger flow", de: "Aus dem Fahrgastfluss berechneter Anteil" })} style={{ color: CK.good }}>{t({ tr: "yolcu", en: "passengers", de: "Fahrgäste" })} {Math.round(yolcuHesap)}s ✓</span>
                               <span className="basis-full rounded border-l-2 py-0.5 pl-2 text-[0.66rem] leading-snug" style={{ borderColor: CK.good, background: CK.goodBgSoft, color: brand.inkSoft }}>
                                 <b>oto dwell</b>: bekleme yolcudan hesaplanır → kapı aç {Math.round(dwellBilesen(r).ac)}s + yolcu [(inen+binen) ÷ (kapı {stock.kapiSayisi ?? 4} × genişlik {stock.kapiGenisligi ?? 1.3}m × akış {isletme.yolcuAkisHizi})] + kapı kapa {Math.round(dwellBilesen(r).kapa)}s; en az {isletme.minDurusSuresi}s. Şu an yolcu {Math.round(yolcuHesap)}s → toplam <b>{Math.round(etkinDwell(r))}s</b>.
                               </span>
                             </>
                           ) : (
-                            <span className="flex items-center gap-1" title="Yolcu değişimi / iniş-biniş süresi (s)">yolcu
+                            <span className="flex items-center gap-1" title={t({ tr: "Yolcu değişimi / iniş-biniş süresi (s)", en: "Passenger exchange / boarding-alighting time (s)", de: "Fahrgastwechsel- / Ein-Aussteigezeit (s)" })}>{t({ tr: "yolcu", en: "passengers", de: "Fahrgäste" })}
                               <input type="number" min={0} step={1} value={Math.round(dwellBilesen(r).yolcu)}
                                 onChange={(e) => patchDwell(r, "yolcu", parseFloat(e.target.value) || 0)}
                                 className="w-11 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
                           )}
-                          <span className="flex items-center gap-1" title="Kapı kapama süresi (s)">kapı kapa
+                          <span className="flex items-center gap-1" title={t({ tr: "Kapı kapama süresi (s)", en: "Door closing time (s)", de: "Türschließzeit (s)" })}>{t({ tr: "kapı kapa", en: "door close", de: "Tür zu" })}
                             <input type="number" min={0} step={1} value={Math.round(dwellBilesen(r).kapa)}
                               onChange={(e) => patchDwell(r, "kapa", parseFloat(e.target.value) || 0)}
                               className="w-11 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
@@ -508,8 +511,8 @@ export function RingEditor() {
                       );
                     })()}
                     {i < rings.length && (
-                      <span className="flex items-center gap-1" title="Bu duraktan kalkışta ölü zaman (start-up lost time, s). Hat geneli varsayılanı override eder.">
-                        kalkış ölü
+                      <span className="flex items-center gap-1" title={t({ tr: "Bu duraktan kalkışta ölü zaman (start-up lost time, s). Hat geneli varsayılanı override eder.", en: "Start-up lost time when departing this stop (s). Overrides the line-wide default.", de: "Anfahr-Verlustzeit bei Abfahrt von dieser Haltestelle (s). Überschreibt den streckenweiten Standardwert." })}>
+                        {t({ tr: "kalkış ölü", en: "start-up lost", de: "Anfahrverlust" })}
                         <input type="number" min={0} step={1} value={Math.round(rings[i].kalkisOlu ?? isletme.kalkisOluZamaniSn)}
                           onChange={(e) => patch(rings[i].id, { kalkisOlu: Math.max(0, parseFloat(e.target.value) || 0) })}
                           className="w-11 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /> sn
@@ -521,24 +524,24 @@ export function RingEditor() {
                     <button onClick={() => depoAyarla(i, !depoDurum(i).on)}
                       className="rounded px-2 py-0.5 font-medium transition"
                       style={depoDurum(i).on ? { background: brand.ink, color: "#fff" } : { background: "transparent", color: brand.muted, border: `1px solid ${brand.border}` }}>
-                      🅿 Parklanma
+                      {t({ tr: "🅿 Parklanma", en: "🅿 Stabling", de: "🅿 Abstellung" })}
                     </button>
                     {depoDurum(i).on && (
                       <span className="flex items-center gap-1" style={{ color: brand.muted }}>
-                        park eden tren
+                        {t({ tr: "park eden tren", en: "stabled trains", de: "abgestellte Züge" })}
                         <button type="button" onClick={() => depoQueued(i, Math.max(0, depoDurum(i).q - 1))}
-                          className="flex h-5 w-5 items-center justify-center rounded border font-semibold" style={{ borderColor: brand.border, color: brand.ink }} title="Bir tren çıkar">−</button>
+                          className="flex h-5 w-5 items-center justify-center rounded border font-semibold" style={{ borderColor: brand.border, color: brand.ink }} title={t({ tr: "Bir tren çıkar", en: "Remove one train", de: "Einen Zug entfernen" })}>−</button>
                         <input type="number" min={0} max={40} step={1} value={depoDurum(i).q} onChange={(e) => depoQueued(i, parseFloat(e.target.value) || 0)}
                           className="w-12 rounded border px-1 py-0.5 text-center" style={{ borderColor: brand.border, color: brand.ink }} />
                         <button type="button" onClick={() => depoQueued(i, Math.min(40, depoDurum(i).q + 1))}
-                          className="flex h-5 w-5 items-center justify-center rounded border font-semibold text-white" style={{ background: brand.ink, borderColor: brand.ink }} title="Park eden tren ekle">+</button>
-                        {i === duraklar.length - 1 && <span style={{ color: CK.amber }} title="Hattın sonundaki depo gidiş yönünde tren veremez (gidecek yer yok)">⚠ uç</span>}
+                          className="flex h-5 w-5 items-center justify-center rounded border font-semibold text-white" style={{ background: brand.ink, borderColor: brand.ink }} title={t({ tr: "Park eden tren ekle", en: "Add a stabled train", de: "Abgestellten Zug hinzufügen" })}>+</button>
+                        {i === duraklar.length - 1 && <span style={{ color: CK.amber }} title={t({ tr: "Hattın sonundaki depo gidiş yönünde tren veremez (gidecek yer yok)", en: "A depot at the line end cannot release trains in the outbound direction (nowhere to go)", de: "Ein Depot am Streckenende kann keine Züge in Hinrichtung ausgeben (kein Ziel)" })}>{t({ tr: "⚠ uç", en: "⚠ end", de: "⚠ Ende" })}</span>}
                         {(() => {
                           const dr = i === 0 ? rings[0] : rings[i - 1];
                           const makasVar = !!dr && dr.makaslar.length > 0;
                           return makasVar
-                            ? <span className="ml-1" style={{ color: "#16794C" }} title="Araçlar servise çıkarken makastan gidiş ya da karşı şeride geçerek dönüş yönüne dağılır.">✓ makas var</span>
-                            : <span className="ml-1 font-semibold" style={{ color: brand.red }} title="Parklanma alanında MAKAS ZORUNLUDUR: araç ancak makastan gidiş/dönüş yönüne çıkabilir. Bu durak-arası ring'e makas ekle.">⚠ MAKAS zorunlu — ekle</span>;
+                            ? <span className="ml-1" style={{ color: "#16794C" }} title={t({ tr: "Araçlar servise çıkarken makastan gidiş ya da karşı şeride geçerek dönüş yönüne dağılır.", en: "When entering service, vehicles disperse via a switch to the outbound direction or cross to the opposite track for the return direction.", de: "Beim Ausrücken verteilen sich die Fahrzeuge über eine Weiche in die Hinrichtung oder wechseln auf das Gegengleis für die Rückrichtung." })}>{t({ tr: "✓ makas var", en: "✓ switch present", de: "✓ Weiche vorhanden" })}</span>
+                            : <span className="ml-1 font-semibold" style={{ color: brand.red }} title={t({ tr: "Parklanma alanında MAKAS ZORUNLUDUR: araç ancak makastan gidiş/dönüş yönüne çıkabilir. Bu durak-arası ring'e makas ekle.", en: "A SWITCH IS MANDATORY in a stabling area: a vehicle can only exit to the outbound/return direction via a switch. Add a switch to this inter-stop section.", de: "In einem Abstellbereich ist eine WEICHE PFLICHT: ein Fahrzeug kann nur über eine Weiche in die Hin-/Rückrichtung ausfahren. Fügen Sie diesem Abschnitt eine Weiche hinzu." })}>{t({ tr: "⚠ MAKAS zorunlu — ekle", en: "⚠ SWITCH required — add", de: "⚠ WEICHE erforderlich — hinzufügen" })}</span>;
                         })()}
                       </span>
                     )}
@@ -548,37 +551,37 @@ export function RingEditor() {
                     <div className="ml-6 flex flex-wrap items-center gap-2 py-1 pl-2 text-xs" style={{ color: brand.muted }}>
                       <span style={{ color: brand.faint }}>↓</span>
                       <span className="flex items-center gap-1">
-                        mesafe
+                        {t({ tr: "mesafe", en: "distance", de: "Entfernung" })}
                         <input type="number" min={50} step={50} value={Math.round(rings[i].uzunluk)}
                           onChange={(e) => patch(rings[i].id, { uzunluk: Math.max(50, parseFloat(e.target.value) || 0) })}
                           className="w-20 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /> m
                       </span>
                       <span className="flex items-center gap-1">
-                        hız
+                        {t({ tr: "hız", en: "speed", de: "Geschw." })}
                         <input type="number" min={5} step={5} value={Math.round(kmh(rings[i].vmax))}
                           onChange={(e) => patch(rings[i].id, { vmax: Math.max(5, parseFloat(e.target.value) || 0) * KMH })}
                           className="w-16 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /> km/h
                       </span>
-                      <label className="flex items-center gap-1" title="Bu kesim tek hatlı mı? (çift yön aynı hattı paylaşır → tek anda tek tren; maksimum treni düşürür)">
+                      <label className="flex items-center gap-1" title={t({ tr: "Bu kesim tek hatlı mı? (çift yön aynı hattı paylaşır → tek anda tek tren; maksimum treni düşürür)", en: "Is this section single-track? (both directions share one track → one train at a time; lowers the maximum train count)", de: "Ist dieser Abschnitt eingleisig? (beide Richtungen teilen sich ein Gleis → jeweils nur ein Zug; senkt die maximale Zugzahl)" })}>
                         <input type="checkbox" checked={!!rings[i].tekHat}
                           onChange={(e) => patch(rings[i].id, { tekHat: e.target.checked })} />
-                        <span style={{ color: rings[i].tekHat ? brand.red : brand.muted }}>tek hat</span>
+                        <span style={{ color: rings[i].tekHat ? brand.red : brand.muted }}>{t({ tr: "tek hat", en: "single track", de: "eingleisig" })}</span>
                       </label>
                       {bolRing === rings[i].id ? (
                         <span className="flex items-center gap-1">
-                          böl:
+                          {t({ tr: "böl:", en: "split:", de: "teilen:" })}
                           <input type="number" min={1} max={Math.max(1, Math.round(rings[i].uzunluk) - 1)} step={50} value={bolKonum}
                             onChange={(e) => setBolKonum(Math.max(1, parseFloat(e.target.value) || 1))}
                             className="w-16 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /> m
                           <button onClick={() => { ekleUygula((rs) => durakBol(rs, i, bolKonum)); setBolRing(null); }}
-                            className="rounded px-1.5 py-0.5 font-semibold text-white" style={{ background: brand.ink }}>böl</button>
-                          <button onClick={() => setBolRing(null)} className="rounded px-1" style={{ color: brand.muted }} title="Vazgeç">✕</button>
+                            className="rounded px-1.5 py-0.5 font-semibold text-white" style={{ background: brand.ink }}>{t({ tr: "böl", en: "split", de: "teilen" })}</button>
+                          <button onClick={() => setBolRing(null)} className="rounded px-1" style={{ color: brand.muted }} title={t({ tr: "Vazgeç", en: "Cancel", de: "Abbrechen" })}>✕</button>
                         </span>
                       ) : (
                         <button onClick={() => { setBolRing(rings[i].id); setBolKonum(Math.round(rings[i].uzunluk / 2)); }}
-                          title="Bu ringi seçtiğin konumda bölerek ortaya durak ekle (varsayılan: orta)"
+                          title={t({ tr: "Bu ringi seçtiğin konumda bölerek ortaya durak ekle (varsayılan: orta)", en: "Add a stop in the middle by splitting this section at the chosen position (default: middle)", de: "Eine Haltestelle in der Mitte hinzufügen, indem dieser Abschnitt an der gewählten Position geteilt wird (Standard: Mitte)" })}
                           className="rounded border px-2 py-0.5 font-medium transition hover:bg-slate-50" style={{ borderColor: brand.border, color: brand.ink }}>
-                          ＋ ortaya durak
+                          {t({ tr: "＋ ortaya durak", en: "＋ stop in middle", de: "＋ Haltestelle in der Mitte" })}
                         </button>
                       )}
                     </div>
@@ -597,7 +600,7 @@ export function RingEditor() {
           En az 2 durak olunca anlamlı; boş hatta gösterilmez. */}
       {duraklar.length >= 2 && (
         <div className="mt-4">
-          <Panel katlanir ozet={maks.gecerli ? `${maks.nTeorik} tramvay · sürd. ${maks.nSurdurulebilir}` : "terminal dönüş kapasitesi"} baslik="Maksimum Tramvay Kapasitesi" aciklama="Hat çift hat, gidiş-dönüş çalışır (tramvay gider, döner, tekrar gider — sürekli çevrim). Terminal dönüş şartlarını gir; sistem bu hatta aynı anda en fazla kaç tramvayın sığacağını hesaplar. Darboğaz otomatik isimlenir.">
+          <Panel katlanir ozet={maks.gecerli ? `${maks.nTeorik} ${t({ tr: "tramvay · sürd.", en: "trams · sust.", de: "Straßenbahnen · nachh." })} ${maks.nSurdurulebilir}` : t({ tr: "terminal dönüş kapasitesi", en: "terminal turnback capacity", de: "Endstellen-Wendekapazität" })} baslik={t({ tr: "Maksimum Tramvay Kapasitesi", en: "Maximum Tram Capacity", de: "Maximale Straßenbahnkapazität" })} aciklama={t({ tr: "Hat çift hat, gidiş-dönüş çalışır (tramvay gider, döner, tekrar gider — sürekli çevrim). Terminal dönüş şartlarını gir; sistem bu hatta aynı anda en fazla kaç tramvayın sığacağını hesaplar. Darboğaz otomatik isimlenir.", en: "The line runs double-track, out and back (a tram goes, turns back, goes again — a continuous cycle). Enter the terminal turnback conditions; the system computes how many trams can fit on this line at once. The bottleneck is named automatically.", de: "Die Strecke fährt zweigleisig, hin und zurück (eine Straßenbahn fährt, wendet, fährt wieder — ein durchgehender Umlauf). Geben Sie die Endstellen-Wendebedingungen ein; das System berechnet, wie viele Straßenbahnen gleichzeitig auf diese Strecke passen. Der Engpass wird automatisch benannt." })}>
             {/* Bilgilendirme: neden makaslı turnback hesabı */}
             <div className="mb-2 rounded border-l-4 px-3 py-2 text-xs leading-relaxed" style={{ background: CK.goodBgSoft, borderColor: brand.ink, color: brand.inkSoft }}>
               ℹ️ <b>Neden makaslı hesap?</b> Tramvay uçta dönmek için karşı hatta <b>makasla (crossover)</b> geçmek zorundadır — yoksa gelen hatla <b>kafa kafaya çarpışır</b>. Terminalin en fazla kaç tramvay çevirebileceğini asıl bu makasın tipi belirler:
@@ -610,30 +613,30 @@ export function RingEditor() {
             <div className="mb-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
               {(["terminalBas", "terminalSon"] as const).map((uc) => {
                 const t = isletme[uc];
-                const durakAd = uc === "terminalBas" ? (duraklar[0]?.ad || "Başlangıç") : (duraklar[duraklar.length - 1]?.ad || "Bitiş");
+                const durakAd = uc === "terminalBas" ? (duraklar[0]?.ad || tt({ tr: "Başlangıç", en: "Start", de: "Anfang" })) : (duraklar[duraklar.length - 1]?.ad || tt({ tr: "Bitiş", en: "End", de: "Ende" }));
                 return (
                   <div key={uc} className="rounded-md border p-3" style={{ borderColor: brand.border }}>
-                    <SubBaslik>{uc === "terminalBas" ? "Başlangıç" : "Bitiş"} terminali — {durakAd}</SubBaslik>
-                    <p className="mb-1 text-xs" style={{ color: brand.muted }}>Hattın {uc === "terminalBas" ? "ilk" : "son"} durağı; tren burada ters döner.</p>
+                    <SubBaslik>{uc === "terminalBas" ? tt({ tr: "Başlangıç", en: "Start", de: "Anfang" }) : tt({ tr: "Bitiş", en: "End", de: "Ende" })} {tt({ tr: "terminali —", en: "terminal —", de: "Endstelle —" })} {durakAd}</SubBaslik>
+                    <p className="mb-1 text-xs" style={{ color: brand.muted }}>{tt({ tr: "Hattın ", en: "The line's ", de: "Die " })}{uc === "terminalBas" ? tt({ tr: "ilk", en: "first", de: "erste" }) : tt({ tr: "son", en: "last", de: "letzte" })} {tt({ tr: "durağı; tren burada ters döner.", en: "stop; the train turns back here.", de: "Haltestelle der Strecke; der Zug wendet hier." })}</p>
                     <label className="mt-2 block">
-                      <span className="field-label">Dönüş tipi</span>
+                      <span className="field-label">{tt({ tr: "Dönüş tipi", en: "Turnback type", de: "Wendetyp" })}</span>
                       <select value={t.tip} onChange={(e) => patchTerminal(uc, { tip: e.target.value as DonusTip })}
                         className="mt-1 w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }}>
                         {(Object.keys(DONUS_TIP_AD) as DonusTip[]).map((k) => (
                           <option key={k} value={k}>{DONUS_TIP_AD[k]}</option>
                         ))}
                       </select>
-                      <Kucuk>terminalin fiziksel dönüş biçimi</Kucuk>
+                      <Kucuk>{tt({ tr: "terminalin fiziksel dönüş biçimi", en: "the terminal's physical turnback form", de: "die physische Wendeform der Endstelle" })}</Kucuk>
                     </label>
                     <p className="mt-1 rounded border-l-2 py-1 pl-2 text-[0.68rem] leading-relaxed" style={{ borderColor: t.tip === "dongu" ? CK.good : CK.amber, background: t.tip === "dongu" ? CK.goodBg : CK.amberBg, color: brand.inkSoft }}>
                       {DONUS_TIP_ACIKLAMA[t.tip]}
                     </p>
                     <div className="mt-2 grid grid-cols-2 gap-3">
                       <div>
-                        <Num label="Peron sayısı" suffix="peron" step={1} max={6} value={t.peronSayisi}
+                        <Num label={tt({ tr: "Peron sayısı", en: "Platform count", de: "Bahnsteiganzahl" })} suffix={tt({ tr: "peron", en: "platforms", de: "Bahnsteige" })} step={1} max={6} value={t.peronSayisi}
                           onChange={(v) => patchTerminal(uc, { peronSayisi: Math.max(1, Math.round(v)) })} />
                         <div className="mt-0.5 flex gap-1">
-                          {([[false, "çift yön (toplam)"], [true, "tek yön (yön başına)"]] as const).map(([ty, ad]) => (
+                          {([[false, tt({ tr: "çift yön (toplam)", en: "both directions (total)", de: "beide Richtungen (gesamt)" })], [true, tt({ tr: "tek yön (yön başına)", en: "single direction (per direction)", de: "eine Richtung (je Richtung)" })]] as const).map(([ty, ad]) => (
                             <button key={String(ty)} type="button" onClick={() => patchTerminal(uc, { peronTekYon: ty })}
                               className="rounded border px-1.5 py-0.5 text-[0.6rem] font-medium"
                               style={(!!t.peronTekYon === ty) ? { background: brand.ink, color: "#fff", borderColor: brand.ink } : { borderColor: brand.border, color: brand.inkSoft }}>
@@ -643,68 +646,68 @@ export function RingEditor() {
                         </div>
                         <Kucuk>{t.peronTekYon
                           ? `yön başına ${t.peronSayisi} peron → etkin ${t.peronSayisi * 2} (gidiş+dönüş çift hat)`
-                          : "terminaldeki TOPLAM dönüş peronu — çift hatta genelde 2"}</Kucuk>
+                          : tt({ tr: "terminaldeki TOPLAM dönüş peronu — çift hatta genelde 2", en: "TOTAL turnback platforms at the terminal — usually 2 on double track", de: "GESAMTZAHL der Wende-Bahnsteige an der Endstelle — bei zweigleisig meist 2" })}</Kucuk>
                       </div>
                     </div>
                     {/* Peron işgal süresi — bileşenli (ince model), toplam yetkili */}
                     <div className="mt-2 rounded border p-2" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
                       <div className="mb-1 flex items-baseline justify-between">
-                        <span className="field-label">Peron işgal süresi</span>
+                        <span className="field-label">{tt({ tr: "Peron işgal süresi", en: "Platform occupation time", de: "Bahnsteigbelegungszeit" })}</span>
                         <span className="text-sm font-semibold" style={{ color: brand.ink }}>{Math.round(t.peronIsgali)} s</span>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                        <div><Num label="Varış tamponu" suffix="s" step={5} value={terminalBilesen(t).varis}
-                          onChange={(v) => patchTerminalBilesen(uc, "varis", v)} /><Kucuk>perona girip durana dek</Kucuk></div>
-                        <div><Num label="İniş/biniş" suffix="s" step={5} value={terminalBilesen(t).inis}
-                          onChange={(v) => patchTerminalBilesen(uc, "inis", v)} /><Kucuk>yolcu iniş-biniş</Kucuk></div>
-                        <div><Num label="Ters dönüş" suffix="s" step={5} value={terminalBilesen(t).ters}
-                          onChange={(v) => patchTerminalBilesen(uc, "ters", v)} /><Kucuk>yön değiştirme</Kucuk></div>
-                        <div><Num label="Kalkış temizleme" suffix="s" step={5} value={terminalBilesen(t).kalkis}
-                          onChange={(v) => patchTerminalBilesen(uc, "kalkis", v)} /><Kucuk>kalkıp boğazı boşaltana dek</Kucuk></div>
-                        <div><Num label="Toparlanma (recovery)" suffix="s" step={5} value={terminalBilesen(t).topar}
-                          onChange={(v) => patchTerminalBilesen(uc, "topar", v)} /><Kucuk>gecikme payı (program güvenliği)</Kucuk></div>
+                        <div><Num label={tt({ tr: "Varış tamponu", en: "Arrival buffer", de: "Ankunftspuffer" })} suffix="s" step={5} value={terminalBilesen(t).varis}
+                          onChange={(v) => patchTerminalBilesen(uc, "varis", v)} /><Kucuk>{tt({ tr: "perona girip durana dek", en: "until entering the platform and stopping", de: "bis zur Einfahrt in den Bahnsteig und Halt" })}</Kucuk></div>
+                        <div><Num label={tt({ tr: "İniş/biniş", en: "Alighting/boarding", de: "Aus-/Einstieg" })} suffix="s" step={5} value={terminalBilesen(t).inis}
+                          onChange={(v) => patchTerminalBilesen(uc, "inis", v)} /><Kucuk>{tt({ tr: "yolcu iniş-biniş", en: "passenger alighting-boarding", de: "Fahrgast-Aus-/Einstieg" })}</Kucuk></div>
+                        <div><Num label={tt({ tr: "Ters dönüş", en: "Turnback", de: "Wende" })} suffix="s" step={5} value={terminalBilesen(t).ters}
+                          onChange={(v) => patchTerminalBilesen(uc, "ters", v)} /><Kucuk>{tt({ tr: "yön değiştirme", en: "changing direction", de: "Richtungswechsel" })}</Kucuk></div>
+                        <div><Num label={tt({ tr: "Kalkış temizleme", en: "Departure clearance", de: "Abfahrtsräumung" })} suffix="s" step={5} value={terminalBilesen(t).kalkis}
+                          onChange={(v) => patchTerminalBilesen(uc, "kalkis", v)} /><Kucuk>{tt({ tr: "kalkıp boğazı boşaltana dek", en: "until departing and clearing the throat", de: "bis zur Abfahrt und Räumung des Weichenbereichs" })}</Kucuk></div>
+                        <div><Num label={tt({ tr: "Toparlanma (recovery)", en: "Recovery", de: "Erholung (Recovery)" })} suffix="s" step={5} value={terminalBilesen(t).topar}
+                          onChange={(v) => patchTerminalBilesen(uc, "topar", v)} /><Kucuk>{tt({ tr: "gecikme payı (program güvenliği)", en: "delay margin (schedule safety)", de: "Verspätungsreserve (Fahrplansicherheit)" })}</Kucuk></div>
                       </div>
                       <p className="mt-1 text-xs" style={{ color: brand.muted }}>
-                        Toplam = trenin peronu tuttuğu tam süre. Terminal aralığı = bu ÷ peron. <b>Toparlanma</b>: gecikmeleri yutan program payı (schedule recovery).
+                        {tt({ tr: "Toplam = trenin peronu tuttuğu tam süre. Terminal aralığı = bu ÷ peron. ", en: "Total = the full time the train holds the platform. Terminal interval = this ÷ platforms. ", de: "Gesamt = die volle Zeit, die der Zug den Bahnsteig belegt. Endstellen-Intervall = dies ÷ Bahnsteige. " })}<b>{tt({ tr: "Toparlanma", en: "Recovery", de: "Erholung" })}</b>{tt({ tr: ": gecikmeleri yutan program payı (schedule recovery).", en: ": schedule margin that absorbs delays (schedule recovery).", de: ": Fahrplanreserve, die Verspätungen auffängt (Schedule Recovery)." })}
                       </p>
                     </div>
                     {/* Boğaz (throat) işgali — oto (makastan) veya elle */}
                     <div className="mt-2 rounded border p-2" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
                       <div className="mb-1 flex items-baseline justify-between">
-                        <span className="field-label">Boğaz işgali</span>
+                        <span className="field-label">{tt({ tr: "Boğaz işgali", en: "Throat occupation", de: "Weichenbereichsbelegung" })}</span>
                         <span className="text-sm font-semibold" style={{ color: brand.ink }}>{etkinBogazIsgali(t, cfg)} s</span>
                       </div>
                       <label className="flex items-center gap-2 text-xs" style={{ color: brand.inkSoft }}>
                         <input type="checkbox" checked={t.bogazOto} onChange={(e) => patchTerminal(uc, { bogazOto: e.target.checked })} />
-                        Makastan otomatik türet
+                        {tt({ tr: "Makastan otomatik türet", en: "Derive automatically from switches", de: "Automatisch aus Weichen ableiten" })}
                       </label>
                       <div className="mt-1">
                         {t.bogazOto ? (
-                          <div><Num label="Boğaz makas (crossover) sayısı" suffix="makas" step={1} max={8} value={t.bogazMakasSayisi}
-                            onChange={(v) => patchTerminal(uc, { bogazMakasSayisi: Math.max(1, Math.round(v)) })} /><Kucuk>boğazdaki makas adedi (süre bundan türetilir)</Kucuk></div>
+                          <div><Num label={tt({ tr: "Boğaz makas (crossover) sayısı", en: "Throat switch (crossover) count", de: "Anzahl Weichen im Weichenbereich (Crossover)" })} suffix={tt({ tr: "makas", en: "switches", de: "Weichen" })} step={1} max={8} value={t.bogazMakasSayisi}
+                            onChange={(v) => patchTerminal(uc, { bogazMakasSayisi: Math.max(1, Math.round(v)) })} /><Kucuk>{tt({ tr: "boğazdaki makas adedi (süre bundan türetilir)", en: "number of switches in the throat (time is derived from this)", de: "Anzahl der Weichen im Weichenbereich (Zeit wird daraus abgeleitet)" })}</Kucuk></div>
                         ) : (
-                          <div><Num label="Boğaz işgali (elle)" suffix="s" step={5} value={t.bogazIsgali}
-                            onChange={(v) => patchTerminal(uc, { bogazIsgali: Math.max(0, Math.round(v)) })} /><Kucuk>bir trenin boğazı tuttuğu süre</Kucuk></div>
+                          <div><Num label={tt({ tr: "Boğaz işgali (elle)", en: "Throat occupation (manual)", de: "Weichenbereichsbelegung (manuell)" })} suffix="s" step={5} value={t.bogazIsgali}
+                            onChange={(v) => patchTerminal(uc, { bogazIsgali: Math.max(0, Math.round(v)) })} /><Kucuk>{tt({ tr: "bir trenin boğazı tuttuğu süre", en: "the time one train holds the throat", de: "die Zeit, die ein Zug den Weichenbereich belegt" })}</Kucuk></div>
                         )}
                       </div>
                       <p className="mt-1 text-xs" style={{ color: brand.muted }}>
-                        Boğaz = peronlar önündeki ortak makas/geçiş bölgesi; bir tren geçerken kilitlenir. {t.bogazOto ? "Oto = makas tanzim + geçiş + rota serbest. " : ""}{terminalSeriDonus(t) ? <>Tek dönüş yolu (1 S makas): varış+kalkış seri → terminal alt sınırı <b>2 × boğaz işgali</b>.</> : <>Çok yol (X veya ≥2 makas): ayrı bacaklar → terminal alt sınırı <b>1 × boğaz işgali</b>.</>}
+                        {tt({ tr: "Boğaz = peronlar önündeki ortak makas/geçiş bölgesi; bir tren geçerken kilitlenir. ", en: "Throat = the shared switch/transit zone in front of the platforms; it locks while one train passes. ", de: "Weichenbereich = die gemeinsame Weichen-/Durchfahrtzone vor den Bahnsteigen; sie ist gesperrt, während ein Zug durchfährt. " })}{t.bogazOto ? tt({ tr: "Oto = makas tanzim + geçiş + rota serbest. ", en: "Auto = switch setting + transit + route release. ", de: "Auto = Weichenstellung + Durchfahrt + Routenfreigabe. " }) : ""}{terminalSeriDonus(t) ? <>{tt({ tr: "Tek dönüş yolu (1 S makas): varış+kalkış seri → terminal alt sınırı ", en: "Single turnback path (1 S switch): arrival+departure in series → terminal lower bound ", de: "Einzelner Wendeweg (1 S-Weiche): Ankunft+Abfahrt seriell → Endstellen-Untergrenze " })}<b>{tt({ tr: "2 × boğaz işgali", en: "2 × throat occupation", de: "2 × Weichenbereichsbelegung" })}</b>.</> : <>{tt({ tr: "Çok yol (X veya ≥2 makas): ayrı bacaklar → terminal alt sınırı ", en: "Multiple paths (X or ≥2 switches): separate legs → terminal lower bound ", de: "Mehrere Wege (X oder ≥2 Weichen): getrennte Äste → Endstellen-Untergrenze " })}<b>{tt({ tr: "1 × boğaz işgali", en: "1 × throat occupation", de: "1 × Weichenbereichsbelegung" })}</b>.</>}
                       </p>
                     </div>
                     {/* Dönüş makası sayıları — terminal turnback kapasitesinin ASIL belirleyicisi */}
                     <div className="mt-2 rounded border p-2" style={{ borderColor: brand.ink, background: CK.goodBgSoft }}>
-                      <span className="field-label">Dönüş makası (crossover) sayıları — turnback belirleyici</span>
+                      <span className="field-label">{tt({ tr: "Dönüş makası (crossover) sayıları — turnback belirleyici", en: "Turnback switch (crossover) counts — turnback determinant", de: "Wendeweichen-(Crossover-)Anzahl — bestimmend für die Wende" })}</span>
                       <div className="mt-1 grid grid-cols-2 gap-2">
-                        <div><Num label="S-makas" suffix="ad" step={1} max={8} value={terminalMakasSayilari(t).s}
-                          onChange={(v) => patchTerminal(uc, { sMakas: Math.max(0, Math.round(v)), makasTipi: undefined })} /><Kucuk>her biri 1 dönüş yolu (seri)</Kucuk></div>
-                        <div><Num label="X-makas" suffix="ad" step={1} max={8} value={terminalMakasSayilari(t).x}
-                          onChange={(v) => patchTerminal(uc, { xMakas: Math.max(0, Math.round(v)), makasTipi: undefined })} /><Kucuk>her biri 2 dönüş yolu (ardışık)</Kucuk></div>
+                        <div><Num label={tt({ tr: "S-makas", en: "S switch", de: "S-Weiche" })} suffix="ad" step={1} max={8} value={terminalMakasSayilari(t).s}
+                          onChange={(v) => patchTerminal(uc, { sMakas: Math.max(0, Math.round(v)), makasTipi: undefined })} /><Kucuk>{tt({ tr: "her biri 1 dönüş yolu (seri)", en: "each 1 turnback path (in series)", de: "je 1 Wendeweg (seriell)" })}</Kucuk></div>
+                        <div><Num label={tt({ tr: "X-makas", en: "X switch", de: "X-Weiche" })} suffix="ad" step={1} max={8} value={terminalMakasSayilari(t).x}
+                          onChange={(v) => patchTerminal(uc, { xMakas: Math.max(0, Math.round(v)), makasTipi: undefined })} /><Kucuk>{tt({ tr: "her biri 2 dönüş yolu (ardışık)", en: "each 2 turnback paths (consecutive)", de: "je 2 Wendewege (aufeinanderfolgend)" })}</Kucuk></div>
                       </div>
                       <Kucuk>{(() => { const { s, x } = terminalMakasSayilari(t); const yol = s + x * 2; const etk = terminalDonusParalel(t);
-                        return `${s}×S + ${x}×X = ${yol} dönüş yolu → etkin ${etk} (peron ${etkinPeronSayisi(t)} ile sınırlı) → terminal aralığı = peron işgali ÷ ${etk}`; })()}</Kucuk>
+                        return `${s}×S + ${x}×X = ${yol} ${tt({ tr: "dönüş yolu → etkin", en: "turnback paths → effective", de: "Wendewege → effektiv" })} ${etk} (${tt({ tr: "peron", en: "platform", de: "Bahnsteig" })} ${etkinPeronSayisi(t)} ${tt({ tr: "ile sınırlı) → terminal aralığı = peron işgali ÷", en: "limited) → terminal interval = platform occupation ÷", de: "begrenzt) → Endstellen-Intervall = Bahnsteigbelegung ÷" })} ${etk}`; })()}</Kucuk>
                     </div>
                     {t.tip === "dongu" && (
-                      <p className="mt-1 text-xs" style={{ color: brand.muted }}>Balon döngüde terminal kısıtı yok (dönüş ~0).</p>
+                      <p className="mt-1 text-xs" style={{ color: brand.muted }}>{tt({ tr: "Balon döngüde terminal kısıtı yok (dönüş ~0).", en: "With a balloon loop there is no terminal constraint (turnback ~0).", de: "Bei einer Ballonschleife gibt es keine Endstellen-Einschränkung (Wende ~0)." })}</p>
                     )}
                   </div>
                 );
@@ -714,11 +717,11 @@ export function RingEditor() {
             {/* Gerçekçilik: kalkış ölü zamanı (start-up lost time) */}
             <div className="mb-3">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <Num label="Kalkış ölü zamanı (varsayılan)" suffix="s" step={1} max={30} value={isletme.kalkisOluZamaniSn}
+                <Num label={t({ tr: "Kalkış ölü zamanı (varsayılan)", en: "Start-up lost time (default)", de: "Anfahr-Verlustzeit (Standard)" })} suffix="s" step={1} max={30} value={isletme.kalkisOluZamaniSn}
                   onChange={(v) => patchIsletme({ kalkisOluZamaniSn: Math.max(0, Math.min(30, Math.round(v))) })} />
               </div>
               <p className="mt-1 text-xs" style={{ color: brand.muted }}>
-                Dwell/yeşil sonrası harekete geçme tepkisi (start-up lost time) — her durakta çevrime ve durak bloğunun minimum aralığına eklenir. Hat geneli varsayılan; her durak kendi değerini (aşağıda) girebilir.
+                {t({ tr: "Dwell/yeşil sonrası harekete geçme tepkisi (start-up lost time) — her durakta çevrime ve durak bloğunun minimum aralığına eklenir. Hat geneli varsayılan; her durak kendi değerini (aşağıda) girebilir.", en: "The reaction of setting off after dwell/green (start-up lost time) — added at every stop to the cycle and to the stop block's minimum interval. Line-wide default; each stop can enter its own value (below).", de: "Die Anfahrreaktion nach Haltezeit/Grün (Start-up Lost Time) — wird an jeder Haltestelle zum Umlauf und zur Mindestzugfolgezeit des Haltestellenblocks addiert. Streckenweiter Standard; jede Haltestelle kann ihren eigenen Wert eingeben (unten)." })}
               </p>
             </div>
 
@@ -728,19 +731,19 @@ export function RingEditor() {
                 <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
                   <div>
                     <span className="text-3xl font-semibold" style={{ color: brand.ink }}>{maks.nTeorik}</span>
-                    <span className="ml-1 text-xs" style={{ color: brand.muted }}>tramvay — teorik maksimum</span>
+                    <span className="ml-1 text-xs" style={{ color: brand.muted }}>{t({ tr: "tramvay — teorik maksimum", en: "trams — theoretical maximum", de: "Straßenbahnen — theoretisches Maximum" })}</span>
                   </div>
                   <div>
                     <span className="text-2xl font-semibold" style={{ color: OK }}>{maks.nSurdurulebilir}</span>
-                    <span className="ml-1 text-xs" style={{ color: brand.muted }}>sürdürülebilir (UIC 406 tamponlu)</span>
+                    <span className="ml-1 text-xs" style={{ color: brand.muted }}>{t({ tr: "sürdürülebilir (UIC 406 tamponlu)", en: "sustainable (UIC 406 buffered)", de: "nachhaltig (UIC 406 gepuffert)" })}</span>
                   </div>
                 </div>
                 <p className="mt-1 text-[0.7rem]" style={{ color: brand.muted }}>
-                  <b>Teorik maksimum</b>: darboğazın izin verdiği fiziksel tavan (sıfır pay). <b>Sürdürülebilir</b>: UIC 406 doluluk tavanıyla (blok başına ~%60–75 kullanım) her gün güvenle çalıştırılabilen sayı — küçük gecikmeler zincirlemesin, toparlanma payı kalsın diye teorikten düşüktür (gerçek işletme bunu hedefler).
+                  <b>{t({ tr: "Teorik maksimum", en: "Theoretical maximum", de: "Theoretisches Maximum" })}</b>{t({ tr: ": darboğazın izin verdiği fiziksel tavan (sıfır pay). ", en: ": the physical ceiling the bottleneck allows (zero margin). ", de: ": die physische Obergrenze, die der Engpass zulässt (kein Spielraum). " })}<b>{t({ tr: "Sürdürülebilir", en: "Sustainable", de: "Nachhaltig" })}</b>{t({ tr: ": UIC 406 doluluk tavanıyla (blok başına ~%60–75 kullanım) her gün güvenle çalıştırılabilen sayı — küçük gecikmeler zincirlemesin, toparlanma payı kalsın diye teorikten düşüktür (gerçek işletme bunu hedefler).", en: ": the number that can be run safely every day under the UIC 406 occupancy ceiling (~60–75% utilization per block) — lower than the theoretical value so that small delays don't cascade and a recovery margin remains (real operation targets this).", de: ": die Zahl, die unter der UIC-406-Belegungsgrenze (~60–75 % Auslastung pro Block) täglich sicher gefahren werden kann — niedriger als der theoretische Wert, damit kleine Verspätungen sich nicht fortpflanzen und eine Erholungsreserve bleibt (der reale Betrieb strebt dies an)." })}
                 </p>
                 <p className="mt-1 text-xs" style={{ color: brand.inkSoft }}>
-                  Darboğaz: <b>{maks.baglayanAd}</b> · min. aralık {sure(maks.hMin)} · çevrim {sure(maks.cevrimSuresi)}
-                  <span style={{ color: brand.faint }}> · aynı sayı Sefer'de de görünür (tek kaynak); tam kısıt & blocking-time dökümü <Link href="/#sistem" className="underline">Sistem Merkezi</Link>'nde.</span>
+                  {t({ tr: "Darboğaz:", en: "Bottleneck:", de: "Engpass:" })} <b>{maks.baglayanAd}</b> · {t({ tr: "min. aralık", en: "min. interval", de: "min. Intervall" })} {sure(maks.hMin)} · {t({ tr: "çevrim", en: "cycle", de: "Umlauf" })} {sure(maks.cevrimSuresi)}
+                  <span style={{ color: brand.faint }}> · {t({ tr: "aynı sayı Sefer'de de görünür (tek kaynak); tam kısıt & blocking-time dökümü ", en: "the same number also appears under Service (single source); full constraint & blocking-time breakdown in ", de: "dieselbe Zahl erscheint auch unter Betrieb (eine Quelle); vollständige Einschränkungs- & Blocking-Time-Aufschlüsselung in " })}<Link href="/#sistem" className="underline">{t({ tr: "Sistem Merkezi", en: "System Center", de: "Systemzentrale" })}</Link>{t({ tr: "'nde.", en: ".", de: "." })}</span>
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {maks.kisitlar.map((k) => (
@@ -762,10 +765,10 @@ export function RingEditor() {
       {/* Eksik şart uyarısı */}
       {tumEksik.length > 0 && (
         <div className="mt-4 rounded-lg border p-4" style={{ borderColor: brand.red, background: CK.badBgSoft }}>
-          <div className="mb-1 text-sm font-semibold" style={{ color: brand.red }}>⚠ Zorunlu şartlar eksik — loop kurulamaz ({tumEksik.length})</div>
+          <div className="mb-1 text-sm font-semibold" style={{ color: brand.red }}>{t({ tr: "⚠ Zorunlu şartlar eksik — loop kurulamaz (", en: "⚠ Mandatory conditions missing — loop cannot be built (", de: "⚠ Pflichtbedingungen fehlen — Umlauf kann nicht aufgebaut werden (" })}{tumEksik.length})</div>
           <ul className="ml-4 list-disc text-xs" style={{ color: brand.inkSoft }}>
             {tumEksik.slice(0, 8).map((e, i) => (<li key={i}>{e.mesaj}</li>))}
-            {tumEksik.length > 8 && <li>… ve {tumEksik.length - 8} tane daha</li>}
+            {tumEksik.length > 8 && <li>{t({ tr: "… ve ", en: "… and ", de: "… und " })}{tumEksik.length - 8}{t({ tr: " tane daha", en: " more", de: " weitere" })}</li>}
           </ul>
         </div>
       )}
@@ -776,7 +779,7 @@ export function RingEditor() {
           tutucu gösterip gerçek boşluk kararını veriye bırakıyoruz. */}
       {yukleniyor && rings.length === 0 && (
         <div className="mt-6 rounded-lg border-2 border-dashed px-6 py-8 text-center text-sm" style={{ borderColor: brand.border, color: brand.muted }}>
-          ⟳ Hat yükleniyor…
+          {t({ tr: "⟳ Hat yükleniyor…", en: "⟳ Loading line…", de: "⟳ Strecke wird geladen…" })}
         </div>
       )}
 
@@ -785,9 +788,9 @@ export function RingEditor() {
           (worst/best köşeleri + makas/hemzemin/tehlike). Üst paneldan görsel olarak ayrık. */}
       {rings.length > 0 && (
         <div className="mt-8 mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b-2 pb-2" style={{ borderColor: brand.ink }}>
-          <span className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>Ring Editörü</span>
-          <span className="rounded-full px-2 py-0.5 text-[0.65rem] font-semibold" style={{ background: CK.badBgSoft, color: brand.red }}>{rings.length} hücre</span>
-          <span className="text-xs" style={{ color: brand.muted }}>— her durak-arası hücrenin ileri şartları: worst/best köşeleri · makas · hemzemin · tehlike. Yukarıda kurduğun zinciri burada detaylandır.</span>
+          <span className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{t({ tr: "Ring Editörü", en: "Section Editor", de: "Abschnitts-Editor" })}</span>
+          <span className="rounded-full px-2 py-0.5 text-[0.65rem] font-semibold" style={{ background: CK.badBgSoft, color: brand.red }}>{rings.length} {t({ tr: "hücre", en: "cells", de: "Zellen" })}</span>
+          <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "— her durak-arası hücrenin ileri şartları: worst/best köşeleri · makas · hemzemin · tehlike. Yukarıda kurduğun zinciri burada detaylandır.", en: "— the advanced conditions of each inter-stop cell: worst/best corner cases · switch · level crossing · hazard. Detail the chain you built above here.", de: "— die erweiterten Bedingungen jeder Abschnittszelle: Worst/Best-Grenzfälle · Weiche · Bahnübergang · Gefahr. Detaillieren Sie hier die oben aufgebaute Kette." })}</span>
         </div>
       )}
 
@@ -836,7 +839,7 @@ export function RingEditor() {
           gör/kur, sonra iyileştirme tavsiyesi (dolu hatta sayfa artık öneriyle açılmaz). */}
       {oneriler.length > 0 && (
         <div className="mt-6">
-          <Panel katlanir ozet="durak-çiftleri denge önerileri" baslik="Eşit Şartlar — Dengeleme Önerileri" aciklama="Best-case yakın-mesafe hedefi: durak-çiftleri arası worst-case süreler eşitlendikçe headway kararlı olur. Ortalamadan sapan ringler ve öneriler:">
+          <Panel katlanir ozet={t({ tr: "durak-çiftleri denge önerileri", en: "stop-pair balancing suggestions", de: "Ausgleichsvorschläge für Haltestellenpaare" })} baslik={t({ tr: "Eşit Şartlar — Dengeleme Önerileri", en: "Equal Conditions — Balancing Suggestions", de: "Gleiche Bedingungen — Ausgleichsvorschläge" })} aciklama={t({ tr: "Best-case yakın-mesafe hedefi: durak-çiftleri arası worst-case süreler eşitlendikçe headway kararlı olur. Ortalamadan sapan ringler ve öneriler:", en: "Best-case short-distance target: as the worst-case times between stop pairs are equalized, the headway becomes stable. Sections deviating from the average and suggestions:", de: "Best-Case-Kurzstreckenziel: je mehr die Worst-Case-Zeiten zwischen Haltestellenpaaren angeglichen werden, desto stabiler wird die Zugfolgezeit. Vom Durchschnitt abweichende Abschnitte und Vorschläge:" })}>
             <div className="flex flex-col gap-1.5">
               {oneriler.map((o) => (
                 <div key={o.ringId} className="flex items-start gap-2 rounded border px-3 py-2 text-sm" style={{ borderColor: o.fark > 0 ? brand.red + "55" : OK + "55", background: o.fark > 0 ? CK.badBgSoft : CK.goodBgSoft }}>
@@ -851,7 +854,7 @@ export function RingEditor() {
       )}
 
       <footer className="mt-10 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
-        RaySim · Ring editörü — canlı parametreler (Sistem Merkezi&apos;nden): sahasal {kmh(cfg.vSahasal).toFixed(0)} · makas {kmh(cfg.vMakas).toFixed(0)} · hemzemin {kmh(cfg.vHemzemin).toFixed(0)} km/h · a={cfg.ivme} b={cfg.yavaslama} m/s² · headway {cfg.headway} s
+        {t({ tr: "RaySim · Ring editörü — canlı parametreler (Sistem Merkezi'nden): sahasal", en: "RaySim · Section editor — live parameters (from System Center): open-track", de: "RaySim · Abschnitts-Editor — Live-Parameter (aus der Systemzentrale): freie Strecke" })} {kmh(cfg.vSahasal).toFixed(0)} · {t({ tr: "makas", en: "switch", de: "Weiche" })} {kmh(cfg.vMakas).toFixed(0)} · {t({ tr: "hemzemin", en: "level crossing", de: "Bahnübergang" })} {kmh(cfg.vHemzemin).toFixed(0)} km/h · a={cfg.ivme} b={cfg.yavaslama} m/s² · headway {cfg.headway} s
       </footer>
     </div>
   );

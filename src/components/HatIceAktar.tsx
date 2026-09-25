@@ -12,6 +12,7 @@
 // Çekirdekler test edilmiştir: lib/anaray/{gtfs,railml,dxf,cadHat}.
 
 import { useEffect, useMemo, useState } from "react";
+import { useDil } from "@/components/DilProvider";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { parseGtfsZip, gtfsRotalar, gtfsYonler, gtfsHatKur, type GtfsFeed } from "@/lib/anaray/gtfs";
@@ -45,6 +46,7 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
   /** Mevcut hattın SON durak koordinatı — "Ekle" modunda süreklilik (kopukluk) kontrolü için. */
   mevcutSonKoord?: { ad: string; lat: number; lon: number } | null;
 }) {
+  const { t } = useDil();
   const [kaynak, setKaynak] = useState<"gtfs" | "railml" | "cad" | "osm" | null>(null);
   const [feed, setFeed] = useState<GtfsFeed | null>(null);
   // OSM / Şehir hattı kaynağı
@@ -85,7 +87,7 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
       if (!r.ok) throw new Error(j.hata || "Aranamadı.");
       const list: OsmRota[] = Array.isArray(j.rotalar) ? j.rotalar : [];
       setOsmRotalar(list);
-      setOsmMesaj(list.length ? `${list.length} raylı rota bulundu — hattı kur için seç.` : "Bu bölgede OSM'de tram/hafif-raylı/metro rotası bulunamadı.");
+      setOsmMesaj(list.length ? `${list.length} ${t({ tr: "raylı rota bulundu — hattı kur için seç.", en: "rail routes found — select to build the line.", de: "Bahnstrecken gefunden — zum Aufbau der Strecke auswählen." })}` : "Bu bölgede OSM'de tram/hafif-raylı/metro rotası bulunamadı.");
     } catch (e) {
       setOsmMesaj(e instanceof Error ? e.message : "Aranamadı.");
     } finally { setOsmDurum(""); }
@@ -126,7 +128,7 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
         if (g.uyarilar.length && g.polylines.length === 0) throw new Error(g.uyarilar[0]);
         setDxfGeo(g); setEsle(katmanTahmini(g)); setShpUyari(g.uyarilar); setKaynak("cad");
       } else if (ad.endsWith(".dwg")) {
-        throw new Error("DWG (ikili CAD) doğrudan desteklenmez. Lütfen AutoCAD'de DXF'e çevir (SAVEAS → DXF) ve onu yükle.");
+        throw new Error(t({ tr: "DWG (ikili CAD) doğrudan desteklenmez. Lütfen AutoCAD'de DXF'e çevir (SAVEAS → DXF) ve onu yükle.", en: "DWG (binary CAD) is not directly supported. Please convert it to DXF in AutoCAD (SAVEAS → DXF) and upload that.", de: "DWG (binäres CAD) wird nicht direkt unterstützt. Bitte in AutoCAD in DXF konvertieren (SAVEAS → DXF) und diese hochladen." }));
       } else if (ad.endsWith(".xml") || ad.endsWith(".railml")) {
         setRailmlSonuc(railmlHatKur(await f.text())); setKaynak("railml");
       } else {
@@ -146,7 +148,7 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
       }
       setDosyaAd(f.name);
     } catch (e) {
-      setHata(e instanceof Error ? e.message : "Dosya okunamadı.");
+      setHata(e instanceof Error ? e.message : t({ tr: "Dosya okunamadı.", en: "Could not read the file.", de: "Datei konnte nicht gelesen werden." }));
     } finally { setMesgul(false); }
   };
 
@@ -173,8 +175,8 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
     try {
       const s = cadHatKur(geo, esle, dosyaAd.replace(/\.[^.]+$/, ""));
       return { sonuc: { ...s, uyarilar: [...shpUyari, ...s.uyarilar] }, hata: null };
-    } catch (e) { return { sonuc: null, hata: e instanceof Error ? e.message : "Hat kurulamadı." }; }
-  }, [geo, esle, dosyaAd, shpUyari]);
+    } catch (e) { return { sonuc: null, hata: e instanceof Error ? e.message : t({ tr: "Hat kurulamadı.", en: "Could not build the line.", de: "Strecke konnte nicht aufgebaut werden." }) }; }
+  }, [geo, esle, dosyaAd, shpUyari, t]);
 
   // OSM: lib çıktısını (lat/lon duraklar + geometri) ayrı taşırız; önizleme yol/durak (x/y) HatSonuc'a.
   const osmSonuc: HatSonuc | null = osmFull
@@ -195,11 +197,15 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
   const katmanTikla = (k: string, alan: "guzergahKatman" | "durakKatman") =>
     setEsle((e) => ({ ...e, [alan]: e[alan].includes(k) ? e[alan].filter((x) => x !== k) : [...e[alan], k] }));
 
-  const modAd: Record<IceAktarMod, string> = { degistir: "Mevcut hattın ÜZERİNE YAZILIR (geri alınabilir)", ekle: "Mevcut hattın SONUNA eklenir (mevcut ringlere dokunulmaz)", yeniHat: "AYRI yeni hatta iner (mevcut hatta hiç dokunulmaz, kredi düşer)" };
+  const modAd: Record<IceAktarMod, string> = {
+    degistir: t({ tr: "Mevcut hattın ÜZERİNE YAZILIR (geri alınabilir)", en: "OVERWRITES the current line (undoable)", de: "ÜBERSCHREIBT die aktuelle Strecke (rückgängig machbar)" }),
+    ekle: t({ tr: "Mevcut hattın SONUNA eklenir (mevcut ringlere dokunulmaz)", en: "Appended to the END of the current line (existing rings untouched)", de: "Wird an das ENDE der aktuellen Strecke angehängt (bestehende Ringe unberührt)" }),
+    yeniHat: t({ tr: "AYRI yeni hatta iner (mevcut hatta hiç dokunulmaz, kredi düşer)", en: "Lands on a SEPARATE new line (current line untouched, credit deducted)", de: "Landet auf einer SEPARATEN neuen Strecke (aktuelle Strecke unberührt, Guthaben wird abgezogen)" }),
+  };
 
   const uygula = async () => {
     if (!sonuc) return;
-    if (!confirm(`“${sonuc.ad}” (${sonuc.durakSayisi} durak) içe aktarılsın mı?\n\n${modAd[mod]}`)) return;
+    if (!confirm(`“${sonuc.ad}” (${sonuc.durakSayisi} ${t({ tr: "durak", en: "stops", de: "Halt." })}) ${t({ tr: "içe aktarılsın mı?", en: "— import?", de: "— importieren?" })}\n\n${modAd[mod]}`)) return;
     // Ekle + kopuk: mevcut hatla eklenen hat fiziksel olarak bağlı değil → ek onay iste.
     if (ekleKopuk && !confirm(
       `⚠ KOPUK EKLEME\n\nEklenecek hattın başı (“${ilkImportKoord!.ad ?? "?"}”), mevcut hattın sonundan (“${mevcutSonKoord!.ad}”) ~${(ekleKopukMesafe / 1000).toFixed(1)} km uzak.\n\nBunlar fiziksel olarak BAĞLI DEĞİL — “Ekle” dersen sistem aralarında ışınlanma olan tek bir hat kurar. Genelde bunun yerine “Değiştir” veya “Yeni hat” istenir.\n\nYine de birleştirilsin mi?`,
@@ -225,39 +231,39 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
   const govde = (
       <div className={gomulu ? "px-1 pb-1 pt-1" : "border-t px-4 pb-4 pt-3"} style={{ borderColor: brand.border }}>
         <p className="mb-3 text-xs" style={{ color: brand.muted }}>
-          <b>GTFS .zip</b>, <b>railML .xml</b>, <b>CAD .dxf</b> veya <b>Shapefile .zip</b> (.shp/.dbf/.prj) yükle. Sıralı duraklar + gerçek mesafelerle hat kurulur.
-          {" "}Makas/sinyal içe aktarılmaz; Ringler'de eklenir. <b>DWG</b> için önce DXF'e çevir.
+          <b>GTFS .zip</b>, <b>railML .xml</b>, <b>CAD .dxf</b> {t({ tr: "veya", en: "or", de: "oder" })} <b>Shapefile .zip</b> (.shp/.dbf/.prj) {t({ tr: "yükle. Sıralı duraklar + gerçek mesafelerle hat kurulur.", en: "— upload. The line is built with ordered stops and real distances.", de: "— hochladen. Die Strecke wird mit geordneten Haltestellen und echten Entfernungen aufgebaut." })}
+          {" "}{t({ tr: "Makas/sinyal içe aktarılmaz; Ringler'de eklenir.", en: "Switches/signals are not imported; add them in Ringler.", de: "Weichen/Signale werden nicht importiert; im Bereich Ringler hinzufügen." })} <b>DWG</b> {t({ tr: "için önce DXF'e çevir.", en: "must first be converted to DXF.", de: "muss zuerst in DXF konvertiert werden." })}
         </p>
 
         <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.ink }}>
-          📁 Dosya seç (.zip / .xml / .dxf)
+          📁 {t({ tr: "Dosya seç", en: "Select file", de: "Datei wählen" })} (.zip / .xml / .dxf)
           <input type="file" accept=".zip,.xml,.railml,.dxf,application/zip,text/xml,application/xml,image/vnd.dxf" className="hidden"
             onChange={(e) => { dosyaSec(e.target.files?.[0]); e.target.value = ""; }} />
         </label>
-        {dosyaAd && <span className="ml-2 text-xs" style={{ color: brand.muted }}>{dosyaAd}{kaynak && kaynak !== "osm" ? ` · ${kaynak.toUpperCase()}` : ""}{mesgul ? " · okunuyor…" : ""}</span>}
+        {dosyaAd && <span className="ml-2 text-xs" style={{ color: brand.muted }}>{dosyaAd}{kaynak && kaynak !== "osm" ? ` · ${kaynak.toUpperCase()}` : ""}{mesgul ? " · " + t({ tr: "okunuyor…", en: "reading…", de: "wird gelesen…" }) : ""}</span>}
         {hata && <p className="mt-2 text-sm" style={{ color: brand.red }}>⚠ {hata}</p>}
 
         {/* OSM / Şehir hattı — sistemin kendi çekmesi (dosya gerektirmez) */}
         <div className="mt-3 rounded-md border p-3" style={{ borderColor: brand.border, background: "#F7FBFC" }}>
           <div className="mb-1.5 flex items-center gap-2">
-            <span className="text-sm font-semibold" style={{ color: brand.ink }}>🌍 OSM'den şehir hattı</span>
-            <span className="text-xs" style={{ color: brand.muted }}>dosya gerekmez — şehir yaz, sistem OpenStreetMap'ten gerçek hattı çeker</span>
+            <span className="text-sm font-semibold" style={{ color: brand.ink }}>🌍 {t({ tr: "OSM'den şehir hattı", en: "City line from OSM", de: "Stadtstrecke aus OSM" })}</span>
+            <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "dosya gerekmez — şehir yaz, sistem OpenStreetMap'ten gerçek hattı çeker", en: "no file needed — type a city, the system fetches the real line from OpenStreetMap", de: "keine Datei nötig — Stadt eingeben, das System holt die echte Strecke aus OpenStreetMap" })}</span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <input value={osmSehir} onChange={(e) => setOsmSehir(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); osmAra(); } }}
-              placeholder="Şehir (ör. Samsun, Antalya, Eskişehir)"
+              placeholder={t({ tr: "Şehir (ör. Samsun, Antalya, Eskişehir)", en: "City (e.g. Samsun, Antalya, Eskişehir)", de: "Stadt (z. B. Samsun, Antalya, Eskişehir)" })}
               className="min-w-[220px] flex-1 rounded border px-2 py-1.5 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
             <button type="button" onClick={osmAra} disabled={osmDurum !== "" || !osmSehir.trim()}
               className="rounded-md border px-3 py-1.5 text-sm font-medium disabled:opacity-40" style={{ borderColor: brand.borderStrong, color: brand.ink }}>
-              {osmDurum === "ara" ? "aranıyor…" : "🔎 Rotaları ara"}
+              {osmDurum === "ara" ? t({ tr: "aranıyor…", en: "searching…", de: "wird gesucht…" }) : `🔎 ${t({ tr: "Rotaları ara", en: "Search routes", de: "Routen suchen" })}`}
             </button>
           </div>
           {osmMesaj && <p className="mt-2 text-xs" style={{ color: /bulunamadı|Overpass|yoğun|çekile|Aranamadı|Getirilemedi/.test(osmMesaj) ? brand.red : brand.muted }}>{osmMesaj}</p>}
 
           {osmRotalar.length > 0 && (
             <div className="mt-3">
-              <div className="mb-1 field-label">Rota(lar) seç <span style={{ color: brand.muted }}>(birden çok seçersen uçlarından birleştirilir)</span></div>
+              <div className="mb-1 field-label">{t({ tr: "Rota(lar) seç", en: "Select route(s)", de: "Route(n) wählen" })} <span style={{ color: brand.muted }}>{t({ tr: "(birden çok seçersen uçlarından birleştirilir)", en: "(select several to join them at their ends)", de: "(mehrere wählen, um sie an ihren Enden zu verbinden)" })}</span></div>
               <div className="flex max-h-48 flex-col gap-1 overflow-auto rounded border p-2" style={{ borderColor: brand.border }}>
                 {osmRotalar.map((r) => (
                   <label key={r.id} className="flex cursor-pointer items-start gap-2 text-sm">
@@ -272,7 +278,7 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
               </div>
               <button type="button" onClick={osmGetir} disabled={osmDurum !== "" || osmSecili.length === 0}
                 className="mt-2 rounded-md px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40" style={{ background: brand.ink }}>
-                {osmDurum === "getir" ? "getiriliyor…" : `⬇ Hattı kur (${osmSecili.length} rota)`}
+                {osmDurum === "getir" ? t({ tr: "getiriliyor…", en: "fetching…", de: "wird geholt…" }) : `⬇ ${t({ tr: "Hattı kur", en: "Build line", de: "Strecke aufbauen" })} (${osmSecili.length} ${t({ tr: "rota", en: "routes", de: "Routen" })})`}
               </button>
             </div>
           )}
@@ -282,15 +288,15 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
         {kaynak === "gtfs" && feed && (
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label>
-              <span className="field-label">Rota ({rotalar.length})</span>
+              <span className="field-label">{t({ tr: "Rota", en: "Route", de: "Route" })} ({rotalar.length})</span>
               <select value={routeId} onChange={(e) => setRouteId(e.target.value)} className="mt-1 w-full rounded border px-2 py-1.5 text-sm" style={{ borderColor: brand.border, color: brand.ink }}>
                 {rotalar.map((r) => <option key={r.id} value={r.id}>{r.tipAd} · {r.ad}</option>)}
               </select>
             </label>
             <label>
-              <span className="field-label">Yön</span>
+              <span className="field-label">{t({ tr: "Yön", en: "Direction", de: "Richtung" })}</span>
               <select value={dir} onChange={(e) => setDir(e.target.value)} className="mt-1 w-full rounded border px-2 py-1.5 text-sm" style={{ borderColor: brand.border, color: brand.ink }}>
-                {yonler.map((y) => <option key={y.dir} value={y.dir}>{y.headsign || `Yön ${y.dir}`} · {y.duraklar} durak</option>)}
+                {yonler.map((y) => <option key={y.dir} value={y.dir}>{y.headsign || `${t({ tr: "Yön", en: "Direction", de: "Richtung" })} ${y.dir}`} · {y.duraklar} {t({ tr: "durak", en: "stops", de: "Halt." })}</option>)}
               </select>
             </label>
           </div>
@@ -299,10 +305,10 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
         {/* CAD: katman eşleme */}
         {kaynak === "cad" && geo && (
           <div className="mt-4 rounded-md border p-3 text-xs" style={{ borderColor: brand.border }}>
-            <div className="mb-2 font-semibold" style={{ color: brand.ink }}>Katman eşleme — hangi katman ne? ({geo.katmanlar.length} katman · {geo.polylines.length} çizgi · {geo.points.length} nokta · {geo.labels.length} metin)</div>
+            <div className="mb-2 font-semibold" style={{ color: brand.ink }}>{t({ tr: "Katman eşleme — hangi katman ne?", en: "Layer mapping — which layer is what?", de: "Ebenenzuordnung — welche Ebene ist was?" })} ({geo.katmanlar.length} {t({ tr: "katman", en: "layers", de: "Ebenen" })} · {geo.polylines.length} {t({ tr: "çizgi", en: "lines", de: "Linien" })} · {geo.points.length} {t({ tr: "nokta", en: "points", de: "Punkte" })} · {geo.labels.length} {t({ tr: "metin", en: "texts", de: "Texte" })})</div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <div className="mb-1 font-medium" style={{ color: brand.inkSoft }}>🛤 Güzergâh (ray çizgileri)</div>
+                <div className="mb-1 font-medium" style={{ color: brand.inkSoft }}>🛤 {t({ tr: "Güzergâh (ray çizgileri)", en: "Alignment (rail lines)", de: "Trasse (Schienenlinien)" })}</div>
                 <div className="flex flex-wrap gap-1.5">
                   {geo.katmanlar.map((k) => {
                     const secili = esle.guzergahKatman.includes(k);
@@ -313,7 +319,7 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
                 </div>
               </div>
               <div>
-                <div className="mb-1 font-medium" style={{ color: brand.inkSoft }}>🚏 Duraklar (nokta/etiket)</div>
+                <div className="mb-1 font-medium" style={{ color: brand.inkSoft }}>🚏 {t({ tr: "Duraklar (nokta/etiket)", en: "Stops (point/label)", de: "Haltestellen (Punkt/Beschriftung)" })}</div>
                 <div className="flex flex-wrap gap-1.5">
                   {geo.katmanlar.map((k) => {
                     const secili = esle.durakKatman.includes(k);
@@ -326,9 +332,9 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
             </div>
             {shpBuf && adAlanlari.length > 0 && (
               <label className="mt-3 block">
-                <span className="field-label">🏷 Durak adı özelliği (.dbf)</span>
+                <span className="field-label">🏷 {t({ tr: "Durak adı özelliği", en: "Stop name attribute", de: "Haltestellenname-Attribut" })} (.dbf)</span>
                 <select value={adAlani} onChange={(e) => setAdAlani(e.target.value)} className="mt-1 w-full max-w-xs rounded border px-2 py-1.5 text-sm" style={{ borderColor: brand.border, color: brand.ink }}>
-                  <option value="">otomatik seç</option>
+                  <option value="">{t({ tr: "otomatik seç", en: "auto select", de: "automatisch wählen" })}</option>
                   {adAlanlari.map((a) => <option key={a} value={a}>{a}</option>)}
                 </select>
               </label>
@@ -341,7 +347,7 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
         {kaynak && sonuc && (
           <>
             <div className="mt-4 rounded-md border-l-4 px-3 py-2.5 text-sm" style={{ borderColor: brand.ink, background: "#F7F9FA", color: brand.inkSoft }}>
-              <div><b style={{ color: brand.ink }}>{sonuc.ad}</b> — {sonuc.durakSayisi} durak · {sonuc.toplamKm.toFixed(1)} km · {sonuc.rings.length} ring</div>
+              <div><b style={{ color: brand.ink }}>{sonuc.ad}</b> — {sonuc.durakSayisi} {t({ tr: "durak", en: "stops", de: "Halt." })} · {sonuc.toplamKm.toFixed(1)} km · {sonuc.rings.length} {t({ tr: "ring", en: "rings", de: "Ringe" })}</div>
               {sonuc.yol && sonuc.duraklar && <SemaOnizleme yol={sonuc.yol} duraklar={sonuc.duraklar} />}
               <ul className="mt-1 ml-4 list-disc text-xs" style={{ color: brand.muted }}>
                 {sonuc.uyarilar.map((u, i) => <li key={i} style={/AKTARILMADI/i.test(u) ? { color: CK.amberInk, fontWeight: 600 } : undefined}>{u}</li>)}
@@ -349,15 +355,15 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
             </div>
 
             {gomulu ? (
-              <div className="mt-3 text-xs" style={{ color: brand.muted }}>Bu dosya <b style={{ color: brand.ink }}>ayrı yeni bir hat</b> olarak açılır (1 kredi düşer).</div>
+              <div className="mt-3 text-xs" style={{ color: brand.muted }}>{t({ tr: "Bu dosya", en: "This file opens as a", de: "Diese Datei wird als" })} <b style={{ color: brand.ink }}>{t({ tr: "ayrı yeni bir hat", en: "separate new line", de: "separate neue Strecke" })}</b> {t({ tr: "olarak açılır (1 kredi düşer).", en: "(1 credit is deducted).", de: "geöffnet (1 Guthaben wird abgezogen)." })}</div>
             ) : (
             <div className="mt-3 text-sm">
-              <div className="mb-1 field-label">Nasıl uygulansın?</div>
+              <div className="mb-1 field-label">{t({ tr: "Nasıl uygulansın?", en: "How to apply?", de: "Wie anwenden?" })}</div>
               <div className="flex flex-col gap-1">
                 {(["degistir", "ekle", "yeniHat"] as IceAktarMod[]).map((m) => (
                   <label key={m} className="flex cursor-pointer items-start gap-2">
                     <input type="radio" name="iceMod" checked={mod === m} onChange={() => setMod(m)} className="mt-0.5" />
-                    <span><b style={{ color: brand.ink }}>{m === "degistir" ? "Değiştir" : m === "ekle" ? "Ekle" : "Yeni hat olarak"}</b> <span className="text-xs" style={{ color: brand.muted }}>— {modAd[m]}</span></span>
+                    <span><b style={{ color: brand.ink }}>{m === "degistir" ? t({ tr: "Değiştir", en: "Replace", de: "Ersetzen" }) : m === "ekle" ? t({ tr: "Ekle", en: "Append", de: "Anhängen" }) : t({ tr: "Yeni hat olarak", en: "As a new line", de: "Als neue Strecke" })}</b> <span className="text-xs" style={{ color: brand.muted }}>— {modAd[m]}</span></span>
                   </label>
                 ))}
               </div>
@@ -367,9 +373,9 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
             {/* "Ekle" süreklilik uyarısı — eklenecek hattın başı mevcut hattın sonundan çok uzaksa */}
             {ekleKopuk && (
               <div className="mt-2 rounded-md border-l-4 px-3 py-2 text-xs" style={{ borderColor: CK.red, background: "#FDF2F4", color: brand.inkSoft }}>
-                <b style={{ color: CK.red }}>⚠ Kopuk ekleme.</b> Eklenecek hattın başı (“{ilkImportKoord?.ad ?? "?"}”) mevcut hattın sonundan
-                (“{mevcutSonKoord?.ad}”) <b>~{(ekleKopukMesafe / 1000).toFixed(1)} km</b> uzak — fiziksel olarak bağlı değil.
-                “Ekle” dersen aralarında ışınlanma olan tek hat kurulur; genelde <b>Değiştir</b> ya da <b>Yeni hat</b> istenir.
+                <b style={{ color: CK.red }}>{t({ tr: "⚠ Kopuk ekleme.", en: "⚠ Disconnected append.", de: "⚠ Getrenntes Anhängen." })}</b> {t({ tr: "Eklenecek hattın başı", en: "The start of the line to append", de: "Der Anfang der anzuhängenden Strecke" })} (“{ilkImportKoord?.ad ?? "?"}”) {t({ tr: "mevcut hattın sonundan", en: "is, from the end of the current line", de: "ist, vom Ende der aktuellen Strecke" })}
+                (“{mevcutSonKoord?.ad}”) <b>~{(ekleKopukMesafe / 1000).toFixed(1)} km</b> {t({ tr: "uzak — fiziksel olarak bağlı değil.", en: "away — not physically connected.", de: "entfernt — physisch nicht verbunden." })}
+                “{t({ tr: "Ekle", en: "Append", de: "Anhängen" })}” {t({ tr: "dersen aralarında ışınlanma olan tek hat kurulur; genelde", en: "builds a single line with a teleport between them; usually", de: "baut eine einzige Strecke mit einem Sprung dazwischen; normalerweise wird" })} <b>{t({ tr: "Değiştir", en: "Replace", de: "Ersetzen" })}</b> {t({ tr: "ya da", en: "or", de: "oder" })} <b>{t({ tr: "Yeni hat", en: "New line", de: "Neue Strecke" })}</b> {t({ tr: "istenir.", en: "is preferred.", de: "bevorzugt." })}
               </div>
             )}
 
@@ -377,13 +383,13 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
               <button type="button" disabled={disabled || mesgulDis}
                 onClick={uygula}
                 className="rounded-md px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: brand.red }}>
-                ⬇ İçe aktar
+                ⬇ {t({ tr: "İçe aktar", en: "Import", de: "Importieren" })}
               </button>
-              {disabled && <span className="text-xs" style={{ color: CK.amberInk }}>Salt-okunur görünümde içe aktarma kapalı.</span>}
+              {disabled && <span className="text-xs" style={{ color: CK.amberInk }}>{t({ tr: "Salt-okunur görünümde içe aktarma kapalı.", en: "Import is disabled in read-only view.", de: "Import ist in der schreibgeschützten Ansicht deaktiviert." })}</span>}
             </div>
           </>
         )}
-        {kaynak === "cad" && !sonuc && !kurHata && <p className="mt-3 text-xs" style={{ color: brand.muted }}>Güzergâh ve durak katmanlarını seç → hat kurulur.</p>}
+        {kaynak === "cad" && !sonuc && !kurHata && <p className="mt-3 text-xs" style={{ color: brand.muted }}>{t({ tr: "Güzergâh ve durak katmanlarını seç → hat kurulur.", en: "Select the alignment and stop layers → the line is built.", de: "Trassen- und Haltestellen-Ebenen wählen → die Strecke wird aufgebaut." })}</p>}
       </div>
   );
   // Gömülü ("+ Yeni hat" modalı): düz kart, hep açık. Aksi halde katlanır details.
@@ -392,8 +398,8 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
     <details className="mt-4 rounded-lg border bg-white" style={{ borderColor: brand.border }}>
       <summary className="flex cursor-pointer select-none items-center gap-2 p-4">
         <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
-        <span className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>Dosyadan İçe Aktar</span>
-        <span className="ml-2 text-xs" style={{ color: brand.muted }}>GTFS · railML · CAD (DXF) · Shapefile → hattı otomatik kur</span>
+        <span className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{t({ tr: "Dosyadan İçe Aktar", en: "Import from File", de: "Aus Datei importieren" })}</span>
+        <span className="ml-2 text-xs" style={{ color: brand.muted }}>GTFS · railML · CAD (DXF) · Shapefile → {t({ tr: "hattı otomatik kur", en: "build the line automatically", de: "Strecke automatisch aufbauen" })}</span>
       </summary>
       {govde}
     </details>
@@ -402,6 +408,7 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
 
 /** İçe aktarılan hattın kuşbakışı mini şeması (dikilmiş yol + duraklar) — doğrulama için. */
 function SemaOnizleme({ yol, duraklar }: { yol: { x: number; y: number }[]; duraklar: { ad: string; km: number; x: number; y: number }[] }) {
+  const { t } = useDil();
   const W = 320, H = 90, pad = 10;
   const xs = yol.map((p) => p.x), ys = yol.map((p) => p.y);
   const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
@@ -410,7 +417,7 @@ function SemaOnizleme({ yol, duraklar }: { yol: { x: number; y: number }[]; dura
   const px = (p: { x: number; y: number }) => ({ x: pad + (p.x - minX) * sc, y: H - pad - (p.y - minY) * sc });
   const d = yol.map((p, i) => `${i === 0 ? "M" : "L"}${px(p).x.toFixed(1)},${px(p).y.toFixed(1)}`).join(" ");
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="mt-2 w-full max-w-md rounded border" style={{ borderColor: brand.border, background: "#fff" }} role="img" aria-label="İçe aktarılan hat şeması">
+    <svg viewBox={`0 0 ${W} ${H}`} className="mt-2 w-full max-w-md rounded border" style={{ borderColor: brand.border, background: "#fff" }} role="img" aria-label={t({ tr: "İçe aktarılan hat şeması", en: "Imported line diagram", de: "Diagramm der importierten Strecke" })}>
       <path d={d} fill="none" stroke={brand.ink} strokeWidth={1.4} />
       {duraklar.map((s, i) => { const p = px(s); return <circle key={i} cx={p.x} cy={p.y} r={2} fill={brand.red} />; })}
     </svg>

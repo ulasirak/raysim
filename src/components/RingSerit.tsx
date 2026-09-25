@@ -7,6 +7,7 @@
 // RingEditor'da tutulur; buradan sadece geri-çağrılar tetiklenir.
 
 import { useEffect, useRef, useState } from "react";
+import { useDil } from "@/components/DilProvider";
 import { brand } from "@/lib/anaray/brand";
 import { CK, SERI } from "@/lib/anaray/chartkit";
 import { kmh } from "@/lib/anaray/format";
@@ -55,6 +56,7 @@ export function KisitSeridi({ ring, kisitlar, konumSuresi, onTasi, ekleTuru, onS
   ekleTuru: EkleTur | null;
   onSeritEkle: (konum: number) => void;
 }) {
+  const { t } = useDil();
   const refBar = useRef<HTMLDivElement>(null);
   const [surukle, setSurukle] = useState<{ tur: KisitTur; id: string } | null>(null);
 
@@ -83,7 +85,7 @@ export function KisitSeridi({ ring, kisitlar, konumSuresi, onTasi, ekleTuru, onS
     <div className="mt-3 select-none">
       <div className="mb-1 flex justify-between text-[0.62rem]" style={{ color: brand.faint }}>
         <span>0 m · 0 s</span>
-        <span>{ekleTuru ? "şeride tıkla → buraya ekle" : "noktayı sürükle → taşı"}</span>
+        <span>{ekleTuru ? t({ tr: "şeride tıkla → buraya ekle", en: "click the strip → add here", de: "auf den Streifen klicken → hier hinzufügen" }) : t({ tr: "noktayı sürükle → taşı", en: "drag the marker → move", de: "Markierung ziehen → verschieben" })}</span>
         <span>{Math.round(ring.uzunluk)} m · ≈{Math.round(konumSuresi(ring.uzunluk))} s</span>
       </div>
       <div
@@ -98,7 +100,7 @@ export function KisitSeridi({ ring, kisitlar, konumSuresi, onTasi, ekleTuru, onS
         {/* Boş şerit ipucu: sürüklenecek "nokta" = makas/geçit/tehlike; önce ＋ ile eklenir. */}
         {kisitlar.length === 0 && !ekleTuru && (
           <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-[0.62rem]" style={{ color: brand.faint }}>
-            ＋ makas / geçit / tehlike ekleyin, sonra sürükleyerek konumlandırın
+            {t({ tr: "＋ makas / geçit / tehlike ekleyin, sonra sürükleyerek konumlandırın", en: "＋ add a switch / crossing / hazard, then drag to position", de: "＋ Weiche / Übergang / Gefahrenstelle hinzufügen, dann durch Ziehen positionieren" })}
           </span>
         )}
         {/* Kısıtlar */}
@@ -109,7 +111,7 @@ export function KisitSeridi({ ring, kisitlar, konumSuresi, onTasi, ekleTuru, onS
             <button
               key={k.id}
               onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); setSurukle({ tur: k.tur, id: k.id }); }}
-              title={`${k.ad} · ${Math.round(k.konum)} m · ≈${Math.round(konumSuresi(k.konum))} s — sürükleyip taşıyın`}
+              title={`${k.ad} · ${Math.round(k.konum)} m · ≈${Math.round(konumSuresi(k.konum))} s — ${t({ tr: "sürükleyip taşıyın", en: "drag to move", de: "zum Verschieben ziehen" })}`}
               className="absolute top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
               style={{ left: `${sol}%`, cursor: "grab" }}
             >
@@ -142,6 +144,7 @@ export function EkleFormu({ tur, konum: konum0, uzunluk, konumSuresi, sureKonumu
   onIptal: () => void;
   onEkle: (konum: number, ekstra: Record<string, unknown>) => void;
 }) {
+  const { t } = useDil();
   const [konum, setKonum] = useState(Math.round(konum0));
   // Makas varsayılanları el kitabından (yeniMakas → BELGE değerleri)
   const mBasla = tur.kind === "makas" ? tur.tip : "headway";
@@ -159,9 +162,9 @@ export function EkleFormu({ tur, konum: konum0, uzunluk, konumSuresi, sureKonumu
   const [hiz, setHiz] = useState(hizVars);
   const [bekleme, setBekleme] = useState(0); // karayolu geçidinde beklenen bekleme (s)
 
-  const baslik = tur.kind === "makas" ? "Makas bölgesi ekle"
-    : tur.kind === "hemzemin" ? `${tur.tip === "yaya" ? "Yaya" : "Karayolu"} geçidi ekle`
-    : "Acil frenleme noktası ekle";
+  const baslik = tur.kind === "makas" ? t({ tr: "Makas bölgesi ekle", en: "Add switch zone", de: "Weichenbereich hinzufügen" })
+    : tur.kind === "hemzemin" ? (tur.tip === "yaya" ? t({ tr: "Yaya geçidi ekle", en: "Add pedestrian crossing", de: "Fußgängerübergang hinzufügen" }) : t({ tr: "Karayolu geçidi ekle", en: "Add road level crossing", de: "Bahnübergang (Straße) hinzufügen" }))
+    : t({ tr: "Acil frenleme noktası ekle", en: "Add emergency braking point", de: "Notbremspunkt hinzufügen" });
 
   const kaydet = () => {
     if (tur.kind === "makas") {
@@ -177,27 +180,27 @@ export function EkleFormu({ tur, konum: konum0, uzunluk, konumSuresi, sureKonumu
     <div className="mt-3 rounded-lg border-2 p-3" style={{ borderColor: brand.red, background: "#FDF6F7" }}>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-1">
         <span className="font-brand text-sm font-semibold" style={{ color: brand.ink }}>{baslik}</span>
-        <span className="text-[0.65rem]" style={{ color: brand.muted }}>süreler el kitabından (MAZ-VA-AKS-001) ön-dolu · ayarlayıp ekleyin</span>
+        <span className="text-[0.65rem]" style={{ color: brand.muted }}>{t({ tr: "süreler el kitabından (MAZ-VA-AKS-001) ön-dolu · ayarlayıp ekleyin", en: "times pre-filled from the manual (MAZ-VA-AKS-001) · adjust and add", de: "Zeiten aus dem Handbuch (MAZ-VA-AKS-001) vorausgefüllt · anpassen und hinzufügen" })}</span>
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Num label="Konum" suffix="m" step={10} value={konum} onChange={(v) => setKonum(Math.max(0, Math.min(uzunluk, v)))} hata={konum < 0 || konum > uzunluk} />
-        <Num label="Süre (≈)" suffix="s" step={1} value={Math.round(konumSuresi(konum))} onChange={(v) => setKonum(Math.round(sureKonumu(v)))} />
+        <Num label={t({ tr: "Konum", en: "Position", de: "Position" })} suffix="m" step={10} value={konum} onChange={(v) => setKonum(Math.max(0, Math.min(uzunluk, v)))} hata={konum < 0 || konum > uzunluk} />
+        <Num label={t({ tr: "Süre (≈)", en: "Time (≈)", de: "Zeit (≈)" })} suffix="s" step={1} value={Math.round(konumSuresi(konum))} onChange={(v) => setKonum(Math.round(sureKonumu(v)))} />
         {tur.kind === "makas" ? (
           <>
             <label className="flex flex-col">
-              <span className="field-label">Makas tipi</span>
+              <span className="field-label">{t({ tr: "Makas tipi", en: "Switch type", de: "Weichentyp" })}</span>
               <select value={mtip}
                 onChange={(e) => { const t = e.target.value as MakasTip; setMtip(t); const nv = yeniMakas(t, konum); setGecisHizi(Math.round(kmh(nv.gecisHizi))); setMakasSayisi(nv.makasSayisi); setAdim(nv.makasAdimSuresi); setRelease(nv.routeRelease); }}
                 className="mt-1 rounded border px-1.5 py-1 text-xs" style={{ borderColor: brand.border, color: brand.ink }}>
                 {(Object.keys(MAKAS_TIP_AD) as MakasTip[]).map((t) => (<option key={t} value={t}>{MAKAS_TIP_AD[t]}</option>))}
               </select>
             </label>
-            <Num label="Geçiş hızı" suffix="km/h" step={1} value={gecisHizi} onChange={setGecisHizi} />
-            <Num label="Makas sayısı" suffix="ad" step={1} value={makasSayisi} onChange={(v) => setMakasSayisi(Math.max(1, Math.round(v)))} />
+            <Num label={t({ tr: "Geçiş hızı", en: "Transit speed", de: "Durchfahrgeschwindigkeit" })} suffix="km/h" step={1} value={gecisHizi} onChange={setGecisHizi} />
+            <Num label={t({ tr: "Makas sayısı", en: "Switch count", de: "Weichenanzahl" })} suffix="ad" step={1} value={makasSayisi} onChange={(v) => setMakasSayisi(Math.max(1, Math.round(v)))} />
             <label className="block">
-              <span className="field-label">Makas tipi</span>
+              <span className="field-label">{t({ tr: "Makas tipi", en: "Switch type", de: "Weichentyp" })}</span>
               <div className="mt-1 flex gap-1">
-                {([["s", "S-makas"], ["x", "X-makas"]] as const).map(([cv, ad]) => (
+                {([["s", t({ tr: "S-makas", en: "S switch", de: "S-Weiche" })], ["x", t({ tr: "X-makas", en: "X switch", de: "X-Weiche" })]] as const).map(([cv, ad]) => (
                   <button key={cv} type="button" onClick={() => setCrossover(cv)}
                     className="flex-1 rounded border px-1.5 py-1 text-xs font-medium"
                     style={crossover === cv ? { background: brand.ink, color: "#fff", borderColor: brand.ink } : { borderColor: brand.border, color: brand.inkSoft }}>
@@ -205,32 +208,33 @@ export function EkleFormu({ tur, konum: konum0, uzunluk, konumSuresi, sureKonumu
                   </button>
                 ))}
               </div>
-              <span className="mt-0.5 block text-[0.6rem]" style={{ color: brand.muted }}>uç (dönüş) makasında turnback yolu belirler: S=1, X=2</span>
+              <span className="mt-0.5 block text-[0.6rem]" style={{ color: brand.muted }}>{t({ tr: "uç (dönüş) makasında turnback yolu belirler: S=1, X=2", en: "at the terminal (turnback) switch it sets the turnback paths: S=1, X=2", de: "an der Endstellen-(Wende-)Weiche bestimmt es die Wendewege: S=1, X=2" })}</span>
             </label>
-            <Num label="Motor/adım süresi" suffix="s" step={1} value={adim} onChange={setAdim} />
+            <Num label={t({ tr: "Motor/adım süresi", en: "Motor/step time", de: "Motor-/Schrittzeit" })} suffix="s" step={1} value={adim} onChange={setAdim} />
             <Num label="Route release" suffix="s" step={1} value={release} onChange={setRelease} />
           </>
         ) : (
           <>
-            <Num label={tur.kind === "hemzemin" ? "Yavaşlama hızı" : "Acil hız"} suffix="km/h" step={1} value={hiz} onChange={setHiz} />
+            <Num label={tur.kind === "hemzemin" ? t({ tr: "Yavaşlama hızı", en: "Slowdown speed", de: "Verlangsamungsgeschwindigkeit" }) : t({ tr: "Acil hız", en: "Emergency speed", de: "Notgeschwindigkeit" })} suffix="km/h" step={1} value={hiz} onChange={setHiz} />
             {tur.kind === "hemzemin" && tur.tip === "karayolu" && (
-              <Num label="Geçit beklemesi" suffix="s" step={1} value={bekleme} onChange={(v) => setBekleme(Math.max(0, Math.round(v)))} />
+              <Num label={t({ tr: "Geçit beklemesi", en: "Crossing wait", de: "Übergang-Wartezeit" })} suffix="s" step={1} value={bekleme} onChange={(v) => setBekleme(Math.max(0, Math.round(v)))} />
             )}
           </>
         )}
       </div>
       <div className="mt-3 flex justify-end gap-2 text-xs">
-        <button onClick={onIptal} className="rounded px-3 py-1 font-medium" style={{ color: brand.muted }}>İptal</button>
-        <button onClick={kaydet} className="rounded px-3 py-1 font-medium text-white" style={{ background: brand.red }}>Ekle</button>
+        <button onClick={onIptal} className="rounded px-3 py-1 font-medium" style={{ color: brand.muted }}>{t({ tr: "İptal", en: "Cancel", de: "Abbrechen" })}</button>
+        <button onClick={kaydet} className="rounded px-3 py-1 font-medium text-white" style={{ background: brand.red }}>{t({ tr: "Ekle", en: "Add", de: "Hinzufügen" })}</button>
       </div>
     </div>
   );
 }
 
 export function SeritEkleBtn({ aktif, renk, onClick, children }: { aktif: boolean; renk: string; onClick: () => void; children: React.ReactNode }) {
+  const { t } = useDil();
   return (
     <button onClick={onClick}
-      title={aktif ? "Seçili — şeride tıklayın (iptal için tekrar basın)" : "Seç, sonra şeride tıklayarak ekleyin"}
+      title={aktif ? t({ tr: "Seçili — şeride tıklayın (iptal için tekrar basın)", en: "Selected — click the strip (press again to cancel)", de: "Ausgewählt — auf den Streifen klicken (zum Abbrechen erneut drücken)" }) : t({ tr: "Seç, sonra şeride tıklayarak ekleyin", en: "Select, then click the strip to add", de: "Auswählen, dann auf den Streifen klicken zum Hinzufügen" })}
       className="rounded border px-2 py-1 font-medium transition"
       style={{ borderColor: aktif ? renk : brand.border, background: aktif ? renk + "1A" : "transparent", color: aktif ? renk : brand.inkSoft }}>
       {children}
@@ -262,10 +266,11 @@ export function KisitRozet({ tur, ad, konum, detay }: { tur: KisitTur | "durak";
 }
 
 export function MakasEkleMenu({ onEkle }: { onEkle: (t: MakasTip) => void }) {
+  const { t } = useDil();
   const [ac, setAc] = useState(false);
   return (
     <div className="relative">
-      <button onClick={() => setAc((v) => !v)} className="rounded px-2 py-1 text-xs font-medium text-white" style={{ background: brand.ink }}>＋ makas bölgesi</button>
+      <button onClick={() => setAc((v) => !v)} className="rounded px-2 py-1 text-xs font-medium text-white" style={{ background: brand.ink }}>{t({ tr: "＋ makas bölgesi", en: "＋ switch zone", de: "＋ Weichenbereich" })}</button>
       {ac && (
         <div className="absolute right-0 z-10 mt-1 w-52 rounded-md border bg-white py-1 shadow-lg" style={{ borderColor: brand.border }} onMouseLeave={() => setAc(false)}>
           {(Object.keys(MAKAS_TIP_AD) as MakasTip[]).map((t) => (
