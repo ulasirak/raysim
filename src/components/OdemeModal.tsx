@@ -10,6 +10,7 @@
 import { useEffect, useRef } from "react";
 import { useCuzdan } from "@/components/CuzdanProvider";
 import { brand } from "@/lib/anaray/brand";
+import { Ikon } from "@/components/Ikon";
 
 export function OdemeModal() {
   const { odemeIcerik, odemeUrlYedek, odemeKapat } = useCuzdan();
@@ -45,7 +46,7 @@ export function OdemeModal() {
     <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:p-8" role="dialog" aria-modal="true" aria-label="Güvenli ödeme">
       <div className="relative w-full max-w-xl rounded-lg bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: brand.border }}>
-          <span className="font-brand text-sm font-semibold" style={{ color: brand.ink }}>🔒 Güvenli Ödeme — iyzico</span>
+          <span className="font-brand text-sm font-semibold" style={{ color: brand.ink }}><Ikon ad="kilit" size={13} className="mr-1 inline-block align-[-2px]" />Güvenli Ödeme — iyzico</span>
           <button onClick={odemeKapat} title="Ödemeden vazgeç ve geri dön"
             className="rounded-md border px-3 py-1 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
             ✕ Vazgeç

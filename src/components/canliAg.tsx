@@ -18,6 +18,7 @@ import { brand } from "@/lib/anaray/brand";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { LiveNetwork } from "@/components/LiveNetwork";
 import { useDil } from "@/components/DilProvider";
+import { Ikon } from "@/components/Ikon";
 
 const KMH = 1 / 3.6;
 const BOS_SEBEKE: RailNetwork = {
@@ -143,7 +144,7 @@ export function CanliAgSayfa() {
   if (!p.simHazir) {
     return (
       <div className="mx-auto max-w-xl px-4 py-16 text-center">
-        <div className="text-3xl">🚋</div>
+        <div className="flex justify-center" style={{ color: brand.faint }}><Ikon ad="tramvay" size={34} /></div>
         <h1 className="mt-3 text-lg font-semibold" style={{ color: brand.ink }}>{t({ tr: "Canlı Ağ Simülasyonu hazırlanıyor…", en: "Live Network Simulation is loading…", de: "Live-Netz-Simulation wird vorbereitet…" })}</h1>
         <p className="mt-2 text-sm" style={{ color: brand.muted }}>
           {t({ tr: "Bu hat için filo/parklanma verisi bulunamadı. Bağlantı bir hattın canlı simülasyonuna gitmelidir (rapor QR’ı). Sorun sürerse hattı uygulamada açıp filoyu onaylayın.", en: "No fleet/parking data found for this line. The link should point to a line's live simulation (report QR). If the problem persists, open the line in the app and confirm the fleet.", de: "Für diese Strecke wurden keine Flotten-/Abstelldaten gefunden. Der Link sollte zur Live-Simulation einer Strecke führen (Bericht-QR). Bleibt das Problem, öffnen Sie die Strecke in der App und bestätigen Sie die Flotte." })}

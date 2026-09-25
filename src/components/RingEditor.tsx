@@ -24,6 +24,7 @@ import { railmlIhrac } from "@/lib/anaray/railml";
 import { gtfsIhrac, type GtfsDurakZaman } from "@/lib/anaray/gtfs";
 import { ringDogrula, ringSenaryo, dengeOnerisi, yeniHemzemin, yeniMakas, yeniTehlike, yeniKurp, yeniSinyal, ringDuraklari, durakAdiDegistir, durakEkleBas, durakEkleSon, durakBol, durakSil, duraklardanHat, type DurakArasiRing, type SinyalLambasi, type HemzeminTip, type MakasTip, type Kurp } from "@/lib/anaray/ring";
 import { Num, SubBaslik, Panel } from "@/components/RingUI";
+import { Ikon } from "@/components/Ikon";
 
 
 import { KMH, OK, Kucuk } from "@/components/ringEditorOrtak";
@@ -463,7 +464,7 @@ export function RingEditor() {
                     )}
                     {duraklar.length > 2 ? (
                       <button onClick={() => silHatirla((rs) => durakSil(rs, i))} title={t({ tr: "Durağı sil (orta durak → komşu ringleri birleştirir)", en: "Delete stop (middle stop → merges neighboring sections)", de: "Haltestelle löschen (mittlere Haltestelle → verbindet benachbarte Abschnitte)" })}
-                        className="shrink-0 rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}>🗑</button>
+                        className="shrink-0 rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}><Ikon ad="cop" size={14} /></button>
                     ) : (<span className="w-6 shrink-0" />)}
                   </div>
                   {/* Durak bekleme bileşenleri (dwell = kapı aç + yolcu + kapı kapa) + kalkış ölü zamanı */}

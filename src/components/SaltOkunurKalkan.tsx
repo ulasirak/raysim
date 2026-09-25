@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useHesap } from "@/components/SimConfigProvider";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
+import { Ikon } from "@/components/Ikon";
 
 export function SaltOkunurKalkan({ children }: { children: React.ReactNode }) {
   const { yazilabilir, demoMu, paylasimGorunumu } = useHesap();
@@ -28,7 +29,7 @@ export function SaltOkunurKalkan({ children }: { children: React.ReactNode }) {
         {paylasimGorunumu ? (
           <>👁 <b>Salt-okunur paylaşım görünümü</b> — bu hattı yalnız görüntülüyorsunuz; düzenleme kapalı.</>
         ) : (
-          <>🔒 <b>Demo hattı — düzenleme kapalı.</b> Kendi hattınızı kurup kaydetmek için{" "}
+          <><Ikon ad="kilit" size={13} className="mr-1 inline-block align-[-2px]" /><b>Demo hattı — düzenleme kapalı.</b> Kendi hattınızı kurup kaydetmek için{" "}
             <Link href="/giris" className="underline" style={{ color: brand.red }}>giriş yapın</Link> ya da{" "}
             <Link href="/giris?mod=kayit" className="underline" style={{ color: brand.red }}>hesap açın</Link>.
             Simülasyonları çalıştırıp inceleyebilirsiniz.</>

@@ -28,6 +28,7 @@ import { kmh, km, sure } from "@/lib/anaray/format";
 import { panelAcVeGit } from "@/lib/anaray/panelGezinme";
 import { NedenDetay } from "@/components/NedenDetay";
 import { AutoAciklama } from "@/components/AutoAciklama";
+import { Ikon } from "@/components/Ikon";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
@@ -868,7 +869,7 @@ function StudioIc() {
           )
         ) : (
           <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-10 text-center" style={{ borderColor: CK.amber, background: CK.amberBg }}>
-            <div className="text-2xl">🚋</div>
+            <div className="flex justify-center" style={{ color: CK.amberInk }}><Ikon ad="tramvay" size={26} /></div>
             <div className="mt-1 text-sm font-bold" style={{ color: CK.amberInk }}>{t({ tr: "Canlı Ağ Simülasyonunu başlatmak için iki şey gerekli", en: "Two things are needed to start the Live Network Simulation", de: "Zwei Dinge sind nötig, um die Live-Netzsimulation zu starten" })}</div>
             <div className="mt-3 flex flex-col gap-2 text-sm">
               {!depoVar && (
