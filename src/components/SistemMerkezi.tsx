@@ -400,7 +400,7 @@ function Panel({ baslik, aciklama, children, katlanir = false, ozet }: { baslik:
   // Merkezi'ni kısa tutar; bilgi kaybı yok (açınca tam görünür).
   if (katlanir) {
     return (
-      <details className="group mt-6 rounded-lg border bg-white" style={{ borderColor: brand.border }}>
+      <details className="group mt-6 ds-card" style={{ overflow: "hidden" }}>
         <summary className="flex cursor-pointer select-none items-baseline gap-2 p-4">
           <span className="h-4 w-[3px] shrink-0" style={{ background: brand.red }} aria-hidden="true" />
           <h2 className="font-brand text-base font-semibold" style={{ color: brand.ink }}>{baslik}</h2>

@@ -1314,7 +1314,7 @@ function Panel({ baslik, aciklama, children, katlanir = false, ozet, acik = fals
   // (acik=true ile açık): başlıkta tek satır özet; tıkla → detay. Bilgi kaybı yok.
   if (katlanir) {
     return (
-      <details className="group rounded-lg border bg-white" style={{ borderColor: brand.border }} open={acik}>
+      <details className="group ds-card" style={{ overflow: "hidden" }} open={acik}>
         <summary className="flex cursor-pointer select-none items-baseline gap-2 p-5">
           <span className="h-4 w-[3px] shrink-0" style={{ background: brand.red }} aria-hidden="true" />
           <h2 className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{baslik}</h2>
