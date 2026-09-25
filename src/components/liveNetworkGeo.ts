@@ -43,13 +43,14 @@ export function sampleS(points: { t: number; s: number }[], t: number): { s: num
   return { s: last.s, active: true, v: 0 };
 }
 
-// Döngü durum stilleri (rozet + detay).
-export const DURUM_STIL: Record<LoopDurum, { renk: string; ikon: string; ad: string }> = {
-  seyir: { renk: CK.good, ikon: "→", ad: "serbest seyir" },
-  hizlanma: { renk: CK.blue, ikon: "↗", ad: "hızlanıyor" },
-  kisit: { renk: CK.amber, ikon: "⤵", ad: "hız kısıtı" },
-  dwell: { renk: brand.inkSoft, ikon: "‖", ad: "istasyon duruşu" },
-  donus: { renk: CK.orange, ikon: "↻", ad: "terminal dönüşü" },
+// Döngü durum stilleri (rozet + detay). `ad` i18n (Ceviri) — motorun ürettiği enum
+// `durum`'dan türetilen SUNUMSAL etiket; render tarafında t(DURUM_STIL[durum].ad).
+export const DURUM_STIL: Record<LoopDurum, { renk: string; ikon: string; ad: { tr: string; en: string; de: string } }> = {
+  seyir: { renk: CK.good, ikon: "→", ad: { tr: "serbest seyir", en: "free running", de: "freie Fahrt" } },
+  hizlanma: { renk: CK.blue, ikon: "↗", ad: { tr: "hızlanıyor", en: "accelerating", de: "beschleunigt" } },
+  kisit: { renk: CK.amber, ikon: "⤵", ad: { tr: "hız kısıtı", en: "speed restriction", de: "Geschwindigkeitsbeschränkung" } },
+  dwell: { renk: brand.inkSoft, ikon: "‖", ad: { tr: "istasyon duruşu", en: "station dwell", de: "Stationshalt" } },
+  donus: { renk: CK.orange, ikon: "↻", ad: { tr: "terminal dönüşü", en: "terminal turnback", de: "Terminalwende" } },
 };
 // Döngü yörüngesini bir faz anında örnekle (s kümülatif + o anki durum).
 export function sampleLoop(orn: LoopYorunge["ornekler"], phase: number): { s: number; durum: LoopDurum; ad: string; v: number } {
