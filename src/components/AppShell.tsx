@@ -150,6 +150,29 @@ function useKaydirmaIlerlemesi(aktifMi: boolean): number {
 }
 
 /**
+ * Sayfa bir eşiği (px) geçecek kadar kaydırıldı mı — metro-nav'ı kaydırınca ince
+ * şeride indirmek (kompakt mod) için. Yalnız eşik geçilince state değişir (nadir
+ * re-render); Govde'nin `children`'ı sabit referans olduğundan alt ağaç etkilenmez.
+ */
+function useKompaktNav(aktifMi: boolean, esik = 64): boolean {
+  const [kompakt, setKompakt] = useState(false);
+  useEffect(() => {
+    if (!aktifMi) { setKompakt(false); return; }
+    let bekliyor = false;
+    const hesapla = () => {
+      bekliyor = false;
+      const y = window.scrollY > esik;
+      setKompakt((k) => (k === y ? k : y));
+    };
+    const tetikle = () => { if (bekliyor) return; bekliyor = true; requestAnimationFrame(hesapla); };
+    hesapla();
+    window.addEventListener("scroll", tetikle, { passive: true });
+    return () => window.removeEventListener("scroll", tetikle);
+  }, [aktifMi, esik]);
+  return kompakt;
+}
+
+/**
  * Geniş ekran (≥1024px) olup olmadığını döndürür — metro-hattı ile kompakt ızgara
  * navigasyonu arasında DETERMİNİSTİK geçiş için. (Tailwind responsive display
  * sınıfları yerine JS breakpoint: araç zinciri/önbellek kaprislerinden bağımsız.)
@@ -203,6 +226,10 @@ function Govde({ children }: { children: React.ReactNode }) {
   const kaydirma = useKaydirmaIlerlemesi(anaSayfa && icerikVar);
   const ilerleme = anaSayfa ? kaydirma : aktifIndex / Math.max(1, MODULLER.length - 1);
   const genisEkran = useGenisEkran();
+  // Kaydırınca nav ince şeride iner (alt-başlıklar gizlenir, dolgu daralır); ray
+  // hizası dinamik `top` ile korunur, --ray-nav-h ResizeObserver ile kendini günceller.
+  const kompakt = useKompaktNav(icerikVar);
+  const rayTop = kompakt ? 18 : 30; // istasyon nokrası merkezine hizalı (dolgu + 11px)
 
   // Yapışkan metro-nav'ın GERÇEK yüksekliğini `--ray-nav-h` CSS değişkenine yazar →
   // modüllerin yapışkan sekme çubukları (TabBar) tam nav altına oturur. ResizeObserver
@@ -256,13 +283,13 @@ function Govde({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* ── GENİŞ EKRAN (≥1024px): metro hattı ─────────────────────────── */}
-        <div className="relative mx-auto max-w-6xl px-8 pb-3 pt-5" style={{ display: genisEkran ? "block" : "none" }}>
+        <div className={`relative mx-auto max-w-6xl px-8 transition-[padding] duration-200 ${kompakt ? "pb-2 pt-2.5" : "pb-3 pt-5"}`} style={{ display: genisEkran ? "block" : "none" }}>
           {/* Ray tabanı: istasyon nokralarının merkezinden geçen sönük çizgi */}
-          <div className="pointer-events-none absolute left-8 right-8 top-[30px] h-[2px] rounded-full" style={{ background: "#1E3A50" }} />
+          <div className="pointer-events-none absolute left-8 right-8 h-[2px] rounded-full transition-[top] duration-200" style={{ top: rayTop, background: "#1E3A50" }} />
           {/* Kat edilen ray: baştan trene kadar kırmızı-altın */}
           <div
-            className="pointer-events-none absolute left-8 top-[30px] h-[2px] rounded-full transition-[width] duration-150 ease-out"
-            style={{ width: `calc((100% - 4rem) * ${ilerleme})`, background: `linear-gradient(90deg, ${brand.gold}, ${brand.red})` }}
+            className="pointer-events-none absolute left-8 h-[2px] rounded-full transition-[width,top] duration-150 ease-out"
+            style={{ top: rayTop, width: `calc((100% - 4rem) * ${ilerleme})`, background: `linear-gradient(90deg, ${brand.gold}, ${brand.red})` }}
           />
 
           <ul className="relative flex items-start justify-between">
@@ -294,7 +321,7 @@ function Govde({ children }: { children: React.ReactNode }) {
                       {t(m.ad)}
                     </span>
                     <span
-                      className="mt-0.5 text-[0.6rem] leading-snug transition-colors"
+                      className={`text-[0.6rem] leading-snug transition-all ${kompakt ? "mt-0 h-0 overflow-hidden opacity-0" : "mt-0.5 opacity-100"}`}
                       style={{ color: on ? "#E7A9B2" : "#5A6C7C" }}
                     >
                       {t(m.rol)}
@@ -307,7 +334,7 @@ function Govde({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* ── DAR/ORTA EKRAN (<1024px): kompakt istasyon ızgarası ─────────── */}
-        <div className="mx-auto max-w-6xl grid-cols-2 gap-1.5 px-3 pb-2.5 pt-3.5 sm:grid-cols-3" style={{ display: genisEkran ? "none" : "grid" }}>
+        <div className={`mx-auto max-w-6xl grid-cols-2 gap-1.5 px-3 transition-[padding] duration-200 sm:grid-cols-3 ${kompakt ? "pb-1.5 pt-2" : "pb-2.5 pt-3.5"}`} style={{ display: genisEkran ? "none" : "grid" }}>
           {MODULLER.map((m, i) => {
             const on = m.slug === aktif.slug;
             const gecildi = i < aktifIndex;
@@ -335,7 +362,7 @@ function Govde({ children }: { children: React.ReactNode }) {
                   <span className="block truncate text-[0.72rem] font-medium" style={{ color: on ? "#fff" : "#C7D2DC" }}>
                     {t(m.ad)}
                   </span>
-                  <span className="block truncate text-[0.56rem]" style={{ color: on ? "#ffffffb0" : "#6E8091" }}>
+                  <span className={`block truncate text-[0.56rem] transition-all ${kompakt ? "h-0 overflow-hidden opacity-0" : "opacity-100"}`} style={{ color: on ? "#ffffffb0" : "#6E8091" }}>
                     {t(m.rol)}
                   </span>
                 </span>
