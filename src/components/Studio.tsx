@@ -25,6 +25,7 @@ import { tersIsletmeAnaliz } from "@/lib/anaray/tersisletme";
 import { haritaKisitlari, type HaritaKisit } from "@/lib/anaray/ring";
 import { dwellUygulanmisRings, maxYolcuKapasitesi, netTabanAlani } from "@/lib/anaray/yolcu";
 import { kmh, km, sure } from "@/lib/anaray/format";
+import { panelAcVeGit } from "@/lib/anaray/panelGezinme";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
@@ -876,7 +877,7 @@ function StudioIc() {
                 <div className="flex items-center gap-2">
                   <span style={{ color: brand.red }}>✗</span>
                   <span style={{ color: brand.inkSoft }}>{t({ tr: "Tramvay sayısı belirlenmemiş — kaç tren koşacak?", en: "Tram count not set — how many trains will run?", de: "Anzahl Straßenbahnen nicht festgelegt — wie viele Züge fahren?" })}</span>
-                  <a href="#filo-paneli" onClick={(e) => { e.preventDefault(); const el = document.getElementById("filo-paneli"); if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); el.style.outline = `2px solid ${brand.ink}`; el.style.outlineOffset = "3px"; el.style.borderRadius = "10px"; setTimeout(() => { el.style.outline = ""; el.style.outlineOffset = ""; }, 1800); } }} className="rounded px-2 py-0.5 text-xs font-semibold text-white" style={{ background: brand.ink }}>↑ {t({ tr: "Filo & Öneri'de filo sayınızı onaylayın", en: "Confirm your fleet count in Fleet & Recommendation", de: "Bestätigen Sie Ihre Flottenanzahl in Flotte & Empfehlung" })}</a>
+                  <a href="#filo-paneli" onClick={(e) => { e.preventDefault(); panelAcVeGit("filo-paneli", brand.ink); }} className="rounded px-2 py-0.5 text-xs font-semibold text-white" style={{ background: brand.ink }}>↑ {t({ tr: "Filo & Öneri'de filo sayınızı onaylayın", en: "Confirm your fleet count in Fleet & Recommendation", de: "Bestätigen Sie Ihre Flottenanzahl in Flotte & Empfehlung" })}</a>
                 </div>
               )}
               {filoHazir && <div className="flex items-center gap-2"><span style={{ color: "#16794C" }}>✓</span><span style={{ color: brand.muted }}>{t({ tr: "Filo onaylı", en: "Fleet confirmed", de: "Flotte bestätigt" })} ({filoTek} {t({ tr: "araç", en: "vehicles", de: "Fahrzeuge" })}).</span></div>}
@@ -1283,7 +1284,7 @@ function VeriKaynaklari() {
   const { t } = useDil();
   const kaydir = (id: string) => (e: React.MouseEvent) => {
     e.preventDefault();
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    panelAcVeGit(id); // katlanır hedef panel varsa önce açar, sonra kaydırır
   };
   const link = { color: brand.ink } as const;
   return (

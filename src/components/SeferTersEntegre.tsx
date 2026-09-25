@@ -9,6 +9,7 @@ import { useMemo, useState } from "react";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { sure } from "@/lib/anaray/format";
+import { panelAcVeGit } from "@/lib/anaray/panelGezinme";
 import { useDil } from "@/components/DilProvider";
 import { seferTersEntegre } from "@/lib/anaray/seferters";
 import type { DurakArasiRing } from "@/lib/anaray/ring";
@@ -152,7 +153,7 @@ export function SeferTersEntegre({ rings, stock, cfg, isletme, headwayDk, onHead
               </div>
             )}
             {f.problem && (
-              <button type="button" onClick={() => { const el = document.getElementById("filo-paneli"); if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); el.style.outline = `2px solid ${c.bd}`; el.style.outlineOffset = "3px"; el.style.borderRadius = "10px"; setTimeout(() => { el.style.outline = ""; el.style.outlineOffset = ""; }, 1800); } }}
+              <button type="button" onClick={() => panelAcVeGit("filo-paneli", c.bd)}
                 className="mt-2 rounded-md px-2.5 py-1 text-xs font-semibold text-white" style={{ background: c.bd }}>
                 {t({ tr: "Gereken Filo Paneli’ne git →", en: "Go to Required Fleet Panel →", de: "Zum Panel Benötigte Flotte →" })}
               </button>
