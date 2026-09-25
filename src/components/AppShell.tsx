@@ -20,6 +20,21 @@ import { OdemeModal } from "@/components/OdemeModal";
 import { ParametreDuzenleButonu } from "@/components/ParametreDuzenleButonu";
 import { Karsilama } from "@/components/Karsilama";
 import { SunumModu } from "@/components/SunumModu";
+import { DilProvider, useDil, DIL_ADI, type Ceviri, type Dil } from "@/components/DilProvider";
+
+/** Header dil anahtarı (TR · EN · DE) — koyu mürekkep zemine göre. Her yerde görünür. */
+function DilAnahtari() {
+  const { dil, setDil } = useDil();
+  return (
+    <div className="flex items-center gap-0.5 rounded-full border px-0.5 py-0.5" style={{ borderColor: "rgba(255,255,255,0.25)" }} role="group" aria-label="Dil / Language / Sprache">
+      {(["tr", "en", "de"] as Dil[]).map((d) => (
+        <button key={d} type="button" onClick={() => setDil(d)} title={DIL_ADI[d]} aria-pressed={dil === d}
+          className="rounded-full px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide transition"
+          style={dil === d ? { background: "#A8842C", color: "#0C2233" } : { color: "#B9C6D2" }}>{d}</button>
+      ))}
+    </div>
+  );
+}
 import { brand } from "@/lib/anaray/brand";
 
 interface Modul {
@@ -27,8 +42,8 @@ interface Modul {
   href: string;
   /** Tek sayfadaki bölüm ankoru — TekSayfa'daki id ile AYNI. */
   slug: BolumSlug;
-  ad: string;
-  rol: string;
+  ad: Ceviri;
+  rol: Ceviri;
   kod: string;
   rota: string;
 }
@@ -37,11 +52,11 @@ interface Modul {
 // akışı: KUR (Ringler) → ANALİZ (Sefer·Sistem) → BELGELE.
 // Numaralı metro istasyonları bu akışı görselleştirir. (Guard aşağıda sırayı zorlar.)
 const MODULLER: Modul[] = [
-  { href: "/ringler", slug: "ringler", ad: "Durak Arası Ringler", rol: "İşletim hücreleri · worst/best (en kötü/en iyi) · loop (çevrim)", kod: "SR-0001", rota: "Durak Arası Ring Şartları" },
-  { href: "/", slug: "sefer", ad: "Sefer Simülasyonu", rol: "Canlı ağ · fizik · headway (sefer aralığı) · kapasite", kod: "SR-0002", rota: "Ana Hat Sefer Analizi" },
-  { href: "/sistem", slug: "sistem", ad: "Sistem Merkezi", rol: "Kapasite · blocking-time · teşhis", kod: "SR-0003", rota: "Kapasite Analizi & Durum" },
-  { href: "/belgeler", slug: "belgeler", ad: "Teknik Belgeler", rol: "Ücretli PDF rapor · tasarım el kitabı", kod: "SR-0005", rota: "Teknik Dokümantasyon Üretimi" },
-  { href: "/karsilastirma", slug: "karsilastirma", ad: "Karşılaştırma", rol: "Senaryo/proje kıyas · karar desteği", kod: "SR-0006", rota: "Senaryo Karşılaştırma & Karar" },
+  { href: "/ringler", slug: "ringler", ad: { tr: "Durak Arası Ringler", en: "Inter-Stop Cells", de: "Streckenabschnitte" }, rol: { tr: "İşletim hücreleri · worst/best (en kötü/en iyi) · loop (çevrim)", en: "Operating cells · worst/best · loop (cycle)", de: "Betriebszellen · Worst/Best · Umlauf" }, kod: "SR-0001", rota: "Durak Arası Ring Şartları" },
+  { href: "/", slug: "sefer", ad: { tr: "Sefer Simülasyonu", en: "Service Simulation", de: "Betriebssimulation" }, rol: { tr: "Canlı ağ · fizik · headway (sefer aralığı) · kapasite", en: "Live network · physics · headway · capacity", de: "Live-Netz · Physik · Zugfolgezeit · Kapazität" }, kod: "SR-0002", rota: "Ana Hat Sefer Analizi" },
+  { href: "/sistem", slug: "sistem", ad: { tr: "Sistem Merkezi", en: "System Center", de: "Systemzentrale" }, rol: { tr: "Kapasite · blocking-time · teşhis", en: "Capacity · blocking-time · diagnosis", de: "Kapazität · Sperrzeit · Diagnose" }, kod: "SR-0003", rota: "Kapasite Analizi & Durum" },
+  { href: "/belgeler", slug: "belgeler", ad: { tr: "Teknik Belgeler", en: "Technical Documents", de: "Technische Dokumente" }, rol: { tr: "Ücretli PDF rapor · tasarım el kitabı", en: "PDF report · design handbook", de: "PDF-Bericht · Planungshandbuch" }, kod: "SR-0005", rota: "Teknik Dokümantasyon Üretimi" },
+  { href: "/karsilastirma", slug: "karsilastirma", ad: { tr: "Karşılaştırma", en: "Comparison", de: "Vergleich" }, rol: { tr: "Senaryo/proje kıyas · karar desteği", en: "Scenario/project comparison · decision support", de: "Szenarien-/Projektvergleich · Entscheidungshilfe" }, kod: "SR-0006", rota: "Senaryo Karşılaştırma & Karar" },
 ];
 
 // slug sırası ile BOLUM_SLUG'ın kaymadığını derleme anında yakalar.
@@ -154,13 +169,15 @@ function useGenisEkran(): boolean {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <AuthProvider>
-      <SimConfigProvider>
-        <CuzdanProvider>
-          <Govde>{children}</Govde>
-        </CuzdanProvider>
-      </SimConfigProvider>
-    </AuthProvider>
+    <DilProvider>
+      <AuthProvider>
+        <SimConfigProvider>
+          <CuzdanProvider>
+            <Govde>{children}</Govde>
+          </CuzdanProvider>
+        </SimConfigProvider>
+      </AuthProvider>
+    </DilProvider>
   );
 }
 
@@ -168,6 +185,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 function Govde({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "/";
   const anaSayfa = pathname === "/";
+  const { t } = useDil();
   // Giriş yapılmadan modül navigasyonu ve hesap çubuğu gösterilmez: site,
   // ziyaretçiyi doğrudan giriş/kayıt ekranıyla karşılar.
   const erisim = useErisim();
@@ -214,7 +232,7 @@ function Govde({ children }: { children: React.ReactNode }) {
   return (
     <>
       {/* Header: marka + sağ slotta hesap/hat kontrolleri (girişsizken slot boş → sade) */}
-      <Masthead sag={<div className="flex flex-wrap items-center justify-end gap-3"><ParametreDuzenleButonu /><HesapKontrolleri /></div>} />
+      <Masthead altBaslik={t({ tr: "Demiryolu Ağı Simülasyon Sistemi", en: "Railway Network Simulation System", de: "Bahnnetz-Simulationssystem" })} sag={<div className="flex flex-wrap items-center justify-end gap-3"><DilAnahtari /><ParametreDuzenleButonu /><HesapKontrolleri /></div>} />
 
       {/* Modül navigasyonu — sistemin mantıksal iş akışı bir METRO HATTI olarak:
           altı istasyon soldan sağa boru hattı; kaydırma ilerlemesi rayda akan bir
@@ -273,13 +291,13 @@ function Govde({ children }: { children: React.ReactNode }) {
                       className="mt-2.5 text-[0.78rem] font-medium leading-tight transition-colors"
                       style={{ color: on ? "#fff" : gecildi ? "#AEBECB" : "#8494A3" }}
                     >
-                      {m.ad}
+                      {t(m.ad)}
                     </span>
                     <span
                       className="mt-0.5 text-[0.6rem] leading-snug transition-colors"
                       style={{ color: on ? "#E7A9B2" : "#5A6C7C" }}
                     >
-                      {m.rol}
+                      {t(m.rol)}
                     </span>
                   </a>
                 </li>
@@ -315,10 +333,10 @@ function Govde({ children }: { children: React.ReactNode }) {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[0.72rem] font-medium" style={{ color: on ? "#fff" : "#C7D2DC" }}>
-                    {m.ad}
+                    {t(m.ad)}
                   </span>
                   <span className="block truncate text-[0.56rem]" style={{ color: on ? "#ffffffb0" : "#6E8091" }}>
-                    {m.rol}
+                    {t(m.rol)}
                   </span>
                 </span>
               </a>

@@ -3,7 +3,7 @@
 // SLOT (`sag`) taşır: girişliyken hesap/hat kontrolleri (HesapKontrolleri) buraya
 // gömülür; girişsizken slot boştur ve header yalnız marka ile sade kalır.
 
-export function Masthead({ sag }: { sag?: React.ReactNode }) {
+export function Masthead({ sag, altBaslik = "Demiryolu Ağı Simülasyon Sistemi" }: { sag?: React.ReactNode; altBaslik?: string }) {
   return (
     <header className="border-b-2" style={{ background: "#0C2233", borderColor: "#C8102E" }}>
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-3 px-6 py-4">
@@ -26,7 +26,7 @@ export function Masthead({ sag }: { sag?: React.ReactNode }) {
             RaySim
           </div>
           <div className="mt-1.5 text-[0.7rem] uppercase tracking-[0.22em] text-slate-300">
-            Demiryolu Ağı Simülasyon Sistemi
+            {altBaslik}
           </div>
         </div>
 

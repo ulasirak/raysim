@@ -12,8 +12,7 @@
 import { useEffect, useState } from "react";
 import { brand } from "@/lib/anaray/brand";
 import type { BolumSlug } from "@/components/TekSayfa";
-
-type Dil = "tr" | "en" | "de";
+import { useDil, type Dil } from "@/components/DilProvider";
 type Metin = { faz: string; baslik: string; anlatim: string };
 type Adim = {
   no: string;
@@ -187,14 +186,8 @@ export function SunumModu() {
   const [aktif, setAktif] = useState(false);
   const [i, setI] = useState(0);
   const [oto, setOto] = useState(false);
-  // Kayıtlı dil tercihini lazy okur. `dil` yalnız sunum AÇIKKEN (mount sonrası
-  // kullanıcı etkileşimiyle) render edilir → hidrasyon uyuşmazlığı olmaz. SSR'de
-  // window yok → TR.
-  const [dil, setDilState] = useState<Dil>(() => {
-    if (typeof window === "undefined") return "tr";
-    try { const v = localStorage.getItem("raysim-sunum-dil"); return (v === "tr" || v === "en" || v === "de") ? v : "tr"; } catch { return "tr"; }
-  });
-  const setDil = (d: Dil) => { setDilState(d); try { localStorage.setItem("raysim-sunum-dil", d); } catch { /* yok say */ } };
+  // Dil UYGULAMA GENELİ tek kaynaktan (DilProvider) — sunum + arayüz aynı dili kullanır.
+  const { dil, setDil } = useDil();
 
   const git = (n: number) => setI(Math.max(0, Math.min(TOPLAM - 1, n)));
   const kapat = () => { setOto(false); setAktif(false); };
@@ -267,6 +260,13 @@ export function SunumModu() {
         <div className="absolute left-1/2 top-6 -translate-x-1/2"><DilSecici dil={dil} setDil={setDil} koyu /></div>
 
         <div className="sunum-kapak-ic flex flex-col items-center">
+        {/* RaySim amblemi — iki rayın ufka doğru birleşmesi (mühür) */}
+        <svg width="72" height="72" viewBox="0 0 46 46" fill="none" aria-hidden="true" className="mb-5">
+          <circle cx="23" cy="23" r="21.5" stroke="#A8842C" strokeWidth="1" />
+          <circle cx="23" cy="23" r="18" stroke="#E7ECF1" strokeWidth="1" opacity="0.45" />
+          <path d="M17 34 L21.5 13 M29 34 L24.5 13" stroke="#E7ECF1" strokeWidth="1.6" strokeLinecap="round" />
+          <path d="M18.4 28 L27.6 28 M19.3 24 L26.7 24 M20 20.5 L26 20.5 M20.7 17.5 L25.3 17.5" stroke="#C8102E" strokeWidth="1.4" strokeLinecap="round" />
+        </svg>
         <div className="font-brand text-[0.72rem] font-bold tracking-[0.32em]" style={{ color: "#E7D9B0" }}>{m.faz}</div>
         <h1 className="font-brand mt-3 text-5xl font-semibold tracking-tight text-white sm:text-6xl">{m.baslik}</h1>
         <p className="mt-5 max-w-2xl text-sm leading-relaxed sm:text-base" style={{ color: "#C4D2DE" }}>{m.anlatim}</p>
