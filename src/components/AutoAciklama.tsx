@@ -6,6 +6,7 @@
 // biçimde ferahlar, bilgi kaybolmaz. Native <details> — JS/state YOK (freeze-safe).
 
 import { brand } from "@/lib/anaray/brand";
+import { useDil } from "@/components/DilProvider";
 
 const ESIK = 150; // karakter — bunun altındaki açıklamalar olduğu gibi gösterilir
 
@@ -18,6 +19,7 @@ export function AutoAciklama({
   className?: string;
   style?: React.CSSProperties;
 }) {
+  const { t } = useDil();
   if (!metin) return null;
   if (metin.length <= ESIK) return <p className={className} style={style}>{metin}</p>;
 
@@ -34,7 +36,7 @@ export function AutoAciklama({
       <summary className="flex cursor-pointer select-none items-baseline gap-1 [&::-webkit-details-marker]:hidden">
         <span>{bas}</span>
         <span className="shrink-0 whitespace-nowrap font-semibold" style={{ color: brand.ink }}>
-          <span className="group-open:hidden">… devamı </span>
+          <span className="group-open:hidden">… {t({ tr: "devamı", en: "more", de: "mehr" })} </span>
           <span className="inline-block text-[0.85em] transition-transform duration-150 group-open:rotate-90" aria-hidden="true">▸</span>
         </span>
       </summary>

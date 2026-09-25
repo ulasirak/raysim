@@ -124,13 +124,14 @@ export function useCanliAgProps() {
   };
 }
 
-// Tren üstü rozet açıklamaları (mobil-uyumlu).
-const ROZETLER: { s: string; ad: string }[] = [
-  { s: "→", ad: "seyir (blok içinde ilerliyor)" },
-  { s: "↗", ad: "hızlanma (kalkış / hız artışı)" },
-  { s: "⤵", ad: "hız kısıtı (makas / geçit / eğim yavaşlaması)" },
-  { s: "⏸", ad: "istasyon duruşu (yolcu iniş-biniş)" },
-  { s: "🔄", ad: "terminal dönüşü (uçta turnback)" },
+// Tren üstü rozet açıklamaları (mobil-uyumlu). Glyph'ler DURUM_STIL ile birebir aynı;
+// etiketler i18n (t(r.ad) ile render).
+const ROZETLER: { s: string; ad: { tr: string; en: string; de: string } }[] = [
+  { s: "→", ad: { tr: "seyir (blok içinde ilerliyor)", en: "cruising (advancing within block)", de: "Fahrt (bewegt sich im Block)" } },
+  { s: "↗", ad: { tr: "hızlanma (kalkış / hız artışı)", en: "accelerating (departure / speed-up)", de: "Beschleunigung (Anfahrt / Tempozunahme)" } },
+  { s: "⤵", ad: { tr: "hız kısıtı (makas / geçit / eğim yavaşlaması)", en: "speed restriction (turnout / crossing / gradient)", de: "Geschwindigkeitsbeschränkung (Weiche / Übergang / Steigung)" } },
+  { s: "‖", ad: { tr: "istasyon duruşu (yolcu iniş-biniş)", en: "station dwell (boarding / alighting)", de: "Stationshalt (Ein-/Aussteigen)" } },
+  { s: "↻", ad: { tr: "terminal dönüşü (uçta turnback)", en: "terminal turnback (at the end)", de: "Terminalwende (am Ende)" } },
 ];
 
 /** QR'dan gelen ziyaretçi için sade, mobil tam ekran canlı ağ simülasyonu sayfası. */
@@ -177,7 +178,7 @@ export function CanliAgSayfa() {
               <li key={r.s} className="flex items-center gap-2">
                 <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-sm font-bold"
                   style={{ background: brand.ink, color: "#fff" }}>{r.s}</span>
-                <span>{r.ad}</span>
+                <span>{t(r.ad)}</span>
               </li>
             ))}
           </ul>

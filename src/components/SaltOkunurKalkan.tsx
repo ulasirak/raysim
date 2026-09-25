@@ -27,7 +27,7 @@ export function SaltOkunurKalkan({ children }: { children: React.ReactNode }) {
     <div className="mx-auto max-w-6xl px-6 pt-6">
       <div className="rounded-md border-l-4 px-4 py-3 text-sm" style={{ background: CK.amberBg, borderColor: CK.amber, color: brand.ink }}>
         {paylasimGorunumu ? (
-          <>👁 <b>Salt-okunur paylaşım görünümü</b> — bu hattı yalnız görüntülüyorsunuz; düzenleme kapalı.</>
+          <><Ikon ad="goz" size={13} className="mr-1 inline-block align-[-2px]" /><b>Salt-okunur paylaşım görünümü</b> — bu hattı yalnız görüntülüyorsunuz; düzenleme kapalı.</>
         ) : (
           <><Ikon ad="kilit" size={13} className="mr-1 inline-block align-[-2px]" /><b>Demo hattı — düzenleme kapalı.</b> Kendi hattınızı kurup kaydetmek için{" "}
             <Link href="/giris" className="underline" style={{ color: brand.red }}>giriş yapın</Link> ya da{" "}

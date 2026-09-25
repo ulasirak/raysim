@@ -5,7 +5,7 @@
 // Yalnız JSX'te tek başına duran piktografik emojilerin yerine kullanılır (cümle-içi
 // emojiler i18n dizelerinde kalır — ayrı iş). SVG inline (freeze-safe, ek yük yok).
 
-type IkonAd = "cop" | "tramvay" | "kilit";
+type IkonAd = "cop" | "tramvay" | "kilit" | "goz" | "belge" | "oynat";
 
 const YOLLAR: Record<IkonAd, React.ReactNode> = {
   // Çöp kutusu (sil)
@@ -33,6 +33,23 @@ const YOLLAR: Record<IkonAd, React.ReactNode> = {
       <path d="M8 11V7a4 4 0 0 1 8 0v4" />
     </>
   ),
+  // Göz (görüntüleme / salt-okunur paylaşım)
+  goz: (
+    <>
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  // Belge (rapor / doküman)
+  belge: (
+    <>
+      <path d="M6 2h7l5 5v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Z" />
+      <path d="M13 2v5h5" />
+      <path d="M8.5 13h7M8.5 17h7M8.5 9h2.5" />
+    </>
+  ),
+  // Oynat (canlı sim başlat)
+  oynat: <path d="M7 5v14l12-7-12-7Z" />,
 };
 
 export function Ikon({

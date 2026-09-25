@@ -48,8 +48,8 @@ export const DURUM_STIL: Record<LoopDurum, { renk: string; ikon: string; ad: str
   seyir: { renk: CK.good, ikon: "→", ad: "serbest seyir" },
   hizlanma: { renk: CK.blue, ikon: "↗", ad: "hızlanıyor" },
   kisit: { renk: CK.amber, ikon: "⤵", ad: "hız kısıtı" },
-  dwell: { renk: brand.inkSoft, ikon: "⏸", ad: "istasyon duruşu" },
-  donus: { renk: CK.orange, ikon: "🔄", ad: "terminal dönüşü" },
+  dwell: { renk: brand.inkSoft, ikon: "‖", ad: "istasyon duruşu" },
+  donus: { renk: CK.orange, ikon: "↻", ad: "terminal dönüşü" },
 };
 // Döngü yörüngesini bir faz anında örnekle (s kümülatif + o anki durum).
 export function sampleLoop(orn: LoopYorunge["ornekler"], phase: number): { s: number; durum: LoopDurum; ad: string; v: number } {
