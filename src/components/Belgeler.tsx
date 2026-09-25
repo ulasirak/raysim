@@ -11,12 +11,29 @@ import { CK } from "@/lib/anaray/chartkit";
 import { sure } from "@/lib/anaray/format";
 import { useSimConfig, useProje, useArac, useIsletme, useHesap } from "@/components/SimConfigProvider";
 import { PROJE_META_ALANLAR } from "@/lib/anaray/config";
+
+// Proje künyesi alan etiketleri (config.ts veri haritasındaki TR karşılıkları) →
+// EN/DE. `a.key`'e göre çevrilir; eksikse TR ad'a düşer. Bkz. DilProvider.t.
+const KUNYE_ETIKET: Record<string, { tr: string; en: string; de: string }> = {
+  projeAdi: { tr: "Proje adı", en: "Project name", de: "Projektname" },
+  hatAdi: { tr: "Hat adı", en: "Line name", de: "Linienname" },
+  dokumanNo: { tr: "Doküman no", en: "Document no.", de: "Dokument-Nr." },
+  revizyon: { tr: "Revizyon", en: "Revision", de: "Revision" },
+  tarih: { tr: "Tarih", en: "Date", de: "Datum" },
+  idare: { tr: "İdare / İşveren", en: "Authority / Client", de: "Auftraggeber" },
+  yuklenici: { tr: "Yüklenici", en: "Contractor", de: "Auftragnehmer" },
+  musavir: { tr: "Müşavir", en: "Consultant", de: "Berater" },
+  sinyalizasyonFirmasi: { tr: "Sinyalizasyon firması", en: "Signalling company", de: "Signaltechnik-Firma" },
+  hazirlayan: { tr: "Hazırlayan", en: "Prepared by", de: "Erstellt von" },
+  onaylayan: { tr: "Onaylayan", en: "Approved by", de: "Genehmigt von" },
+};
 import { loopDenge, olceklenme, ringChallenge, ringDogrula, loopTamMi } from "@/lib/anaray/ring";
 import { MiniStat, Durum } from "@/components/Kpi";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import { type RaporDil } from "@/lib/anaray/rapor";
 import { RAPOR_BOLUMLER, RAPOR_BOLUM_KREDI, RAPOR_BOLUM_AD, RAPOR_TABAN_KREDI, raporKredi, type RaporBolum } from "@/lib/raporFiyat";
 import { useCuzdan } from "@/components/CuzdanProvider";
+import { useDil } from "@/components/DilProvider";
 import { getAuthInstance } from "@/lib/firebase";
 
 // Rapor sekmesi açılır açılmaz gösterilen ŞIK yükleme ekranı (about:blank yerine).
@@ -58,6 +75,7 @@ const YUKLEME_EKRANI = `<!doctype html><html lang="tr"><head><meta charset="utf-
 </div></body></html>`;
 
 export function Belgeler() {
+  const { t } = useDil();
   const { cfg } = useSimConfig();
   const { rings: ringsHam, meta, patchMeta, yazilabilir, subeler } = useProje();
   const { yenile } = useCuzdan();
@@ -124,7 +142,7 @@ export function Belgeler() {
   const raporAl = async (): Promise<string | null> => {
     const a = getAuthInstance();
     const token = await a?.currentUser?.getIdToken();
-    if (!token) { setDurum({ tip: "err", metin: "Oturum bulunamadı — lütfen yeniden giriş yapın." }); return null; }
+    if (!token) { setDurum({ tip: "err", metin: t({ tr: "Oturum bulunamadı — lütfen yeniden giriş yapın.", en: "Session not found — please sign in again.", de: "Sitzung nicht gefunden — bitte erneut anmelden." }) }); return null; }
     const yanit = await fetch("/api/rapor", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -135,8 +153,12 @@ export function Belgeler() {
       setDurum({
         tip: "err",
         metin: v.hata === "yetersiz_kredi"
-          ? `PDF rapor ${v.gereken} kredi ister; ${v.mevcut} krediniz var. Hesap çubuğundaki “Kredi al”dan yükleyin.`
-          : (v.hata ?? "Rapor üretilemedi."),
+          ? t({
+              tr: `PDF rapor ${v.gereken} kredi ister; ${v.mevcut} krediniz var. Hesap çubuğundaki “Kredi al”dan yükleyin.`,
+              en: `The PDF report needs ${v.gereken} credits; you have ${v.mevcut}. Top up via “Buy credits” in the account bar.`,
+              de: `Der PDF-Bericht benötigt ${v.gereken} Credits; Sie haben ${v.mevcut}. Laden Sie über „Credits kaufen“ in der Kontoleiste auf.`,
+            })
+          : (v.hata ?? t({ tr: "Rapor üretilemedi.", en: "Report could not be generated.", de: "Bericht konnte nicht erstellt werden." })),
       });
       return null;
     }
@@ -150,7 +172,7 @@ export function Belgeler() {
     // dürüstçe uyar (aksi halde sessizce hiçbir şey açılmaz).
     const w = window.open("", "_blank", "width=920,height=1000");
     if (!w) {
-      setDurum({ tip: "err", metin: "Açılır pencere engellendi — tarayıcı pop-up iznini bu site için açıp tekrar deneyin." });
+      setDurum({ tip: "err", metin: t({ tr: "Açılır pencere engellendi — tarayıcı pop-up iznini bu site için açıp tekrar deneyin.", en: "Pop-up blocked — allow pop-ups for this site in your browser and try again.", de: "Pop-up blockiert — erlauben Sie Pop-ups für diese Seite im Browser und versuchen Sie es erneut." }) });
       setMesgul(""); return;
     }
     // Şık yükleme ekranı — boş (about:blank) sekme yerine markalı spinner. Hazır olunca
@@ -167,10 +189,10 @@ export function Belgeler() {
       w.location.href = url; // yükleme ekranından rapora doğrudan yönlendir
       // Belge yüklendikten sonra URL'i serbest bırak (yüklenen doküman bellekte kalır).
       window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
-      setDurum({ tip: "ok", metin: "Rapor yeni sekmede açıldı — yazdırma diyalogunda “Hedef: PDF olarak kaydet”i seçin." });
+      setDurum({ tip: "ok", metin: t({ tr: "Rapor yeni sekmede açıldı — yazdırma diyalogunda “Hedef: PDF olarak kaydet”i seçin.", en: "Report opened in a new tab — choose “Destination: Save as PDF” in the print dialog.", de: "Bericht in einem neuen Tab geöffnet — wählen Sie im Druckdialog „Ziel: Als PDF speichern“." }) });
     } catch (e) {
       try { w.close(); } catch { /* yok say */ }
-      setDurum({ tip: "err", metin: `Rapor açılamadı: ${e instanceof Error ? e.message : String(e)}` });
+      setDurum({ tip: "err", metin: `${t({ tr: "Rapor açılamadı:", en: "Report could not be opened:", de: "Bericht konnte nicht geöffnet werden:" })} ${e instanceof Error ? e.message : String(e)}` });
     } finally { setMesgul(""); }
   };
 
@@ -178,10 +200,10 @@ export function Belgeler() {
   // Projeye kaydedilir; büyükse (data URI > ~300 KB) reddedilir (Firestore doküman sınırı).
   const logoYukle = (file: File) => {
     const reader = new FileReader();
-    reader.onerror = () => setDurum({ tip: "err", metin: "Logo okunamadı." });
+    reader.onerror = () => setDurum({ tip: "err", metin: t({ tr: "Logo okunamadı.", en: "Logo could not be read.", de: "Logo konnte nicht gelesen werden." }) });
     reader.onload = () => {
       const img = new Image();
-      img.onerror = () => setDurum({ tip: "err", metin: "Görsel çözümlenemedi — PNG/JPG deneyin." });
+      img.onerror = () => setDurum({ tip: "err", metin: t({ tr: "Görsel çözümlenemedi — PNG/JPG deneyin.", en: "Image could not be decoded — try PNG/JPG.", de: "Bild konnte nicht decodiert werden — versuchen Sie PNG/JPG." }) });
       img.onload = () => {
         const maxW = 640, maxH = 220;
         const oran = Math.min(maxW / img.width, maxH / img.height, 1);
@@ -189,12 +211,12 @@ export function Belgeler() {
         const canvas = document.createElement("canvas");
         canvas.width = w; canvas.height = h;
         const ctx = canvas.getContext("2d");
-        if (!ctx) { setDurum({ tip: "err", metin: "Logo işlenemedi." }); return; }
+        if (!ctx) { setDurum({ tip: "err", metin: t({ tr: "Logo işlenemedi.", en: "Logo could not be processed.", de: "Logo konnte nicht verarbeitet werden." }) }); return; }
         ctx.drawImage(img, 0, 0, w, h);
         const uri = canvas.toDataURL("image/png");
-        if (uri.length > 300000) { setDurum({ tip: "err", metin: "Logo çok büyük — daha sade/küçük bir görsel deneyin." }); return; }
+        if (uri.length > 300000) { setDurum({ tip: "err", metin: t({ tr: "Logo çok büyük — daha sade/küçük bir görsel deneyin.", en: "Logo too large — try a simpler/smaller image.", de: "Logo zu groß — versuchen Sie ein einfacheres/kleineres Bild." }) }); return; }
         patchMeta({ logo: uri });
-        setDurum({ tip: "ok", metin: "Logo eklendi — PDF kapağında görünür." });
+        setDurum({ tip: "ok", metin: t({ tr: "Logo eklendi — PDF kapağında görünür.", en: "Logo added — appears on the PDF cover.", de: "Logo hinzugefügt — erscheint auf dem PDF-Deckblatt." }) });
       };
       img.src = reader.result as string;
     };
@@ -205,24 +227,24 @@ export function Belgeler() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
       <div className="mb-6 border-b pb-4" style={{ borderColor: brand.border }}>
-        <div className="field-label">Teknik Belgeler — PDF Rapor Üretimi</div>
-        <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>Sinyalizasyon Tasarım Dokümantasyonu</h1>
+        <div className="field-label">{t({ tr: "Teknik Belgeler — PDF Rapor Üretimi", en: "Technical Documents — PDF Report Generation", de: "Technische Dokumente — PDF-Bericht-Erstellung" })}</div>
+        <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>{t({ tr: "Sinyalizasyon Tasarım Dokümantasyonu", en: "Signalling Design Documentation", de: "Signaltechnik-Planungsdokumentation" })}</h1>
         <p className="mt-2 max-w-3xl text-sm" style={{ color: brand.inkSoft }}>
-          Proje künyeni gir; mevcut hat (ringler), filo ve parametrelerden amblemli, baskıya hazır <b>PDF rapor</b> üretilir. Hat şeması, ringler, sinyalizasyon, kapasite ve blocking-time bölümlerinin tamamı <b>senin projenden türer</b>.
+          {t({ tr: "Proje künyeni gir; mevcut hat (ringler), filo ve parametrelerden amblemli, baskıya hazır ", en: "Enter your project details; from the current line (cells), fleet and parameters, a branded, print-ready ", de: "Geben Sie Ihre Projektangaben ein; aus der aktuellen Linie (Abschnitte), Flotte und Parametern wird ein gebrandeter, druckfertiger " })}<b>{t({ tr: "PDF rapor", en: "PDF report", de: "PDF-Bericht" })}</b>{t({ tr: " üretilir. Hat şeması, ringler, sinyalizasyon, kapasite ve blocking-time bölümlerinin tamamı ", en: " is generated. The line diagram, cells, signalling, capacity and blocking-time sections are all ", de: " erstellt. Liniendiagramm, Abschnitte, Signaltechnik, Kapazität und Blockbelegungszeit-Abschnitte werden alle " })}<b>{t({ tr: "senin projenden türer", en: "derived from your project", de: "aus Ihrem Projekt abgeleitet" })}</b>.
         </p>
       </div>
 
       {/* Proje künyesi */}
-      <Panel baslik="Proje Künyesi" aciklama={yazilabilir
-        ? "Belgelerin kapağında ve künyesinde görünür. Hesabınıza otomatik kaydedilir."
-        : "Belgelerin kapağında ve künyesinde görünür. Demo/paylaşım görünümünde düzenlenemez."}>
+      <Panel baslik={t({ tr: "Proje Künyesi", en: "Project Details", de: "Projektangaben" })} aciklama={yazilabilir
+        ? t({ tr: "Belgelerin kapağında ve künyesinde görünür. Hesabınıza otomatik kaydedilir.", en: "Appears on the document cover and title page. Saved to your account automatically.", de: "Erscheint auf Deckblatt und Impressum der Dokumente. Wird automatisch in Ihrem Konto gespeichert." })
+        : t({ tr: "Belgelerin kapağında ve künyesinde görünür. Demo/paylaşım görünümünde düzenlenemez.", en: "Appears on the document cover and title page. Not editable in demo/shared view.", de: "Erscheint auf Deckblatt und Impressum der Dokumente. In der Demo-/Freigabeansicht nicht bearbeitbar." })}>
         {/* Künye proje verisidir → salt-okunur modda kapalı; belge üretimi AÇIK kalır
             (ziyaretçi demo hattının belgesini indirip kaliteyi görebilsin). */}
         <fieldset disabled={!yazilabilir} className="contents">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {PROJE_META_ALANLAR.map((a) => (
               <label key={a.key} className={a.genis ? "sm:col-span-2" : ""}>
-                <span className="field-label">{a.ad}</span>
+                <span className="field-label">{t(KUNYE_ETIKET[a.key] ?? { tr: a.ad })}</span>
                 <input value={typeof meta[a.key] === "string" ? (meta[a.key] as string) : ""} onChange={(e) => patchMeta({ [a.key]: e.target.value })}
                   className="mt-1 w-full rounded border px-2 py-1.5 text-sm disabled:opacity-60" style={{ borderColor: brand.border, color: brand.ink }} />
               </label>
@@ -232,42 +254,42 @@ export function Belgeler() {
           {/* Müşavir/firma LOGOSU — PDF kapağına basılır. Küçültülüp data URI olarak
               projeye kaydedilir (boşsa firma adı/amblem gösterilir). */}
           <div className="mt-4 border-t pt-3" style={{ borderColor: brand.border }}>
-            <span className="field-label">Kapak logosu (opsiyonel)</span>
+            <span className="field-label">{t({ tr: "Kapak logosu (opsiyonel)", en: "Cover logo (optional)", de: "Deckblatt-Logo (optional)" })}</span>
             <div className="mt-1 flex flex-wrap items-center gap-3">
               {meta.logo ? (
                 // Kullanıcı yüklemesi (data URI) — next/image uygulanmaz; basit önizleme.
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={meta.logo} alt="Kapak logosu" className="h-12 w-auto max-w-[180px] rounded border object-contain p-1" style={{ borderColor: brand.border, background: "#fff" }} />
+                <img src={meta.logo} alt={t({ tr: "Kapak logosu", en: "Cover logo", de: "Deckblatt-Logo" })} className="h-12 w-auto max-w-[180px] rounded border object-contain p-1" style={{ borderColor: brand.border, background: "#fff" }} />
               ) : (
-                <span className="text-xs" style={{ color: brand.muted }}>Logo yok — kapakta firma adı görünür.</span>
+                <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "Logo yok — kapakta firma adı görünür.", en: "No logo — the company name appears on the cover.", de: "Kein Logo — der Firmenname erscheint auf dem Deckblatt." })}</span>
               )}
               <label className="cursor-pointer rounded-md border px-3 py-1.5 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.ink }}>
-                {meta.logo ? "Değiştir" : "📷 Logo yükle"}
+                {meta.logo ? t({ tr: "Değiştir", en: "Change", de: "Ändern" }) : t({ tr: "📷 Logo yükle", en: "📷 Upload logo", de: "📷 Logo hochladen" })}
                 <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" className="hidden"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) logoYukle(f); e.currentTarget.value = ""; }} />
               </label>
               {meta.logo && (
-                <button type="button" onClick={() => patchMeta({ logo: "" })} className="text-xs underline" style={{ color: brand.red }}>Kaldır</button>
+                <button type="button" onClick={() => patchMeta({ logo: "" })} className="text-xs underline" style={{ color: brand.red }}>{t({ tr: "Kaldır", en: "Remove", de: "Entfernen" })}</button>
               )}
             </div>
-            <p className="mt-1 text-[0.7rem]" style={{ color: brand.muted }}>PNG/JPG/SVG · otomatik küçültülür (kapak yüksekliği ~18 mm). Şeffaf arka plan için PNG önerilir.</p>
+            <p className="mt-1 text-[0.7rem]" style={{ color: brand.muted }}>{t({ tr: "PNG/JPG/SVG · otomatik küçültülür (kapak yüksekliği ~18 mm). Şeffaf arka plan için PNG önerilir.", en: "PNG/JPG/SVG · resized automatically (cover height ~18 mm). PNG recommended for a transparent background.", de: "PNG/JPG/SVG · wird automatisch verkleinert (Deckblatthöhe ~18 mm). PNG für transparenten Hintergrund empfohlen." })}</p>
           </div>
         </fieldset>
       </Panel>
 
       {/* İndirme */}
-      <Panel baslik="PDF Rapor" aciklama="Amblemli kapak + KPI (temel performans göstergesi) kartları + hat şeması + sinyalizasyon + blocking-time (blok işgal süresi) grafiği — baskıya hazır. Yazdırma diyalogunda “PDF olarak kaydet” seçilir.">
+      <Panel baslik={t({ tr: "PDF Rapor", en: "PDF Report", de: "PDF-Bericht" })} aciklama={t({ tr: "Amblemli kapak + KPI (temel performans göstergesi) kartları + hat şeması + sinyalizasyon + blocking-time (blok işgal süresi) grafiği — baskıya hazır. Yazdırma diyalogunda “PDF olarak kaydet” seçilir.", en: "Branded cover + KPI (key performance indicator) cards + line diagram + signalling + blocking-time chart — print-ready. Choose “Save as PDF” in the print dialog.", de: "Gebrandetes Deckblatt + KPI-Karten (Leistungskennzahlen) + Liniendiagramm + Signaltechnik + Blockbelegungszeit-Diagramm — druckfertig. Wählen Sie im Druckdialog „Als PDF speichern“." })}>
         <div className="mb-3 flex items-center gap-2">
-          <span className="field-label">Rapor dili</span>
+          <span className="field-label">{t({ tr: "Rapor dili", en: "Report language", de: "Berichtssprache" })}</span>
           <div className="inline-flex overflow-hidden rounded-md border" style={{ borderColor: brand.borderStrong }}>
             {(["tr", "en"] as RaporDil[]).map((d) => (
               <button key={d} onClick={() => setDil(d)} className="px-3 py-1 text-xs font-semibold uppercase transition"
                 style={dil === d ? { background: brand.ink, color: "#fff" } : { background: "#fff", color: brand.inkSoft }}>
-                {d === "tr" ? "Türkçe" : "English"}
+                {d === "tr" ? t({ tr: "Türkçe", en: "Turkish", de: "Türkisch" }) : t({ tr: "English", en: "English", de: "Englisch" })}
               </button>
             ))}
           </div>
-          <span className="text-xs" style={{ color: brand.muted }}>PDF rapor bu dilde üretilir (yapısal metinler; proje verisi/adlar kaynak dilde kalır).</span>
+          <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "PDF rapor bu dilde üretilir (yapısal metinler; proje verisi/adlar kaynak dilde kalır).", en: "The PDF report is produced in this language (structural text; project data/names stay in their source language).", de: "Der PDF-Bericht wird in dieser Sprache erstellt (strukturelle Texte; Projektdaten/-namen bleiben in der Ausgangssprache)." })}</span>
         </div>
 
         {/* QR DEEP-LINK anahtarı — rapordaki kare kodun bu hattın canlı simülasyonuna
@@ -276,10 +298,10 @@ export function Belgeler() {
           <label className="mb-3 flex items-start gap-2 rounded border p-2.5 text-xs" style={{ borderColor: brand.border, color: brand.inkSoft }}>
             <input type="checkbox" checked={paylasimAcik} onChange={(e) => paylasimDegistir(e.target.checked)} className="mt-0.5 shrink-0" />
             <span>
-              <b>Kapaktaki QR → bu hattın canlı simülasyonu.</b> Açıkken rapordaki kare kod, <b>bu hattın</b> salt-okunur canlı simülasyonuna gider — müşavir kamerayla tarayıp hattı işler hâlde görür. Kapalıyken QR ana sayfaya düşer.
+              <b>{t({ tr: "Kapaktaki QR → bu hattın canlı simülasyonu.", en: "QR on the cover → this line's live simulation.", de: "QR auf dem Deckblatt → Live-Simulation dieser Linie." })}</b> {t({ tr: "Açıkken rapordaki kare kod, ", en: "When on, the report's QR code goes to ", de: "Wenn aktiviert, führt der QR-Code im Bericht zur " })}<b>{t({ tr: "bu hattın", en: "this line's", de: "schreibgeschützten Live-Simulation dieser Linie" })}</b>{t({ tr: " salt-okunur canlı simülasyonuna gider — müşavir kamerayla tarayıp hattı işler hâlde görür. Kapalıyken QR ana sayfaya düşer.", en: " read-only live simulation — the consultant scans it with a camera and sees the line running. When off, the QR falls back to the home page.", de: " — der Berater scannt ihn mit der Kamera und sieht die Linie in Betrieb. Wenn deaktiviert, führt der QR zur Startseite." })}
               {paylasimAcik
-                ? <span style={{ color: CK.good }}> ✓ Açık — QR bu hatta gider (linki bilen yalnız görüntüler, düzenleyemez).</span>
-                : <span style={{ color: brand.muted }}> Kapalı. Açarsanız hat, linki bilen herkese salt-okunur görünür olur.</span>}
+                ? <span style={{ color: CK.good }}> {t({ tr: "✓ Açık — QR bu hatta gider (linki bilen yalnız görüntüler, düzenleyemez).", en: "✓ On — the QR goes to this line (anyone with the link can only view, not edit).", de: "✓ Aktiviert — der QR führt zu dieser Linie (wer den Link kennt, kann nur ansehen, nicht bearbeiten)." })}</span>
+                : <span style={{ color: brand.muted }}> {t({ tr: "Kapalı. Açarsanız hat, linki bilen herkese salt-okunur görünür olur.", en: "Off. If you turn it on, the line becomes read-only visible to anyone with the link.", de: "Deaktiviert. Wenn Sie es aktivieren, wird die Linie für jeden mit dem Link schreibgeschützt sichtbar." })}</span>}
             </span>
           </label>
         )}
@@ -288,23 +310,22 @@ export function Belgeler() {
           <div className="mb-3 rounded-md border-l-4 px-4 py-3 text-sm" style={{ background: CK.badBgSoft, borderColor: brand.red, color: brand.ink }}>
             <div className="font-medium" style={{ color: brand.red }}>
               {rings.length === 0
-                ? "⚠ Hat boş — resmî belge üretimi kapalı"
-                : `⚠ Hat eksik — resmî belge üretimi kapalı (${eksikler.length} zorunlu şart)`}
+                ? t({ tr: "⚠ Hat boş — resmî belge üretimi kapalı", en: "⚠ Line empty — official document generation disabled", de: "⚠ Linie leer — offizielle Dokumenterstellung deaktiviert" })
+                : `${t({ tr: "⚠ Hat eksik — resmî belge üretimi kapalı", en: "⚠ Line incomplete — official document generation disabled", de: "⚠ Linie unvollständig — offizielle Dokumenterstellung deaktiviert" })} (${eksikler.length} ${t({ tr: "zorunlu şart", en: "required conditions", de: "Pflichtbedingungen" })})`}
             </div>
             {rings.length === 0 ? (
               <div className="mt-1 text-xs" style={{ color: brand.inkSoft }}>
-                Bu hatta henüz durak arası ring tanımlı değil. Künyeyi şimdi doldurabilirsiniz; belgeler
-                hattı kurduktan sonra üretilir.
+                {t({ tr: "Bu hatta henüz durak arası ring tanımlı değil. Künyeyi şimdi doldurabilirsiniz; belgeler hattı kurduktan sonra üretilir.", en: "No inter-stop cell is defined on this line yet. You can fill in the details now; documents are produced once the line is built.", de: "Für diese Linie ist noch kein Streckenabschnitt definiert. Sie können die Angaben jetzt ausfüllen; Dokumente werden erstellt, sobald die Linie aufgebaut ist." })}
               </div>
             ) : (
               <ul className="ml-4 mt-1 list-disc text-xs" style={{ color: brand.inkSoft }}>
                 {eksikler.slice(0, 6).map((m, i) => (<li key={i}>{m}</li>))}
-                {eksikler.length > 6 && <li>… ve {eksikler.length - 6} tane daha</li>}
+                {eksikler.length > 6 && <li>{t({ tr: "… ve", en: "… and", de: "… und" })} {eksikler.length - 6} {t({ tr: "tane daha", en: "more", de: "weitere" })}</li>}
               </ul>
             )}
             <div className="mt-1 text-xs" style={{ color: brand.muted }}>
-              {rings.length === 0 ? "Hattı" : "Eksikleri"} <b>Ringler</b> modülünden {rings.length === 0 ? "kurun" : "tamamlayın"};
-              belge ancak tam hattan üretilir.
+              {rings.length === 0 ? t({ tr: "Hattı", en: "Set up the line via the", de: "Richten Sie die Linie über das Modul" }) : t({ tr: "Eksikleri", en: "Complete the gaps via the", de: "Ergänzen Sie das Fehlende über das Modul" })} <b>Ringler</b> {t({ tr: "modülünden", en: "module", de: "" })} {rings.length === 0 ? t({ tr: "kurun", en: "", de: "" }) : t({ tr: "tamamlayın", en: "", de: "" })};{" "}
+              {t({ tr: "belge ancak tam hattan üretilir.", en: "a document is produced only from a complete line.", de: "ein Dokument wird nur aus einer vollständigen Linie erzeugt." })}
             </div>
           </div>
         )}
@@ -312,8 +333,8 @@ export function Belgeler() {
         {/* BÖLÜM SEÇİCİ — hangi bölümler PDF'e girecek; fiyat KÜMÜLATİF (taban + seçilen). */}
         <div className="mb-3 rounded-md border p-3" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
           <div className="mb-2 flex items-center justify-between">
-            <span className="field-label">Rapor Bölümleri — dâhil etmek istediklerini seç</span>
-            <span className="text-xs" style={{ color: brand.muted }}>Taban {RAPOR_TABAN_KREDI} kredi — kapak + künye + içindekiler + Girdi Parametreleri + Sinyalizasyon (SG) daima dâhil</span>
+            <span className="field-label">{t({ tr: "Rapor Bölümleri — dâhil etmek istediklerini seç", en: "Report Sections — select which to include", de: "Berichtsabschnitte — wählen Sie die gewünschten aus" })}</span>
+            <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "Taban", en: "Base", de: "Basis" })} {RAPOR_TABAN_KREDI} {t({ tr: "kredi — kapak + künye + içindekiler + Girdi Parametreleri + Sinyalizasyon (SG) daima dâhil", en: "credits — cover + title page + contents + Input Parameters + Signalling (SG) always included", de: "Credits — Deckblatt + Impressum + Inhalt + Eingabeparameter + Signaltechnik (SG) immer enthalten" })}</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {RAPOR_BOLUMLER.map((b) => {
@@ -322,7 +343,7 @@ export function Belgeler() {
                 <button key={b} type="button" onClick={() => secBolum(b)}
                   className="rounded-md border px-2.5 py-1.5 text-xs font-medium transition"
                   style={on ? { background: brand.ink, color: "#fff", borderColor: brand.ink } : { background: "#fff", color: brand.inkSoft, borderColor: brand.border }}
-                  title={on ? "Dâhil — çıkarmak için tıkla" : "Hariç — eklemek için tıkla"}>
+                  title={on ? t({ tr: "Dâhil — çıkarmak için tıkla", en: "Included — click to remove", de: "Enthalten — zum Entfernen klicken" }) : t({ tr: "Hariç — eklemek için tıkla", en: "Excluded — click to add", de: "Ausgeschlossen — zum Hinzufügen klicken" })}>
                   <span>{on ? "✓ " : "＋ "}{dil === "en" ? RAPOR_BOLUM_AD[b].en : RAPOR_BOLUM_AD[b].tr}</span>
                   <span className="ml-1.5 rounded px-1 py-0.5 text-[0.6rem] font-bold" style={{ background: on ? "rgba(255,255,255,0.22)" : CK.track, color: on ? "#fff" : brand.muted }}>+{RAPOR_BOLUM_KREDI[b]} kr</span>
                 </button>
@@ -330,16 +351,16 @@ export function Belgeler() {
             })}
           </div>
           <div className="mt-2 flex items-center gap-2 text-xs" style={{ color: brand.muted }}>
-            <button type="button" onClick={() => setSecim(Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, true])) as Record<RaporBolum, boolean>)} className="underline">tümü</button>
-            <button type="button" onClick={() => setSecim(Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, false])) as Record<RaporBolum, boolean>)} className="underline">yalnız taban</button>
-            <span className="ml-auto text-sm font-semibold" style={{ color: brand.ink }}>Toplam: {toplamKredi} kredi</span>
+            <button type="button" onClick={() => setSecim(Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, true])) as Record<RaporBolum, boolean>)} className="underline">{t({ tr: "tümü", en: "all", de: "alle" })}</button>
+            <button type="button" onClick={() => setSecim(Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, false])) as Record<RaporBolum, boolean>)} className="underline">{t({ tr: "yalnız taban", en: "base only", de: "nur Basis" })}</button>
+            <span className="ml-auto text-sm font-semibold" style={{ color: brand.ink }}>{t({ tr: "Toplam:", en: "Total:", de: "Gesamt:" })} {toplamKredi} {t({ tr: "kredi", en: "credits", de: "Credits" })}</span>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
           <button onClick={raporUret} disabled={!!mesgul || !hatTam}
             className="rounded-md px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: brand.red }}>
-            {mesgul === "rapor" ? "Açılıyor…" : `🖨 PDF Rapor · ${toplamKredi} kredi`}
+            {mesgul === "rapor" ? t({ tr: "Açılıyor…", en: "Opening…", de: "Wird geöffnet…" }) : `🖨 ${t({ tr: "PDF Rapor", en: "PDF Report", de: "PDF-Bericht" })} · ${toplamKredi} ${t({ tr: "kredi", en: "credits", de: "Credits" })}`}
           </button>
           {durum && (
             <span className="text-sm" style={{ color: durum.tip === "err" ? brand.red : durum.tip === "ok" ? CK.good : brand.muted }}>
@@ -350,16 +371,16 @@ export function Belgeler() {
 
         {/* Belge içeriği özeti — ekranda HER ZAMAN gerçek değerler (mod yok). */}
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <MiniStat etiket="Durak arası hücre" deger={`${ozet.ring}`} alt={`${ozet.makas} makas`} />
-          <MiniStat etiket="Challenge (zorluk) kaydı" deger={`${ozet.chSayi}`} alt={`${ozet.kritik} kritik`} vurgu={ozet.kritik > 0 ? brand.red : undefined} />
-          <MiniStat etiket="Darboğaz" deger={ozet.darbogaz ? sure(ozet.darbogaz.worstToplam) : "—"} alt={ozet.darbogaz?.ad} vurgu={brand.red} />
+          <MiniStat etiket={t({ tr: "Durak arası hücre", en: "Inter-stop cell", de: "Streckenabschnitt" })} deger={`${ozet.ring}`} alt={`${ozet.makas} makas`} />
+          <MiniStat etiket={t({ tr: "Challenge (zorluk) kaydı", en: "Challenge records", de: "Herausforderungen" })} deger={`${ozet.chSayi}`} alt={`${ozet.kritik} ${t({ tr: "kritik", en: "critical", de: "kritisch" })}`} vurgu={ozet.kritik > 0 ? brand.red : undefined} />
+          <MiniStat etiket={t({ tr: "Darboğaz", en: "Bottleneck", de: "Engpass" })} deger={ozet.darbogaz ? sure(ozet.darbogaz.worstToplam) : "—"} alt={ozet.darbogaz?.ad} vurgu={brand.red} />
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs" style={{ color: rings.length === 0 ? brand.muted : (ozet.headwayUygun && ozet.dengeli) ? CK.good : CK.amber }}>
           {rings.length > 0 && <Durum tip={(ozet.headwayUygun && ozet.dengeli) ? "uygun" : "uyari"} />}
           {rings.length === 0
-            ? "Hat kurulduğunda burada headway/denge değerlendirmesi görünür."
-            : (ozet.headwayUygun && ozet.dengeli) ? "Belge: tüm hücreler headway'e uygun ve dengeli." : "Belge, headway ihlali / dengesizlik uyarılarını içerecek."}
-          {sunum && <span style={{ color: brand.muted }}> · Not: PDF <b>müşteri sunumu</b> olarak, onaylı tasarım dilinde üretilecek.</span>}
+            ? t({ tr: "Hat kurulduğunda burada headway/denge değerlendirmesi görünür.", en: "Once the line is built, the headway/balance assessment appears here.", de: "Sobald die Linie aufgebaut ist, erscheint hier die Zugfolgezeit-/Ausgeglichenheits-Bewertung." })
+            : (ozet.headwayUygun && ozet.dengeli) ? t({ tr: "Belge: tüm hücreler headway'e uygun ve dengeli.", en: "Document: all cells are headway-compliant and balanced.", de: "Dokument: alle Abschnitte sind zugfolgezeitkonform und ausgeglichen." }) : t({ tr: "Belge, headway ihlali / dengesizlik uyarılarını içerecek.", en: "The document will include headway-violation / imbalance warnings.", de: "Das Dokument enthält Warnungen zu Zugfolgezeit-Verstößen / Ungleichgewicht." })}
+          {sunum && <span style={{ color: brand.muted }}> {t({ tr: "· Not: PDF ", en: "· Note: the PDF ", de: "· Hinweis: Das PDF " })}<b>{t({ tr: "müşteri sunumu", en: "customer presentation", de: "Kundenpräsentation" })}</b>{t({ tr: " olarak, onaylı tasarım dilinde üretilecek.", en: " will be produced as one, in the approved-design language.", de: " wird als solche in der Sprache der freigegebenen Planung erstellt." })}</span>}
         </div>
       </Panel>
 
@@ -370,14 +391,14 @@ export function Belgeler() {
         <label className="mt-6 flex items-start gap-2 rounded border p-2.5 text-xs" style={{ borderColor: sunum ? CK.good : brand.border, background: sunum ? CK.goodBgSoft : "transparent", color: brand.inkSoft }}>
           <input type="checkbox" checked={sunum} onChange={(e) => patchMeta({ sunumModu: e.target.checked })} className="mt-0.5 shrink-0" />
           <span>
-            <b>PDF&apos;i müşteri sunumu olarak üret</b> — üretilecek raporda ihlal/risk/denge uyarıları, hat <b>onaylı/kesinleşmiş tasarım</b> dilinde sunulur (belirleyici kısıt nötr anlatılır).
-            <span style={{ color: brand.faint }}> Bu seçenek yalnızca PDF çıktısını etkiler; <b>ekranda her zaman gerçek</b> headway/denge/kritik değerleri görürsünüz. Mühendislik teslimi için KAPALI bırakın.</span>
+            <b>{t({ tr: "PDF'i müşteri sunumu olarak üret", en: "Produce the PDF as a customer presentation", de: "PDF als Kundenpräsentation erstellen" })}</b>{t({ tr: " — üretilecek raporda ihlal/risk/denge uyarıları, hat ", en: " — in the generated report, violation/risk/balance warnings are presented as an ", de: " — im erstellten Bericht werden Verstoß-/Risiko-/Ausgeglichenheits-Warnungen als " })}<b>{t({ tr: "onaylı/kesinleşmiş tasarım", en: "approved/finalized design", de: "freigegebene/endgültige Planung" })}</b>{t({ tr: " dilinde sunulur (belirleyici kısıt nötr anlatılır).", en: " (the governing constraint is described neutrally).", de: " dargestellt (die maßgebende Einschränkung wird neutral beschrieben)." })}
+            <span style={{ color: brand.faint }}> {t({ tr: "Bu seçenek yalnızca PDF çıktısını etkiler; ", en: "This option only affects the PDF output; ", de: "Diese Option betrifft nur die PDF-Ausgabe; " })}<b>{t({ tr: "ekranda her zaman gerçek", en: "on screen you always see the real", de: "auf dem Bildschirm sehen Sie stets die echten" })}</b>{t({ tr: " headway/denge/kritik değerleri görürsünüz. Mühendislik teslimi için KAPALI bırakın.", en: " headway/balance/critical values. Leave OFF for engineering delivery.", de: " Zugfolgezeit-/Ausgeglichenheits-/kritischen Werte. Für die Ingenieurabgabe AUS lassen." })}</span>
           </span>
         </label>
       )}
 
       <footer className="mt-10 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
-        RaySim · Belge üretici — hat verisi Ringler modülünden, parametreler Sistem Merkezi&apos;nden gelir; belgeler bu tek kaynaktan üretilir.
+        {t({ tr: "RaySim · Belge üretici — hat verisi Ringler modülünden, parametreler Sistem Merkezi'nden gelir; belgeler bu tek kaynaktan üretilir.", en: "RaySim · Document generator — line data comes from the Ringler module, parameters from the System Center; documents are produced from this single source.", de: "RaySim · Dokumentgenerator — Liniendaten stammen aus dem Modul Ringler, Parameter aus dem Systemzentrum; Dokumente werden aus dieser einzigen Quelle erstellt." })}
       </footer>
     </div>
   );

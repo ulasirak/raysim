@@ -8,22 +8,11 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth, authHata } from "@/components/AuthProvider";
+import { useDil } from "@/components/DilProvider";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 
 type Mod = "giris" | "kayit" | "sifre";
-
-const BASLIK: Record<Mod, string> = {
-  giris: "Giriş yap",
-  kayit: "Hesap oluştur",
-  sifre: "Şifremi unuttum",
-};
-
-const BUTON: Record<Mod, string> = {
-  giris: "Giriş yap",
-  kayit: "Hesabı oluştur",
-  sifre: "Sıfırlama bağlantısı gönder",
-};
 
 /**
  * `kapiModu`: ekran, sitenin girişinde (Kapi içinde) gösteriliyor demektir —
@@ -32,8 +21,21 @@ const BUTON: Record<Mod, string> = {
  */
 export function GirisEkrani({ kapiModu = false }: { kapiModu?: boolean } = {}) {
   const router = useRouter();
+  const { t } = useDil();
   const { user, hazir, yapilandirildi, girisYap, kayitOl, sifreSifirla } = useAuth();
   const [mod, setMod] = useState<Mod>("giris");
+
+  const BASLIK: Record<Mod, string> = {
+    giris: t({ tr: "Giriş yap", en: "Sign in", de: "Anmelden" }),
+    kayit: t({ tr: "Hesap oluştur", en: "Create account", de: "Konto erstellen" }),
+    sifre: t({ tr: "Şifremi unuttum", en: "Forgot password", de: "Passwort vergessen" }),
+  };
+
+  const BUTON: Record<Mod, string> = {
+    giris: t({ tr: "Giriş yap", en: "Sign in", de: "Anmelden" }),
+    kayit: t({ tr: "Hesabı oluştur", en: "Create account", de: "Konto erstellen" }),
+    sifre: t({ tr: "Sıfırlama bağlantısı gönder", en: "Send reset link", de: "Reset-Link senden" }),
+  };
   const [eposta, setEposta] = useState("");
   const [sifre, setSifre] = useState("");
   const [mesgul, setMesgul] = useState(false);
@@ -70,7 +72,7 @@ export function GirisEkrani({ kapiModu = false }: { kapiModu?: boolean } = {}) {
         await kayitOl(eposta, sifre);
       } else {
         await sifreSifirla(eposta);
-        setMesaj({ tip: "ok", metin: "Şifre sıfırlama bağlantısı e-postanıza gönderildi." });
+        setMesaj({ tip: "ok", metin: t({ tr: "Şifre sıfırlama bağlantısı e-postanıza gönderildi.", en: "A password reset link has been sent to your e-mail.", de: "Ein Link zum Zurücksetzen des Passworts wurde an deine E-Mail gesendet." }) });
       }
     } catch (err) {
       setMesaj({ tip: "err", metin: authHata(err) });
@@ -96,31 +98,31 @@ export function GirisEkrani({ kapiModu = false }: { kapiModu?: boolean } = {}) {
         <h1 className="font-brand text-xl font-semibold" style={{ color: brand.ink }}>{BASLIK[mod]}</h1>
         <p className="mt-1 text-sm" style={{ color: brand.muted }}>
           {mod === "sifre"
-            ? "E-posta adresinizi girin, sıfırlama bağlantısı gönderelim."
-            : "Demiryolu Ağı Simülasyon Sistemi"}
+            ? t({ tr: "E-posta adresinizi girin, sıfırlama bağlantısı gönderelim.", en: "Enter your e-mail address and we'll send a reset link.", de: "Gib deine E-Mail-Adresse ein, wir senden einen Reset-Link." })
+            : t({ tr: "Demiryolu Ağı Simülasyon Sistemi", en: "Rail Network Simulation System", de: "Bahnnetz-Simulationssystem" })}
         </p>
 
         {!yapilandirildi ? (
           <div className="mt-5 rounded-md border-l-4 px-4 py-3 text-sm" style={{ background: CK.badBgSoft, borderColor: brand.red, color: brand.ink }}>
-            ⚠ Firebase yapılandırılmadı — <span className="font-mono">.env.local</span> içindeki
-            <span className="font-mono"> NEXT_PUBLIC_FIREBASE_*</span> değerleri girilmeden hesap açılamaz.
+            ⚠ {t({ tr: "Firebase yapılandırılmadı —", en: "Firebase not configured —", de: "Firebase nicht konfiguriert —" })} <span className="font-mono">.env.local</span> {t({ tr: "içindeki", en: "in", de: "in" })}
+            <span className="font-mono"> NEXT_PUBLIC_FIREBASE_*</span> {t({ tr: "değerleri girilmeden hesap açılamaz.", en: "values must be set before an account can be created.", de: "Werte müssen gesetzt sein, bevor ein Konto erstellt werden kann." })}
           </div>
         ) : (
           <>
             <form onSubmit={gonder} className="mt-5 flex flex-col gap-3">
               <label className="block">
-                <span className="field-label">E-posta</span>
+                <span className="field-label">{t({ tr: "E-posta", en: "E-mail", de: "E-Mail" })}</span>
                 <input type="email" required value={eposta} onChange={(e) => setEposta(e.target.value)}
-                  autoComplete="email" autoFocus placeholder="ad@firma.com"
+                  autoComplete="email" autoFocus placeholder={t({ tr: "ad@firma.com", en: "name@company.com", de: "name@firma.de" })}
                   className="mt-1 w-full rounded border px-3 py-2 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
               </label>
 
               {mod !== "sifre" && (
                 <label className="block">
-                  <span className="field-label">Şifre</span>
+                  <span className="field-label">{t({ tr: "Şifre", en: "Password", de: "Passwort" })}</span>
                   <input type="password" required value={sifre} onChange={(e) => setSifre(e.target.value)}
                     autoComplete={mod === "kayit" ? "new-password" : "current-password"} minLength={6}
-                    placeholder={mod === "kayit" ? "en az 6 karakter" : "••••••••"}
+                    placeholder={mod === "kayit" ? t({ tr: "en az 6 karakter", en: "at least 6 characters", de: "mindestens 6 Zeichen" }) : "••••••••"}
                     className="mt-1 w-full rounded border px-3 py-2 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
                 </label>
               )}
@@ -143,23 +145,23 @@ export function GirisEkrani({ kapiModu = false }: { kapiModu?: boolean } = {}) {
               {mod === "giris" && (
                 <div className="flex items-center justify-between">
                   <button type="button" onClick={() => modDegistir("kayit")} className="font-medium underline" style={{ color: brand.ink }}>
-                    Hesap oluştur
+                    {t({ tr: "Hesap oluştur", en: "Create account", de: "Konto erstellen" })}
                   </button>
                   <button type="button" onClick={() => modDegistir("sifre")} className="underline">
-                    Şifremi unuttum
+                    {t({ tr: "Şifremi unuttum", en: "Forgot password", de: "Passwort vergessen" })}
                   </button>
                 </div>
               )}
               {mod === "kayit" && (
                 <div className="flex items-center justify-between">
-                  <span>Hesabınız var mı?</span>
+                  <span>{t({ tr: "Hesabınız var mı?", en: "Already have an account?", de: "Schon ein Konto?" })}</span>
                   <button type="button" onClick={() => modDegistir("giris")} className="font-medium underline" style={{ color: brand.ink }}>
-                    Giriş yap
+                    {t({ tr: "Giriş yap", en: "Sign in", de: "Anmelden" })}
                   </button>
                 </div>
               )}
               {mod === "sifre" && (
-                <button type="button" onClick={() => modDegistir("giris")} className="underline">← Girişe dön</button>
+                <button type="button" onClick={() => modDegistir("giris")} className="underline">← {t({ tr: "Girişe dön", en: "Back to sign in", de: "Zurück zur Anmeldung" })}</button>
               )}
             </div>
           </>

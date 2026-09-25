@@ -381,9 +381,12 @@ function Govde({ children }: { children: React.ReactNode }) {
         <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-5 px-6 py-6 sm:grid-cols-3">
           {/* Sol: OpenTrack ile ilişki — işbirliği/doğrulama beyanı (canlı entegre iddiası YOK) */}
           <div className="text-center text-[0.7rem] leading-relaxed text-slate-400 sm:text-left">
-            <span className="text-slate-200">OpenTrack</span> ile işbirliğiyle doğrulanmış;
-            blocking-time · Sperrzeitentreppe · UIC 406 metodolojisine dayanan
-            <span className="text-slate-200"> bağımsız</span> çekirdek.
+            <span className="text-slate-200">OpenTrack</span>{" "}
+            {t({
+              tr: "ile işbirliğiyle doğrulanmış; blocking-time · Sperrzeitentreppe · UIC 406 metodolojisine dayanan bağımsız çekirdek.",
+              en: "verified in collaboration; an independent core based on the blocking-time · Sperrzeitentreppe · UIC 406 methodology.",
+              de: "in Zusammenarbeit verifiziert; ein unabhängiger Kern auf Basis der Methodik blocking-time · Sperrzeitentreppe · UIC 406.",
+            })}
           </div>
 
           {/* Orta: RaySim amblemi */}
@@ -399,9 +402,9 @@ function Govde({ children }: { children: React.ReactNode }) {
 
           {/* Sağ: künye */}
           <div className="text-center text-[0.7rem] leading-relaxed text-slate-400 sm:text-right">
-            Demiryolu Ağı Simülasyon Sistemi
+            {t({ tr: "Demiryolu Ağı Simülasyon Sistemi", en: "Railway Network Simulation System", de: "Bahnnetz-Simulationssystem" })}
             <br />
-            <span className="text-slate-500">Sinyalizasyon · Kapasite · Dokümantasyon</span>
+            <span className="text-slate-500">{t({ tr: "Sinyalizasyon · Kapasite · Dokümantasyon", en: "Signalling · Capacity · Documentation", de: "Signaltechnik · Kapazität · Dokumentation" })}</span>
           </div>
         </div>
       </footer>

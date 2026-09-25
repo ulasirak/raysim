@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/components/AuthProvider";
 import { useHesap } from "@/components/SimConfigProvider";
+import { useDil } from "@/components/DilProvider";
 import { brand } from "@/lib/anaray/brand";
 
 const BAYRAK = (uid: string) => `raysim_karsilama_v3_${uid}`; // ilk-giriş "görüldü" bayrağı
@@ -30,92 +31,87 @@ interface Adim {
   govde: React.ReactNode;
 }
 
-// Boru hattı istasyonları — AppShell metro hattıyla aynı sıra/anlam.
-const ISTASYONLAR: { no: number; ad: string; not: string }[] = [
-  { no: 1, ad: "Durak Arası Ringler", not: "Hattı ve makas bölgelerini kur — buradaki her veri kalıcı." },
-  { no: 2, ad: "Sefer Simülasyonu", not: "Kurduğun hattı simüle et: canlı ağ, fizik, sefer aralığı." },
-  { no: 3, ad: "Sistem Merkezi", not: "Kapasite · blocking-time · darboğaz teşhisi." },
-  { no: 4, ad: "Ters İşletme", not: "Kısa dönüş, makas varyasyonları, talebe göre filo." },
-  { no: 5, ad: "Teknik Belgeler", not: "Analizden profesyonel PDF rapor üret." },
-  { no: 6, ad: "Karşılaştırma", not: "Senaryoları yan yana koy — karar desteği." },
-];
-
-const ADIMLAR: Adim[] = [
-  {
-    rozet: "HOŞ GELDİN",
-    baslik: "RaySim'e hoş geldin",
-    govde: (
-      <p className="text-sm leading-relaxed" style={{ color: brand.inkSoft }}>
-        RaySim, bir demiryolu/tramvay hattını uçtan uca kurup simüle ettiğin,
-        kapasitesini ve darboğazlarını çözümlediğin, sonra bunlardan profesyonel
-        dokümantasyon ürettiğin bir <strong>ağ simülasyon sistemidir</strong>.
-        Blocking-time · Sperrzeitentreppe · UIC 406 metodolojisine dayanan
-        bağımsız bir çekirdek kullanır. Aşağıda nasıl çalıştığını 30 saniyede
-        gösterelim.
-      </p>
-    ),
-  },
-  {
-    rozet: "BORU HATTI",
-    baslik: "Altı istasyonluk bir iş akışı",
-    govde: (
-      <div>
-        <p className="mb-3 text-sm leading-relaxed" style={{ color: brand.inkSoft }}>
-          Üstteki metro hattı, verinin akışıdır: soldan sağa <strong>kur → analiz
-          et → belgele</strong>. Yukarıdan aşağı kaydırarak ilerlersin.
-        </p>
-        <ul className="flex flex-col gap-2">
-          {ISTASYONLAR.map((s) => (
-            <li key={s.no} className="flex items-start gap-3">
-              <span
-                className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border font-mono text-[0.68rem] font-semibold tabular-nums"
-                style={{ background: brand.ink, borderColor: brand.ink, color: "#fff" }}
-              >
-                {s.no}
-              </span>
-              <span className="min-w-0 text-sm leading-tight">
-                <span className="font-medium" style={{ color: brand.ink }}>{s.ad}</span>
-                <span className="block text-[0.78rem]" style={{ color: brand.muted }}>{s.not}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    ),
-  },
-  {
-    rozet: "BAŞLARKEN",
-    baslik: "Kendi hattınla başla",
-    govde: (
-      <div className="flex flex-col gap-3 text-sm leading-relaxed" style={{ color: brand.inkSoft }}>
-        <p>
-          Hesabın <strong>boş bir hatla</strong> açılır. Sıra şu:
-        </p>
-        <ol className="flex flex-col gap-2">
-          {[
-            ["1", "Hattı kur", "Ringler'de durakları, mesafeleri ve makasları gir — GTFS / railML / DXF / shapefile içe aktarabilir ya da coğrafi koordinattan üretebilirsin."],
-            ["2", "Simüle et", "Sefer ve Sistem Merkezi'nde canlı ağı, kapasiteyi ve darboğazları çöz."],
-            ["3", "Belgele", "Teknik Belgeler'den amblemli, baskıya hazır PDF raporu üret."],
-          ].map(([n, b, a]) => (
-            <li key={n} className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[0.7rem] font-bold text-white" style={{ background: brand.red }}>{n}</span>
-              <span className="min-w-0">
-                <span className="font-medium" style={{ color: brand.ink }}>{b}</span>
-                <span className="block text-[0.82rem]" style={{ color: brand.muted }}>{a}</span>
-              </span>
-            </li>
-          ))}
-        </ol>
-      </div>
-    ),
-  },
-];
-
 export function Karsilama() {
   const { user } = useAuth();
   const { paylasimGorunumu, demoMu } = useHesap();
+  const { t } = useDil();
   const [acik, setAcik] = useState(false);
   const [i, setI] = useState(0);
+
+  // Boru hattı istasyonları — AppShell metro hattıyla aynı sıra/anlam.
+  const ISTASYONLAR: { no: number; ad: string; not: string }[] = [
+    { no: 1, ad: t({ tr: "Durak Arası Ringler", en: "Inter-Stop Rings", de: "Haltestellen-Ringe" }), not: t({ tr: "Hattı ve makas bölgelerini kur — buradaki her veri kalıcı.", en: "Build the line and switch zones — every value here is persistent.", de: "Baue die Linie und Weichenbereiche auf — jeder Wert hier ist dauerhaft." }) },
+    { no: 2, ad: t({ tr: "Sefer Simülasyonu", en: "Service Simulation", de: "Fahrtsimulation" }), not: t({ tr: "Kurduğun hattı simüle et: canlı ağ, fizik, sefer aralığı.", en: "Simulate the line you built: live network, physics, headway.", de: "Simuliere die aufgebaute Linie: Live-Netz, Physik, Taktzeit." }) },
+    { no: 3, ad: t({ tr: "Sistem Merkezi", en: "System Center", de: "Systemzentrale" }), not: t({ tr: "Kapasite · blocking-time · darboğaz teşhisi.", en: "Capacity · blocking-time · bottleneck diagnosis.", de: "Kapazität · Blocking-Time · Engpassdiagnose." }) },
+    { no: 4, ad: t({ tr: "Ters İşletme", en: "Reverse Operation", de: "Umkehrbetrieb" }), not: t({ tr: "Kısa dönüş, makas varyasyonları, talebe göre filo.", en: "Short turns, switch variations, demand-based fleet.", de: "Kurzwenden, Weichenvarianten, nachfragebasierte Flotte." }) },
+    { no: 5, ad: t({ tr: "Teknik Belgeler", en: "Technical Documents", de: "Technische Dokumente" }), not: t({ tr: "Analizden profesyonel PDF rapor üret.", en: "Produce a professional PDF report from the analysis.", de: "Erstelle aus der Analyse einen professionellen PDF-Bericht." }) },
+    { no: 6, ad: t({ tr: "Karşılaştırma", en: "Comparison", de: "Vergleich" }), not: t({ tr: "Senaryoları yan yana koy — karar desteği.", en: "Put scenarios side by side — decision support.", de: "Stelle Szenarien nebeneinander — Entscheidungshilfe." }) },
+  ];
+
+  const ADIMLAR: Adim[] = [
+    {
+      rozet: t({ tr: "HOŞ GELDİN", en: "WELCOME", de: "WILLKOMMEN" }),
+      baslik: t({ tr: "RaySim'e hoş geldin", en: "Welcome to RaySim", de: "Willkommen bei RaySim" }),
+      govde: (
+        <p className="text-sm leading-relaxed" style={{ color: brand.inkSoft }}>
+          {t({ tr: "RaySim, bir demiryolu/tramvay hattını uçtan uca kurup simüle ettiğin, kapasitesini ve darboğazlarını çözümlediğin, sonra bunlardan profesyonel dokümantasyon ürettiğin bir ", en: "RaySim is a ", de: "RaySim ist ein " })}<strong>{t({ tr: "ağ simülasyon sistemidir", en: "network simulation system", de: "Netzwerk-Simulationssystem" })}</strong>{t({ tr: ". Blocking-time · Sperrzeitentreppe · UIC 406 metodolojisine dayanan bağımsız bir çekirdek kullanır. Aşağıda nasıl çalıştığını 30 saniyede gösterelim.", en: " where you build and simulate a rail/tram line end to end, analyze its capacity and bottlenecks, then produce professional documentation from them. It uses an independent core based on blocking-time · Sperrzeitentreppe · UIC 406 methodology. Below, let us show how it works in 30 seconds.", de: ", mit dem du eine Bahn-/Straßenbahnlinie durchgängig aufbaust und simulierst, ihre Kapazität und Engpässe analysierst und daraus professionelle Dokumentation erstellst. Es nutzt einen unabhängigen Kern nach der Methodik Blocking-Time · Sperrzeitentreppe · UIC 406. Im Folgenden zeigen wir in 30 Sekunden, wie es funktioniert." })}
+        </p>
+      ),
+    },
+    {
+      rozet: t({ tr: "BORU HATTI", en: "PIPELINE", de: "PIPELINE" }),
+      baslik: t({ tr: "Altı istasyonluk bir iş akışı", en: "A six-station workflow", de: "Ein Arbeitsablauf mit sechs Stationen" }),
+      govde: (
+        <div>
+          <p className="mb-3 text-sm leading-relaxed" style={{ color: brand.inkSoft }}>
+            {t({ tr: "Üstteki metro hattı, verinin akışıdır: soldan sağa ", en: "The metro line above is the flow of data: from left to right ", de: "Die Metrolinie oben ist der Datenfluss: von links nach rechts " })}<strong>{t({ tr: "kur → analiz et → belgele", en: "build → analyze → document", de: "aufbauen → analysieren → dokumentieren" })}</strong>{t({ tr: ". Yukarıdan aşağı kaydırarak ilerlersin.", en: ". You progress by scrolling from top to bottom.", de: ". Du gehst weiter, indem du von oben nach unten scrollst." })}
+          </p>
+          <ul className="flex flex-col gap-2">
+            {ISTASYONLAR.map((s) => (
+              <li key={s.no} className="flex items-start gap-3">
+                <span
+                  className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border font-mono text-[0.68rem] font-semibold tabular-nums"
+                  style={{ background: brand.ink, borderColor: brand.ink, color: "#fff" }}
+                >
+                  {s.no}
+                </span>
+                <span className="min-w-0 text-sm leading-tight">
+                  <span className="font-medium" style={{ color: brand.ink }}>{s.ad}</span>
+                  <span className="block text-[0.78rem]" style={{ color: brand.muted }}>{s.not}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ),
+    },
+    {
+      rozet: t({ tr: "BAŞLARKEN", en: "GETTING STARTED", de: "ERSTE SCHRITTE" }),
+      baslik: t({ tr: "Kendi hattınla başla", en: "Start with your own line", de: "Beginne mit deiner eigenen Linie" }),
+      govde: (
+        <div className="flex flex-col gap-3 text-sm leading-relaxed" style={{ color: brand.inkSoft }}>
+          <p>
+            {t({ tr: "Hesabın ", en: "Your account opens ", de: "Dein Konto öffnet " })}<strong>{t({ tr: "boş bir hatla", en: "with an empty line", de: "mit einer leeren Linie" })}</strong>{t({ tr: " açılır. Sıra şu:", en: ". The order is:", de: ". Die Reihenfolge:" })}
+          </p>
+          <ol className="flex flex-col gap-2">
+            {[
+              ["1", t({ tr: "Hattı kur", en: "Build the line", de: "Linie aufbauen" }), t({ tr: "Ringler'de durakları, mesafeleri ve makasları gir — GTFS / railML / DXF / shapefile içe aktarabilir ya da coğrafi koordinattan üretebilirsin.", en: "Enter stops, distances and switches in Rings — you can import GTFS / railML / DXF / shapefile or generate from geographic coordinates.", de: "Gib Haltestellen, Entfernungen und Weichen in den Ringen ein — du kannst GTFS / railML / DXF / Shapefile importieren oder aus geografischen Koordinaten erzeugen." })],
+              ["2", t({ tr: "Simüle et", en: "Simulate", de: "Simulieren" }), t({ tr: "Sefer ve Sistem Merkezi'nde canlı ağı, kapasiteyi ve darboğazları çöz.", en: "Solve the live network, capacity and bottlenecks in Service and System Center.", de: "Löse das Live-Netz, die Kapazität und die Engpässe in Fahrt und Systemzentrale." })],
+              ["3", t({ tr: "Belgele", en: "Document", de: "Dokumentieren" }), t({ tr: "Teknik Belgeler'den amblemli, baskıya hazır PDF raporu üret.", en: "Produce a branded, print-ready PDF report from Technical Documents.", de: "Erstelle aus den technischen Dokumenten einen gebrandeten, druckfertigen PDF-Bericht." })],
+            ].map(([n, b, a]) => (
+              <li key={n} className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[0.7rem] font-bold text-white" style={{ background: brand.red }}>{n}</span>
+                <span className="min-w-0">
+                  <span className="font-medium" style={{ color: brand.ink }}>{b}</span>
+                  <span className="block text-[0.82rem]" style={{ color: brand.muted }}>{a}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ),
+    },
+  ];
 
   // İLK GİRİŞ: kullanıcı ilk kez giriş yapıp ana sayfaya düşünce bir kez açılır.
   // Bayrak GÖSTERİLİR GÖSTERİLMEZ yazılır → yenilemede/tekrar girişte bir daha açılmaz.
@@ -165,7 +161,7 @@ export function Karsilama() {
       className="fixed inset-0 z-[110] flex items-center justify-center overflow-y-auto bg-black/55 p-4 sm:p-8"
       role="dialog"
       aria-modal="true"
-      aria-label="RaySim tanıtımı"
+      aria-label={t({ tr: "RaySim tanıtımı", en: "RaySim tour", de: "RaySim-Einführung" })}
       onClick={(e) => { if (e.target === e.currentTarget) kapat(); }}
     >
       <div className="relative w-full max-w-lg rounded-xl bg-white shadow-2xl">
@@ -173,9 +169,9 @@ export function Karsilama() {
         <div className="flex items-center justify-between rounded-t-xl px-5 py-3"
           style={{ background: "linear-gradient(180deg, #0F2B40 0%, #0C2233 100%)" }}>
           <span className="font-brand text-sm font-semibold tracking-[0.16em] text-white">RaySim</span>
-          <button onClick={kapat} title="Kapat"
+          <button onClick={kapat} title={t({ tr: "Kapat", en: "Close", de: "Schließen" })}
             className="rounded-md px-2 py-1 text-xs font-medium text-slate-300 transition hover:bg-white/10 hover:text-white">
-            ✕ Atla
+            ✕ {t({ tr: "Atla", en: "Skip", de: "Überspringen" })}
           </button>
         </div>
 
@@ -198,7 +194,7 @@ export function Karsilama() {
 
         {/* Bu tanıtım yalnız ilk girişte bir kez gösterilir — bilgilendirme */}
         <div className="border-t px-5 py-2 text-[0.68rem]" style={{ borderColor: brand.border, color: brand.faint }}>
-          Bu tanıtım yalnız ilk girişte bir kez açılır. İstediğinde hesap menüsünden <b>“Tanıtımı göster”</b> ile tekrar açabilirsin.
+          {t({ tr: "Bu tanıtım yalnız ilk girişte bir kez açılır. İstediğinde hesap menüsünden ", en: "This tour opens only once, on first sign-in. You can reopen it anytime from the account menu with ", de: "Diese Einführung öffnet sich nur einmal, bei der ersten Anmeldung. Du kannst sie jederzeit über das Kontomenü mit " })}<b>{t({ tr: "“Tanıtımı göster”", en: "“Show tour”", de: "„Tour anzeigen“" })}</b>{t({ tr: " ile tekrar açabilirsin.", en: ".", de: " erneut öffnen." })}
         </div>
 
         {/* Aksiyonlar */}
@@ -209,7 +205,7 @@ export function Karsilama() {
             className="rounded-md border px-3 py-1.5 text-xs font-medium transition enabled:hover:bg-slate-50 disabled:opacity-40"
             style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}
           >
-            ← Geri
+            ← {t({ tr: "Geri", en: "Back", de: "Zurück" })}
           </button>
 
           {!sonAdim ? (
@@ -218,7 +214,7 @@ export function Karsilama() {
               className="rounded-md px-4 py-1.5 text-xs font-semibold text-white transition hover:opacity-90"
               style={{ background: brand.red }}
             >
-              İleri →
+              {t({ tr: "İleri", en: "Next", de: "Weiter" })} →
             </button>
           ) : (
             <button
@@ -226,7 +222,7 @@ export function Karsilama() {
               className="rounded-md px-4 py-1.5 text-xs font-semibold text-white transition hover:opacity-90"
               style={{ background: brand.red }}
             >
-              Hattı kurmaya başla →
+              {t({ tr: "Hattı kurmaya başla", en: "Start building the line", de: "Linie aufbauen starten" })} →
             </button>
           )}
         </div>

@@ -22,6 +22,7 @@ import { getAuthInstance } from "@/lib/firebase";
 import { useCuzdan } from "@/components/CuzdanProvider";
 import { BosDurum } from "@/components/BosDurum";
 import { Kart } from "@/components/Kart";
+import { useDil } from "@/components/DilProvider";
 
 // —— What-if parametreleri (doluluk İLK: HER hatta sürdürülebilir/işletme kapasitesini
 // KESİN değiştirir → dinamikliği garanti eder) ——
@@ -45,6 +46,7 @@ export function Karsilastirma() {
   const { isletme } = useIsletme();
   const { projeler } = useHesap();
   const { yenile } = useCuzdan();
+  const { t } = useDil();
 
   const [mod, setMod] = useState<"projeler" | "whatif">("projeler");
 
@@ -135,10 +137,10 @@ export function Karsilastirma() {
     try {
       const a = getAuthInstance();
       const token = await a?.currentUser?.getIdToken();
-      if (!token) { w?.close(); setPdfDurum({ tip: "err", metin: "Oturum bulunamadı — yeniden giriş yapın." }); return; }
+      if (!token) { w?.close(); setPdfDurum({ tip: "err", metin: t({ tr: "Oturum bulunamadı — yeniden giriş yapın.", en: "Session not found — please sign in again.", de: "Sitzung nicht gefunden — bitte erneut anmelden." }) }); return; }
       const altBaslik = mod === "projeler"
-        ? `${senaryolar.length} proje karşılaştırması`
-        : `${meta.hatAdi || "Aktif hat"} · ${WHATIF[wparam].ad} varyasyonu`;
+        ? `${senaryolar.length} ${t({ tr: "proje karşılaştırması", en: "project comparison", de: "Projektvergleich" })}`
+        : `${meta.hatAdi || t({ tr: "Aktif hat", en: "Active line", de: "Aktive Strecke" })} · ${WHATIF[wparam].ad} ${t({ tr: "varyasyonu", en: "variation", de: "Variation" })}`;
       const yanit = await fetch("/api/karsilastirma", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -147,32 +149,32 @@ export function Karsilastirma() {
       if (!yanit.ok) {
         w?.close();
         const v = await yanit.json().catch(() => ({}));
-        setPdfDurum({ tip: "err", metin: v.hata === "yetersiz_kredi" ? `Rapor ${v.gereken} kredi ister; ${v.mevcut} krediniz var.` : (v.hata ?? "Rapor üretilemedi.") });
+        setPdfDurum({ tip: "err", metin: v.hata === "yetersiz_kredi" ? t({ tr: `Rapor ${v.gereken} kredi ister; ${v.mevcut} krediniz var.`, en: `Report needs ${v.gereken} credits; you have ${v.mevcut}.`, de: `Bericht benötigt ${v.gereken} Credits; Sie haben ${v.mevcut}.` }) : (v.hata ?? t({ tr: "Rapor üretilemedi.", en: "Report could not be generated.", de: "Bericht konnte nicht erstellt werden." })) });
         return;
       }
       const html = await yanit.text();
       if (w) { w.document.open(); w.document.write(html); w.document.close(); }
       await yenile();
-      setPdfDurum({ tip: "ok", metin: "Rapor yeni sekmede açıldı — yazdırma diyalogunda “PDF olarak kaydet”i seçin." });
+      setPdfDurum({ tip: "ok", metin: t({ tr: "Rapor yeni sekmede açıldı — yazdırma diyalogunda “PDF olarak kaydet”i seçin.", en: "Report opened in a new tab — choose “Save as PDF” in the print dialog.", de: "Bericht in neuem Tab geöffnet — wählen Sie im Druckdialog „Als PDF speichern“." }) });
     } catch (e) {
       w?.close();
-      setPdfDurum({ tip: "err", metin: `Rapor açılamadı: ${e instanceof Error ? e.message : String(e)}` });
+      setPdfDurum({ tip: "err", metin: `${t({ tr: "Rapor açılamadı", en: "Report could not be opened", de: "Bericht konnte nicht geöffnet werden" })}: ${e instanceof Error ? e.message : String(e)}` });
     } finally { setPdfMesgul(false); }
   };
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
       <div className="mb-6 border-b pb-4" style={{ borderColor: brand.border }}>
-        <div className="field-label">Senaryo Karşılaştırma — Karar Desteği</div>
-        <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>Karşılaştırma</h1>
+        <div className="field-label">{t({ tr: "Senaryo Karşılaştırma — Karar Desteği", en: "Scenario Comparison — Decision Support", de: "Szenariovergleich — Entscheidungshilfe" })}</div>
+        <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>{t({ tr: "Karşılaştırma", en: "Comparison", de: "Vergleich" })}</h1>
         <p className="mt-2 max-w-3xl text-sm" style={{ color: brand.inkSoft }}>
-          Senaryoları yan yana koyar; tüm değerler simülasyonun kullandığı <b>aynı çekirdekten</b> hesaplanır (rapor/canlı sim ile birebir). Kararı objektif ver: hangi seçenek hangi ölçütte üstün?
+          {t({ tr: "Senaryoları yan yana koyar; tüm değerler simülasyonun kullandığı ", en: "Places scenarios side by side; all values are computed from the ", de: "Stellt Szenarien nebeneinander; alle Werte werden aus dem von der Simulation genutzten " })}<b>{t({ tr: "aynı çekirdekten", en: "same core", de: "gleichen Kern" })}</b>{t({ tr: " hesaplanır (rapor/canlı sim ile birebir). Kararı objektif ver: hangi seçenek hangi ölçütte üstün?", en: " (identical to the report/live sim). Decide objectively: which option is superior on which criterion?", de: " berechnet (identisch mit Bericht/Live-Sim). Entscheiden Sie objektiv: welche Option ist bei welchem Kriterium überlegen?" })}
         </p>
       </div>
 
       {/* Mod seçici */}
       <div className="mb-5 inline-flex overflow-hidden rounded-md border" style={{ borderColor: brand.borderStrong }}>
-        {([["projeler", "Projeler"], ["whatif", "What-if (tek hat)"]] as const).map(([k, ad]) => (
+        {([["projeler", t({ tr: "Projeler", en: "Projects", de: "Projekte" })], ["whatif", t({ tr: "What-if (tek hat)", en: "What-if (single line)", de: "What-if (eine Strecke)" })]] as const).map(([k, ad]) => (
           <button key={k} onClick={() => setMod(k)} className="px-4 py-1.5 text-sm font-semibold transition"
             style={mod === k ? { background: brand.ink, color: "#fff" } : { background: "#fff", color: brand.inkSoft }}>{ad}</button>
         ))}
@@ -180,9 +182,9 @@ export function Karsilastirma() {
 
       {/* — PROJELER modu seçim — */}
       {mod === "projeler" && (
-        <Panel baslik="Projeleri Seç" aciklama="Kıyaslamak istediğin 2-4 projeyi işaretle (kendi kayıtlı hatların). Her biri bir sütun olur.">
+        <Panel baslik={t({ tr: "Projeleri Seç", en: "Select Projects", de: "Projekte auswählen" })} aciklama={t({ tr: "Kıyaslamak istediğin 2-4 projeyi işaretle (kendi kayıtlı hatların). Her biri bir sütun olur.", en: "Check the 2-4 projects you want to compare (your own saved lines). Each becomes a column.", de: "Markieren Sie die 2-4 Projekte, die Sie vergleichen möchten (Ihre gespeicherten Strecken). Jedes wird zu einer Spalte." })}>
           {projeler.length === 0 ? (
-            <BosDurum baslik="Kayıtlı proje yok" ipucu="Ringler’de bir hat kurup kaydettiğinde burada kıyaslanmak üzere görünür." />
+            <BosDurum baslik={t({ tr: "Kayıtlı proje yok", en: "No saved projects", de: "Keine gespeicherten Projekte" })} ipucu={t({ tr: "Ringler’de bir hat kurup kaydettiğinde burada kıyaslanmak üzere görünür.", en: "Once you build and save a line in Rings, it appears here for comparison.", de: "Sobald Sie in Ringe eine Strecke erstellen und speichern, erscheint sie hier zum Vergleich." })} />
           ) : (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {projeler.map((p) => {
@@ -199,25 +201,25 @@ export function Karsilastirma() {
               })}
             </div>
           )}
-          {secili.size >= 4 && <p className="mt-2 text-xs" style={{ color: brand.muted }}>En çok 4 senaryo karşılaştırılır (okunabilirlik).</p>}
-          {yukleniyor && <p className="mt-2 text-xs" style={{ color: brand.muted }}>⟳ Projeler yükleniyor…</p>}
+          {secili.size >= 4 && <p className="mt-2 text-xs" style={{ color: brand.muted }}>{t({ tr: "En çok 4 senaryo karşılaştırılır (okunabilirlik).", en: "At most 4 scenarios are compared (readability).", de: "Es werden höchstens 4 Szenarien verglichen (Lesbarkeit)." })}</p>}
+          {yukleniyor && <p className="mt-2 text-xs" style={{ color: brand.muted }}>⟳ {t({ tr: "Projeler yükleniyor…", en: "Loading projects…", de: "Projekte werden geladen…" })}</p>}
           {hata && <p className="mt-2 text-xs" style={{ color: brand.red }}>⚠ {hata}</p>}
         </Panel>
       )}
 
       {/* — WHAT-IF modu ayar — */}
       {mod === "whatif" && (
-        <Panel baslik="What-if — Aktif Hat" aciklama={`Bu bölüm “${meta.hatAdi || "aktif hat"}” üzerinde çalışır: bir parametreyi değiştir, sonuçları kıyasla.`}>
+        <Panel baslik={t({ tr: "What-if — Aktif Hat", en: "What-if — Active Line", de: "What-if — Aktive Strecke" })} aciklama={`${t({ tr: "Bu bölüm", en: "This section works on", de: "Dieser Abschnitt arbeitet mit" })} “${meta.hatAdi || t({ tr: "aktif hat", en: "the active line", de: "der aktiven Strecke" })}” ${t({ tr: "üzerinde çalışır: bir parametreyi değiştir, sonuçları kıyasla.", en: ": change one parameter, compare the results.", de: ": ändern Sie einen Parameter, vergleichen Sie die Ergebnisse." })}`}>
           <div className="flex flex-wrap items-end gap-4">
             <label>
-              <span className="field-label">Parametre</span>
+              <span className="field-label">{t({ tr: "Parametre", en: "Parameter", de: "Parameter" })}</span>
               <select value={wparam} onChange={(e) => paramDegis(e.target.value as WhatifKey)}
                 className="mt-1 block rounded border px-2 py-1.5 text-sm" style={{ borderColor: brand.border, color: brand.ink }}>
                 {(Object.keys(WHATIF) as WhatifKey[]).map((k) => <option key={k} value={k}>{WHATIF[k].ad} ({WHATIF[k].suffix})</option>)}
               </select>
             </label>
             <div>
-              <span className="field-label">Değerler (2-4)</span>
+              <span className="field-label">{t({ tr: "Değerler (2-4)", en: "Values (2-4)", de: "Werte (2-4)" })}</span>
               <div className="mt-1 flex items-center gap-1.5">
                 {wdegerler.map((v, i) => (
                   <input key={i} type="number" value={v} min={WHATIF[wparam].min} max={WHATIF[wparam].max}
@@ -226,7 +228,7 @@ export function Karsilastirma() {
                 ))}
                 {wdegerler.length < 4 && (
                   <button type="button" onClick={() => setWdegerler((d) => { const son = d[d.length - 1] || WHATIF[wparam].varsayilan[0]; return [...d, WHATIF[wparam].etkin(Math.round(son * 0.75))]; })}
-                    className="h-7 w-7 rounded border font-semibold" style={{ borderColor: brand.border, color: brand.ink }} title="Farklı bir değer ekle">+</button>
+                    className="h-7 w-7 rounded border font-semibold" style={{ borderColor: brand.border, color: brand.ink }} title={t({ tr: "Farklı bir değer ekle", en: "Add another value", de: "Weiteren Wert hinzufügen" })}>+</button>
                 )}
                 {wdegerler.length > 2 && (
                   <button type="button" onClick={() => setWdegerler((d) => d.slice(0, -1))}
@@ -244,13 +246,13 @@ export function Karsilastirma() {
       {/* — SONUÇ — */}
       {!yeterli ? (
         <div className="mt-6 rounded-lg border-l-4 px-4 py-3 text-sm" style={{ borderColor: CK.amber, background: CK.amberBg, color: CK.amberInk }}>
-          Karşılaştırma için en az <b>2 geçerli senaryo</b> gerekir. {mod === "projeler" ? "Yukarıdan proje seç (hattı kurulu/kaydedilmiş olmalı)." : "Değer kutularını doldur."}
+          {t({ tr: "Karşılaştırma için en az ", en: "At least ", de: "Für einen Vergleich sind mindestens " })}<b>{t({ tr: "2 geçerli senaryo", en: "2 valid scenarios", de: "2 gültige Szenarien" })}</b>{t({ tr: " gerekir. ", en: " are required for a comparison. ", de: " erforderlich. " })}{mod === "projeler" ? t({ tr: "Yukarıdan proje seç (hattı kurulu/kaydedilmiş olmalı).", en: "Select projects above (the line must be built/saved).", de: "Wählen Sie oben Projekte aus (die Strecke muss erstellt/gespeichert sein)." }) : t({ tr: "Değer kutularını doldur.", en: "Fill in the value boxes.", de: "Füllen Sie die Wertfelder aus." })}
         </div>
       ) : (
         <>
           {degismedi && (
             <div className="mt-6 rounded-md border-l-4 px-4 py-3 text-sm" style={{ borderColor: CK.amber, background: CK.amberBg, color: CK.amberInk }}>
-              ⚠ “{WHATIF[wparam].ad}” değişimi bu hatta metrikleri <b>oynatmadı</b> — bu hattın belirleyici kısıtı bu parametre değil (tablodaki <b>Belirleyici kısıt</b> satırına bak). <b>Doluluk tavanı</b> her hatta kapasiteyi değiştirir; <b>Headway</b> ise UIC doluluk / gereken tren'i etkiler.
+              ⚠ “{WHATIF[wparam].ad}” {t({ tr: "değişimi bu hatta metrikleri ", en: "change did not move the metrics on this line — it ", de: "Änderung hat die Metriken auf dieser Strecke nicht bewegt — es " })}<b>{t({ tr: "oynatmadı", en: "did nothing", de: "bewirkte nichts" })}</b>{t({ tr: " — bu hattın belirleyici kısıtı bu parametre değil (tablodaki ", en: " — this line’s governing constraint is not this parameter (see the ", de: " — die maßgebende Beschränkung dieser Strecke ist nicht dieser Parameter (siehe Zeile " })}<b>{t({ tr: "Belirleyici kısıt", en: "Governing constraint", de: "Maßgebende Beschränkung" })}</b>{t({ tr: " satırına bak). ", en: " row in the table). ", de: " in der Tabelle). " })}<b>{t({ tr: "Doluluk tavanı", en: "Occupancy ceiling", de: "Auslastungsgrenze" })}</b>{t({ tr: " her hatta kapasiteyi değiştirir; ", en: " changes capacity on every line; ", de: " ändert die Kapazität auf jeder Strecke; " })}<b>{t({ tr: "Headway", en: "Headway", de: "Zugfolgezeit" })}</b>{t({ tr: " ise UIC doluluk / gereken tren'i etkiler.", en: " affects UIC occupancy / trains required.", de: " beeinflusst UIC-Auslastung / benötigte Züge." })}
             </div>
           )}
 
@@ -258,7 +260,7 @@ export function Karsilastirma() {
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <button onClick={pdfUret} disabled={pdfMesgul}
               className="rounded-md px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: brand.red }}>
-              {pdfMesgul ? "Açılıyor…" : "🖨 PDF Karşılaştırma Raporu"}
+              {pdfMesgul ? t({ tr: "Açılıyor…", en: "Opening…", de: "Wird geöffnet…" }) : t({ tr: "🖨 PDF Karşılaştırma Raporu", en: "🖨 PDF Comparison Report", de: "🖨 PDF-Vergleichsbericht" })}
             </button>
             {pdfDurum && <span className="text-sm" style={{ color: pdfDurum.tip === "err" ? brand.red : CK.good }}>{pdfDurum.tip === "ok" ? "✓ " : "⚠ "}{pdfDurum.metin}</span>}
           </div>
@@ -266,14 +268,14 @@ export function Karsilastirma() {
           {/* Öneri özeti */}
           {oneri && (
             <div className="mt-6 rounded-lg border p-4" style={{ borderColor: brand.ink, background: "#F7F9FA" }}>
-              <div className="field-label mb-2">Objektif Öneri Özeti</div>
+              <div className="field-label mb-2">{t({ tr: "Objektif Öneri Özeti", en: "Objective Recommendation Summary", de: "Objektive Empfehlungszusammenfassung" })}</div>
               <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-                <OneriSatir etiket="En yüksek sürdürülebilir kapasite" ad={oneri.kapasite.ad} deger={`${oneri.kapasite.nSurdurulebilir} tramvay`} />
-                <OneriSatir etiket="En düşük filo ihtiyacı" ad={oneri.filo.ad} deger={`${oneri.filo.gerekenFilo} araç`} />
-                <OneriSatir etiket="En kısa çevrim (tur)" ad={oneri.cevrim.ad} deger={`${oneri.cevrim.cevrimDk} dk`} />
-                <OneriSatir etiket="En yüksek işletme kapasitesi" ad={oneri.isletme.ad} deger={`${oneri.isletme.isletmeKap} tren/sa`} />
+                <OneriSatir etiket={t({ tr: "En yüksek sürdürülebilir kapasite", en: "Highest sustainable capacity", de: "Höchste nachhaltige Kapazität" })} ad={oneri.kapasite.ad} deger={`${oneri.kapasite.nSurdurulebilir} tramvay`} />
+                <OneriSatir etiket={t({ tr: "En düşük filo ihtiyacı", en: "Lowest fleet requirement", de: "Geringster Flottenbedarf" })} ad={oneri.filo.ad} deger={`${oneri.filo.gerekenFilo} araç`} />
+                <OneriSatir etiket={t({ tr: "En kısa çevrim (tur)", en: "Shortest cycle (round trip)", de: "Kürzester Umlauf (Runde)" })} ad={oneri.cevrim.ad} deger={`${oneri.cevrim.cevrimDk} dk`} />
+                <OneriSatir etiket={t({ tr: "En yüksek işletme kapasitesi", en: "Highest operating capacity", de: "Höchste Betriebskapazität" })} ad={oneri.isletme.ad} deger={`${oneri.isletme.isletmeKap} tren/sa`} />
               </div>
-              <p className="mt-2 text-xs" style={{ color: brand.muted }}>Ölçütler nesneldir; nihai karar talep, bütçe ve etaplama stratejisine göre verilir.</p>
+              <p className="mt-2 text-xs" style={{ color: brand.muted }}>{t({ tr: "Ölçütler nesneldir; nihai karar talep, bütçe ve etaplama stratejisine göre verilir.", en: "The criteria are objective; the final decision is made according to demand, budget and phasing strategy.", de: "Die Kriterien sind objektiv; die endgültige Entscheidung richtet sich nach Nachfrage, Budget und Ausbaustrategie." })}</p>
             </div>
           )}
 
@@ -282,7 +284,7 @@ export function Karsilastirma() {
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr>
-                  <th className="p-2.5 text-left" style={{ background: brand.ink, color: "#fff" }}>Gösterge</th>
+                  <th className="p-2.5 text-left" style={{ background: brand.ink, color: "#fff" }}>{t({ tr: "Gösterge", en: "Indicator", de: "Kennzahl" })}</th>
                   {metrikler.map((m, i) => (
                     <th key={i} className="p-2.5 text-center" style={{ background: brand.ink, color: "#fff" }}>{m.ad}</th>
                   ))}
@@ -306,7 +308,7 @@ export function Karsilastirma() {
                   );
                 })}
                 <tr>
-                  <td className="p-2.5 text-left" style={{ color: brand.inkSoft, borderTop: `1px solid ${brand.border}` }}>Belirleyici kısıt</td>
+                  <td className="p-2.5 text-left" style={{ color: brand.inkSoft, borderTop: `1px solid ${brand.border}` }}>{t({ tr: "Belirleyici kısıt", en: "Governing constraint", de: "Maßgebende Beschränkung" })}</td>
                   {metrikler.map((m, ci) => (
                     <td key={ci} className="p-2.5 text-center text-xs" style={{ borderTop: `1px solid ${brand.border}`, color: m.gecerli ? brand.muted : brand.faint }}>{m.gecerli ? m.baglayan : "—"}</td>
                   ))}
@@ -315,14 +317,14 @@ export function Karsilastirma() {
             </table>
           </div>
           <p className="mt-1.5 text-xs" style={{ color: brand.muted }}>
-            <span style={{ color: "#7A6320", fontWeight: 700 }}>Altın</span> hücre o satırda üstün senaryodur (kapasite yüksek / min-headway·çevrim·filo düşük daha iyi). UIC doluluk ve durak/makas gibi tanımlayıcılar tarafsızdır.
+            <span style={{ color: "#7A6320", fontWeight: 700 }}>{t({ tr: "Altın", en: "Gold", de: "Gold" })}</span>{t({ tr: " hücre o satırda üstün senaryodur (kapasite yüksek / min-headway·çevrim·filo düşük daha iyi). UIC doluluk ve durak/makas gibi tanımlayıcılar tarafsızdır.", en: " cell is the superior scenario in that row (higher capacity / lower min-headway·cycle·fleet is better). Descriptors such as UIC occupancy and stops/switches are neutral.", de: " markiert in dieser Zeile das überlegene Szenario (höhere Kapazität / niedrigere Min-Zugfolgezeit·Umlauf·Flotte ist besser). Bezeichner wie UIC-Auslastung und Haltestellen/Weichen sind neutral." })}
           </p>
 
           {/* Çubuk kıyaslar */}
           <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-3">
-            <CubukKart baslik="Teorik maks tramvay" ms={metrikler} al={(m) => m.nTeorik} renk={CK.blue} />
-            <CubukKart baslik="İşletme kapasitesi (tren/sa)" ms={metrikler} al={(m) => m.isletmeKap} renk={CK.good} />
-            <CubukKart baslik="Gereken filo (talep)" ms={metrikler} al={(m) => m.gerekenFilo} renk={CK.orange} />
+            <CubukKart baslik={t({ tr: "Teorik maks tramvay", en: "Theoretical max trams", de: "Theoretisch max. Straßenbahnen" })} ms={metrikler} al={(m) => m.nTeorik} renk={CK.blue} />
+            <CubukKart baslik={t({ tr: "İşletme kapasitesi (tren/sa)", en: "Operating capacity (trains/h)", de: "Betriebskapazität (Züge/h)" })} ms={metrikler} al={(m) => m.isletmeKap} renk={CK.good} />
+            <CubukKart baslik={t({ tr: "Gereken filo (talep)", en: "Required fleet (demand)", de: "Benötigte Flotte (Nachfrage)" })} ms={metrikler} al={(m) => m.gerekenFilo} renk={CK.orange} />
           </div>
         </>
       )}

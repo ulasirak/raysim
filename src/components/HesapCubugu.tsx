@@ -178,7 +178,7 @@ export function HesapKontrolleri() {
       <span title={t({ tr: "Kredi bakiyeniz — rapor ve proje yükleme bundan düşer", en: "Your credit balance — reports and project uploads are deducted from this", de: "Ihr Guthaben — Berichte und Projekt-Uploads werden davon abgezogen" })}
         className="inline-flex items-center rounded-full border px-2.5 py-1 font-medium tabular-nums"
         style={{ background: koyu.yuzey, borderColor: koyu.kenar, color: bakiye === 0 ? koyu.kotu : koyu.metin }}>
-        {bakiye === null ? "◌ kredi" : `◈ ${bakiye} kredi`}
+        {bakiye === null ? `◌ ${t({ tr: "kredi", en: "Credits", de: "Credits" })}` : `◈ ${bakiye} ${t({ tr: "kredi", en: "Credits", de: "Credits" })}`}
       </span>
 
       {/* ⋮ menüsü — seyrek işler + kredi al + çıkış */}

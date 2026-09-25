@@ -10,6 +10,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useHesap } from "@/components/SimConfigProvider";
+import { useDil } from "@/components/DilProvider";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 
@@ -17,6 +18,7 @@ type Gorunum = { tip: "kaydediliyor" | "kaydedildi" | "hata"; metin: string } | 
 
 export function KayitBildirimi() {
   const { durum, hataMetni, yazilabilir } = useHesap();
+  const { t } = useDil();
   const [gorunum, setGorunum] = useState<Gorunum>(null);
   const oncekiRef = useRef(durum);
   const zamanRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -35,17 +37,17 @@ export function KayitBildirimi() {
 
     if (durum === "kaydediliyor") {
       if (zamanRef.current) clearTimeout(zamanRef.current);
-      setGorunum({ tip: "kaydediliyor", metin: "Kaydediliyor…" });
+      setGorunum({ tip: "kaydediliyor", metin: t({ tr: "Kaydediliyor…", en: "Saving…", de: "Wird gespeichert…" }) });
     } else if (durum === "kaydedildi" && onceki === "kaydediliyor") {
       // Yalnız GERÇEK bir kayıt döngüsü sonrası (ilk yükleme "hazir"i değil).
-      setGorunum({ tip: "kaydedildi", metin: "Kaydedildi" });
+      setGorunum({ tip: "kaydedildi", metin: t({ tr: "Kaydedildi", en: "Saved", de: "Gespeichert" }) });
       if (zamanRef.current) clearTimeout(zamanRef.current);
       zamanRef.current = setTimeout(() => setGorunum(null), 2200);
     } else if (durum === "hata") {
       if (zamanRef.current) clearTimeout(zamanRef.current);
-      setGorunum({ tip: "hata", metin: hataMetni ?? "Kayıt hatası" });
+      setGorunum({ tip: "hata", metin: hataMetni ?? t({ tr: "Kayıt hatası", en: "Save error", de: "Speicherfehler" }) });
     }
-  }, [durum, hataMetni, yazilabilir]);
+  }, [durum, hataMetni, yazilabilir, t]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => () => { if (zamanRef.current) clearTimeout(zamanRef.current); }, []);
