@@ -8,15 +8,23 @@
 
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
+import { useDil } from "@/components/DilProvider";
 
 interface Kisit { anahtar: string; ad: string; headway: number; aktif: boolean }
 
 export function KisitKarsilastirma({ kisitlar, kritikRenk = CK.red }: { kisitlar: Kisit[]; kritikRenk?: string }) {
+  const { t } = useDil();
   const veri = kisitlar.filter((k) => k.headway > 0).sort((a, b) => b.headway - a.headway);
   if (veri.length < 1) return null;
   const maxH = veri[0].headway;
   const bag = veri.find((k) => k.aktif) ?? veri[0];
-  const kisaAd: Record<string, string> = { blok: "Blok (Sperrzeit)", terminal: "Terminal (turnback)", tekhat: "Tek hat", kavsak: "Kavşak", sinyal: "Sinyal" };
+  const kisaAd: Record<string, string> = {
+    blok: t({ tr: "Blok (Sperrzeit)", en: "Block (Sperrzeit)", de: "Block (Sperrzeit)" }),
+    terminal: t({ tr: "Terminal (turnback)", en: "Terminal (turnback)", de: "Endstelle (Wende)" }),
+    tekhat: t({ tr: "Tek hat", en: "Single track", de: "Eingleis" }),
+    kavsak: t({ tr: "Kavşak", en: "Junction", de: "Kreuzung" }),
+    sinyal: t({ tr: "Sinyal", en: "Signal", de: "Signal" }),
+  };
 
   return (
     <div>
@@ -40,7 +48,7 @@ export function KisitKarsilastirma({ kisitlar, kritikRenk = CK.red }: { kisitlar
         })}
       </div>
       <div className="mt-2 text-xs" style={{ color: brand.muted }}>
-        <b style={{ color: kritikRenk }}>Belirleyici kısıt: {kisaAd[bag.anahtar] || bag.ad}</b> — en yüksek headway ({Math.round(bag.headway)} s) hattı bağlar (hMin). Diğerleri daha küçük headway ister; aradaki fark, o kısıtta ne kadar pay olduğunu gösterir. Bir kısıt iyileştirilirse (ör. terminal makası artırılırsa) sıradaki bağlar.
+        <b style={{ color: kritikRenk }}>{t({ tr: "Belirleyici kısıt: ", en: "Governing constraint: ", de: "Maßgebender Engpass: " })}{kisaAd[bag.anahtar] || bag.ad}</b> — {t({ tr: "en yüksek headway (", en: "the highest headway (", de: "die höchste Zugfolgezeit (" })}{Math.round(bag.headway)}{t({ tr: " s) hattı bağlar (hMin). Diğerleri daha küçük headway ister; aradaki fark, o kısıtta ne kadar pay olduğunu gösterir. Bir kısıt iyileştirilirse (ör. terminal makası artırılırsa) sıradaki bağlar.", en: " s) governs the line (hMin). The others require smaller headways; the gap shows how much margin remains in each constraint. If one constraint is improved (e.g. more terminal switches), the next one governs.", de: " s) bestimmt die Linie (hMin). Die anderen benötigen kleinere Zugfolgezeiten; der Abstand zeigt, wie viel Reserve in jedem Engpass verbleibt. Wird ein Engpass verbessert (z. B. mehr Endstellen-Weichen), bestimmt der nächste." })}
       </div>
     </div>
   );

@@ -11,6 +11,7 @@
 import type { BlokSperr } from "@/lib/anaray/blockingtime";
 import { saat, km } from "@/lib/anaray/format";
 import { CK } from "@/lib/anaray/chartkit";
+import { useDil } from "@/components/DilProvider";
 
 const VBW = 820;
 const VBH = 460;
@@ -32,6 +33,7 @@ export function BlockingStairChart({
   /** Belirleyici bloğun anlatım etiketi ("kritik" | "belirleyici"). */
   kritikAd?: string;
 }) {
+  const { t } = useDil();
   const plotW = VBW - PAD.left - PAD.right;
   const plotH = VBH - PAD.top - PAD.bottom;
 
@@ -81,7 +83,7 @@ export function BlockingStairChart({
     });
 
   return (
-    <svg viewBox={`0 0 ${VBW} ${VBH}`} className="w-full h-auto" role="img" aria-label="Sperrzeitentreppe blocking-time merdiveni" style={{ fontFamily: CK.sans }}>
+    <svg viewBox={`0 0 ${VBW} ${VBH}`} className="w-full h-auto" role="img" aria-label={t({ tr: "Sperrzeitentreppe blocking-time merdiveni", en: "Sperrzeitentreppe blocking-time staircase", de: "Sperrzeitentreppe (Blocking-Time-Treppe)" })} style={{ fontFamily: CK.sans }}>
       {/* Zaman ızgarası */}
       {ticks.map((t) => (
         <g key={t}>
@@ -129,7 +131,7 @@ export function BlockingStairChart({
         </marker>
       </defs>
 
-      <text x={PAD.left + plotW / 2} y={VBH - 4} fill={CK.muted} fontSize={11} textAnchor="middle">Zaman (dk:sn) →  ·  {kritikAd} blokta iki merdiven değer = min headway</text>
+      <text x={PAD.left + plotW / 2} y={VBH - 4} fill={CK.muted} fontSize={11} textAnchor="middle">{t({ tr: "Zaman (dk:sn) →  ·  ", en: "Time (min:s) →  ·  ", de: "Zeit (min:s) →  ·  " })}{kritikAd}{t({ tr: " blokta iki merdiven değer = min headway", en: " block, two staircases meet = min headway", de: " Block, zwei Treppen berühren sich = Zugfolgezeit" })}</text>
     </svg>
   );
 }

@@ -12,6 +12,7 @@
 // hattı sil, çıkış) tek bir "⋮" menüsünün altındadır.
 
 import { useState } from "react";
+import { useDil } from "@/components/DilProvider";
 import { useAuth } from "@/components/AuthProvider";
 import { useHesap, useProje, useIsletme } from "@/components/SimConfigProvider";
 import { HatIceAktar } from "@/components/HatIceAktar";
@@ -43,6 +44,7 @@ const koyu = {
  * yokken null döner → header yalnız marka ile sade kalır.
  */
 export function HesapKontrolleri() {
+  const { t } = useDil();
   const { user, hazir, yapilandirildi, cikisYap } = useAuth();
   const {
     demoMu, paylasimGorunumu, durum, hataMetni, projeler, aktifId, aktifAd,
@@ -81,8 +83,11 @@ export function HesapKontrolleri() {
     }
   };
 
-  const hareketAdi = (t: KrediHareket["tur"]) =>
-    t === "satinalma" ? "Kredi alımı" : t === "rapor" ? "PDF rapor" : t === "projeYukleme" ? "Yeni hat" : "Düzeltme";
+  const hareketAdi = (tur: KrediHareket["tur"]) =>
+    tur === "satinalma" ? t({ tr: "Kredi alımı", en: "Credit purchase", de: "Credit-Kauf" })
+      : tur === "rapor" ? t({ tr: "PDF rapor", en: "PDF report", de: "PDF-Bericht" })
+      : tur === "projeYukleme" ? t({ tr: "Yeni hat", en: "New line", de: "Neue Linie" })
+      : t({ tr: "Düzeltme", en: "Correction", de: "Korrektur" });
 
   const silinebilir = projeler.length > 1 && Boolean(aktifId);
   const menuKapat = () => setMenuAcik(false);
@@ -92,7 +97,7 @@ export function HesapKontrolleri() {
       {/* ── Hat grubu: etiket + seçici + yeni hat (birlikte hizalı durur) ── */}
       <div className="flex flex-wrap items-center gap-2">
         <span className="hidden font-semibold uppercase tracking-[0.14em] sm:inline"
-          style={{ color: koyu.etiket, fontSize: "0.6rem" }}>AKTİF HAT</span>
+          style={{ color: koyu.etiket, fontSize: "0.6rem" }}>{t({ tr: "AKTİF HAT", en: "ACTIVE LINE", de: "AKTIVE LINIE" })}</span>
 
         {/* Hat seçici + yanındaki ✎ ile proje adı doğrudan düzenlenir. */}
         {adTaslak === null ? (
@@ -100,14 +105,14 @@ export function HesapKontrolleri() {
             <select
               value={aktifId ?? ""}
               onChange={(e) => projeSec(e.target.value)}
-              title="Üzerinde çalıştığınız proje. Seçtiğiniz hat tüm modüllerde aktif olur."
+              title={t({ tr: "Üzerinde çalıştığınız proje. Seçtiğiniz hat tüm modüllerde aktif olur.", en: "The project you are working on. The selected line becomes active in all modules.", de: "Das Projekt, an dem Sie arbeiten. Die gewählte Linie wird in allen Modulen aktiv." })}
               className="rounded-md border px-2.5 py-1 text-xs font-medium"
               style={{ background: koyu.yuzey, borderColor: koyu.kenar, color: koyu.metin, colorScheme: "dark", maxWidth: 200 }}
             >
               {projeler.map((p) => (<option key={p.id} value={p.id}>{p.ad}</option>))}
             </select>
             {aktifId && (
-              <button onClick={() => setAdTaslak(aktifAd)} title="Proje adını değiştir" aria-label="Proje adını değiştir"
+              <button onClick={() => setAdTaslak(aktifAd)} title={t({ tr: "Proje adını değiştir", en: "Rename project", de: "Projektname ändern" })} aria-label={t({ tr: "Proje adını değiştir", en: "Rename project", de: "Projektname ändern" })}
                 className="rounded-md border px-1.5 py-1 text-xs transition hover:bg-white/10"
                 style={{ borderColor: koyu.kenar, color: koyu.metinYumusak }}>✎</button>
             )}
@@ -119,32 +124,32 @@ export function HesapKontrolleri() {
               onKeyDown={(e) => { if (e.key === "Enter") { sar(projeAdiGuncelle(adTaslak.trim() || aktifAd), "ad"); setAdTaslak(null); } if (e.key === "Escape") setAdTaslak(null); }}
               className="rounded-md border px-2.5 py-1 text-xs" style={{ background: koyu.yuzey, borderColor: koyu.kenarGuclu, color: koyu.metin, maxWidth: 200 }} />
             <button onClick={() => { sar(projeAdiGuncelle(adTaslak.trim() || aktifAd), "ad"); setAdTaslak(null); }}
-              className="rounded-md px-2.5 py-1 text-xs font-medium" style={{ background: brand.red, color: "#fff" }}>Kaydet</button>
-            <button onClick={() => setAdTaslak(null)} className="rounded-md px-2 py-1 text-xs" style={{ color: koyu.metinYumusak }}>Vazgeç</button>
+              className="rounded-md px-2.5 py-1 text-xs font-medium" style={{ background: brand.red, color: "#fff" }}>{t({ tr: "Kaydet", en: "Save", de: "Speichern" })}</button>
+            <button onClick={() => setAdTaslak(null)} className="rounded-md px-2 py-1 text-xs" style={{ color: koyu.metinYumusak }}>{t({ tr: "Vazgeç", en: "Cancel", de: "Abbrechen" })}</button>
           </div>
         )}
 
         {/* Yeni hat */}
         {yeniAcik ? (
           <>
-            <input value={yeniAd} onChange={(e) => setYeniAd(e.target.value)} placeholder="Yeni hat adı" autoFocus
+            <input value={yeniAd} onChange={(e) => setYeniAd(e.target.value)} placeholder={t({ tr: "Yeni hat adı", en: "New line name", de: "Name der neuen Linie" })} autoFocus
               onKeyDown={(e) => { if (e.key === "Enter") { setOdemeHata(null); sar(projeYeni(yeniAd.trim()), "yeni"); setYeniAd(""); setYeniAcik(false); } if (e.key === "Escape") setYeniAcik(false); }}
               className="rounded-md border px-2.5 py-1 text-xs" style={{ background: koyu.yuzey, borderColor: koyu.kenarGuclu, color: koyu.metin }} />
             <button onClick={() => { setOdemeHata(null); sar(projeYeni(yeniAd.trim()), "yeni"); setYeniAd(""); setYeniAcik(false); }} disabled={isBasi === "yeni"}
-              className="rounded-md px-2.5 py-1 font-medium disabled:opacity-50" style={{ background: brand.red, color: "#fff" }}>Oluştur</button>
-            <button onClick={() => setYeniAcik(false)} className="rounded-md px-2 py-1" style={{ color: koyu.metinYumusak }}>Vazgeç</button>
+              className="rounded-md px-2.5 py-1 font-medium disabled:opacity-50" style={{ background: brand.red, color: "#fff" }}>{t({ tr: "Oluştur", en: "Create", de: "Erstellen" })}</button>
+            <button onClick={() => setYeniAcik(false)} className="rounded-md px-2 py-1" style={{ color: koyu.metinYumusak }}>{t({ tr: "Vazgeç", en: "Cancel", de: "Abbrechen" })}</button>
             <span style={{ color: koyu.etiket }}>·</span>
-            <button onClick={() => { setYeniAcik(false); setIceModal(true); }} title="railML / GTFS / DXF / Shapefile dosyasından yeni hat kur"
+            <button onClick={() => { setYeniAcik(false); setIceModal(true); }} title={t({ tr: "railML / GTFS / DXF / Shapefile dosyasından yeni hat kur", en: "Set up a new line from a railML / GTFS / DXF / Shapefile file", de: "Neue Linie aus einer railML- / GTFS- / DXF- / Shapefile-Datei erstellen" })}
               className="rounded-md border px-2.5 py-1 font-medium transition hover:bg-white/10"
-              style={{ background: koyu.yuzey, borderColor: koyu.kenar, color: koyu.metinYumusak }}>📁 Dosyadan</button>
+              style={{ background: koyu.yuzey, borderColor: koyu.kenar, color: koyu.metinYumusak }}>{t({ tr: "📁 Dosyadan", en: "📁 From file", de: "📁 Aus Datei" })}</button>
           </>
         ) : (
           <button onClick={() => setYeniAcik(true)} disabled={kotaDoldu}
             title={kotaDoldu
-              ? `Hat kotanız dolu (${projeler.length}/${kota}). Yeni hat açmak için önce bir hattı silin.`
-              : "Sıfırdan boş yeni bir proje açar"}
+              ? `${t({ tr: "Hat kotanız dolu", en: "Your line quota is full", de: "Ihr Linienkontingent ist voll" })} (${projeler.length}/${kota}). ${t({ tr: "Yeni hat açmak için önce bir hattı silin.", en: "Delete a line first to open a new one.", de: "Löschen Sie zuerst eine Linie, um eine neue zu erstellen." })}`
+              : t({ tr: "Sıfırdan boş yeni bir proje açar", en: "Opens a new, empty project from scratch", de: "Öffnet ein neues, leeres Projekt von Grund auf" })}
             className="rounded-md border px-2.5 py-1 font-medium transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
-            style={{ background: koyu.yuzey, borderColor: koyu.kenar, color: koyu.metinYumusak }}>＋ Yeni hat</button>
+            style={{ background: koyu.yuzey, borderColor: koyu.kenar, color: koyu.metinYumusak }}>{t({ tr: "＋ Yeni hat", en: "＋ New line", de: "＋ Neue Linie" })}</button>
         )}
       </div>
 
@@ -152,12 +157,12 @@ export function HesapKontrolleri() {
       <span className="hidden h-4 w-px sm:block" style={{ background: koyu.kenar }} aria-hidden="true" />
 
       {/* Kaydetme durumu — ayrı bir "Kaydet" düğmesi yoktur, otomatik kaydedilir */}
-      <span className="inline-flex items-center gap-1 font-medium" title="Değişiklikleriniz otomatik kaydedilir"
+      <span className="inline-flex items-center gap-1 font-medium" title={t({ tr: "Değişiklikleriniz otomatik kaydedilir", en: "Your changes are saved automatically", de: "Ihre Änderungen werden automatisch gespeichert" })}
         style={{ color: durum === "hata" ? koyu.kotu : (durum === "kaydedildi" || durum === "hazir") ? koyu.iyi : koyu.etiket }}>
-        {durum === "yukleniyor" && "⟳ yükleniyor…"}
-        {durum === "kaydediliyor" && "⟳ kaydediliyor…"}
-        {(durum === "kaydedildi" || durum === "hazir") && "✓ kaydedildi"}
-        {durum === "hata" && `⚠ ${hataMetni ?? "kayıt hatası"}`}
+        {durum === "yukleniyor" && t({ tr: "⟳ yükleniyor…", en: "⟳ loading…", de: "⟳ wird geladen…" })}
+        {durum === "kaydediliyor" && t({ tr: "⟳ kaydediliyor…", en: "⟳ saving…", de: "⟳ wird gespeichert…" })}
+        {(durum === "kaydedildi" || durum === "hazir") && t({ tr: "✓ kaydedildi", en: "✓ saved", de: "✓ gespeichert" })}
+        {durum === "hata" && `⚠ ${hataMetni ?? t({ tr: "kayıt hatası", en: "save error", de: "Speicherfehler" })}`}
       </span>
 
       {/* Kredi/ödeme uyarısı (yeni hat için yetersiz kredi vb.) */}
@@ -170,14 +175,14 @@ export function HesapKontrolleri() {
           yalnız Belgeler'de, PDF üretimine özgü olarak durur. Bkz. Belgeler.tsx. */}
 
       {/* Kredi bakiyesi — ücretli rapor/proje yükleme bu krediden düşer */}
-      <span title="Kredi bakiyeniz — rapor ve proje yükleme bundan düşer"
+      <span title={t({ tr: "Kredi bakiyeniz — rapor ve proje yükleme bundan düşer", en: "Your credit balance — reports and project uploads are deducted from this", de: "Ihr Guthaben — Berichte und Projekt-Uploads werden davon abgezogen" })}
         className="inline-flex items-center rounded-full border px-2.5 py-1 font-medium tabular-nums"
         style={{ background: koyu.yuzey, borderColor: koyu.kenar, color: bakiye === 0 ? koyu.kotu : koyu.metin }}>
         {bakiye === null ? "◌ kredi" : `◈ ${bakiye} kredi`}
       </span>
 
       {/* ⋮ menüsü — seyrek işler + kredi al + çıkış */}
-      <button onClick={() => setMenuAcik((a) => !a)} title="Hesap · kredi · hat işlemleri · çıkış" aria-label="Hesap menüsü"
+      <button onClick={() => setMenuAcik((a) => !a)} title={t({ tr: "Hesap · kredi · hat işlemleri · çıkış", en: "Account · credits · line actions · sign out", de: "Konto · Guthaben · Linienaktionen · Abmelden" })} aria-label={t({ tr: "Hesap menüsü", en: "Account menu", de: "Kontomenü" })}
         className="rounded-md border px-2 py-1 font-medium leading-none transition hover:bg-white/10"
         style={{ background: koyu.yuzey, borderColor: koyu.kenar, color: koyu.metin }}>⋮</button>
 
@@ -189,7 +194,7 @@ export function HesapKontrolleri() {
           <div className="absolute right-0 top-full z-40 mt-2 w-72 rounded-md border py-1 shadow-xl"
             style={{ background: brand.surface, borderColor: brand.border }}>
             <div className="border-b px-3 py-2" style={{ borderColor: brand.border }}>
-              <div className="field-label" style={{ color: brand.faint }}>HESAP</div>
+              <div className="field-label" style={{ color: brand.faint }}>{t({ tr: "HESAP", en: "ACCOUNT", de: "KONTO" })}</div>
               <div style={{ color: brand.ink }}>{user.email}</div>
               <div className="mt-0.5 text-[0.7rem]" style={{ color: kotaDoldu ? brand.red : brand.muted }}>
                 {kota === null ? `${projeler.length} hat · sınırsız` : `${projeler.length}/${kota} hat`}
@@ -202,7 +207,7 @@ export function HesapKontrolleri() {
 
             {/* Kredi satın alma — ücretli rapor/proje yükleme bu krediden düşer */}
             <div className="border-b px-3 py-2" style={{ borderColor: brand.border }}>
-              <div className="field-label mb-1" style={{ color: brand.faint }}>KREDİ AL</div>
+              <div className="field-label mb-1" style={{ color: brand.faint }}>{t({ tr: "KREDİ AL", en: "BUY CREDITS", de: "CREDITS KAUFEN" })}</div>
               <div className="flex flex-wrap gap-1.5">
                 {KREDI_PAKETLERI.map((p) => {
                   const { indirimYuzde } = paketAvantaj(p);
@@ -224,12 +229,12 @@ export function HesapKontrolleri() {
             {/* Kredi geçmişi — satın alma + harcama hareketleri (denetim) */}
             <div className="border-b" style={{ borderColor: brand.border }}>
               <MenuOge onClick={() => { void gecmisiDegistir(); }}
-                ad={gecmisAcik ? "Kredi geçmişi ▲" : "Kredi geçmişi ▼"}
-                alt="Kredi alımları ve harcamalarınız" />
+                ad={gecmisAcik ? t({ tr: "Kredi geçmişi ▲", en: "Credit history ▲", de: "Credit-Verlauf ▲" }) : t({ tr: "Kredi geçmişi ▼", en: "Credit history ▼", de: "Credit-Verlauf ▼" })}
+                alt={t({ tr: "Kredi alımları ve harcamalarınız", en: "Your credit purchases and spending", de: "Ihre Credit-Käufe und Ausgaben" })} />
               {gecmisAcik && (
                 <div className="max-h-40 overflow-auto px-3 pb-2">
                   {hareketler.length === 0 ? (
-                    <div className="text-[0.7rem]" style={{ color: brand.muted }}>Henüz hareket yok.</div>
+                    <div className="text-[0.7rem]" style={{ color: brand.muted }}>{t({ tr: "Henüz hareket yok.", en: "No transactions yet.", de: "Noch keine Buchungen." })}</div>
                   ) : hareketler.map((h) => (
                     <div key={h.id} className="flex items-center justify-between border-t py-1 text-[0.72rem]"
                       style={{ borderColor: brand.border }}>
@@ -249,20 +254,20 @@ export function HesapKontrolleri() {
 
             {silinebilir && (
               <MenuOge tehlike
-                onClick={() => { if (confirm(`“${aktifAd}” kalıcı olarak silinsin mi?`)) { sar(projeSilmeIstegi(aktifId!), "sil"); menuKapat(); } }}
-                ad="Hattı sil" alt="Bu projeyi kalıcı olarak siler (geri alınamaz)" />
+                onClick={() => { if (confirm(`“${aktifAd}” ${t({ tr: "kalıcı olarak silinsin mi?", en: "will be permanently deleted?", de: "dauerhaft löschen?" })}`)) { sar(projeSilmeIstegi(aktifId!), "sil"); menuKapat(); } }}
+                ad={t({ tr: "Hattı sil", en: "Delete line", de: "Linie löschen" })} alt={t({ tr: "Bu projeyi kalıcı olarak siler (geri alınamaz)", en: "Permanently deletes this project (cannot be undone)", de: "Löscht dieses Projekt dauerhaft (nicht rückgängig zu machen)" })} />
             )}
 
             {/* Tanıtım sihirbazını yeniden aç — bir daha "nasıl çalışır" için */}
             <div className="border-t" style={{ borderColor: brand.border }}>
               <MenuOge onClick={() => { menuKapat(); tanitimAc(); }}
-                ad="Tanıtımı göster" alt="RaySim iş akışı sihirbazını yeniden açar" />
+                ad={t({ tr: "Tanıtımı göster", en: "Show tour", de: "Tour anzeigen" })} alt={t({ tr: "RaySim iş akışı sihirbazını yeniden açar", en: "Reopens the RaySim workflow wizard", de: "Öffnet den RaySim-Workflow-Assistenten erneut" })} />
             </div>
 
             {/* Oturumu kapat — çubuğun sadeleşmesi için ayrı buton yerine menüde */}
             <div className="border-t" style={{ borderColor: brand.border }}>
               <MenuOge onClick={() => { menuKapat(); cikisYap(); }}
-                ad="Çıkış" alt="Oturumu kapatır; hatlarınız hesabınızda kalır" />
+                ad={t({ tr: "Çıkış", en: "Sign out", de: "Abmelden" })} alt={t({ tr: "Oturumu kapatır; hatlarınız hesabınızda kalır", en: "Signs you out; your lines stay in your account", de: "Meldet Sie ab; Ihre Linien bleiben in Ihrem Konto" })} />
             </div>
           </div>
         </>
@@ -272,12 +277,12 @@ export function HesapKontrolleri() {
           Sistemi bozmayan ekstra giriş noktası: "+ Yeni hat" → 📁 Dosyadan. */}
       {iceModal && (
         <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/55 p-4 sm:p-8"
-          role="dialog" aria-modal="true" aria-label="Dosyadan yeni hat"
+          role="dialog" aria-modal="true" aria-label={t({ tr: "Dosyadan yeni hat", en: "New line from file", de: "Neue Linie aus Datei" })}
           onClick={(e) => { if (e.target === e.currentTarget) setIceModal(false); }}>
           <div className="w-full max-w-xl rounded-xl bg-white shadow-2xl">
             <div className="flex items-center justify-between rounded-t-xl px-5 py-3" style={{ background: "linear-gradient(180deg,#0F2B40 0%,#0C2233 100%)" }}>
-              <span className="font-brand text-sm font-semibold text-white">📁 Dosyadan yeni hat kur</span>
-              <button onClick={() => setIceModal(false)} className="rounded px-2 py-1 text-xs font-medium text-slate-300 transition hover:bg-white/10 hover:text-white">✕ Kapat</button>
+              <span className="font-brand text-sm font-semibold text-white">{t({ tr: "📁 Dosyadan yeni hat kur", en: "📁 Set up a new line from a file", de: "📁 Neue Linie aus Datei erstellen" })}</span>
+              <button onClick={() => setIceModal(false)} className="rounded px-2 py-1 text-xs font-medium text-slate-300 transition hover:bg-white/10 hover:text-white">{t({ tr: "✕ Kapat", en: "✕ Close", de: "✕ Schließen" })}</button>
             </div>
             <div className="px-4 py-4">
               <HatIceAktar gomulu onIceAktar={async (yeni: DurakArasiRing[], ad: string, _mod, koord?: Record<string, { lat: number; lon: number }>, geometri?: { insaat?: boolean; noktalar: [number, number][] }[]) => {
@@ -298,6 +303,7 @@ export function HesapKontrolleri() {
  * ayrıdır çünkü koyu header satırına değil, sayfa genişliğine yayılırlar.
  */
 export function HesapBildirimleri() {
+  const { t } = useDil();
   const { user } = useAuth();
   const { paylasimGorunumu, paylasimdanCik, aktifAd } = useHesap();
   const { odemeSonucu, odemeSonucuTemizle } = useCuzdan();
@@ -312,10 +318,10 @@ export function HesapBildirimleri() {
         }}>
           <div className="mx-auto flex max-w-6xl items-center gap-2 px-6 py-2 text-xs" style={{ color: brand.ink }}>
             {odemeSonucu === "basarili"
-              ? <span>✓ <b>Ödeme başarılı</b> — krediniz hesabınıza eklendi.</span>
-              : <span>⚠ <b>Ödeme tamamlanamadı</b> — kredi eklenmedi. Tekrar deneyebilirsiniz.</span>}
+              ? <span>✓ <b>{t({ tr: "Ödeme başarılı", en: "Payment successful", de: "Zahlung erfolgreich" })}</b> {t({ tr: "— krediniz hesabınıza eklendi.", en: "— your credits have been added to your account.", de: "— Ihr Guthaben wurde Ihrem Konto gutgeschrieben." })}</span>
+              : <span>⚠ <b>{t({ tr: "Ödeme tamamlanamadı", en: "Payment failed", de: "Zahlung fehlgeschlagen" })}</b> {t({ tr: "— kredi eklenmedi. Tekrar deneyebilirsiniz.", en: "— no credit was added. You can try again.", de: "— es wurde kein Guthaben hinzugefügt. Sie können es erneut versuchen." })}</span>}
             <button onClick={odemeSonucuTemizle} className="ml-auto rounded px-2 py-0.5 font-medium"
-              style={{ color: brand.muted }}>kapat ✕</button>
+              style={{ color: brand.muted }}>{t({ tr: "kapat ✕", en: "close ✕", de: "schließen ✕" })}</button>
           </div>
         </div>
       )}
@@ -324,13 +330,13 @@ export function HesapBildirimleri() {
       {paylasimGorunumu && (
         <Serit renk={CK.amber}>
           <span style={{ color: brand.ink }}>
-            👁 <b>Salt-okunur paylaşım görünümü</b> — “{aktifAd}”. Değişiklik yapılamaz.
+            👁 <b>{t({ tr: "Salt-okunur paylaşım görünümü", en: "Read-only shared view", de: "Schreibgeschützte Freigabeansicht" })}</b> — “{aktifAd}”. {t({ tr: "Değişiklik yapılamaz.", en: "No changes possible.", de: "Keine Änderungen möglich." })}
           </span>
           {/* Buton, adresteki ?proje= parametresini de siler — yalnız "/" linki
               vermek görünümden ÇIKARMIYORDU (sağlayıcı yeniden kurulmuyor). */}
           <button onClick={paylasimdanCik} className="ml-auto rounded px-2.5 py-1 text-xs font-medium"
             style={{ background: brand.ink, color: "#fff" }}>
-            {user ? "Kendi hattıma dön" : "Giriş yap"}
+            {user ? t({ tr: "Kendi hattıma dön", en: "Back to my line", de: "Zu meiner Linie" }) : t({ tr: "Giriş yap", en: "Sign in", de: "Anmelden" })}
           </button>
         </Serit>
       )}

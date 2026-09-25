@@ -11,8 +11,10 @@ import { duyarlilikAnaliz, type DuyarlilikHedef } from "@/lib/anaray/duyarlilik"
 import type { DurakArasiRing } from "@/lib/anaray/ring";
 import type { RollingStock } from "@/lib/anaray/types";
 import type { SimConfig, Isletme } from "@/lib/anaray/config";
+import { useDil } from "@/components/DilProvider";
 
 export function Duyarlilik({ ringsHam, stock, cfg, isletme }: { ringsHam: DurakArasiRing[]; stock: RollingStock; cfg: SimConfig; isletme: Isletme }) {
+  const { t } = useDil();
   const [hedef, setHedef] = useState<DuyarlilikHedef>("isletmeKap");
   const [delta, setDelta] = useState(20);
   const s = useMemo(() => duyarlilikAnaliz(ringsHam, stock, cfg, isletme, hedef, delta), [ringsHam, stock, cfg, isletme, hedef, delta]);
@@ -20,8 +22,8 @@ export function Duyarlilik({ ringsHam, stock, cfg, isletme }: { ringsHam: DurakA
   if (ringsHam.length < 1 || s.taban <= 0) {
     return (
       <div className="mt-6 ds-card p-5">
-        <PanelBaslik ad="Duyarlılık (Tornado)" not="hangi parametre kapasiteyi en çok oynatıyor" />
-        <p className="text-sm" style={{ color: brand.muted }}>Analiz için kurulu bir hat gerekir (Ringler).</p>
+        <PanelBaslik ad={t({ tr: "Duyarlılık (Tornado)", en: "Sensitivity (Tornado)", de: "Sensitivität (Tornado)" })} not={t({ tr: "hangi parametre kapasiteyi en çok oynatıyor", en: "which parameter moves capacity the most", de: "welcher Parameter die Kapazität am stärksten bewegt" })} />
+        <p className="text-sm" style={{ color: brand.muted }}>{t({ tr: "Analiz için kurulu bir hat gerekir (Ringler).", en: "Analysis needs a built line (Ringler).", de: "Für die Analyse ist eine eingerichtete Strecke nötig (Ringler)." })}</p>
       </div>
     );
   }
@@ -33,19 +35,19 @@ export function Duyarlilik({ ringsHam, stock, cfg, isletme }: { ringsHam: DurakA
 
   return (
     <div className="mt-6 ds-card p-5">
-      <PanelBaslik ad="Duyarlılık (Tornado)" not="hangi parametre hedef metriği en çok oynatıyor — en güçlü kaldıraç tepede" />
+      <PanelBaslik ad={t({ tr: "Duyarlılık (Tornado)", en: "Sensitivity (Tornado)", de: "Sensitivität (Tornado)" })} not={t({ tr: "hangi parametre hedef metriği en çok oynatıyor — en güçlü kaldıraç tepede", en: "which parameter moves the target metric the most — strongest lever on top", de: "welcher Parameter die Zielmetrik am stärksten bewegt — stärkster Hebel oben" })} />
 
       <div className="mb-4 flex flex-wrap items-end gap-4">
         <label>
-          <span className="field-label">Hedef metrik</span>
+          <span className="field-label">{t({ tr: "Hedef metrik", en: "Target metric", de: "Zielmetrik" })}</span>
           <select value={hedef} onChange={(e) => setHedef(e.target.value as DuyarlilikHedef)}
             className="mt-1 block rounded border px-2 py-1.5 text-sm" style={{ borderColor: brand.border, color: brand.ink }}>
-            <option value="isletmeKap">İşletme kapasitesi (tren/saat)</option>
-            <option value="nTeorik">Teorik maks tramvay</option>
+            <option value="isletmeKap">{t({ tr: "İşletme kapasitesi (tren/saat)", en: "Operational capacity (trains/h)", de: "Betriebskapazität (Züge/h)" })}</option>
+            <option value="nTeorik">{t({ tr: "Teorik maks tramvay", en: "Theoretical max trams", de: "Theoretische max. Straßenbahnen" })}</option>
           </select>
         </label>
         <label>
-          <span className="field-label">Oynatma (±)</span>
+          <span className="field-label">{t({ tr: "Oynatma (±)", en: "Variation (±)", de: "Variation (±)" })}</span>
           <div className="mt-1 flex items-center gap-1">
             <input type="number" min={5} max={50} step={5} value={delta} onChange={(e) => setDelta(Math.max(5, Math.min(50, parseFloat(e.target.value) || 20)))}
               className="w-16 rounded border px-2 py-1 text-center text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
@@ -53,14 +55,14 @@ export function Duyarlilik({ ringsHam, stock, cfg, isletme }: { ringsHam: DurakA
           </div>
         </label>
         <div className="text-sm" style={{ color: brand.inkSoft }}>
-          Taban <b style={{ color: brand.ink }}>{s.taban}</b> · {s.hedefAd}
+          {t({ tr: "Taban", en: "Base", de: "Basis" })} <b style={{ color: brand.ink }}>{s.taban}</b> · {s.hedefAd}
         </div>
       </div>
 
       {/* Taban etiketli eksen */}
       <div className="relative mb-1 h-4 text-[0.6rem]" style={{ color: brand.muted }}>
         <span className="absolute" style={{ left: 0 }}>{Math.round(min * 10) / 10}</span>
-        <span className="absolute -translate-x-1/2" style={{ left: `${yuzde(s.taban)}%`, color: brand.ink, fontWeight: 700 }}>taban {s.taban}</span>
+        <span className="absolute -translate-x-1/2" style={{ left: `${yuzde(s.taban)}%`, color: brand.ink, fontWeight: 700 }}>{t({ tr: "taban", en: "base", de: "Basis" })} {s.taban}</span>
         <span className="absolute" style={{ right: 0 }}>{Math.round(max * 10) / 10}</span>
       </div>
 
@@ -78,7 +80,7 @@ export function Duyarlilik({ ringsHam, stock, cfg, isletme }: { ringsHam: DurakA
                 <div className="absolute top-1/2 h-3 -translate-y-1/2 rounded" style={{ left: `${sol}%`, width: `${gen}%`, background: r.salinim < 1e-6 ? "#C9D2DA" : CK.gold, opacity: 0.9 }} />
               </div>
               <span className="w-24 shrink-0 text-xs tabular-nums" style={{ color: brand.ink }}>
-                {r.salinim < 1e-6 ? "etkisiz" : <>{dusuk}–{yuksek} <span style={{ color: brand.muted }}>(Δ{r.salinim})</span></>}
+                {r.salinim < 1e-6 ? t({ tr: "etkisiz", en: "no effect", de: "ohne Wirkung" }) : <>{dusuk}–{yuksek} <span style={{ color: brand.muted }}>(Δ{r.salinim})</span></>}
               </span>
             </div>
           );
@@ -86,7 +88,7 @@ export function Duyarlilik({ ringsHam, stock, cfg, isletme }: { ringsHam: DurakA
       </div>
 
       <p className="mt-3 text-xs" style={{ color: brand.muted }}>
-        Her parametre tek başına ±%{s.deltaYuzde} oynatıldı (diğerleri sabit). Çubuk uzunluğu = <b>salınım (Δ)</b> = o parametrenin metrik üzerindeki etkisi; en uzun çubuk en güçlü kaldıraçtır. Değerler simülasyonun aynı çekirdeğinden gelir.
+        {t({ tr: "Her parametre tek başına", en: "Each parameter is varied alone by", de: "Jeder Parameter wird einzeln um" })} ±%{s.deltaYuzde} {t({ tr: "oynatıldı (diğerleri sabit). Çubuk uzunluğu =", en: "(others fixed). Bar length =", de: "variiert (andere fest). Balkenlänge =" })} <b>{t({ tr: "salınım (Δ)", en: "swing (Δ)", de: "Schwankung (Δ)" })}</b> {t({ tr: "= o parametrenin metrik üzerindeki etkisi; en uzun çubuk en güçlü kaldıraçtır. Değerler simülasyonun aynı çekirdeğinden gelir.", en: "= that parameter's effect on the metric; the longest bar is the strongest lever. Values come from the simulation's own core.", de: "= die Wirkung dieses Parameters auf die Metrik; der längste Balken ist der stärkste Hebel. Die Werte stammen aus dem eigenen Kern der Simulation." })}
       </p>
     </div>
   );

@@ -7,6 +7,7 @@
 
 import { brand, ds } from "@/lib/anaray/brand";
 import { Kart } from "@/components/Kart";
+import { useDil } from "@/components/DilProvider";
 
 type Ton = "notr" | "danger" | "success" | "warn";
 
@@ -75,17 +76,18 @@ export function Kpi({
 // ————— Durum rozeti —————
 // Tek tip sonuç göstergesi: ✓ Uygun / ▲ Uyarı / ⚠ İhlal. Her panel/başlıkta aynı dil,
 // aynı renk → hattın sağlığı tek bakışta okunur. Dağınık "UYGUN/İHLAL" metinleri yerine.
-const DURUM_STIL: Record<"uygun" | "uyari" | "ihlal", { ik: string; et: string; fg: string; bg: string }> = {
-  uygun: { ik: "✓", et: "Uygun", fg: ds.status.success, bg: "#EAF7F0" },
-  uyari: { ik: "▲", et: "Uyarı", fg: "#8A5A00", bg: "#FBF3E2" },
-  ihlal: { ik: "⚠", et: "İhlal", fg: ds.status.danger, bg: "#FBE9EC" },
+const DURUM_STIL: Record<"uygun" | "uyari" | "ihlal", { ik: string; et: { tr: string; en: string; de: string }; fg: string; bg: string }> = {
+  uygun: { ik: "✓", et: { tr: "Uygun", en: "Compliant", de: "Konform" }, fg: ds.status.success, bg: "#EAF7F0" },
+  uyari: { ik: "▲", et: { tr: "Uyarı", en: "Warning", de: "Warnung" }, fg: "#8A5A00", bg: "#FBF3E2" },
+  ihlal: { ik: "⚠", et: { tr: "İhlal", en: "Violation", de: "Verstoß" }, fg: ds.status.danger, bg: "#FBE9EC" },
 };
 
 export function Durum({ tip, metin, className = "" }: { tip: "uygun" | "uyari" | "ihlal"; metin?: React.ReactNode; className?: string }) {
+  const { t } = useDil();
   const d = DURUM_STIL[tip];
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.7rem] font-semibold ${className}`.trim()} style={{ background: d.bg, color: d.fg }}>
-      {d.ik} {metin ?? d.et}
+      {d.ik} {metin ?? t(d.et)}
     </span>
   );
 }

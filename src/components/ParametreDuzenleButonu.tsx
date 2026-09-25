@@ -13,9 +13,11 @@ import { brand } from "@/lib/anaray/brand";
 import { useSimConfig } from "@/components/SimConfigProvider";
 import { ParametreEditoru } from "@/components/ParametreEditoru";
 import { PARAMETRELER_AC } from "@/components/Kaynak";
+import { useDil } from "@/components/DilProvider";
 
 export function ParametreDuzenleButonu() {
   const { sifirla, yazilabilir } = useSimConfig();
+  const { t } = useDil();
   const [acik, setAcik] = useState(false);
 
   // Panellerdeki "⚙ Parametreler →" kısayolları bu olayla modalı açar (aşağı inmeden).
@@ -42,16 +44,16 @@ export function ParametreDuzenleButonu() {
     <>
       <button
         onClick={() => setAcik(true)}
-        title="Simülasyon parametrelerini düzenle (aşağı inmeden)"
+        title={t({ tr: "Simülasyon parametrelerini düzenle (aşağı inmeden)", en: "Edit simulation parameters (without scrolling down)", de: "Simulationsparameter bearbeiten (ohne nach unten zu scrollen)" })}
         className="inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition hover:bg-white/10"
         style={{ background: "rgba(255,255,255,0.06)", borderColor: "rgba(255,255,255,0.22)", color: "#E7ECF1" }}
       >
         <span aria-hidden="true">⚙</span>
-        <span className="hidden sm:inline">Parametreler</span>
+        <span className="hidden sm:inline">{t({ tr: "Parametreler", en: "Parameters", de: "Parameter" })}</span>
       </button>
 
       {acik && (
-        <div className="fixed inset-0 z-[60] flex items-start justify-center p-4 sm:p-8" role="dialog" aria-modal="true" aria-label="Simülasyon parametreleri">
+        <div className="fixed inset-0 z-[60] flex items-start justify-center p-4 sm:p-8" role="dialog" aria-modal="true" aria-label={t({ tr: "Simülasyon parametreleri", en: "Simulation parameters", de: "Simulationsparameter" })}>
           {/* Arka plan — tıklayınca kapanır */}
           <div className="absolute inset-0" style={{ background: "rgba(12,34,51,0.55)" }} onClick={() => setAcik(false)} aria-hidden="true" />
 
@@ -61,14 +63,14 @@ export function ParametreDuzenleButonu() {
             <div className="flex items-center justify-between border-b px-5 py-3" style={{ borderColor: brand.border }}>
               <div className="flex items-baseline gap-2">
                 <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
-                <h2 className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>Simülasyon Parametreleri</h2>
+                <h2 className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{t({ tr: "Simülasyon Parametreleri", en: "Simulation Parameters", de: "Simulationsparameter" })}</h2>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={sifirla} title="Tüm parametreleri belge (el kitabı) varsayılanlarına döndür"
+                <button onClick={sifirla} title={t({ tr: "Tüm parametreleri belge (el kitabı) varsayılanlarına döndür", en: "Reset all parameters to the document (handbook) defaults", de: "Alle Parameter auf die Dokument-(Handbuch-)Standardwerte zurücksetzen" })}
                   className="rounded-md border px-2.5 py-1 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
-                  ↺ Varsayılanlar
+                  ↺ {t({ tr: "Varsayılanlar", en: "Defaults", de: "Standardwerte" })}
                 </button>
-                <button onClick={() => setAcik(false)} title="Kapat (Esc)"
+                <button onClick={() => setAcik(false)} title={t({ tr: "Kapat (Esc)", en: "Close (Esc)", de: "Schließen (Esc)" })}
                   className="rounded-md px-2 py-1 text-sm font-medium transition hover:bg-slate-100" style={{ color: brand.inkSoft }}>
                   ✕
                 </button>
@@ -77,7 +79,7 @@ export function ParametreDuzenleButonu() {
 
             {/* Açıklama */}
             <p className="border-b px-5 py-2 text-xs" style={{ borderColor: brand.border, color: brand.muted }}>
-              Tek kaynak — değiştirdiğin an Ringler / Sefer / Sistem modüllerinin tümü yeniden hesaplar ve otomatik kaydedilir.
+              {t({ tr: "Tek kaynak — değiştirdiğin an Ringler / Sefer / Sistem modüllerinin tümü yeniden hesaplar ve otomatik kaydedilir.", en: "Single source — the moment you change it, the Ringler / Service / System modules all recompute and auto-save.", de: "Einzige Quelle — sobald Sie etwas ändern, berechnen die Module Streckenabschnitte / Betrieb / System alles neu und speichern automatisch." })}
             </p>
 
             {/* Kaydırılabilir gövde */}
