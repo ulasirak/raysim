@@ -8,6 +8,7 @@ import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { Kart } from "@/components/Kart";
 import { Kpi } from "@/components/Kpi";
+import { useDil } from "@/components/DilProvider";
 
 interface Zincir {
   tepeYuk: number; tepeDurak: string; aracKapasite: number;
@@ -16,6 +17,7 @@ interface Zincir {
 }
 
 export function TalepZinciri({ t, dolulukHedefi = 0.85 }: { t: Zincir; dolulukHedefi?: number }) {
+  const { t: tt } = useDil();
   const pikDoluluk = Math.max(...t.duraklar.map((d) => d.doluluk), 0);
   const dolRenk = pikDoluluk > 0.85 ? CK.red : pikDoluluk > 0.5 ? CK.amber : "#2E7D57";
   const fark = t.filo.gerekenArac - t.filo.mevcutPik;
@@ -35,14 +37,14 @@ export function TalepZinciri({ t, dolulukHedefi = 0.85 }: { t: Zincir; dolulukHe
   return (
     <div>
       <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
-        {kutu("Tepe talep", `${t.tepeYuk}`, `yolcu/saat · ${t.tepeDurak}`, brand.ink)}
-        {ok(`%${Math.round(dolulukHedefi * 100)} doluluk hedefinde`)}
-        {kutu("Gereken filo", `${t.filo.gerekenArac}`, `tramvay (mevcut ${t.filo.mevcutPik})`, fark > 0 ? CK.red : brand.ink)}
-        {ok("mevcut filoda")}
-        {kutu("Ulaşılan doluluk", `%${Math.round(pikDoluluk * 100)}`, "en yoğun kesim", dolRenk)}
+        {kutu(tt({ tr: "Tepe talep", en: "Peak demand", de: "Spitzennachfrage" }), `${t.tepeYuk}`, `${tt({ tr: "yolcu/saat ·", en: "pax/hour ·", de: "Fahrgäste/h ·" })} ${t.tepeDurak}`, brand.ink)}
+        {ok(`%${Math.round(dolulukHedefi * 100)} ${tt({ tr: "doluluk hedefinde", en: "occupancy target", de: "Auslastungsziel" })}`)}
+        {kutu(tt({ tr: "Gereken filo", en: "Required fleet", de: "Benötigte Flotte" }), `${t.filo.gerekenArac}`, `${tt({ tr: "tramvay (mevcut", en: "trams (current", de: "Straßenbahnen (aktuell" })} ${t.filo.mevcutPik})`, fark > 0 ? CK.red : brand.ink)}
+        {ok(tt({ tr: "mevcut filoda", en: "with current fleet", de: "mit aktueller Flotte" }))}
+        {kutu(tt({ tr: "Ulaşılan doluluk", en: "Resulting occupancy", de: "Erreichte Auslastung" }), `%${Math.round(pikDoluluk * 100)}`, tt({ tr: "en yoğun kesim", en: "busiest section", de: "belebtester Abschnitt" }), dolRenk)}
       </div>
       <div className="mt-2 text-xs" style={{ color: brand.muted }}>
-        Tepe talep, {t.aracKapasite} kişilik araçlarla %{Math.round(dolulukHedefi * 100)} doluluk hedefine göre <b>{t.filo.gerekenArac} tramvay</b> gerektirir{fark > 0 ? ` (mevcuttan ${fark} fazla)` : fark < 0 ? ` (mevcuttan ${-fark} az yeterli)` : " (mevcut yeterli)"}. Filo azsa doluluk hedefi aşılır (kırmızı), fazlaysa düşer.
+        {tt({ tr: "Tepe talep,", en: "Peak demand,", de: "Spitzennachfrage:" })} {t.aracKapasite} {tt({ tr: "kişilik araçlarla", en: "-seat vehicles,", de: "-Personen-Fahrzeuge," })} %{Math.round(dolulukHedefi * 100)} {tt({ tr: "doluluk hedefine göre", en: "per occupancy target,", de: "gemäß Auslastungsziel," })} <b>{t.filo.gerekenArac} {tt({ tr: "tramvay", en: "trams", de: "Straßenbahnen" })}</b> {tt({ tr: "gerektirir", en: "are required", de: "sind erforderlich" })}{fark > 0 ? ` (${tt({ tr: "mevcuttan", en: "", de: "" })} ${fark} ${tt({ tr: "fazla", en: "more than current", de: "mehr als aktuell" })})` : fark < 0 ? ` (${tt({ tr: "mevcuttan", en: "", de: "" })} ${-fark} ${tt({ tr: "az yeterli", en: "fewer suffice", de: "weniger genügen" })})` : ` (${tt({ tr: "mevcut yeterli", en: "current is enough", de: "aktuell ausreichend" })})`}. {tt({ tr: "Filo azsa doluluk hedefi aşılır (kırmızı), fazlaysa düşer.", en: "If the fleet is too small the occupancy target is exceeded (red); if larger, it drops.", de: "Ist die Flotte zu klein, wird das Auslastungsziel überschritten (rot); ist sie größer, sinkt sie." })}
       </div>
     </div>
   );

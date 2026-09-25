@@ -12,6 +12,7 @@ import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { satirYerlesim } from "@/lib/anaray/grafikNoktalar";
 import type { DurakArasiRing } from "@/lib/anaray/ring";
+import { useDil } from "@/components/DilProvider";
 
 interface DurakYuk { ad: string; konum: number; tepeYuk: number; doluluk: number; terminal: boolean }
 
@@ -19,6 +20,7 @@ const YESIL = "#2E7D57";
 const dolulukRenk = (d: number) => (d > 0.85 ? CK.red : d > 0.5 ? CK.amber : YESIL);
 
 export function YukDwellAnaliz({ duraklar, rings }: { duraklar: DurakYuk[]; rings: DurakArasiRing[] }) {
+  const { t: tt } = useDil();
   const veri = useMemo(() => {
     if (duraklar.length < 2 || rings.length < 1) return null;
     const L = Math.max(...duraklar.map((d) => d.konum), 1);
@@ -97,19 +99,19 @@ export function YukDwellAnaliz({ duraklar, rings }: { duraklar: DurakYuk[]; ring
       <div className="min-w-[680px] sm:min-w-0 space-y-2">
         {/* Yük profili */}
         <div>
-          <div className="mb-0.5 px-1 text-xs font-semibold" style={{ color: brand.ink }}>Yük profili — durak başına tepe araç yükü (yolcu/saat), doluluğa göre renkli · <span style={{ color: CK.red }}>tepe: {tepe.ad} · {Math.round(tepe.tepeYuk)} yolcu/sa @ {(tepe.konum / 1000).toFixed(2)} km</span></div>
-          <svg viewBox={`0 0 ${W} ${Hy}`} className="w-full h-auto" role="img" aria-label="Yük profili"
-            dangerouslySetInnerHTML={{ __html: `${yukTicks}<line x1="${padL}" y1="${padTy + phy}" x2="${W - padR}" y2="${padTy + phy}" stroke="${brand.border}"/>${yukBar}${yukDeger}<text x="10" y="${padTy + phy / 2}" text-anchor="middle" font-size="8" font-weight="600" fill="${brand.inkSoft}" transform="rotate(-90 10 ${padTy + phy / 2})">yolcu/sa ↑</text>` }} />
+          <div className="mb-0.5 px-1 text-xs font-semibold" style={{ color: brand.ink }}>{tt({ tr: "Yük profili — durak başına tepe araç yükü (yolcu/saat), doluluğa göre renkli ·", en: "Load profile — peak vehicle load per stop (pax/hour), colored by occupancy ·", de: "Lastprofil — Spitzenlast je Haltestelle (Fahrgäste/h), nach Auslastung eingefärbt ·" })} <span style={{ color: CK.red }}>{tt({ tr: "tepe:", en: "peak:", de: "Spitze:" })} {tepe.ad} · {Math.round(tepe.tepeYuk)} {tt({ tr: "yolcu/sa @", en: "pax/h @", de: "Fahrgäste/h @" })} {(tepe.konum / 1000).toFixed(2)} km</span></div>
+          <svg viewBox={`0 0 ${W} ${Hy}`} className="w-full h-auto" role="img" aria-label={tt({ tr: "Yük profili", en: "Load profile", de: "Lastprofil" })}
+            dangerouslySetInnerHTML={{ __html: `${yukTicks}<line x1="${padL}" y1="${padTy + phy}" x2="${W - padR}" y2="${padTy + phy}" stroke="${brand.border}"/>${yukBar}${yukDeger}<text x="10" y="${padTy + phy / 2}" text-anchor="middle" font-size="8" font-weight="600" fill="${brand.inkSoft}" transform="rotate(-90 10 ${padTy + phy / 2})">${tt({ tr: "yolcu/sa ↑", en: "pax/h ↑", de: "Fahrgäste/h ↑" })}</text>` }} />
         </div>
         {/* Dwell dökümü */}
         <div>
-          <div className="mb-0.5 px-1 text-xs font-semibold" style={{ color: brand.ink }}>Duruş (dwell) dökümü — kapı açma / yolcu değişimi / kapı kapama (saniye)</div>
-          <svg viewBox={`0 0 ${W} ${Hd}`} className="w-full h-auto" role="img" aria-label="Dwell dökümü"
-            dangerouslySetInnerHTML={{ __html: `${dwTicks}<line x1="${padL}" y1="${padTd + phd}" x2="${W - padR}" y2="${padTd + phd}" stroke="${brand.border}"/>${dwBar}${dwDeger}${xTicks}<text x="10" y="${padTd + phd / 2}" text-anchor="middle" font-size="8" font-weight="600" fill="${brand.inkSoft}" transform="rotate(-90 10 ${padTd + phd / 2})">saniye ↑</text><text x="${((W) / 2).toFixed(1)}" y="${Hd - 2}" text-anchor="middle" font-size="8" font-weight="600" fill="${brand.inkSoft}">Mesafe (km) →</text>` }} />
+          <div className="mb-0.5 px-1 text-xs font-semibold" style={{ color: brand.ink }}>{tt({ tr: "Duruş (dwell) dökümü — kapı açma / yolcu değişimi / kapı kapama (saniye)", en: "Dwell breakdown — door opening / passenger exchange / door closing (seconds)", de: "Haltezeit-Aufschlüsselung — Türöffnen / Fahrgastwechsel / Türschließen (Sekunden)" })}</div>
+          <svg viewBox={`0 0 ${W} ${Hd}`} className="w-full h-auto" role="img" aria-label={tt({ tr: "Dwell dökümü", en: "Dwell breakdown", de: "Haltezeit-Aufschlüsselung" })}
+            dangerouslySetInnerHTML={{ __html: `${dwTicks}<line x1="${padL}" y1="${padTd + phd}" x2="${W - padR}" y2="${padTd + phd}" stroke="${brand.border}"/>${dwBar}${dwDeger}${xTicks}<text x="10" y="${padTd + phd / 2}" text-anchor="middle" font-size="8" font-weight="600" fill="${brand.inkSoft}" transform="rotate(-90 10 ${padTd + phd / 2})">${tt({ tr: "saniye ↑", en: "seconds ↑", de: "Sekunden ↑" })}</text><text x="${((W) / 2).toFixed(1)}" y="${Hd - 2}" text-anchor="middle" font-size="8" font-weight="600" fill="${brand.inkSoft}">${tt({ tr: "Mesafe (km) →", en: "Distance (km) →", de: "Entfernung (km) →" })}</text>` }} />
         </div>
         <div className="flex flex-wrap gap-x-4 gap-y-1 px-1 text-xs" style={{ color: brand.muted }}>
-          <span><span style={{ color: YESIL }}>■</span> &lt;%50 · <span style={{ color: CK.amber }}>■</span> %50–85 · <span style={{ color: CK.red }}>■</span> &gt;%85 doluluk</span>
-          <span><span style={{ color: "#9AA7B2" }}>■</span> kapı açma · <span style={{ color: CK.blue }}>■</span> yolcu değişimi · <span style={{ color: "#C9D2DA" }}>■</span> kapı kapama</span>
+          <span><span style={{ color: YESIL }}>■</span> &lt;%50 · <span style={{ color: CK.amber }}>■</span> %50–85 · <span style={{ color: CK.red }}>■</span> &gt;%85 {tt({ tr: "doluluk", en: "occupancy", de: "Auslastung" })}</span>
+          <span><span style={{ color: "#9AA7B2" }}>■</span> {tt({ tr: "kapı açma", en: "door opening", de: "Türöffnen" })} · <span style={{ color: CK.blue }}>■</span> {tt({ tr: "yolcu değişimi", en: "passenger exchange", de: "Fahrgastwechsel" })} · <span style={{ color: "#C9D2DA" }}>■</span> {tt({ tr: "kapı kapama", en: "door closing", de: "Türschließen" })}</span>
         </div>
       </div>
     </div>

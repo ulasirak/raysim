@@ -17,6 +17,7 @@ import { etkinArac } from "@/lib/anaray/config";
 import { brand } from "@/lib/anaray/brand";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { LiveNetwork } from "@/components/LiveNetwork";
+import { useDil } from "@/components/DilProvider";
 
 const KMH = 1 / 3.6;
 const BOS_SEBEKE: RailNetwork = {
@@ -133,6 +134,7 @@ const ROZETLER: { s: string; ad: string }[] = [
 
 /** QR'dan gelen ziyaretçi için sade, mobil tam ekran canlı ağ simülasyonu sayfası. */
 export function CanliAgSayfa() {
+  const { t } = useDil();
   const p = useCanliAgProps();
   const [acikLegend, setAcikLegend] = useState(false);
   // Ters işletme bu sayfada DAİMA kapalı başlar (yerel kontrol); ziyaretçi mod butonlarıyla açar.
@@ -142,10 +144,9 @@ export function CanliAgSayfa() {
     return (
       <div className="mx-auto max-w-xl px-4 py-16 text-center">
         <div className="text-3xl">🚋</div>
-        <h1 className="mt-3 text-lg font-semibold" style={{ color: brand.ink }}>Canlı Ağ Simülasyonu hazırlanıyor…</h1>
+        <h1 className="mt-3 text-lg font-semibold" style={{ color: brand.ink }}>{t({ tr: "Canlı Ağ Simülasyonu hazırlanıyor…", en: "Live Network Simulation is loading…", de: "Live-Netz-Simulation wird vorbereitet…" })}</h1>
         <p className="mt-2 text-sm" style={{ color: brand.muted }}>
-          Bu hat için filo/parklanma verisi bulunamadı. Bağlantı bir hattın canlı simülasyonuna gitmelidir
-          (rapor QR&apos;ı). Sorun sürerse hattı uygulamada açıp filoyu onaylayın.
+          {t({ tr: "Bu hat için filo/parklanma verisi bulunamadı. Bağlantı bir hattın canlı simülasyonuna gitmelidir (rapor QR’ı). Sorun sürerse hattı uygulamada açıp filoyu onaylayın.", en: "No fleet/parking data found for this line. The link should point to a line's live simulation (report QR). If the problem persists, open the line in the app and confirm the fleet.", de: "Für diese Strecke wurden keine Flotten-/Abstelldaten gefunden. Der Link sollte zur Live-Simulation einer Strecke führen (Bericht-QR). Bleibt das Problem, öffnen Sie die Strecke in der App und bestätigen Sie die Flotte." })}
         </p>
       </div>
     );
@@ -157,19 +158,19 @@ export function CanliAgSayfa() {
       <header className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b px-3 py-2 backdrop-blur"
         style={{ borderColor: brand.border, background: "rgba(255,255,255,0.9)" }}>
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold" style={{ color: brand.ink }}>{p.hatAdi || p.projeAdi || "Canlı Ağ Simülasyonu"}</div>
-          <div className="text-[11px]" style={{ color: brand.muted }}>Canlı Ağ Simülasyonu · {p.filo} tramvay</div>
+          <div className="truncate text-sm font-semibold" style={{ color: brand.ink }}>{p.hatAdi || p.projeAdi || t({ tr: "Canlı Ağ Simülasyonu", en: "Live Network Simulation", de: "Live-Netz-Simulation" })}</div>
+          <div className="text-[11px]" style={{ color: brand.muted }}>{t({ tr: "Canlı Ağ Simülasyonu", en: "Live Network Simulation", de: "Live-Netz-Simulation" })} · {p.filo} {t({ tr: "tramvay", en: "trams", de: "Straßenbahnen" })}</div>
         </div>
         <button type="button" onClick={() => setAcikLegend((v) => !v)}
           className="shrink-0 rounded-md px-3 py-1.5 text-xs font-semibold text-white" style={{ background: brand.ink }}>
-          {acikLegend ? "İşaretleri gizle" : "İşaretler ℹ️"}
+          {acikLegend ? t({ tr: "İşaretleri gizle", en: "Hide markers", de: "Markierungen ausblenden" }) : t({ tr: "İşaretler ℹ️", en: "Markers ℹ️", de: "Markierungen ℹ️" })}
         </button>
       </header>
 
       {/* Rozet açıklaması — tren üstündeki işaretler ne demek (mobilde katlanır) */}
       {acikLegend && (
         <div className="border-b px-3 py-2 text-xs" style={{ borderColor: brand.border, background: "#F7F9FA", color: brand.inkSoft }}>
-          <div className="mb-1 font-semibold" style={{ color: brand.ink }}>Trenin üstündeki işaretler</div>
+          <div className="mb-1 font-semibold" style={{ color: brand.ink }}>{t({ tr: "Trenin üstündeki işaretler", en: "Markers above the train", de: "Markierungen über dem Zug" })}</div>
           <ul className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
             {ROZETLER.map((r) => (
               <li key={r.s} className="flex items-center gap-2">
@@ -180,12 +181,10 @@ export function CanliAgSayfa() {
             ))}
           </ul>
           <div className="mt-2 leading-snug">
-            Bir trene <b>dokun</b> → bir tam turda hangi nedene kaç saniye harcadığının dökümü açılır.
-            Bir <b>bloğa dokun</b> → o bloğu <b>arızalı</b> yaparsın; trenler arızalı bloğun gerisinde
-            güvenle kuyruklanır (arkadan gelen önündekine çarpmaz — fail-safe), geçmiş trenler akmaya
-            devam eder; tekrar dokununca arıza kalkar ve herkes kaldığı yerden sürer.
-            Alttaki <b>▶ Oynat</b>, <b>hız</b> ve <b>zaman çubuğu</b> ile oynat/durdur; <b>Ters işletme</b>
-            {" "}kapalı gelir, istersen üstteki butonlarla açabilirsin.
+            {t({ tr: "Bir trene", en: "Tap a train", de: "Auf einen Zug tippen" })} <b>{t({ tr: "dokun", en: "", de: "" })}</b> {t({ tr: "→ bir tam turda hangi nedene kaç saniye harcadığının dökümü açılır.", en: "→ a breakdown of how many seconds are spent on each cause over one full round opens.", de: "→ eine Aufschlüsselung, wie viele Sekunden pro Ursache in einer vollen Runde anfallen, öffnet sich." })}
+            {" "}{t({ tr: "Bir", en: "Tap a", de: "Auf einen" })} <b>{t({ tr: "bloğa dokun", en: "block", de: "Block tippen" })}</b> {t({ tr: "→ o bloğu", en: "→ makes that block", de: "→ macht diesen Block" })} <b>{t({ tr: "arızalı", en: "faulty", de: "gestört" })}</b> {t({ tr: "yaparsın; trenler arızalı bloğun gerisinde güvenle kuyruklanır (arkadan gelen önündekine çarpmaz — fail-safe), geçmiş trenler akmaya devam eder; tekrar dokununca arıza kalkar ve herkes kaldığı yerden sürer.", en: "; trains queue safely behind the faulty block (a following train does not hit the one ahead — fail-safe), trains that already passed keep flowing; tap again and the fault clears and everyone resumes from where they stopped.", de: "; Züge stauen sich sicher hinter dem gestörten Block (ein nachfolgender Zug fährt nicht auf den vorderen auf — Fail-Safe), bereits vorbeigefahrene Züge fließen weiter; erneut tippen und die Störung ist behoben, alle fahren an ihrer Stelle weiter." })}
+            {" "}{t({ tr: "Alttaki", en: "Use the", de: "Mit" })} <b>{t({ tr: "▶ Oynat", en: "▶ Play", de: "▶ Abspielen" })}</b>, <b>{t({ tr: "hız", en: "speed", de: "Geschwindigkeit" })}</b> {t({ tr: "ve", en: "and", de: "und" })} <b>{t({ tr: "zaman çubuğu", en: "time bar", de: "Zeitleiste" })}</b> {t({ tr: "ile oynat/durdur;", en: "below to play/stop;", de: "unten abspielen/anhalten;" })} <b>{t({ tr: "Ters işletme", en: "Reverse operation", de: "Kehrbetrieb" })}</b>
+            {" "}{t({ tr: "kapalı gelir, istersen üstteki butonlarla açabilirsin.", en: "starts off, you can enable it with the buttons above if you wish.", de: "startet ausgeschaltet, Sie können ihn bei Bedarf mit den Schaltflächen oben aktivieren." })}
           </div>
         </div>
       )}
@@ -195,7 +194,7 @@ export function CanliAgSayfa() {
           böylece yalnız şema kayar, oynat/hız/zaman çubuğu tam genişlik kalır. */}
       <div className="px-2 py-3 sm:px-4">
         <div className="mb-1 text-center text-[11px] sm:hidden" style={{ color: brand.muted }}>
-          şemayı yana kaydırabilirsin →
+          {t({ tr: "şemayı yana kaydırabilirsin →", en: "you can scroll the diagram sideways →", de: "Sie können das Schema seitlich scrollen →" })}
         </div>
         {/* Blok tıklaması AÇIK: arıza artık döngü İÇİNDE ele alınıyor (motor değişmez,
             ışınlanma/donma yok) → ziyaretçi bir bloğa dokunup arıza yaratabilir, trenlerin

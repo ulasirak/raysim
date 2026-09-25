@@ -14,6 +14,7 @@ import { bildIstasyonZamanlari, bildKesisimZamanlari, satirYerlesim, type BildOl
 import type { LoopYorunge } from "@/lib/anaray/signalling";
 import type { Line } from "@/lib/anaray/types";
 import { saat } from "@/lib/anaray/format";
+import { useDil } from "@/components/DilProvider";
 
 type LoopVeri = LoopYorunge & { count: number; offset: number };
 
@@ -34,6 +35,7 @@ function sampleS(orn: LoopYorunge["ornekler"], faz: number): number {
 export type BildCakisma = { t: number; kmBas: number; kmSon: number; karsi: boolean };
 
 export function Bildfahrplan({ loop, line, cakismalar = [] }: { loop: LoopVeri; line: Line; cakismalar?: BildCakisma[] }) {
+  const { t } = useDil();
   const veri = useMemo(() => {
     const { periyot, L, loopLen, count } = loop;
     if (periyot <= 0 || L <= 0 || count < 1) return null;
@@ -151,28 +153,28 @@ export function Bildfahrplan({ loop, line, cakismalar = [] }: { loop: LoopVeri; 
   return (
     <div>
       <div className="mb-2 flex flex-wrap items-center gap-1.5">
-        <button type="button" onClick={() => zoom(1.3)} className={dugme} style={{ background: brand.ink, color: "#fff" }} aria-label="Yakınlaştır">+</button>
-        <button type="button" onClick={() => zoom(1 / 1.3)} className={dugme} style={{ background: brand.ink, color: "#fff" }} aria-label="Uzaklaştır">−</button>
-        <button type="button" onClick={sifirla} className={dugme} style={{ border: `1px solid ${brand.border}`, color: brand.ink }}>Sıfırla</button>
+        <button type="button" onClick={() => zoom(1.3)} className={dugme} style={{ background: brand.ink, color: "#fff" }} aria-label={t({ tr: "Yakınlaştır", en: "Zoom in", de: "Vergrößern" })}>+</button>
+        <button type="button" onClick={() => zoom(1 / 1.3)} className={dugme} style={{ background: brand.ink, color: "#fff" }} aria-label={t({ tr: "Uzaklaştır", en: "Zoom out", de: "Verkleinern" })}>−</button>
+        <button type="button" onClick={sifirla} className={dugme} style={{ border: `1px solid ${brand.border}`, color: brand.ink }}>{t({ tr: "Sıfırla", en: "Reset", de: "Zurücksetzen" })}</button>
         <span className="mx-1 text-[0.65rem] tabular-nums" style={{ color: brand.muted }}>×{view.k.toFixed(1)}</span>
-        <span className="hidden text-[0.65rem] sm:inline" style={{ color: brand.muted }}>tekerlek = yakınlaş · sürükle = kaydır · tren üstüne gel = vurgula</span>
+        <span className="hidden text-[0.65rem] sm:inline" style={{ color: brand.muted }}>{t({ tr: "tekerlek = yakınlaş · sürükle = kaydır · tren üstüne gel = vurgula", en: "wheel = zoom · drag = pan · hover a train = highlight", de: "Rad = zoomen · ziehen = verschieben · Zug überfahren = hervorheben" })}</span>
         <span className="flex-1" />
-        <button type="button" onClick={exportPng} className={dugme} style={{ border: `1px solid ${brand.border}`, color: brand.ink }}>PNG indir</button>
-        <button type="button" onClick={exportSvg} className={dugme} style={{ border: `1px solid ${brand.border}`, color: brand.ink }}>SVG indir</button>
+        <button type="button" onClick={exportPng} className={dugme} style={{ border: `1px solid ${brand.border}`, color: brand.ink }}>{t({ tr: "PNG indir", en: "Download PNG", de: "PNG herunterladen" })}</button>
+        <button type="button" onClick={exportSvg} className={dugme} style={{ border: `1px solid ${brand.border}`, color: brand.ink }}>{t({ tr: "SVG indir", en: "Download SVG", de: "SVG herunterladen" })}</button>
       </div>
       {cakSecili && (
         <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-3 py-2 text-xs" style={{ background: "#FBE4E7", border: `1px solid ${CK.red}`, color: brand.inkSoft }}>
-          <b style={{ color: CK.red }}>Çakışma</b>
-          <span>{cakSecili.karsi ? "karşı yön (meet — karşılaşma)" : "aynı yön (kuyruk/bunching)"}</span>
-          <span>· zaman <b className="tabular-nums">{saat(cakSecili.t)}</b></span>
-          <span>· konum <b className="tabular-nums">k{Math.floor(Math.min(cakSecili.kmBas, cakSecili.kmSon) / 1000)}+{String(Math.round(Math.min(cakSecili.kmBas, cakSecili.kmSon) % 1000)).padStart(3, "0")}</b>–<b className="tabular-nums">k{Math.floor(Math.max(cakSecili.kmBas, cakSecili.kmSon) / 1000)}+{String(Math.round(Math.max(cakSecili.kmBas, cakSecili.kmSon) % 1000)).padStart(3, "0")}</b></span>
-          <button type="button" onClick={() => setCakSecili(null)} className="ml-auto" style={{ color: brand.muted }} aria-label="Kapat">✕</button>
+          <b style={{ color: CK.red }}>{t({ tr: "Çakışma", en: "Conflict", de: "Konflikt" })}</b>
+          <span>{cakSecili.karsi ? t({ tr: "karşı yön (meet — karşılaşma)", en: "opposing direction (meet)", de: "Gegenrichtung (Begegnung)" }) : t({ tr: "aynı yön (kuyruk/bunching)", en: "same direction (queue/bunching)", de: "gleiche Richtung (Stau/Pulkbildung)" })}</span>
+          <span>· {t({ tr: "zaman", en: "time", de: "Zeit" })} <b className="tabular-nums">{saat(cakSecili.t)}</b></span>
+          <span>· {t({ tr: "konum", en: "position", de: "Position" })} <b className="tabular-nums">k{Math.floor(Math.min(cakSecili.kmBas, cakSecili.kmSon) / 1000)}+{String(Math.round(Math.min(cakSecili.kmBas, cakSecili.kmSon) % 1000)).padStart(3, "0")}</b>–<b className="tabular-nums">k{Math.floor(Math.max(cakSecili.kmBas, cakSecili.kmSon) / 1000)}+{String(Math.round(Math.max(cakSecili.kmBas, cakSecili.kmSon) % 1000)).padStart(3, "0")}</b></span>
+          <button type="button" onClick={() => setCakSecili(null)} className="ml-auto" style={{ color: brand.muted }} aria-label={t({ tr: "Kapat", en: "Close", de: "Schließen" })}>✕</button>
         </div>
       )}
       <div className="overflow-hidden rounded-md" style={{ border: `1px solid ${brand.border}` }}>
         <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full h-auto select-none" style={{ touchAction: "none", cursor: "grab" }}
           onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerLeave={onUp}
-          role="img" aria-label="Bildfahrplan — zaman-mesafe tren grafiği (yakınlaştırılabilir)">
+          role="img" aria-label={t({ tr: "Bildfahrplan — zaman-mesafe tren grafiği (yakınlaştırılabilir)", en: "Bildfahrplan — time-distance train diagram (zoomable)", de: "Bildfahrplan — Zeit-Weg-Zugdiagramm (zoombar)" })}>
           <defs><clipPath id="bfclip"><rect x={0} y={0} width={W} height={H} /></clipPath></defs>
           <g clipPath="url(#bfclip)"><g transform={`translate(${view.tx.toFixed(2)} ${view.ty.toFixed(2)}) scale(${view.k})`}>
           {/* İstasyon yatay ızgara + adları */}
@@ -232,17 +234,17 @@ export function Bildfahrplan({ loop, line, cakismalar = [] }: { loop: LoopVeri; 
             <text key={`zt${i}`} x={X(o.t)} y={eksenY + 11 + olaySatir[i] * 9} textAnchor="middle" fontSize={7} fontWeight={o.tip === "durak" ? 600 : 400} fill={olayRenk(o.tip)}>{saat(o.t)}</text>
           ))}
           {/* Eksen başlıkları */}
-          <text x={solPad + cizW / 2} y={H - 3} textAnchor="middle" fontSize={8} fontWeight={600} fill={brand.inkSoft}>Zaman (çevrim boyu) →</text>
-          <text x={12} y={ustPad + cizH / 2} textAnchor="middle" fontSize={8} fontWeight={600} fill={brand.inkSoft} transform={`rotate(-90 12 ${ustPad + cizH / 2})`}>Mesafe / İstasyon ↑</text>
+          <text x={solPad + cizW / 2} y={H - 3} textAnchor="middle" fontSize={8} fontWeight={600} fill={brand.inkSoft}>{t({ tr: "Zaman (çevrim boyu) →", en: "Time (over the cycle) →", de: "Zeit (über den Umlauf) →" })}</text>
+          <text x={12} y={ustPad + cizH / 2} textAnchor="middle" fontSize={8} fontWeight={600} fill={brand.inkSoft} transform={`rotate(-90 12 ${ustPad + cizH / 2})`}>{t({ tr: "Mesafe / İstasyon ↑", en: "Distance / Station ↑", de: "Entfernung / Haltestelle ↑" })}</text>
           </g></g>
         </svg>
         <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 px-1 text-xs" style={{ color: brand.muted }}>
-          <span><span style={{ color: CK.blue }}>▬</span> Gidiş yönü</span>
-          <span><span style={{ color: CK.red }}>▬</span> Dönüş yönü</span>
-          <span>Kalın çizgi = referans tren (zaman etiketleri bu trenindir)</span>
-          <span><span style={{ color: CK.amber }}>◆</span> karşılaşma (kesişim) noktası</span>
-          {cakismalar.length > 0 && <span><span style={{ color: CK.red }}>✖</span> tek-hat çakışması ({cakismalar.length}) · tıkla → detay</span>}
-          <span>Eğim = hız · yatay = duruş · çizgi aralığı = headway ({saat(loop.offset || 0)})</span>
+          <span><span style={{ color: CK.blue }}>▬</span> {t({ tr: "Gidiş yönü", en: "Outbound direction", de: "Hinfahrtrichtung" })}</span>
+          <span><span style={{ color: CK.red }}>▬</span> {t({ tr: "Dönüş yönü", en: "Return direction", de: "Rückfahrtrichtung" })}</span>
+          <span>{t({ tr: "Kalın çizgi = referans tren (zaman etiketleri bu trenindir)", en: "Bold line = reference train (time labels belong to it)", de: "Fette Linie = Referenzzug (Zeitbeschriftungen gehören ihm)" })}</span>
+          <span><span style={{ color: CK.amber }}>◆</span> {t({ tr: "karşılaşma (kesişim) noktası", en: "meeting (crossing) point", de: "Begegnungspunkt (Kreuzung)" })}</span>
+          {cakismalar.length > 0 && <span><span style={{ color: CK.red }}>✖</span> {t({ tr: "tek-hat çakışması", en: "single-track conflict", de: "Eingleis-Konflikt" })} ({cakismalar.length}) · {t({ tr: "tıkla → detay", en: "click → detail", de: "klicken → Detail" })}</span>}
+          <span>{t({ tr: "Eğim = hız · yatay = duruş · çizgi aralığı = headway", en: "Slope = speed · horizontal = dwell · line spacing = headway", de: "Steigung = Geschwindigkeit · waagerecht = Haltezeit · Linienabstand = Zugfolgezeit" })} ({saat(loop.offset || 0)})</span>
         </div>
       </div>
     </div>

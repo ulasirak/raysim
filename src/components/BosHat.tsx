@@ -7,6 +7,7 @@
 
 import Link from "next/link";
 import { brand } from "@/lib/anaray/brand";
+import { useDil } from "@/components/DilProvider";
 
 const ADIMLAR = [
   ["1", "Ringler", "/ringler", "Durak arası hücreleri (mesafe, dwell, makas, hemzemin) ekleyin — hattın omurgası."],
@@ -14,16 +15,16 @@ const ADIMLAR = [
 ] as const;
 
 export function BosHat({ modul }: { modul: string }) {
+  const { t } = useDil();
   return (
     <div className="mx-auto max-w-3xl px-6 py-14">
       <div className="rounded-lg border bg-white p-8" style={{ borderColor: brand.border }}>
-        <div className="field-label">Hat henüz boş</div>
+        <div className="field-label">{t({ tr: "Hat henüz boş", en: "Line is still empty", de: "Strecke ist noch leer" })}</div>
         <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>
-          {modul} için önce hattınızı tanımlayın
+          {t({ tr: "önce hattınızı tanımlayın", en: "define your line first", de: "definieren Sie zuerst Ihre Strecke" })} <span style={{ textTransform: "none" }}>({modul})</span>
         </h1>
         <p className="mt-2 text-sm leading-relaxed" style={{ color: brand.muted }}>
-          Bu hesapta kayıtlı bir durak/ring bulunmuyor. RaySim hazır bir örnek hat varsaymaz —
-          sonuçların sizin projenize ait olması için verileri siz girersiniz.
+          {t({ tr: "Bu hesapta kayıtlı bir durak/ring bulunmuyor. RaySim hazır bir örnek hat varsaymaz — sonuçların sizin projenize ait olması için verileri siz girersiniz.", en: "No station/section is saved on this account. RaySim assumes no ready-made sample line — you enter the data yourself so the results belong to your project.", de: "Für dieses Konto ist keine Haltestelle/kein Abschnitt gespeichert. RaySim nimmt keine vorgefertigte Beispielstrecke an — Sie geben die Daten selbst ein, damit die Ergebnisse zu Ihrem Projekt gehören." })}
         </p>
 
         <ol className="mt-6 flex flex-col gap-3">
@@ -42,7 +43,7 @@ export function BosHat({ modul }: { modul: string }) {
         <Link href="/ringler"
           className="mt-6 inline-block rounded-md px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
           style={{ background: brand.red }}>
-          İlk ringi eklemeye başla →
+          {t({ tr: "İlk ringi eklemeye başla →", en: "Start adding the first section →", de: "Ersten Abschnitt hinzufügen →" })}
         </Link>
       </div>
     </div>

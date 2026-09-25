@@ -12,8 +12,10 @@ import { CK } from "@/lib/anaray/chartkit";
 import { hizDegisimNoktalari, satirYerlesim } from "@/lib/anaray/grafikNoktalar";
 import type { LoopYorunge } from "@/lib/anaray/signalling";
 import type { Line } from "@/lib/anaray/types";
+import { useDil } from "@/components/DilProvider";
 
 export function HizProfili({ loop, line }: { loop: LoopYorunge; line: Line }) {
+  const { t } = useDil();
   const veri = useMemo(() => {
     const L = loop.L, orn = loop.ornekler;
     if (L <= 0 || orn.length < 2) return null;
@@ -59,7 +61,7 @@ export function HizProfili({ loop, line }: { loop: LoopYorunge; line: Line }) {
   return (
     <div className="-mx-1 overflow-x-auto px-1 sm:mx-0" style={{ WebkitOverflowScrolling: "touch" }}>
       <div className="min-w-[680px] sm:min-w-0">
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Hız profili — hat boyunca hız">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label={t({ tr: "Hız profili — hat boyunca hız", en: "Speed profile — speed along the line", de: "Geschwindigkeitsprofil — Geschwindigkeit entlang der Strecke" })}>
           {/* Y ızgara + km/h */}
           {yIsaret.map((v) => (
             <g key={v}>
@@ -89,14 +91,14 @@ export function HizProfili({ loop, line }: { loop: LoopYorunge; line: Line }) {
             );
           })}
           {/* Eksen başlıkları */}
-          <text x={padL + pw / 2} y={H - 3} textAnchor="middle" fontSize={8} fontWeight={600} fill={brand.inkSoft}>Mesafe (km) →</text>
-          <text x={11} y={padT + ph / 2} textAnchor="middle" fontSize={8} fontWeight={600} fill={brand.inkSoft} transform={`rotate(-90 11 ${padT + ph / 2})`}>Hız (km/h) ↑</text>
+          <text x={padL + pw / 2} y={H - 3} textAnchor="middle" fontSize={8} fontWeight={600} fill={brand.inkSoft}>{t({ tr: "Mesafe (km) →", en: "Distance (km) →", de: "Entfernung (km) →" })}</text>
+          <text x={11} y={padT + ph / 2} textAnchor="middle" fontSize={8} fontWeight={600} fill={brand.inkSoft} transform={`rotate(-90 11 ${padT + ph / 2})`}>{t({ tr: "Hız (km/h) ↑", en: "Speed (km/h) ↑", de: "Geschwindigkeit (km/h) ↑" })}</text>
         </svg>
         <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 px-1 text-xs" style={{ color: brand.muted }}>
-          <span><span style={{ color: CK.blue }}>▬</span> Gerçek hız (gidiş)</span>
-          <span><span style={{ color: brand.muted }}>╌</span> Hız limiti (segment vmax)</span>
-          <span>Dip = istasyon duruşu · limitin altı = hızlanma/frenleme</span>
-          <span>km etiketleri değişim noktalarında: <span style={{ color: CK.red }}>●</span> durak · <span style={{ color: CK.amber }}>●</span> limit değişimi · <span style={{ color: brand.muted }}>●</span> hat ucu</span>
+          <span><span style={{ color: CK.blue }}>▬</span> {t({ tr: "Gerçek hız (gidiş)", en: "Actual speed (outbound)", de: "Ist-Geschwindigkeit (Hinfahrt)" })}</span>
+          <span><span style={{ color: brand.muted }}>╌</span> {t({ tr: "Hız limiti (segment vmax)", en: "Speed limit (segment vmax)", de: "Geschwindigkeitsgrenze (Segment-vmax)" })}</span>
+          <span>{t({ tr: "Dip = istasyon duruşu · limitin altı = hızlanma/frenleme", en: "Trough = station stop · below the limit = acceleration/braking", de: "Tal = Haltestellenhalt · unter der Grenze = Beschleunigen/Bremsen" })}</span>
+          <span>{t({ tr: "km etiketleri değişim noktalarında:", en: "km labels at change points:", de: "km-Beschriftungen an Änderungspunkten:" })} <span style={{ color: CK.red }}>●</span> {t({ tr: "durak", en: "stop", de: "Haltestelle" })} · <span style={{ color: CK.amber }}>●</span> {t({ tr: "limit değişimi", en: "limit change", de: "Grenzwertänderung" })} · <span style={{ color: brand.muted }}>●</span> {t({ tr: "hat ucu", en: "line end", de: "Streckenende" })}</span>
         </div>
       </div>
     </div>

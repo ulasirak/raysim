@@ -19,6 +19,7 @@ import type { HaritaKisit } from "@/lib/anaray/ring";
 import { saat } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
+import { useDil } from "@/components/DilProvider";
 
 const VBW = 900;
 
@@ -57,6 +58,7 @@ export function CografiAg({
   geometri?: { insaat?: boolean; noktalar: [number, number][] }[];
   autoOynat?: boolean;
 }) {
+  const { t: tt } = useDil();
   const g = useMemo(() => cografiGeometri(line, koordinat, VBW), [line, koordinat]);
   const [t, setT] = useState(0);
   const [oynat, setOynat] = useState(autoOynat);
@@ -324,12 +326,12 @@ export function CografiAg({
       {/* Kip rozeti + kontroller */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <span className="ds-chip" style={{ background: g.coordluMu ? CK.goodBgSoft : "#EEF2F6", color: g.coordluMu ? CK.good : brand.muted, border: `1px solid ${g.coordluMu ? CK.good : brand.border}` }}>
-          {gercekGeo ? "Gerçek OSM hattı (harita)" : g.coordluMu ? "Gerçek koordinat (harita)" : "Ölçekli plan (koordinatsız)"}
+          {gercekGeo ? tt({ tr: "Gerçek OSM hattı (harita)", en: "Real OSM line (map)", de: "Echte OSM-Trasse (Karte)" }) : g.coordluMu ? tt({ tr: "Gerçek koordinat (harita)", en: "Real coordinates (map)", de: "Echte Koordinaten (Karte)" }) : tt({ tr: "Ölçekli plan (koordinatsız)", en: "Scaled plan (no coordinates)", de: "Maßstäblicher Plan (ohne Koordinaten)" })}
         </span>
         {loop && periyot > 0 && (
           <>
             <button type="button" onClick={() => setOynat((o) => !o)} className="rounded-md px-3 py-1 text-sm font-semibold text-white" style={{ background: brand.ink }}>
-              {oynat ? "⏸ Duraklat" : "▶ Oynat"}
+              {oynat ? tt({ tr: "⏸ Duraklat", en: "⏸ Pause", de: "⏸ Pause" }) : tt({ tr: "▶ Oynat", en: "▶ Play", de: "▶ Abspielen" })}
             </button>
             <div className="flex items-center gap-1">
               {HIZLAR.map((hh) => (
@@ -348,12 +350,12 @@ export function CografiAg({
       {/* Ters işletme analizi — kısa dönüş önerilen istasyonlar + filo etkisi (overlay özeti) */}
       {tersMakaslar.length > 0 && (
         <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-3 py-2 text-[0.72rem]" style={{ background: CK.amberBg, border: `1px solid ${CK.amber}`, color: CK.amberInk }}>
-          <span className="font-semibold">↺ Ters işletme:</span>
-          <span><b>{tersMakaslar.length}</b> istasyon makasında kısa dönüş önerilir (haritada ↺)</span>
+          <span className="font-semibold">{tt({ tr: "↺ Ters işletme:", en: "↺ Reverse operation:", de: "↺ Kehrbetrieb:" })}</span>
+          <span><b>{tersMakaslar.length}</b> {tt({ tr: "istasyon makasında kısa dönüş önerilir (haritada ↺)", en: "station switches recommend short-turn (↺ on the map)", de: "Haltestellenweichen empfehlen Kurzwende (↺ auf der Karte)" })}</span>
           {ters?.filo && ters.filo.kisaDonusTasarruf > 0 && (
-            <span>· filo: gereken <b>{ters.filo.gerekenArac}</b> → kısa dönüşle <b>{ters.filo.gerekenAracKisaDonusle}</b> (−{ters.filo.kisaDonusTasarruf} araç)</span>
+            <span>· {tt({ tr: "filo: gereken", en: "fleet: required", de: "Flotte: benötigt" })} <b>{ters.filo.gerekenArac}</b> → {tt({ tr: "kısa dönüşle", en: "with short-turn", de: "mit Kurzwende" })} <b>{ters.filo.gerekenAracKisaDonusle}</b> (−{ters.filo.kisaDonusTasarruf} {tt({ tr: "araç", en: "vehicles", de: "Fahrzeuge" })})</span>
           )}
-          <button type="button" onClick={() => setTersGoster((o) => !o)} className="ml-auto underline">{tersGoster ? "gizle" : "göster"}</button>
+          <button type="button" onClick={() => setTersGoster((o) => !o)} className="ml-auto underline">{tersGoster ? tt({ tr: "gizle", en: "hide", de: "ausblenden" }) : tt({ tr: "göster", en: "show", de: "anzeigen" })}</button>
         </div>
       )}
 
@@ -364,9 +366,9 @@ export function CografiAg({
         const kritik = asim > 0;
         return (
           <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-3 py-2 text-[0.72rem]" style={{ background: kritik ? "#FDECEC" : CK.goodBgSoft, border: `1px solid ${kritik ? CK.red : brand.border}`, color: kritik ? CK.red : brand.inkSoft }}>
-            <span className="font-semibold" style={{ color: brand.ink }}>⏱ Hız sınırı önerileri:</span>
-            <span><b>{hizKisitlari.length}</b> kısıt haritada işaretli (km/h — <b>tıkla</b> → detay){konforlu.length > 0 ? ` · ${konforlu.length} kurpta konfor önerisi` : ""}{asim > 0 ? ` (${asim} aşım)` : ""}</span>
-            {konforlu.length > 0 && <span style={{ color: brand.muted }}>{yolcuVeriVar ? "kurplar istasyon yolcu sayısına eşli" : "kurplar talep doluluğuna eşli"}</span>}
+            <span className="font-semibold" style={{ color: brand.ink }}>{tt({ tr: "⏱ Hız sınırı önerileri:", en: "⏱ Speed limit suggestions:", de: "⏱ Geschwindigkeitsvorschläge:" })}</span>
+            <span><b>{hizKisitlari.length}</b> {tt({ tr: "kısıt haritada işaretli (km/h —", en: "constraints marked on the map (km/h —", de: "Einschränkungen auf der Karte markiert (km/h —" })} <b>{tt({ tr: "tıkla", en: "click", de: "klicken" })}</b> {tt({ tr: "→ detay)", en: "→ detail)", de: "→ Detail)" })}{konforlu.length > 0 ? ` · ${konforlu.length} ${tt({ tr: "kurpta konfor önerisi", en: "curves with comfort advice", de: "Bögen mit Komfortempfehlung" })}` : ""}{asim > 0 ? ` (${asim} ${tt({ tr: "aşım", en: "exceedances", de: "Überschreitungen" })})` : ""}</span>
+            {konforlu.length > 0 && <span style={{ color: brand.muted }}>{yolcuVeriVar ? tt({ tr: "kurplar istasyon yolcu sayısına eşli", en: "curves matched to station passenger counts", de: "Bögen an Haltestellen-Fahrgastzahlen gekoppelt" }) : tt({ tr: "kurplar talep doluluğuna eşli", en: "curves matched to demand occupancy", de: "Bögen an Nachfrage-Auslastung gekoppelt" })}</span>}
           </div>
         );
       })()}
@@ -374,11 +376,11 @@ export function CografiAg({
       <div className="relative overflow-hidden rounded-lg border" style={{ borderColor: brand.border, background: g.coordluMu ? "linear-gradient(160deg,#F5F9F7 0%,#E9F1EE 55%,#DEE9E5 100%)" : "linear-gradient(160deg,#FBFCFD 0%,#EEF3F6 100%)" }}>
         {/* Zoom kontrolleri (tekerlekle de yakınlaş/uzaklaş; sürükleyerek kaydır) */}
         <div className="absolute right-2 top-2 z-10 flex flex-col overflow-hidden rounded-md border shadow-sm" style={{ borderColor: brand.border, background: "rgba(255,255,255,0.92)" }}>
-          <button type="button" onClick={() => zoomBtn(1 / 1.4)} title="Yakınlaştır" className="px-2.5 py-1 text-base font-bold leading-none hover:bg-slate-100" style={{ color: brand.ink }}>+</button>
-          <button type="button" onClick={() => zoomBtn(1.4)} title="Uzaklaştır" className="border-t px-2.5 py-1 text-base font-bold leading-none hover:bg-slate-100" style={{ color: brand.ink, borderColor: brand.border }}>−</button>
-          {yakinMi && <button type="button" onClick={() => setView(null)} title="Tam sığdır" className="border-t px-2.5 py-1 text-[0.65rem] leading-none hover:bg-slate-100" style={{ color: brand.muted, borderColor: brand.border }}>⤢</button>}
+          <button type="button" onClick={() => zoomBtn(1 / 1.4)} title={tt({ tr: "Yakınlaştır", en: "Zoom in", de: "Vergrößern" })} className="px-2.5 py-1 text-base font-bold leading-none hover:bg-slate-100" style={{ color: brand.ink }}>+</button>
+          <button type="button" onClick={() => zoomBtn(1.4)} title={tt({ tr: "Uzaklaştır", en: "Zoom out", de: "Verkleinern" })} className="border-t px-2.5 py-1 text-base font-bold leading-none hover:bg-slate-100" style={{ color: brand.ink, borderColor: brand.border }}>−</button>
+          {yakinMi && <button type="button" onClick={() => setView(null)} title={tt({ tr: "Tam sığdır", en: "Fit to view", de: "Einpassen" })} className="border-t px-2.5 py-1 text-[0.65rem] leading-none hover:bg-slate-100" style={{ color: brand.muted, borderColor: brand.border }}>⤢</button>}
         </div>
-        <svg ref={svgRef} viewBox={`${vb.x.toFixed(1)} ${vb.y.toFixed(1)} ${vb.w.toFixed(1)} ${vb.h.toFixed(1)}`} width="100%" style={{ display: "block", cursor: panning ? "grabbing" : "grab", touchAction: "none" }} role="img" aria-label="Coğrafi canlı ağ"
+        <svg ref={svgRef} viewBox={`${vb.x.toFixed(1)} ${vb.y.toFixed(1)} ${vb.w.toFixed(1)} ${vb.h.toFixed(1)}`} width="100%" style={{ display: "block", cursor: panning ? "grabbing" : "grab", touchAction: "none" }} role="img" aria-label={tt({ tr: "Coğrafi canlı ağ", en: "Geographic live network", de: "Geografisches Live-Netz" })}
           onPointerDown={panDown} onPointerMove={panMove} onPointerUp={panUp} onPointerLeave={panUp}>
           {/* İz — gerçek OSM geometrisi varsa onu (kavisli hiza), yoksa düz istasyon-çizgisi */}
           {gercekGeo ? (
@@ -522,39 +524,39 @@ export function CografiAg({
       {/* Tıklanan hız kısıtının popup detayı (hız sınırı önerisi + kurp konfor) */}
       {seciliKisit != null && hizKisitlari[seciliKisit] && (() => {
         const k = hizKisitlari[seciliKisit];
-        const turAd = k.tur === "makas" ? "Makas (turnout)" : k.tur === "hemzemin" ? "Hemzemin geçit" : k.tur === "tehlike" ? "Tehlike noktası" : "Kurp (yatay kavis)";
+        const turAd = k.tur === "makas" ? tt({ tr: "Makas (turnout)", en: "Switch (turnout)", de: "Weiche (turnout)" }) : k.tur === "hemzemin" ? tt({ tr: "Hemzemin geçit", en: "Level crossing", de: "Bahnübergang" }) : k.tur === "tehlike" ? tt({ tr: "Tehlike noktası", en: "Hazard point", de: "Gefahrenpunkt" }) : tt({ tr: "Kurp (yatay kavis)", en: "Curve (horizontal)", de: "Bogen (horizontal)" });
         const kritik = k.seviye === "asim", konfor = k.seviye === "kalabalik";
         const renk = kritik ? CK.red : konfor ? CK.amberInk : brand.ink;
         return (
           <div className="mt-2 rounded-lg border-l-4 px-3 py-2.5 text-[0.75rem]" style={{ borderColor: renk, background: "#fff", boxShadow: "0 2px 12px rgba(0,0,0,0.10)" }}>
             <div className="flex items-center justify-between gap-2">
               <span className="font-bold" style={{ color: renk }}>⏱ {k.ad} — {turAd}</span>
-              <button type="button" onClick={() => setSeciliKisit(null)} className="text-[0.7rem] underline" style={{ color: brand.muted }}>kapat ✕</button>
+              <button type="button" onClick={() => setSeciliKisit(null)} className="text-[0.7rem] underline" style={{ color: brand.muted }}>{tt({ tr: "kapat ✕", en: "close ✕", de: "schließen ✕" })}</button>
             </div>
             <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5" style={{ color: brand.inkSoft }}>
-              <span>Konum: <b>{(k.konum / 1000).toFixed(2)} km</b></span>
-              <span>Hız sınırı: <b>{k.vmax} km/h</b></span>
-              {k.tur === "kurp" && k.oneriVKmh != null && <span>Önerilen (konfor): <b style={{ color: renk }}>≤{k.oneriVKmh} km/h</b></span>}
+              <span>{tt({ tr: "Konum:", en: "Position:", de: "Position:" })} <b>{(k.konum / 1000).toFixed(2)} km</b></span>
+              <span>{tt({ tr: "Hız sınırı:", en: "Speed limit:", de: "Geschwindigkeitsgrenze:" })} <b>{k.vmax} km/h</b></span>
+              {k.tur === "kurp" && k.oneriVKmh != null && <span>{tt({ tr: "Önerilen (konfor):", en: "Recommended (comfort):", de: "Empfohlen (Komfort):" })} <b style={{ color: renk }}>≤{k.oneriVKmh} km/h</b></span>}
             </div>
             <div className="mt-1" style={{ color: k.tur === "kurp" && (kritik || konfor) ? renk : brand.muted }}>
               {k.tur === "kurp" && k.konforMesaj ? k.konforMesaj : k.detay}
             </div>
-            <div className="mt-1 text-[0.68rem]" style={{ color: brand.faint }}>Bu kısıtı <b>Ringler (KUR)</b>'da düzenleyebilirsiniz — değişiklik haritaya anında yansır.</div>
+            <div className="mt-1 text-[0.68rem]" style={{ color: brand.faint }}>{tt({ tr: "Bu kısıtı", en: "You can edit this constraint in", de: "Sie können diese Einschränkung in" })} <b>{tt({ tr: "Ringler (KUR)", en: "Sections (KUR)", de: "Abschnitte (KUR)" })}</b>{tt({ tr: "'da düzenleyebilirsiniz — değişiklik haritaya anında yansır.", en: " — the change is reflected on the map instantly.", de: " bearbeiten — die Änderung erscheint sofort auf der Karte." })}</div>
           </div>
         );
       })()}
 
       {/* Lejant */}
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.65rem]" style={{ color: brand.muted }}>
-        <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm" style={{ background: UP_COL }} /> gidiş ▶</span>
-        <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm" style={{ background: DOWN }} /> ◀ dönüş</span>
-        <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full" style={{ background: CK.good }} /> sinyal</span>
-        {hizKisitlari.length > 0 && <span className="flex items-center gap-1"><span className="inline-flex h-3 w-3 items-center justify-center rounded-full text-[0.55rem] font-bold" style={{ border: `1.4px solid ${CK.gold}`, color: CK.gold }}>◆</span> hız sınırı km/h — <b>tıkla → detay</b></span>}
-        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5" style={{ background: brand.ink }} /> parklanma</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm" style={{ background: UP_COL }} /> {tt({ tr: "gidiş ▶", en: "outbound ▶", de: "Hinfahrt ▶" })}</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm" style={{ background: DOWN }} /> {tt({ tr: "◀ dönüş", en: "◀ return", de: "◀ Rückfahrt" })}</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full" style={{ background: CK.good }} /> {tt({ tr: "sinyal", en: "signal", de: "Signal" })}</span>
+        {hizKisitlari.length > 0 && <span className="flex items-center gap-1"><span className="inline-flex h-3 w-3 items-center justify-center rounded-full text-[0.55rem] font-bold" style={{ border: `1.4px solid ${CK.gold}`, color: CK.gold }}>◆</span> {tt({ tr: "hız sınırı km/h —", en: "speed limit km/h —", de: "Geschwindigkeit km/h —" })} <b>{tt({ tr: "tıkla → detay", en: "click → detail", de: "klicken → Detail" })}</b></span>}
+        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5" style={{ background: brand.ink }} /> {tt({ tr: "parklanma", en: "parking", de: "Abstellung" })}</span>
         {gercekGeo && (
           <>
-            <span className="flex items-center gap-1"><span className="inline-block h-[3px] w-4 rounded-sm" style={{ background: brand.route }} /> gerçek hat (OSM)</span>
-            <span className="flex items-center gap-1"><span className="inline-block h-[3px] w-4 rounded-sm" style={{ background: CK.amber }} /> inşaat halinde</span>
+            <span className="flex items-center gap-1"><span className="inline-block h-[3px] w-4 rounded-sm" style={{ background: brand.route }} /> {tt({ tr: "gerçek hat (OSM)", en: "real line (OSM)", de: "echte Trasse (OSM)" })}</span>
+            <span className="flex items-center gap-1"><span className="inline-block h-[3px] w-4 rounded-sm" style={{ background: CK.amber }} /> {tt({ tr: "inşaat halinde", en: "under construction", de: "im Bau" })}</span>
           </>
         )}
       </div>

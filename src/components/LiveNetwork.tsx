@@ -17,6 +17,7 @@ import { CK, ASPEKT } from "@/lib/anaray/chartkit";
 
 import { VBW, vbhHesap, HIZLAR, UP_COL, DOWN, GAP, UP_SIDE, DOWN_SIDE, UST, DURUM_STIL, sampleS, sampleLoop, fazAtS } from "./liveNetworkGeo";
 import { FailSafeKart, LiveNetworkLegend, TersModSecici, TrenDetayKutusu } from "./liveNetworkKartlar";
+import { useDil } from "@/components/DilProvider";
 
 export function LiveNetwork({
   network, route, line, blocks, up = [], down = [], tMax, trainLen = 40, faultBlocks = [], onBlockClick, depots = [], features = [], loop, terminalBas, terminalSon,
@@ -43,6 +44,7 @@ export function LiveNetwork({
   onTersMod?: (m: TersMod) => void; // mod değişince kalıcı kaydet (isletme.tersMod)
   autoOynat?: boolean;          // rapor QR akışı: yüklenince otomatik oynat (?oynat=1)
 }) {
+  const { t: tt } = useDil();
   const [t, setT] = useState(0);
   const [secili, setSecili] = useState<number | null>(null); // döngüde tıklanan tren (detay kutusu)
   const [oynat, setOynat] = useState(false);
@@ -402,7 +404,7 @@ export function LiveNetwork({
     const trBase = { index: k, points: [], arr: 0, delay: 0 } as SignalTrain;
     // Dispatch'ten önce: parklanma alanında bekliyor (gidiş şeridinde park konumu).
     if (dg && t < dg.dispatchT - 1e-6) {
-      return { tr: trBase, fp: Math.min(loop.L, dg.parkPos), up: true, v: 0, durum: "dwell" as LoopDurum, ad: "parklanma alanında sıra bekliyor" };
+      return { tr: trBase, fp: Math.min(loop.L, dg.parkPos), up: true, v: 0, durum: "dwell" as LoopDurum, ad: tt({ tr: "parklanma alanında sıra bekliyor", en: "waiting in the parking area queue", de: "wartet in der Warteschlange des Abstellbereichs" }) };
     }
     const taban = dg ? dg.startPhase + (t - dg.dispatchT) : t + k * loop.offset;
     // Işınlanma düzeltmesi: ters işletme sonrası yeniden-katılan trene faz kaydırma uygulanır.
@@ -414,7 +416,7 @@ export function LiveNetwork({
     // dondurulduğu için r.v o konumun yörünge hızını verirdi = yanıltıcı "40 km/h").
     // Render-güvenli `tutulanIdx` STATE'inden okunur (mutable ref DEĞİL; her kare
     // zamanlayıcıda arizaTutRef'ten senkronlanır) → #2 (render'da ref okuma) giderildi.
-    if (tutulanIdx.has(k)) return { tr: trBase, fp, up: gidis, v: 0, durum: "dwell" as LoopDurum, ad: "arızalı blok arkasında güvenle bekliyor" };
+    if (tutulanIdx.has(k)) return { tr: trBase, fp, up: gidis, v: 0, durum: "dwell" as LoopDurum, ad: tt({ tr: "arızalı blok arkasında güvenle bekliyor", en: "waiting safely behind the faulty block", de: "wartet sicher hinter dem gestörten Block" }) };
     return { tr: trBase, fp, up: gidis, v: r.v, durum: r.durum, ad: r.ad };
   }) : [];
   // Ters işletmeye geçmiş trenler normal döngüden çıkarılır (kendi overlay'iyle çizilir).
@@ -540,7 +542,7 @@ export function LiveNetwork({
             <circle cx={pos.x} cy={pos.y} r={11} fill="none" stroke={brand.red} strokeWidth={1.4} opacity={0.9}>
               <animate attributeName="opacity" values="0.9;0.3;0.9" dur="0.9s" repeatCount="indefinite" />
             </circle>
-            <text x={pos.x} y={pos.y - 13} fill={brand.red} fontSize={7.5} fontWeight={800} textAnchor="middle">⚠ kavşak</text>
+            <text x={pos.x} y={pos.y - 13} fill={brand.red} fontSize={7.5} fontWeight={800} textAnchor="middle">{tt({ tr: "⚠ kavşak", en: "⚠ junction", de: "⚠ Kreuzung" })}</text>
           </g>
         )}
       </g>
@@ -568,7 +570,7 @@ export function LiveNetwork({
     const bc = offsetAt(d.position, GAP + 30, UP_SIDE); // kutu merkezi (şeridin üstünde)
     const boxW = Math.max(34, q * sqW + 10), boxH = 17;
     const bx = bc.x - boxW / 2, by = bc.y - boxH / 2;
-    const etk = `🅿 ${waiting}/${q} hazır`;
+    const etk = `🅿 ${waiting}/${q} ${tt({ tr: "hazır", en: "ready", de: "bereit" })}`;
     return (
       <g key={`dep${d.id}`}>
         <line x1={lp.x} y1={lp.y} x2={bc.x} y2={by + boxH} stroke={brand.faint} strokeWidth={1} strokeDasharray="2 2" />
@@ -577,7 +579,7 @@ export function LiveNetwork({
           const gone = i < dispatched; // baştan çıkanlar soluk
           return <rect key={i} x={bx + 6 + i * sqW} y={by + 4.5} width={rectW} height={8} rx={1}
             fill={gone ? "none" : UP_COL} stroke={gone ? brand.faint : "#fff"} strokeWidth={gone ? 1 : 0.8} opacity={gone ? 0.45 : 1}>
-            <title>{gone ? "yola çıktı" : "depoda çıkışa hazır"}</title>
+            <title>{gone ? tt({ tr: "yola çıktı", en: "dispatched", de: "ausgefahren" }) : tt({ tr: "depoda çıkışa hazır", en: "ready to depart in depot", de: "im Depot abfahrbereit" })}</title>
           </rect>;
         })}
         <rect x={bc.x - (etk.length * 2.6 + 4)} y={by - 11} width={(etk.length * 2.6 + 4) * 2} height={11} rx={2} fill={brand.surface} opacity={0.85} />
@@ -590,7 +592,7 @@ export function LiveNetwork({
 
   // TERMİNAL DÖNÜŞ BİÇİMİ — dönüş tipine göre uçta farklı geometri çizilir; tip
   // değişince görsel de değişir (Ringler → Dönüş tipi). Gidiş (alt) ↔ dönüş (üst) uçları bağlanır.
-  const TERM_TIP_KISA: Record<DonusTip, string> = { korTerminal: "kör terminal", ciftPeron: "çift peron", dongu: "balon loop", makasliGecis: "makaslı geçiş" };
+  const TERM_TIP_KISA: Record<DonusTip, string> = { korTerminal: tt({ tr: "kör terminal", en: "stub terminal", de: "Kopfendstelle" }), ciftPeron: tt({ tr: "çift peron", en: "twin platform", de: "Doppelbahnsteig" }), dongu: tt({ tr: "balon loop", en: "balloon loop", de: "Gleisschleife" }), makasliGecis: tt({ tr: "makaslı geçiş", en: "scissors crossover", de: "Weichenverbindung" }) };
   const terminalGlyph = (uc: "bas" | "son", tc?: TerminalConfig) => {
     if (!tc || basePts.length < 2) return null;
     const termPos = uc === "bas" ? 0 : L;
@@ -635,7 +637,7 @@ export function LiveNetwork({
       <g key={`term${uc}`} opacity={0.92}>
         {sekil}
         <text x={Math.max(28, Math.min(VBW - 28, tip.x))} y={tip.y + (uo.y >= 0 ? 8 : -3)} textAnchor="middle" fontSize={6.5} fontWeight={600} fill={brand.muted}>{TERM_TIP_KISA[tc.tip]}</text>
-        <title>{`${uc === "bas" ? "Başlangıç" : "Bitiş"} terminali — ${TERM_TIP_KISA[tc.tip]}${tc.tip === "dongu" ? " (dönüş beklemesi ≈ 0)" : ""}`}</title>
+        <title>{`${uc === "bas" ? tt({ tr: "Başlangıç", en: "Start", de: "Anfang" }) : tt({ tr: "Bitiş", en: "End", de: "Ende" })} ${tt({ tr: "terminali —", en: "terminal —", de: "-Endstelle —" })} ${TERM_TIP_KISA[tc.tip]}${tc.tip === "dongu" ? tt({ tr: " (dönüş beklemesi ≈ 0)", en: " (turnback wait ≈ 0)", de: " (Wendezeit ≈ 0)" }) : ""}`}</title>
       </g>
     );
   };
@@ -683,7 +685,7 @@ export function LiveNetwork({
           etkilenmez). sm ve üstünde min-genişlik + kaydırma kalkar — geniş ekranda zaten sığar. */}
       <div className="-mx-1 overflow-x-auto px-1 sm:mx-0 sm:overflow-x-visible sm:px-0" style={{ WebkitOverflowScrolling: "touch" }}>
       <div className="min-w-[760px] sm:min-w-0">
-      <svg viewBox={`0 ${-ustPay} ${VBW} ${VBH + ustPay}`} className="w-full h-auto" role="img" aria-label="Canlı ağ simülasyonu (çift hat)">
+      <svg viewBox={`0 ${-ustPay} ${VBW} ${VBH + ustPay}`} className="w-full h-auto" role="img" aria-label={tt({ tr: "Canlı ağ simülasyonu (çift hat)", en: "Live network simulation (double track)", de: "Live-Netz-Simulation (zweigleisig)" })}>
         {/* Depo hattı (statik) */}
         {spur.map((e, i) => (
           <line key={`sp${i}`} x1={e.a.x} y1={e.a.y} x2={e.b.x} y2={e.b.y} stroke={brand.faint} strokeWidth={2} strokeDasharray="5 4" strokeLinecap="round" />
@@ -742,7 +744,7 @@ export function LiveNetwork({
               fill={arizali ? "#7A0A1C" : ASPEKT.yesil} stroke="#fff" strokeWidth={0.9}
               style={{ cursor: onBlockClick ? "pointer" : "default" }}
               onClick={onBlockClick ? () => onBlockClick(i) : undefined}>
-              {onBlockClick && <title>{`Blok sınırı ${i} (istasyon/sinyal) — tıkla: arıza aç/kapat`}</title>}
+              {onBlockClick && <title>{`${tt({ tr: "Blok sınırı", en: "Block boundary", de: "Blockgrenze" })} ${i} ${tt({ tr: "(istasyon/sinyal) — tıkla: arıza aç/kapat", en: "(station/signal) — click: toggle fault", de: "(Haltestelle/Signal) — klicken: Störung ein/aus" })}`}</title>}
             </circle>
           );
         })}
@@ -778,7 +780,7 @@ export function LiveNetwork({
                 <circle cx={top.x} cy={top.y} r={3.4} fill={brand.surface} stroke={CK.blue} strokeWidth={1.3} />
                 <circle cx={top.x} cy={top.y - 0.8} r={0.9} fill={CK.blue} />
                 <line x1={top.x} y1={top.y + 0.1} x2={top.x} y2={top.y + 2.2} stroke={CK.blue} strokeWidth={0.9} />
-                <title>{`Yaya geçidi: ${f.ad} — tren yavaşlar`}</title>
+                <title>{`${tt({ tr: "Yaya geçidi:", en: "Pedestrian crossing:", de: "Fußgängerübergang:" })} ${f.ad} ${tt({ tr: "— tren yavaşlar", en: "— train slows", de: "— Zug verlangsamt" })}`}</title>
               </g>
             );
           }
@@ -790,7 +792,7 @@ export function LiveNetwork({
                 <line x1={top.x - 4} y1={top.y} x2={top.x + 4} y2={top.y} stroke={CK.amber} strokeWidth={1} />
                 <line x1={top.x} y1={top.y - 4} x2={top.x} y2={top.y + 4} stroke={CK.amber} strokeWidth={1} />
                 {durur && <circle cx={top.x + 6} cy={top.y - 4} r={2} fill={asp2} stroke="#fff" strokeWidth={0.6} style={{ transition: "fill 0.35s ease" }} />}
-                <title>{`Karayolu geçidi: ${f.ad}${durur ? ` — koruma duruşu ${Math.round(f.bekleme)} s (tren durur)` : " — tren yavaşlar"}`}</title>
+                <title>{`${tt({ tr: "Karayolu geçidi:", en: "Road crossing:", de: "Straßenübergang:" })} ${f.ad}${durur ? ` ${tt({ tr: "— koruma duruşu", en: "— protective stop", de: "— Schutzhalt" })} ${Math.round(f.bekleme)} s ${tt({ tr: "(tren durur)", en: "(train stops)", de: "(Zug hält)" })}` : tt({ tr: " — tren yavaşlar", en: " — train slows", de: " — Zug verlangsamt" })}`}</title>
               </g>
             );
           }
@@ -809,7 +811,7 @@ export function LiveNetwork({
                 {/* yön oku: giden ▶ / gelen ◀ */}
                 <path d={giden ? `M ${top.x + 2.6} ${top.y - 3.8} l 2.2 1.4 l -2.2 1.4 z` : `M ${top.x - 2.6} ${top.y - 3.8} l -2.2 1.4 l 2.2 1.4 z`} fill={cerceve} />
                 {ters && <text x={top.x} y={top.y + 3.6} textAnchor="middle" fontSize={3.2} fontWeight={700} fill={CK.amber}>↺</text>}
-                <title>{`Sinyal: ${f.ad} — ${giden ? "giden (ileri)" : "gelen (ters)"}${ters ? " · TERS İŞLETME (turnback)" : ""} · aspect çevrimi ${Math.round(f.aspektCevrim || 0)} s · ${dolu ? "kırmızı (dolu)" : "yeşil (serbest)"}`}</title>
+                <title>{`${tt({ tr: "Sinyal:", en: "Signal:", de: "Signal:" })} ${f.ad} — ${giden ? tt({ tr: "giden (ileri)", en: "outbound (forward)", de: "hin (vorwärts)" }) : tt({ tr: "gelen (ters)", en: "return (reverse)", de: "zurück (rückwärts)" })}${ters ? tt({ tr: " · TERS İŞLETME (turnback)", en: " · REVERSE OPERATION (turnback)", de: " · KEHRBETRIEB (turnback)" }) : ""} · ${tt({ tr: "aspect çevrimi", en: "aspect cycle", de: "Signalbild-Zyklus" })} ${Math.round(f.aspektCevrim || 0)} s · ${dolu ? tt({ tr: "kırmızı (dolu)", en: "red (occupied)", de: "rot (besetzt)" }) : tt({ tr: "yeşil (serbest)", en: "green (clear)", de: "grün (frei)" })}`}</title>
               </g>
             );
           }
@@ -828,7 +830,7 @@ export function LiveNetwork({
                 <circle cx={gA.x} cy={gA.y} r={1.1} fill={col} /><circle cx={dB.x} cy={dB.y} r={1.1} fill={col} />
                 {scissors && <><circle cx={dA.x} cy={dA.y} r={1.1} fill={col} /><circle cx={gB.x} cy={gB.y} r={1.1} fill={col} /></>}
                 <text x={etk.x} y={etk.y} textAnchor="middle" fontSize={4.6} fontWeight={700} fill={brand.inkSoft}>{scissors ? "X" : "S"}</text>
-                <title>{`Makas: ${f.ad} — ${scissors ? "X-makas — 2 çapraz, gidiş↔dönüş" : "S-makas — gidiş↔dönüş"}${f.makasSayisi ? ` · ${f.makasSayisi} makas` : ""} — ${dolu ? "kırmızı (dolu)" : "yeşil (serbest)"}`}</title>
+                <title>{`${tt({ tr: "Makas:", en: "Switch:", de: "Weiche:" })} ${f.ad} — ${scissors ? tt({ tr: "X-makas — 2 çapraz, gidiş↔dönüş", en: "X-switch — 2 crossings, outbound↔return", de: "X-Weiche — 2 Kreuzungen, Hin↔Rück" }) : tt({ tr: "S-makas — gidiş↔dönüş", en: "S-switch — outbound↔return", de: "S-Weiche — Hin↔Rück" })}${f.makasSayisi ? ` · ${f.makasSayisi} ${tt({ tr: "makas", en: "switches", de: "Weichen" })}` : ""} — ${dolu ? tt({ tr: "kırmızı (dolu)", en: "red (occupied)", de: "rot (besetzt)" }) : tt({ tr: "yeşil (serbest)", en: "green (clear)", de: "grün (frei)" })}`}</title>
               </g>
             );
           }
@@ -848,7 +850,7 @@ export function LiveNetwork({
             <g key={`mk${i}`}>
               <circle cx={c.x} cy={c.y} r={13} fill={brand.red} opacity={0.10} />
               <circle cx={c.x} cy={c.y} r={13} fill="none" stroke={brand.red} strokeWidth={1.2} strokeDasharray="3 2" opacity={0.85} />
-              <text x={c.x} y={c.y + 24} fill={brand.red} fontSize={7} fontWeight={700} textAnchor="middle">kavşak meşgul ({mk.crossover === "x" ? "X" : "S"})</text>
+              <text x={c.x} y={c.y + 24} fill={brand.red} fontSize={7} fontWeight={700} textAnchor="middle">{tt({ tr: "kavşak meşgul", en: "junction busy", de: "Kreuzung belegt" })} ({mk.crossover === "x" ? "X" : "S"})</text>
             </g>
           );
         })}
@@ -858,7 +860,7 @@ export function LiveNetwork({
         {gelenler.map((x, i) => wagon(x, i + gidenler.length))}
         {/* Ters işletmeye geçen trenler — giden→DÖNÜŞ (üst) şeritte başa geri; gelen→GİDİŞ
             (alt) şeritte bitiş terminaline doğru (karşı hatta geçti) */}
-        {loopAktif && tersNow.map((r, i) => wagon({ tr: { index: r.idx, points: [], arr: 0, delay: 0 } as SignalTrain, fp: r.fp, up: r.up, v: vTers, durum: "donus" as LoopDurum, ad: r.up ? "ters işletme — karşı (gidiş) hatta geçti, ileri gidiyor" : "ters işletme — karşı (dönüş) şeride geçti, geri dönüyor" }, 900 + i))}
+        {loopAktif && tersNow.map((r, i) => wagon({ tr: { index: r.idx, points: [], arr: 0, delay: 0 } as SignalTrain, fp: r.fp, up: r.up, v: vTers, durum: "donus" as LoopDurum, ad: r.up ? tt({ tr: "ters işletme — karşı (gidiş) hatta geçti, ileri gidiyor", en: "reverse operation — switched to the opposite (outbound) track, moving forward", de: "Kehrbetrieb — auf das Gegengleis (Hinfahrt) gewechselt, fährt vorwärts" }) : tt({ tr: "ters işletme — karşı (dönüş) şeride geçti, geri dönüyor", en: "reverse operation — switched to the opposite (return) track, going back", de: "Kehrbetrieb — auf das Gegengleis (Rückfahrt) gewechselt, fährt zurück" }) }, 900 + i))}
 
         {/* İstasyon ADLARI — EN ÜST katman (depo kutuları + trenlerden SONRA çizilir →
             hiçbir tren kutusu / depo etiketi durak adını örtemez). Gerçek adlar
@@ -882,13 +884,13 @@ export function LiveNetwork({
           <text x={40} y={1} fill="#fff" fontSize={14} fontWeight={700} textAnchor="middle" className="font-mono">{saat(t)}</text>
         </g>
         {/* Aktif tren sayısı + depoda bekleyen — aynı HUD kaydırmasıyla */}
-        <text x={VBW - 10} y={22 + hudDY} fill={brand.muted} fontSize={11} textAnchor="end">Hatta {aktifSayi} tren</text>
+        <text x={VBW - 10} y={22 + hudDY} fill={brand.muted} fontSize={11} textAnchor="end">{tt({ tr: "Hatta", en: "On line", de: "Auf Strecke" })} {aktifSayi} {tt({ tr: "tren", en: "trains", de: "Züge" })}</text>
         {depoToplam > 0 && (
-          <text x={VBW - 10} y={38 + hudDY} fill={brand.inkSoft} fontSize={10} textAnchor="end">🅿 {depoBekleyenToplam}/{depoToplam} depoda çıkışa hazır</text>
+          <text x={VBW - 10} y={38 + hudDY} fill={brand.inkSoft} fontSize={10} textAnchor="end">🅿 {depoBekleyenToplam}/{depoToplam} {tt({ tr: "depoda çıkışa hazır", en: "ready to depart in depot", de: "im Depot abfahrbereit" })}</text>
         )}
         {/* Şerit etiketleri — üst = Dönüş (sağ→sol), alt = Gidiş (sol→sağ) */}
-        <text x={10} y={VBH - 30} fill={DOWN} fontSize={10} fontWeight={600}>◀ Dönüş (üst şerit)</text>
-        <text x={10} y={VBH - 12} fill={UP_COL} fontSize={10} fontWeight={600}>Gidiş (alt şerit) ▶</text>
+        <text x={10} y={VBH - 30} fill={DOWN} fontSize={10} fontWeight={600}>{tt({ tr: "◀ Dönüş (üst şerit)", en: "◀ Return (upper track)", de: "◀ Rückfahrt (oberes Gleis)" })}</text>
+        <text x={10} y={VBH - 12} fill={UP_COL} fontSize={10} fontWeight={600}>{tt({ tr: "Gidiş (alt şerit) ▶", en: "Outbound (lower track) ▶", de: "Hinfahrt (unteres Gleis) ▶" })}</text>
       </svg>
       </div>
       </div>
@@ -904,7 +906,7 @@ export function LiveNetwork({
       {loop && cakisanIdx.size > 0 && (
         <div className="mb-2 overflow-hidden rounded-md border-l-4 text-xs" style={{ background: CK.badBgSoft, borderColor: brand.red, color: brand.inkSoft }}>
           <div className="px-3 py-2">
-            <b style={{ color: brand.red }}>⚠ Kavşak çakışması ({cakisanIdx.size} tramvay)</b> — bir <b>ters işletme</b> treni crossover&apos;dan karşı hatta geçerken (kavşak her iki hattı çaprazlar), {cakisanIdx.size === 1 ? "bir tramvay" : `${cakisanIdx.size} tramvay`} aynı <b>fouling bölgesine</b> girdi. Gerçek interlocking bu hareketi <b>bekletir</b> (kavşak sırayla kullanılır — bkz. Sistem Merkezi kavşak blocking-time). Çakışan tramvaylar kırmızı halkayla işaretli.
+            <b style={{ color: brand.red }}>{tt({ tr: "⚠ Kavşak çakışması", en: "⚠ Junction conflict", de: "⚠ Kreuzungskonflikt" })} ({cakisanIdx.size} {tt({ tr: "tramvay", en: "trams", de: "Straßenbahnen" })})</b> {tt({ tr: "— bir", en: "— while a", de: "— während ein" })} <b>{tt({ tr: "ters işletme", en: "reverse operation", de: "Kehrbetrieb" })}</b> {tt({ tr: "treni crossover’dan karşı hatta geçerken (kavşak her iki hattı çaprazlar),", en: "train crosses to the opposite track via the crossover (the junction crosses both tracks),", de: "-Zug über die Weichenverbindung auf das Gegengleis wechselt (die Kreuzung überquert beide Gleise)," })} {cakisanIdx.size === 1 ? tt({ tr: "bir tramvay", en: "one tram", de: "eine Straßenbahn" }) : `${cakisanIdx.size} ${tt({ tr: "tramvay", en: "trams", de: "Straßenbahnen" })}`} {tt({ tr: "aynı", en: "entered the same", de: "ist in denselben" })} <b>{tt({ tr: "fouling bölgesine", en: "fouling zone", de: "Fahrgefährdungsbereich" })}</b> {tt({ tr: "girdi. Gerçek interlocking bu hareketi", en: "entered. A real interlocking would", de: "eingefahren. Eine echte Stellwerkslogik würde diese Bewegung" })} <b>{tt({ tr: "bekletir", en: "hold", de: "anhalten" })}</b> {tt({ tr: "(kavşak sırayla kullanılır — bkz. Sistem Merkezi kavşak blocking-time). Çakışan tramvaylar kırmızı halkayla işaretli.", en: "this movement (the junction is used in turn — see System Center junction blocking-time). Conflicting trams are marked with a red ring.", de: " (die Kreuzung wird nacheinander genutzt — siehe Systemzentrale Kreuzungs-blocking-time). Konfliktbehaftete Straßenbahnen sind mit einem roten Ring markiert." })}
           </div>
         </div>
       )}
@@ -926,7 +928,7 @@ export function LiveNetwork({
       {/* Kontroller */}
       <div className="flex flex-wrap items-center gap-3">
         <button onClick={oynatDurdur} className="rounded-md px-4 py-1.5 text-sm font-medium text-white transition hover:opacity-90" style={{ background: brand.red }}>
-          {oynat ? "⏸ Duraklat" : t >= T ? "↻ Baştan" : "▶ Oynat"}
+          {oynat ? tt({ tr: "⏸ Duraklat", en: "⏸ Pause", de: "⏸ Pause" }) : t >= T ? tt({ tr: "↻ Baştan", en: "↻ Restart", de: "↻ Von vorn" }) : tt({ tr: "▶ Oynat", en: "▶ Play", de: "▶ Abspielen" })}
         </button>
         <div className="flex items-center gap-1">
           {HIZLAR.map((h) => (
@@ -937,7 +939,7 @@ export function LiveNetwork({
           ))}
         </div>
         <input type="range" min={0} max={T} step={0.5} value={t} onChange={(e) => { setOynat(false); setT(parseFloat(e.target.value)); }}
-          className="min-w-[160px] flex-1" style={{ accentColor: brand.red }} aria-label="Zaman çubuğu" />
+          className="min-w-[160px] flex-1" style={{ accentColor: brand.red }} aria-label={tt({ tr: "Zaman çubuğu", en: "Time bar", de: "Zeitleiste" })} />
         <span className="font-mono text-xs" style={{ color: brand.muted }}>{saat(t)} / {saat(T)}</span>
       </div>
       <LiveNetworkLegend depoVar={depoToplam > 0} tersMakasVar={tersMakaslar.length > 0} tersMod={tersMod} terminalVar={!!(terminalBas || terminalSon)} />
@@ -947,13 +949,13 @@ export function LiveNetwork({
         <div className="absolute inset-0 z-20 flex items-center justify-center rounded-md" style={{ background: "rgba(15,23,42,0.45)" }}>
           <div className="mx-4 max-w-sm rounded-xl border-2 p-4 shadow-xl" style={{ background: brand.surface, borderColor: CK.amber }}>
             <div className="flex items-center gap-2 text-sm font-bold" style={{ color: brand.ink }}>
-              <span style={{ color: CK.amber, fontSize: 18 }}>↺</span> Ters işletme onayı
+              <span style={{ color: CK.amber, fontSize: 18 }}>↺</span> {tt({ tr: "Ters işletme onayı", en: "Reverse operation confirmation", de: "Bestätigung des Kehrbetriebs" })}
             </div>
             <p className="mt-2 text-xs leading-relaxed" style={{ color: brand.inkSoft }}>
-              <b>Tren {karar.no}</b>, <b>{karar.makasAd}</b> istasyon makasına ({karar.crossover === "x" ? "X-makas" : "S-makas"}) ulaştı — <b>süre durduruldu</b>.
+              <b>{tt({ tr: "Tren", en: "Train", de: "Zug" })} {karar.no}</b>, <b>{karar.makasAd}</b> {tt({ tr: "istasyon makasına", en: "reached the station switch", de: "hat die Haltestellenweiche erreicht" })} ({karar.crossover === "x" ? tt({ tr: "X-makas", en: "X-switch", de: "X-Weiche" }) : tt({ tr: "S-makas", en: "S-switch", de: "S-Weiche" })}) {tt({ tr: "ulaştı —", en: "—", de: "—" })} <b>{tt({ tr: "süre durduruldu", en: "time paused", de: "Zeit angehalten" })}</b>.
               {karar.yon === "gelen"
-                ? " Bu DÖNÜŞ trenini karşı (gidiş) hatta geçirip ileri, bitiş terminaline doğru göndermek istiyor musunuz?"
-                : " Bu GİDEN treni karşı (dönüş) şeride geçirip başa (sıranın en arkasına) geri döndürmek istiyor musunuz?"}
+                ? tt({ tr: " Bu DÖNÜŞ trenini karşı (gidiş) hatta geçirip ileri, bitiş terminaline doğru göndermek istiyor musunuz?", en: " Do you want to move this RETURN train to the opposite (outbound) track and send it forward toward the end terminal?", de: " Möchten Sie diesen RÜCKFAHRT-Zug auf das Gegengleis (Hinfahrt) wechseln und vorwärts zur End-Endstelle schicken?" })
+                : tt({ tr: " Bu GİDEN treni karşı (dönüş) şeride geçirip başa (sıranın en arkasına) geri döndürmek istiyor musunuz?", en: " Do you want to move this OUTBOUND train to the opposite (return) track and turn it back to the start (the back of the queue)?", de: " Möchten Sie diesen HINFAHRT-Zug auf das Gegengleis (Rückfahrt) wechseln und zum Anfang (ans Ende der Warteschlange) zurückwenden?" })}
             </p>
             {/* Senaryo dökümü — crossover tipi fiziği + tahmini dönüş süresi + kavşak çakışma uyarısı */}
             {(() => {
@@ -964,17 +966,17 @@ export function LiveNetwork({
                 <div className="mt-2 rounded-md border px-2.5 py-2 text-[0.72rem] leading-relaxed" style={{ borderColor: brand.border, background: CK.track, color: brand.inkSoft }}>
                   <div>
                     {karar.crossover === "x"
-                      ? <><b>X-makas (scissors):</b> iki bağımsız hareket — varış ve kalkış ayrı bacakta, ardışık iki tren daha sık dönebilir.</>
-                      : <><b>S-makas (tek crossover):</b> dönüşler seri — kavşağı bir tren boşaltmadan ikincisi giremez.</>}
+                      ? <><b>{tt({ tr: "X-makas (scissors):", en: "X-switch (scissors):", de: "X-Weiche (scissors):" })}</b> {tt({ tr: "iki bağımsız hareket — varış ve kalkış ayrı bacakta, ardışık iki tren daha sık dönebilir.", en: "two independent movements — arrival and departure on separate legs, two consecutive trains can turn more frequently.", de: "zwei unabhängige Bewegungen — Ankunft und Abfahrt auf getrennten Schenkeln, zwei aufeinanderfolgende Züge können häufiger wenden." })}</>
+                      : <><b>{tt({ tr: "S-makas (tek crossover):", en: "S-switch (single crossover):", de: "S-Weiche (einfache Verbindung):" })}</b> {tt({ tr: "dönüşler seri — kavşağı bir tren boşaltmadan ikincisi giremez.", en: "turns are serial — a second train cannot enter until one clears the junction.", de: "Wenden erfolgen seriell — ein zweiter Zug kann erst einfahren, wenn einer die Kreuzung geräumt hat." })}</>}
                   </div>
-                  <div className="mt-1">Tahmini karşı-hatta geçiş + geri sürüş: <b>~{sureSn} s</b> ({Math.round(geriMesafe)} m @ {Math.round(vTers * 3.6)} km/h).</div>
-                  {mesgul && <div className="mt-1" style={{ color: brand.red }}><b>⚠ Bu kavşak şu an meşgul</b> — başka bir ters hareket crossover&apos;ı işgal ediyor; gerçek interlocking önce onu boşaltırdı.</div>}
+                  <div className="mt-1">{tt({ tr: "Tahmini karşı-hatta geçiş + geri sürüş:", en: "Estimated crossover + return drive:", de: "Geschätzter Gleiswechsel + Rückfahrt:" })} <b>~{sureSn} s</b> ({Math.round(geriMesafe)} m @ {Math.round(vTers * 3.6)} km/h).</div>
+                  {mesgul && <div className="mt-1" style={{ color: brand.red }}><b>{tt({ tr: "⚠ Bu kavşak şu an meşgul", en: "⚠ This junction is currently busy", de: "⚠ Diese Kreuzung ist derzeit belegt" })}</b> {tt({ tr: "— başka bir ters hareket crossover’ı işgal ediyor; gerçek interlocking önce onu boşaltırdı.", en: "— another reverse move occupies the crossover; a real interlocking would clear it first.", de: "— eine andere Kehrbewegung belegt die Weichenverbindung; eine echte Stellwerkslogik würde sie zuerst räumen." })}</div>}
                 </div>
               );
             })()}
             <div className="mt-3 flex flex-wrap gap-2">
-              <button onClick={onayla} className="flex-1 rounded-md px-3 py-1.5 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: brand.red }}>Ters işletmeyi onaylıyorum</button>
-              <button onClick={vazgec} className="rounded-md border px-3 py-1.5 text-sm transition hover:opacity-80" style={{ borderColor: brand.ink, color: brand.ink }}>Vazgeç</button>
+              <button onClick={onayla} className="flex-1 rounded-md px-3 py-1.5 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: brand.red }}>{tt({ tr: "Ters işletmeyi onaylıyorum", en: "I approve reverse operation", de: "Ich bestätige den Kehrbetrieb" })}</button>
+              <button onClick={vazgec} className="rounded-md border px-3 py-1.5 text-sm transition hover:opacity-80" style={{ borderColor: brand.ink, color: brand.ink }}>{tt({ tr: "Vazgeç", en: "Cancel", de: "Abbrechen" })}</button>
             </div>
           </div>
         </div>

@@ -11,8 +11,10 @@
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { brand } from "@/lib/anaray/brand";
+import { useDil } from "@/components/DilProvider";
 
 export function GrafikCerceve({ baslik, children }: { baslik: string; children: ReactNode }) {
+  const { t } = useDil();
   const [tam, setTam] = useState(false);
   const [mounted, setMounted] = useState(false);
   const govdeRef = useRef<HTMLDivElement>(null);
@@ -54,8 +56,8 @@ export function GrafikCerceve({ baslik, children }: { baslik: string; children: 
     <button type="button" onClick={() => setTam(!kapat)}
       className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition hover:bg-slate-50"
       style={{ borderColor: brand.border, color: brand.ink, background: "rgba(255,255,255,0.9)" }}
-      title={kapat ? "Kapat (ESC)" : "Tam ekran"}>
-      {kapat ? "✕ Kapat" : "⛶ Tam ekran"}
+      title={kapat ? t({ tr: "Kapat (ESC)", en: "Close (ESC)", de: "Schließen (ESC)" }) : t({ tr: "Tam ekran", en: "Fullscreen", de: "Vollbild" })}>
+      {kapat ? t({ tr: "✕ Kapat", en: "✕ Close", de: "✕ Schließen" }) : t({ tr: "⛶ Tam ekran", en: "⛶ Fullscreen", de: "⛶ Vollbild" })}
     </button>
   );
 
