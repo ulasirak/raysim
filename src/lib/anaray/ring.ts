@@ -13,7 +13,7 @@
 
 import type { Line, RollingStock, Station, TrackSegment } from "./types";
 import { simulate } from "./sim";
-import { varsayilanConfig, etkinArac, type SimConfig } from "./config";
+import { varsayilanConfig, etkinArac, type SimConfig, type TerminalConfig } from "./config";
 
 /** Belge kabulleri = paylaşılan simülasyon config'inin varsayılanı. Aşağıdaki
  *  fonksiyonlar canlı `cfg` alır; verilmezse bu varsayılanı kullanır. */
@@ -191,6 +191,14 @@ export interface Sube {
   /** Bu kola giden tren sayısı (servis deseni, #1-D). Verilmezse/0 → şube kendi başına
    *  analiz edilir; ORTAK KESİM yükü (ana hat + şube birlikte) HESAPLANMAZ (tahmin yok). */
   servisTren?: number;
+  /** Şube UCUNDAKİ terminal turnback (Katman-2). Verilmezse → ana hattın terminalSon'u
+   *  yeniden kullanılır (geriye uyumlu). Girilirse şube rotasının kapasitesi kolun GERÇEK
+   *  dönüş terminalini (kör terminal / döngü + S/X makas) yansıtır. */
+  terminal?: TerminalConfig;
+  /** Şube durağının coğrafi koordinatı (Katman-2A). Durak ADIYLA eşlenir; verilmezse şube
+   *  haritada şematik çizilir (uydurma koordinat ÜRETİLMEZ). Gerçek koordinat (elle/OSM)
+   *  girilince şube coğrafi haritada kavşaktan gerçek yere uzanır. */
+  koordinat?: Record<string, { lat: number; lon: number }>;
 }
 
 /** Yeni boş şube (kavşak indeksinde tek durak-arası ile başlar). */

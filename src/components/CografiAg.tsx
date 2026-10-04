@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Line } from "@/lib/anaray/types";
 import type { LoopYorunge } from "@/lib/anaray/signalling";
 import type { HatOzellik } from "@/lib/anaray/network";
+import type { SubeCanli } from "@/lib/anaray/subeCanli";
 import { cografiGeometri, type GeoNokta } from "@/lib/anaray/cografi";
 import { sampleLoop, HIZLAR, UP_COL, DOWN, GAP, DURUM_STIL } from "@/components/liveNetworkGeo";
 import { TrenDetayKutusu } from "@/components/liveNetworkKartlar";
@@ -28,9 +29,28 @@ interface LoopVeri extends LoopYorunge {
   offset?: number;
 }
 
+// Şube çoklu-çizgisinde arc-length (fp) → 2D nokta + açı (derece). Projekte edilmiş
+// şube düğümleri (fp,x,y) üzerinde lineer interpolasyon.
+function subeKonum(pts: { fp: number; x: number; y: number }[], fp: number): { x: number; y: number; aci: number } {
+  const son = pts[pts.length - 1];
+  const p = Math.max(0, Math.min(son?.fp ?? 0, fp));
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], b = pts[i + 1];
+    if (p <= b.fp + 1e-6) {
+      const f = (p - a.fp) / ((b.fp - a.fp) || 1);
+      const dx = b.x - a.x, dy = b.y - a.y;
+      return { x: a.x + dx * f, y: a.y + dy * f, aci: (Math.atan2(dy, dx) * 180) / Math.PI };
+    }
+  }
+  const lst = son ?? { x: 0, y: 0, fp: 0 };
+  const pr = pts[Math.max(0, pts.length - 2)] ?? lst;
+  return { x: lst.x, y: lst.y, aci: (Math.atan2(lst.y - pr.y, lst.x - pr.x) * 180) / Math.PI };
+}
+
 export function CografiAg({
   line,
   loop,
+  subeLoops = [],
   features = [],
   koordinat,
   geometri,
@@ -42,6 +62,9 @@ export function CografiAg({
 }: {
   line: Line;
   loop?: LoopVeri;
+  /** Şube mekikleri (dallanma coğrafi canlı sim, #1-2C/2A) — koordinatlı şubeler kavşaktan
+   *  gerçek yere uzanır ve üzerinde tren işler; koordinatsız şube ÇİZİLMEZ (uydurma yok). */
+  subeLoops?: SubeCanli[];
   features?: HatOzellik[];
   koordinat?: Record<string, { lat: number; lon: number }>;
   /** Blok sınırları (kilometraj) — işgal edilen blok rayı kırmızıya döner (şematikle aynı). */
@@ -161,6 +184,39 @@ export function CografiAg({
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loop, t, periyot, L, loopLen, g, line.length, geoSegmentler, gercekGeo]);
+
+  // ŞUBELER (dallanma coğrafi, #1-2C/2A) — yalnız gerçek koordinatlı şubeler projekte edilir
+  // (koordinat UYDURULMAZ). Düğümler durak ADIYLA koordinata çözülür; biri eksikse çizilmez.
+  const subeGeo = useMemo(() => {
+    const pe = g.projekteEt;
+    if (!g.coordluMu || !pe || !subeLoops.length) return [] as { subeId: string; ad: string; loop: SubeCanli["loop"]; pts: { fp: number; x: number; y: number }[] }[];
+    const out: { subeId: string; ad: string; loop: SubeCanli["loop"]; pts: { fp: number; x: number; y: number }[] }[] = [];
+    for (const sc of subeLoops) {
+      const pts: { fp: number; x: number; y: number }[] = [];
+      let tam = true;
+      for (const n of sc.noktalar) {
+        const k = koordinat?.[n.ad];
+        if (k && Number.isFinite(k.lat) && Number.isFinite(k.lon)) { const p = pe(k.lat, k.lon); pts.push({ fp: n.fp, x: p.x, y: p.y }); }
+        else { tam = false; break; }
+      }
+      if (tam && pts.length >= 2) out.push({ subeId: sc.subeId, ad: sc.ad, loop: sc.loop, pts });
+    }
+    return out;
+  }, [g, subeLoops, koordinat]);
+
+  // Şube mekik trenleri — konum SAF t'den (yeni zamanlayıcı/ref YOK; snap trunk'a DEĞİL,
+  // şube çizgisine). Koordinatsız şube subeGeo'da yok → tren de yok (dürüst).
+  const subeTrenler = useMemo(() => subeGeo.map((sc) => {
+    const per = Math.max(1e-6, sc.loop.periyot);
+    const trains = Array.from({ length: sc.loop.count }, (_, k) => {
+      const faz = ((((t + k * (sc.loop.offset ?? 0)) % per) + per) % per);
+      const r = sampleLoop(sc.loop.ornekler, faz);
+      const gidis = r.s <= sc.loop.L + 1e-6;
+      const fp = gidis ? Math.min(sc.loop.L, r.s) : Math.max(0, sc.loop.loopLen - r.s);
+      return { k, ...subeKonum(sc.pts, fp), gidis, v: r.v, durum: r.durum, ad: r.ad };
+    });
+    return { subeId: sc.subeId, ad: sc.ad, pts: sc.pts, trains };
+  }), [subeGeo, t]);
 
   // BLOK İŞGAL (şematikle aynı): bir trenin bulunduğu blok kırmızıya döner. Blok
   // sınırları (kilometraj) → o aralığın rayı örneklenip snap edilerek kırmızı çizilir.
@@ -489,6 +545,30 @@ export function CografiAg({
               )}
             </g>
           ))}
+
+          {/* ŞUBELER (dallanma coğrafi, #1-2C/2A) — koordinatlı şube: kavşaktan gerçek yere
+              uzanan hat + durakları + kavşak↔uç mekik trenleri (konum saf t'den). */}
+          {subeTrenler.map((sc) => {
+            const poly = sc.pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+            const bas = sc.pts[0];
+            const uc = sc.pts[sc.pts.length - 1];
+            return (
+              <g key={`sube_${sc.subeId}`}>
+                <polyline points={poly} fill="none" stroke="#fff" strokeWidth={5.2} strokeLinejoin="round" strokeLinecap="round" />
+                <polyline points={poly} fill="none" stroke={brand.red} strokeWidth={2.6} strokeLinejoin="round" strokeLinecap="round" strokeOpacity={0.9} />
+                {bas && <circle cx={bas.x} cy={bas.y} r={4} fill="none" stroke={brand.red} strokeWidth={1.8} />}
+                {sc.pts.slice(1).map((p, i) => <circle key={`sd${i}`} cx={p.x} cy={p.y} r={3} fill="#fff" stroke={brand.red} strokeWidth={1.4} />)}
+                {uc && <text x={uc.x + 6} y={uc.y - 6} fontSize={7} fontWeight={700} fill={brand.red}>{sc.ad}</text>}
+                {sc.trains.map((tr) => (
+                  <g key={`st${tr.k}`} transform={`translate(${tr.x.toFixed(1)} ${tr.y.toFixed(1)}) rotate(${tr.aci.toFixed(1)})`}>
+                    <rect x={-5.5} y={-3} width={11} height={6} rx={1.5} fill={brand.red} stroke="#fff" strokeWidth={1} />
+                    <path d={tr.gidis ? "M4,-2 L7,0 L4,2 Z" : "M-4,-2 L-7,0 L-4,2 Z"} fill={brand.red} />
+                    <title>{sc.ad}</title>
+                  </g>
+                ))}
+              </g>
+            );
+          })}
 
           {/* Trenler — durum halkası (ne yaptığı) + no + tıkla→detay */}
           {trenler.map((tr, i) => {

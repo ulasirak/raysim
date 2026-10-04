@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ortakKesimAnaliz } from "@/lib/anaray/ortakKesim";
+import { ortakKesimAnaliz, subeOzeti, subeIsletme } from "@/lib/anaray/ortakKesim";
 import { yeniRing, type DurakArasiRing, type Sube } from "@/lib/anaray/ring";
 import { hazirHatlar } from "@/lib/anaray/hazirHatlar";
 import { varsayilanConfig, varsayilanIsletme } from "@/lib/anaray/config";
@@ -45,5 +45,47 @@ describe("#1-B/D ortak kesim yükü", () => {
     const r = ortakKesimAnaliz(trunk(), [s0], stock, varsayilanConfig, varsayilanIsletme, 6);
     expect(r.aktif).toBe(true);
     expect(r.kesimler.length).toBe(0); // paylaşılan kesim yok
+  });
+});
+
+describe("#1 Katman-1 şube özeti (editör netliği)", () => {
+  it("geometriyi motordan türetir ve rapor 4.4 ile aynı hesaplar", () => {
+    const o = subeOzeti(trunk(), sube(4), stock, varsayilanConfig, varsayilanIsletme);
+    expect(o.kavsakIndex).toBe(3);
+    expect(o.kavsakAd).toBe("Kavşak");
+    // Hat başı → Kavşak = 3 ring = 1000+1200+1000 = 3.2 km
+    expect(o.kavsakKm).toBeCloseTo(3.2, 3);
+    // Şube kendi uzunluğu = 900 + 1600 = 2.5 km
+    expect(o.subeKm).toBeCloseTo(2.5, 3);
+    // Rota = kavşak + şube = 5.7 km
+    expect(o.rotaKm).toBeCloseTo(5.7, 3);
+    expect(o.durakSayisi).toBe(2);
+    expect(o.maks.gecerli).toBe(true);
+    expect(o.maks.nSurdurulebilir).toBeGreaterThan(0);
+    expect(o.maks.hMin).toBeGreaterThan(0);
+  });
+
+  it("hat başından ayrılan şube → kavşak km = 0 (ortak kesim yok)", () => {
+    const s0: Sube = { id: "s0", ad: "Baş Kol", atIndex: 0, rings: [R("Merkez", "P1", 500)] };
+    const o = subeOzeti(trunk(), s0, stock, varsayilanConfig, varsayilanIsletme);
+    expect(o.kavsakKm).toBe(0);
+    expect(o.kavsakAd).toBe("Merkez");
+    expect(o.subeKm).toBeCloseTo(0.5, 3);
+  });
+});
+
+describe("#1 Katman-2B şube terminali (turnback)", () => {
+  it("terminal verilmezse ana hattın terminalSon'u korunur (geriye uyumlu)", () => {
+    const i = subeIsletme(varsayilanIsletme, sube(4));
+    expect(i.terminalSon).toBe(varsayilanIsletme.terminalSon); // referans aynı → override yok
+    expect(i.terminalBas).toBe(varsayilanIsletme.terminalBas);
+  });
+
+  it("şube terminali verilince terminalSon override edilir, terminalBas değişmez", () => {
+    const dongu = { ...varsayilanIsletme.terminalSon, tip: "dongu" as const };
+    const s = { ...sube(4), terminal: dongu };
+    const i = subeIsletme(varsayilanIsletme, s);
+    expect(i.terminalSon).toBe(dongu);
+    expect(i.terminalBas).toBe(varsayilanIsletme.terminalBas); // başlangıç = hat başı, değişmez
   });
 });

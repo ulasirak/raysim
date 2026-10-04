@@ -212,6 +212,17 @@ function normSube(raw: unknown): Sube {
     rings: arr(s.rings).map(normRing),
   };
   if (typeof s.servisTren === "number") out.servisTren = s.servisTren;
+  // Katman-2: şube UCU terminali (varsa derin normalleştir) + şube durak koordinatları.
+  if (isObj(s.terminal)) out.terminal = normTerminal(s.terminal);
+  if (isObj(s.koordinat)) {
+    const k: Record<string, { lat: number; lon: number }> = {};
+    for (const [ad, v] of Object.entries(s.koordinat as Record<string, unknown>)) {
+      if (isObj(v) && typeof (v as Record<string, unknown>).lat === "number" && typeof (v as Record<string, unknown>).lon === "number") {
+        k[ad] = { lat: (v as { lat: number }).lat, lon: (v as { lon: number }).lon };
+      }
+    }
+    if (Object.keys(k).length) out.koordinat = k;
+  }
   return out;
 }
 

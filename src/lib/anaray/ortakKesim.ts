@@ -16,9 +16,43 @@
 import { type DurakArasiRing, type Sube } from "./ring";
 import type { RollingStock } from "./types";
 import type { SimConfig, Isletme } from "./config";
-import { maksimumTren } from "./kapasite";
+import { maksimumTren, type MaksimumTrenSonuc } from "./kapasite";
 import { blockingTimeRing } from "./blockingtime";
 import { subeEfektifRingler } from "./network";
+
+// ————————————————————————————————————————————————
+// ŞUBE ÖZETİ (editör netliği, #1 Katman-1) — tanımın "nerede / ne kadar / ne işe yarar"
+// sorularını tek bakışta yanıtlar. TÜM sayılar motordan türer (tahmin yok) ve raporun
+// 4.4 Şubeler tablosuyla BİREBİR aynı kaynaktan hesaplanır (subeEfektifRingler + maksimumTren)
+// → editörde gördüğün değer, rapordaki değerle aynıdır.
+// ————————————————————————————————————————————————
+export interface SubeOzet {
+  kavsakIndex: number;   // ayrılma durağı indeksi (0..rings.length)
+  kavsakAd: string;      // kavşak durağının adı
+  kavsakKm: number;      // hat başı → kavşak (ortak ana hat kesimi) uzunluğu
+  subeKm: number;        // şubenin kendi uzunluğu (kavşaktan uca)
+  rotaKm: number;        // hat başı → kavşak → şube ucu (bir yön toplam)
+  durakSayisi: number;   // şubeye eklenen durak sayısı
+  maks: MaksimumTrenSonuc; // şube ROTASININ kapasitesi (hat başı → kavşak → şube)
+}
+
+/** Bir şubenin editör özeti — geometri + rota kapasitesi. rapor 4.4 ile aynı hesap. */
+export function subeOzeti(
+  rings: DurakArasiRing[],
+  sube: Sube,
+  stock: RollingStock,
+  cfg: SimConfig,
+  isletme: Isletme,
+): SubeOzet {
+  const n = rings.length;
+  const at = Math.max(0, Math.min(n, Math.round(sube.atIndex)));
+  const kavsakKm = rings.slice(0, at).reduce((a, r) => a + Math.max(0, r.uzunluk), 0) / 1000;
+  const subeKm = sube.rings.reduce((a, r) => a + Math.max(0, r.uzunluk), 0) / 1000;
+  const kavsakAd = at === 0 ? (rings[0]?.fromAd || "—") : (rings[at - 1]?.toAd || "—");
+  const ef = subeEfektifRingler(rings, sube);
+  const maks = maksimumTren(ef, stock, cfg, subeIsletme(isletme, sube));
+  return { kavsakIndex: at, kavsakAd, kavsakKm, subeKm, rotaKm: kavsakKm + subeKm, durakSayisi: sube.rings.length, maks };
+}
 
 export interface OrtakKesim {
   junctionDurak: number;      // kavşak durak indeksi
@@ -42,6 +76,13 @@ export interface OrtakKesimSonuc {
 
 const freqOf = (n: number, cycleSn: number) => (cycleSn > 0 ? (3600 * n) / cycleSn : 0);
 
+/** Şube rotasının işletme bağlamı: UÇTAKİ terminal, şubenin kendi terminali varsa ONU
+ *  kullanır (kör terminal/döngü + S/X makas) — yoksa ana hattın terminalSon'u (geriye
+ *  uyumlu). Başlangıç terminali (terminalBas) daima hat başıdır. */
+export function subeIsletme(isletme: Isletme, sube: Sube): Isletme {
+  return sube.terminal ? { ...isletme, terminalSon: sube.terminal } : isletme;
+}
+
 export function ortakKesimAnaliz(
   rings: DurakArasiRing[],
   subeler: Sube[],
@@ -60,7 +101,7 @@ export function ortakKesimAnaliz(
 
   const subeFreq = new Map<string, number>();
   for (const s of aktifler) {
-    const m = maksimumTren(subeEfektifRingler(rings, s), stock, cfg, isletme);
+    const m = maksimumTren(subeEfektifRingler(rings, s), stock, cfg, subeIsletme(isletme, s));
     subeFreq.set(s.id, m.gecerli ? freqOf(s.servisTren!, m.cevrimSuresi) : 0);
   }
 

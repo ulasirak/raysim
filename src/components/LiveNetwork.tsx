@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { RailNetwork, Route, Line } from "@/lib/anaray/types";
 import type { SignalTrain, DepotInfo, LoopYorunge, LoopDurum } from "@/lib/anaray/signalling";
 import type { HatOzellik } from "@/lib/anaray/network";
+import type { SubeCanli } from "@/lib/anaray/subeCanli";
 import type { TerminalConfig, DonusTip, TersMod } from "@/lib/anaray/config";
 import { saat } from "@/lib/anaray/format";
 import { brand } from "@/lib/anaray/brand";
@@ -20,7 +21,7 @@ import { FailSafeKart, LiveNetworkLegend, TersModSecici, TrenDetayKutusu } from 
 import { useDil } from "@/components/DilProvider";
 
 export function LiveNetwork({
-  network, route, line, blocks, up = [], down = [], tMax, trainLen = 40, faultBlocks = [], onBlockClick, depots = [], features = [], loop, terminalBas, terminalSon,
+  network, route, line, blocks, up = [], down = [], tMax, trainLen = 40, faultBlocks = [], onBlockClick, depots = [], features = [], loop, subeLoops = [], terminalBas, terminalSon,
   tersMod = "gidenHat", onTersMod, autoOynat = false,
 }: {
   network: RailNetwork;
@@ -38,6 +39,8 @@ export function LiveNetwork({
   /** DÖNGÜ modu: tek-tren yörüngesi + faz — trenler uçta döner (git-gel), üstlerinde durum rozeti.
    *  dagitim: her tren parklanma alanından çıkar (düz gidiş / makastan geçip ters), dispatchT'de. */
   loop?: LoopYorunge & { count: number; offset: number; dagitim?: { parkPos: number; gidis: boolean; dispatchT: number; startPhase: number }[] };
+  /** Şube mekikleri (dallanma canlı sim, #1-2C) — her şube kavşak↔uç arası tren işletir. */
+  subeLoops?: SubeCanli[];
   terminalBas?: TerminalConfig; // başlangıç terminali dönüş tipi (görsel turnback biçimi)
   terminalSon?: TerminalConfig; // bitiş terminali dönüş tipi
   tersMod?: TersMod;            // ters işletme (istasyon makası kısa dönüş) modu
@@ -476,6 +479,36 @@ export function LiveNetwork({
     .map((e) => ({ a: nodeById[e.from], b: nodeById[e.to] }))
     .filter((e) => e.a && e.b);
 
+  // ŞUBE MEKİKLERİ (dallanma canlı sim, #1-2C) — kavşak↔uç tren konumları SAF t'den
+  // türer (yeni zamanlayıcı/ref YOK → freeze güvenli; tespit render'da değil).
+  const subePoly = (pts: { fp: number; x: number; y: number }[], fp: number) => {
+    const son = pts[pts.length - 1];
+    const p = Math.max(0, Math.min(son?.fp ?? 0, fp));
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1];
+      if (p <= b.fp + 1e-6) {
+        const f = (p - a.fp) / ((b.fp - a.fp) || 1);
+        const dx = b.x - a.x, dy = b.y - a.y;
+        return { x: a.x + dx * f, y: a.y + dy * f, ang: Math.atan2(dy, dx) };
+      }
+    }
+    const lst = son ?? { x: 0, y: 0, fp: 0 };
+    const pr = pts[Math.max(0, pts.length - 2)] ?? lst;
+    return { x: lst.x, y: lst.y, ang: Math.atan2(lst.y - pr.y, lst.x - pr.x) };
+  };
+  const subeNow = subeLoops.map((sc) => {
+    const pts = sc.noktalar.map((n) => ({ fp: n.fp, x: nodeById[n.id]?.x ?? 0, y: nodeById[n.id]?.y ?? 0 }));
+    const trains = Array.from({ length: sc.loop.count }, (_, k) => {
+      const per = Math.max(1e-6, sc.loop.periyot);
+      const phase = ((((t + k * sc.loop.offset) % per) + per) % per);
+      const r = sampleLoop(sc.loop.ornekler, phase);
+      const gidis = r.s <= sc.loop.L + 1e-6;
+      const fp = gidis ? Math.min(sc.loop.L, r.s) : Math.max(0, sc.loop.loopLen - r.s);
+      return { k, ...subePoly(pts, fp), v: r.v, durum: r.durum, ad: r.ad, gidis };
+    });
+    return { subeId: sc.subeId, ad: sc.ad, pts, trains };
+  });
+
   const oynatDurdur = () => {
     if (t >= T) { setT(0); tRef.current = 0; }
     // Oynat'a basınca, kullanıcı başka bir trene tıklamadıysa Tren 1'i otomatik seç →
@@ -690,6 +723,28 @@ export function LiveNetwork({
         {spur.map((e, i) => (
           <line key={`sp${i}`} x1={e.a.x} y1={e.a.y} x2={e.b.x} y2={e.b.y} stroke={brand.faint} strokeWidth={2} strokeDasharray="5 4" strokeLinecap="round" />
         ))}
+
+        {/* ŞUBE MEKİKLERİ (dallanma canlı sim, #1-2C) — aktif şube hattı + kavşak↔uç trenleri */}
+        {subeNow.map((sc) => {
+          const poly = sc.pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+          const bas = sc.pts[0];
+          const uc = sc.pts[sc.pts.length - 1];
+          return (
+            <g key={`sube_${sc.subeId}`}>
+              <polyline points={poly} fill="none" stroke={brand.red} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" opacity={0.85} />
+              {bas && <circle cx={bas.x} cy={bas.y} r={4.5} fill="none" stroke={brand.red} strokeWidth={1.8} />}
+              {sc.pts.slice(1).map((p, i) => <circle key={`sd${i}`} cx={p.x} cy={p.y} r={3} fill={brand.paper} stroke={brand.red} strokeWidth={1.5} />)}
+              {uc && <text x={uc.x + 7} y={uc.y + 3} fontSize={9} fill={brand.red} className="font-semibold">{sc.ad}</text>}
+              {sc.trains.map((tr) => (
+                <g key={`st${tr.k}`} transform={`translate(${tr.x.toFixed(1)},${tr.y.toFixed(1)}) rotate(${(tr.ang * 180 / Math.PI).toFixed(1)})`}>
+                  <rect x={-6} y={-4} width={12} height={8} rx={2} fill={brand.red} stroke="#fff" strokeWidth={0.9} />
+                  <polygon points={tr.gidis ? "6,-2 9,0 6,2" : "-6,-2 -9,0 -6,2"} fill={brand.red} />
+                  <title>{sc.ad}</title>
+                </g>
+              ))}
+            </g>
+          );
+        })}
 
         {/* Traversler (iki şerit arası bağlantı çentikleri) */}
         {basePts.length > 1 && Array.from({ length: 60 }).map((_, k) => {

@@ -25,7 +25,7 @@ import { loopToHat } from "./hatsim";
 import { loopYorunge, monteCarlo, type LoopYorunge, type MonteCarloResult } from "./signalling";
 import { cakismaTespit } from "./cakisma";
 import { gecikmeYayilim } from "./gecikmeYayilim";
-import { ortakKesimAnaliz } from "./ortakKesim";
+import { ortakKesimAnaliz, subeIsletme } from "./ortakKesim";
 import { sure } from "./format";
 import { hatOzellikleri, sinyalKonumlari, kavsakliRingler, subeEfektifRingler } from "./network";
 import {
@@ -355,7 +355,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
       const at = Math.max(0, Math.min(ringsGiris.length, Math.round(s.atIndex)));
       const kavsakAd = at === 0 ? (ringsGiris[0]?.fromAd || "—") : (ringsGiris[at - 1]?.toAd || "—");
       const ef = subeEfektifRingler(ringsGiris, s);
-      const m = maksimumTren(ef, stock, cfg, isletme);
+      const m = maksimumTren(ef, stock, cfg, subeIsletme(isletme, s));
       const subeKm = s.rings.reduce((a, r) => a + Math.max(0, r.uzunluk), 0) / 1000;
       const rotaKm = ef.reduce((a, r) => a + Math.max(0, r.uzunluk), 0) / 1000;
       return [

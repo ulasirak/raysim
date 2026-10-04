@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { ringlerdenSebeke, flattenRoute, kavsakliRingler, subeEfektifRingler } from "@/lib/anaray/network";
 import { yeniSube, yeniRing, type DurakArasiRing, type Sube } from "@/lib/anaray/ring";
 import { maksimumTren } from "@/lib/anaray/kapasite";
+import { subeCanliYorungeler } from "@/lib/anaray/subeCanli";
 import { hazirHatlar } from "@/lib/anaray/hazirHatlar";
 import { varsayilanConfig, varsayilanIsletme } from "@/lib/anaray/config";
 
@@ -104,5 +105,45 @@ describe("#1 additive şube (dallanma)", () => {
     const line = flattenRoute(s.network, s.subeRotalar[0].route);
     expect(line.length).toBeGreaterThan(0);
     expect(line.stations.length).toBeGreaterThan(1);
+  });
+});
+
+describe("#1-2C şube canlı mekik yörüngesi", () => {
+  const stock = hazirHatlar()[0].veri.arac!;
+  it("şubesiz → boş dizi (trunk canlı sim aynen)", () => {
+    const s = ringlerdenSebeke(trunk(), undefined, "Ana")!;
+    const res = subeCanliYorungeler(s.network, s.subeRotalar, [], stock, varsayilanConfig, varsayilanIsletme);
+    expect(res).toEqual([]);
+  });
+
+  it("şubeli → kavşak↔uç mekik yörüngesi üretir (motor-güdümlü, saf veri)", () => {
+    const sube: Sube = { id: "sb", ad: "Havalimanı Kolu", atIndex: 2, servisTren: 2, rings: [
+      (() => { const x = yeniRing("C", "Ş1"); x.uzunluk = 800; return x; })(),
+      (() => { const x = yeniRing("Ş1", "Ş2"); x.uzunluk = 900; return x; })(),
+    ] };
+    const s = ringlerdenSebeke(trunk(), undefined, "Ana", [sube])!;
+    const res = subeCanliYorungeler(s.network, s.subeRotalar, [sube], stock, varsayilanConfig, varsayilanIsletme);
+    expect(res.length).toBe(1);
+    const sc = res[0];
+    expect(sc.subeId).toBe("sb");
+    // Mekik = kavşak + 2 şube durağı = 3 düğüm; ilk düğüm kavşak (dg2)
+    expect(sc.noktalar.length).toBe(3);
+    expect(sc.noktalar[0].fp).toBe(0);
+    expect(sc.noktalar.every((n) => n.id && n.ad)).toBe(true);
+    // Yörünge motordan: periyot > 0, örnekler dolu, L = şube tek-yön uzunluğu (~1700 m)
+    expect(sc.loop.periyot).toBeGreaterThan(0);
+    expect(sc.loop.ornekler.length).toBeGreaterThan(0);
+    expect(sc.loop.L).toBeGreaterThan(1500);
+    expect(sc.loop.count).toBe(2); // servisTren=2
+    expect(sc.loop.offset).toBeCloseTo(sc.loop.periyot / 2, 3);
+  });
+
+  it("servisTren yoksa en az 1 mekik (kolun çalıştığını gösterir); vitrin tavanı 6", () => {
+    const az: Sube = { id: "a", ad: "A", atIndex: 1, rings: [(() => { const x = yeniRing("B", "Z"); x.uzunluk = 500; return x; })()] };
+    const cok: Sube = { id: "c", ad: "C", atIndex: 1, servisTren: 20, rings: [(() => { const x = yeniRing("B", "Y"); x.uzunluk = 500; return x; })()] };
+    const s = ringlerdenSebeke(trunk(), undefined, "Ana", [az, cok])!;
+    const res = subeCanliYorungeler(s.network, s.subeRotalar, [az, cok], stock, varsayilanConfig, varsayilanIsletme);
+    expect(res.find((r) => r.subeId === "a")!.loop.count).toBe(1);
+    expect(res.find((r) => r.subeId === "c")!.loop.count).toBe(6); // 20 → vitrin tavanı 6
   });
 });

@@ -9,6 +9,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import type { RailNetwork, Route } from "@/lib/anaray/types";
 import { flattenRoute, ringlerdenSebeke, hemzeminDuruslari, duruslariEkle, kalkisEkle, hatOzellikleri, kavsakliRingler, subeEfektifRingler } from "@/lib/anaray/network";
+import { subeCanliYorungeler } from "@/lib/anaray/subeCanli";
 import { simulate } from "@/lib/anaray/sim";
 import { simulateSignalled, reverseRoute, monteCarlo, planDepotDispatch, loopYorunge, type MonteCarloResult } from "@/lib/anaray/signalling";
 import { tramvaylar, aracDogrula } from "@/lib/anaray/vehicles";
@@ -291,9 +292,22 @@ function StudioIc() {
     () => ({ ...loopY, count: filo, offset: loopY.periyot / Math.max(1, filo), dagitim }),
     [loopY, filo, dagitim]
   );
+  // Şube mekikleri (dallanma canlı sim, #1-2C) — ana hat görünümünde şubelerde tren
+  // işler; bir şube analiz edilirken (analizSube) subeRotalar yok → [] (trunk aynen).
+  const subeLoops = useMemo(
+    () => subeCanliYorungeler(network, proje?.subeRotalar ?? [], subeler, stock, cfg, isletme),
+    [network, proje, subeler, stock, cfg, isletme]
+  );
   // Canlı Ağ HARİTA modu: istasyon adları (tekil) + tüm istasyonların koordinatı var mı
   // (varsa gerçek harita; yoksa şematik/ölçekli). Koordinatlar Isletme'de kalıcı.
   const agKoordinat = isletme.istasyonKoordinat;
+  // Coğrafi harita için ana hat + ŞUBE durak koordinatları (ad-anahtarlı). Şube koordinatı
+  // ana hat adlarını etkilemez (fazla anahtar zararsız) → trunk harita modu değişmez.
+  const agKoordinatTam = useMemo(() => {
+    const m: Record<string, { lat: number; lon: number }> = { ...(agKoordinat || {}) };
+    for (const s of subeler) if (s.koordinat) for (const [ad, c] of Object.entries(s.koordinat)) m[ad] = c;
+    return m;
+  }, [agKoordinat, subeler]);
   const agIstasyonlar = useMemo(() => Array.from(new Set(line.stations.map((s) => s.name))), [line]);
   const agKoordSay = useMemo(
     () => agIstasyonlar.filter((n) => { const c = agKoordinat?.[n]; return !!c && Number.isFinite(c.lat) && Number.isFinite(c.lon); }).length,
@@ -892,11 +906,11 @@ function StudioIc() {
         )}
         {simHazir ? (
           agGorunum === "harita" ? (
-            <CografiAg line={line} loop={loopVeri} features={hatOzellik} koordinat={agKoordinat} geometri={isletme.hatGeometri} blocks={canliGidis.blocks} ters={tersRapor} hizKisitlari={hizKisitlari} yolcuVeriVar={yolcuVeriVar} autoOynat={otoOynat} />
+            <CografiAg line={line} loop={loopVeri} subeLoops={subeLoops} features={hatOzellik} koordinat={agKoordinatTam} geometri={isletme.hatGeometri} blocks={canliGidis.blocks} ters={tersRapor} hizKisitlari={hizKisitlari} yolcuVeriVar={yolcuVeriVar} autoOynat={otoOynat} />
           ) : (
             <LiveNetwork autoOynat={otoOynat} network={network} route={route} line={line} blocks={canliGidis.blocks}
               up={canliGidis.trains} down={donusSim.trains} tMax={Math.max(canliGidis.tMax, donusSim.tMax)} trainLen={stock.length}
-              faultBlocks={ariza} onBlockClick={arizaToggle} depots={depotPlan.depots} features={hatOzellik} loop={loopVeri}
+              faultBlocks={ariza} onBlockClick={arizaToggle} depots={depotPlan.depots} features={hatOzellik} loop={loopVeri} subeLoops={subeLoops}
               terminalBas={isletme.terminalBas} terminalSon={isletme.terminalSon}
               tersMod={isletme.tersMod ?? "gidenHat"} onTersMod={(m) => patchIsletme({ tersMod: m })} />
           )

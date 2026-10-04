@@ -12,6 +12,7 @@ import { simulate } from "@/lib/anaray/sim";
 import { simulateSignalled, reverseRoute, planDepotDispatch, loopYorunge } from "@/lib/anaray/signalling";
 import { maksimumTren } from "@/lib/anaray/kapasite";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
+import { subeCanliYorungeler } from "@/lib/anaray/subeCanli";
 import type { TersMod } from "@/lib/anaray/config";
 import { etkinArac } from "@/lib/anaray/config";
 import { brand } from "@/lib/anaray/brand";
@@ -115,9 +116,14 @@ export function useCanliAgProps() {
     });
   }, [gidisOrigins, filo, loopY, ulasilanHeadwaySn]);
   const loopVeri = useMemo(() => ({ ...loopY, count: filo, offset: loopY.periyot / Math.max(1, filo), dagitim }), [loopY, filo, dagitim]);
+  // Şube mekikleri (dallanma canlı sim, #1-2C) — şube yoksa [] (trunk aynen).
+  const subeLoops = useMemo(
+    () => subeCanliYorungeler(network, proje?.subeRotalar ?? [], subeler, stock, cfg, isletme),
+    [network, proje, subeler, stock, cfg, isletme],
+  );
 
   return {
-    network, route, line, canliGidis, donusSim, loopVeri, depotPlan, hatOzellik, ariza, arizaToggle,
+    network, route, line, canliGidis, donusSim, loopVeri, subeLoops, depotPlan, hatOzellik, ariza, arizaToggle,
     simHazir, filo, ulasilanHeadwaySn, trainLen: stock.length,
     terminalBas: isletme.terminalBas, terminalSon: isletme.terminalSon,
     tersMod: isletme.tersMod ?? "kapali", patchIsletme, hatAdi: meta.hatAdi, projeAdi: meta.projeAdi,
@@ -205,7 +211,7 @@ export function CanliAgSayfa() {
           autoOynat network={p.network} route={p.route} line={p.line} blocks={p.canliGidis.blocks}
           up={p.canliGidis.trains} down={p.donusSim.trains} tMax={Math.max(p.canliGidis.tMax, p.donusSim.tMax)}
           trainLen={p.trainLen} faultBlocks={p.ariza} onBlockClick={p.arizaToggle} depots={p.depotPlan.depots}
-          features={p.hatOzellik} loop={p.loopVeri} terminalBas={p.terminalBas} terminalSon={p.terminalSon}
+          features={p.hatOzellik} loop={p.loopVeri} subeLoops={p.subeLoops} terminalBas={p.terminalBas} terminalSon={p.terminalSon}
           tersMod={tm} onTersMod={setTm} />
       </div>
     </div>
