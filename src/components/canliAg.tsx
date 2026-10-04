@@ -13,6 +13,7 @@ import { simulateSignalled, reverseRoute, planDepotDispatch, loopYorunge } from 
 import { maksimumTren } from "@/lib/anaray/kapasite";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import { subeCanliYorungeler } from "@/lib/anaray/subeCanli";
+import { parkAnahtar } from "@/lib/anaray/parklanma";
 import type { TersMod } from "@/lib/anaray/config";
 import { etkinArac } from "@/lib/anaray/config";
 import { brand } from "@/lib/anaray/brand";
@@ -66,7 +67,6 @@ export function useCanliAgProps() {
 
   const nMax = maks.gecerli ? maks.nTeorik : 999;
   const filoTek = Math.max(1, isletme.toplamFilo || 1);
-  const parkAnahtar = (pos: number) => `d${Math.round(pos)}`;
   const depoPozlar = useMemo(() => line.stations.filter((s) => s.depot && s.position < line.length - 1e-6).map((s) => s.position), [line]);
   const parkToplam = useMemo(() => {
     const dz = isletme.parklanmaDagilim || {};

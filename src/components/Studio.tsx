@@ -10,6 +10,7 @@ import Link from "next/link";
 import type { RailNetwork, Route } from "@/lib/anaray/types";
 import { flattenRoute, ringlerdenSebeke, hemzeminDuruslari, duruslariEkle, kalkisEkle, hatOzellikleri, kavsakliRingler, subeEfektifRingler } from "@/lib/anaray/network";
 import { subeCanliYorungeler } from "@/lib/anaray/subeCanli";
+import { parkAnahtar, konumDurakIndex, queuedYaz } from "@/lib/anaray/parklanma";
 import { simulate } from "@/lib/anaray/sim";
 import { simulateSignalled, reverseRoute, monteCarlo, planDepotDispatch, loopYorunge, type MonteCarloResult } from "@/lib/anaray/signalling";
 import { tramvaylar, aracDogrula } from "@/lib/anaray/vehicles";
@@ -81,7 +82,7 @@ export function Studio() {
 function StudioIc() {
   const { t } = useDil();
   const { cfg } = useSimConfig();
-  const { rings: ringsHam, meta, subeler } = useProje();
+  const { rings: ringsHam, setRings, meta, subeler } = useProje();
   // Araç ve işletme parametreleri KALICI (projeye kayıtlı) — tek kaynak, uçucu değil.
   const { arac: stock, patchArac, setArac } = useArac();
   const { isletme, patchIsletme } = useIsletme();
@@ -178,8 +179,7 @@ function StudioIc() {
   const filoTek = Math.max(1, isletme.toplamFilo || 1);
   const setFilo = (v: number) => { const n = Math.max(1, Math.min(99, Math.round(v))); patchIsletme({ toplamFilo: n, pikFilo: n, pikDisiFilo: n }); };
   // Depo pozisyonları doğrudan HATTAN gelir (filo/headway'e bağlı değil) → parkToplam'ı
-  // filodan ÖNCE hesaplayabiliriz.
-  const parkAnahtar = (pos: number) => `d${Math.round(pos)}`;
+  // filodan ÖNCE hesaplayabiliriz. parkAnahtar paylaşılan (parklanma.ts) → iki editör sapmaz.
   const depoPozlar = useMemo(
     () => line.stations.filter((s) => s.depot && s.position < line.length - 1e-6).map((s) => s.position),
     [line]
@@ -607,12 +607,23 @@ function StudioIc() {
                   <div key={i} className="w-28">
                     <span className="text-[0.6rem]" style={{ color: brand.inkSoft }}>🅿 {t({ tr: "Depo", en: "Depot", de: "Depot" })} @ {km(d.position)}</span>
                     <input type="number" min={0} max={99} value={val}
-                      onChange={(e) => patchIsletme({ parklanmaDagilim: { ...(isletme.parklanmaDagilim || {}), [k]: Math.max(0, Math.round(parseFloat(e.target.value) || 0)) } })}
+                      onChange={(e) => {
+                        const v = Math.max(0, Math.round(parseFloat(e.target.value) || 0));
+                        patchIsletme({ parklanmaDagilim: { ...(isletme.parklanmaDagilim || {}), [k]: v } });
+                        const di = konumDurakIndex(ringsHam, d.position); // AYNA: Duraklar'daki park eden tren'e yansıt
+                        if (di >= 0) setRings((rs) => queuedYaz(rs, di, v));
+                      }}
                       className="mt-0.5 w-full rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
                   </div>
                 );
               })}
-              <button type="button" onClick={() => { const dep = depotPlan.depots; const per = Math.floor(filoTek / dep.length); let kalan = filoTek - per * dep.length; const yeni: Record<string, number> = {}; dep.forEach((d) => { yeni[parkAnahtar(d.position)] = per + (kalan-- > 0 ? 1 : 0); }); patchIsletme({ parklanmaDagilim: yeni }); }}
+              <button type="button" onClick={() => {
+                  const dep = depotPlan.depots; const per = Math.floor(filoTek / dep.length); let kalan = filoTek - per * dep.length;
+                  const atama = dep.map((d) => ({ d, n: per + (kalan-- > 0 ? 1 : 0) }));
+                  const yeni: Record<string, number> = {}; atama.forEach(({ d, n }) => { yeni[parkAnahtar(d.position)] = n; });
+                  patchIsletme({ parklanmaDagilim: yeni });
+                  setRings((rs) => { let out = rs; for (const { d, n } of atama) { const di = konumDurakIndex(out, d.position); if (di >= 0) out = queuedYaz(out, di, n); } return out; }); // AYNA
+                }}
                 className="rounded border px-2 py-1 text-xs" style={{ borderColor: brand.border, color: brand.inkSoft }}>{t({ tr: "eşit dağıt", en: "distribute evenly", de: "gleichmäßig verteilen" })} ({filoTek})</button>
             </div>
             <div className="mt-2 text-xs" style={{ color: parkToplam === filoTek ? "#16794C" : CK.amberInk }}>

@@ -23,6 +23,7 @@ import { kmh, km, sure, indir } from "@/lib/anaray/format";
 import { railmlIhrac } from "@/lib/anaray/railml";
 import { gtfsIhrac, type GtfsDurakZaman } from "@/lib/anaray/gtfs";
 import { ringDogrula, ringSenaryo, dengeOnerisi, yeniHemzemin, yeniMakas, yeniTehlike, yeniKurp, yeniSinyal, ringDuraklari, durakAdiDegistir, durakEkleBas, durakEkleSon, durakBol, durakSil, duraklardanHat, type DurakArasiRing, type SinyalLambasi, type HemzeminTip, type MakasTip, type Kurp } from "@/lib/anaray/ring";
+import { parkAnahtar, durakKonumu } from "@/lib/anaray/parklanma";
 import { Num, SubBaslik, Panel } from "@/components/RingUI";
 import { Ikon } from "@/components/Ikon";
 
@@ -163,14 +164,26 @@ export function RingEditor() {
   const depoDurum = (i: number) => (i === 0
     ? { on: !!rings[0]?.fromDepot, q: rings[0]?.fromQueued ?? 0 }
     : { on: !!rings[i - 1]?.depot, q: rings[i - 1]?.queued ?? 0 });
+  // İKİ YÖNLÜ AYNA: Duraklar'daki "park eden tren" (ring.queued) ile Sefer'deki
+  // "Parklanma Dizilimi" (isletme.parklanmaDagilim) EŞ kalır. Depo kapatılınca dizilim
+  // kaydı silinir; açılınca/değişince ring.queued dizilime yansır.
+  const parklanmaAyna = (i: number, q: number | null) => {
+    const key = parkAnahtar(durakKonumu(rings, i));
+    const dz = { ...(isletme.parklanmaDagilim || {}) };
+    if (q === null) delete dz[key]; else dz[key] = Math.max(0, Math.round(q));
+    patchIsletme({ parklanmaDagilim: dz });
+  };
   const depoAyarla = (i: number, on: boolean) => {
     if (i === 0) { const r = rings[0]; if (r) patch(r.id, { fromDepot: on, fromQueued: on && !r.fromQueued ? 1 : r.fromQueued }); }
     else { const r = rings[i - 1]; if (r) patch(r.id, { depot: on, queued: on && !r.queued ? 1 : r.queued }); }
+    if (on) { const cur = i === 0 ? rings[0]?.fromQueued : rings[i - 1]?.queued; parklanmaAyna(i, Math.max(1, Math.round(cur ?? 1))); }
+    else parklanmaAyna(i, null); // depo kapandı → dizilim kaydını sil
   };
   const depoQueued = (i: number, n: number) => {
     const q = Math.min(40, Math.max(0, Math.round(n))); // üst sınır: aşırı tren donmasın
     if (i === 0) { const r = rings[0]; if (r) patch(r.id, { fromQueued: q }); }
     else { const r = rings[i - 1]; if (r) patch(r.id, { queued: q }); }
+    parklanmaAyna(i, q); // ayna: Sefer Parklanma Dizilimi'ne yansıt
   };
 
   // — güncelleyiciler —
