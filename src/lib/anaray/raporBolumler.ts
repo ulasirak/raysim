@@ -7,7 +7,7 @@ import type { RollingStock, Line } from "./types";
 import type { DurakArasiRing } from "./ring";
 import type { SimConfig, Isletme, ProjeMeta } from "./config";
 import { tbl, esc, kmFmt, RED } from "./raporCizim";
-import { kilitlemeTablosu, kilitlemeOzet } from "./kilitleme";
+import { kilitlemeTablosu, kilitlemeOzet, kilitlemeMetin, type CeviriFn } from "./kilitleme";
 import { dogrulamaCalistir } from "./dogrulama";
 import { paretoAnaliz } from "./pareto";
 import type { maksimumTren } from "./kapasite";
@@ -18,27 +18,32 @@ type MaksTip = ReturnType<typeof maksimumTren>;
 type BtTip = ReturnType<typeof blockingTimeRing>;
 
 /** 3.2 Kilitleme (Interlocking) Kontrol Tablosu — makaslardan türetilir. */
-export function bolumKilitleme(rings: DurakArasiRing[], en: boolean): string {
-  const kt = kilitlemeTablosu(rings);
+export function bolumKilitleme(rings: DurakArasiRing[], en: boolean, cfg?: SimConfig): string {
+  const kt = kilitlemeTablosu(rings, cfg);
   if (!kt.length) return "";
   const ko = kilitlemeOzet(kt);
-  const rows = kt.map((r) => [
-    `<b>${esc(r.makasAd)}</b> <span style="font-size:8pt;color:#6B7480">k${kmFmt(r.km)} · ${esc(r.tipAd)}${r.tcc ? " · TCC" : ""}</span>`,
-    esc(r.rota),
-    r.makasKonum === "Ters" ? (en ? "Reverse" : "Ters") : (en ? "Normal" : "Normal"),
-    esc(r.cakisan),
-    esc(r.flankOverlap),
-    `${r.tanzimSn ? `${r.tanzimSn}` : "—"} / ${r.serbestSn} / <b>${r.kilitSn}</b>`,
-  ]);
+  // Rapor TR/EN — yapısal satırdan seçili dilin metni (kilitlemeMetin) türetilir.
+  const t: CeviriFn = (m) => (en ? m.en : m.tr);
+  const rows = kt.map((r) => {
+    const x = kilitlemeMetin(r, t);
+    return [
+      `<b>${esc(r.makasAd)}</b> <span style="font-size:8pt;color:#6B7480">k${kmFmt(r.km)} · ${esc(x.tipAd)}${r.tcc ? " · TCC" : ""}</span>`,
+      esc(x.rota),
+      esc(x.konum),
+      esc(x.cakisan),
+      esc(x.koruma),
+      `${r.tanzimSn ? `${r.tanzimSn}` : "—"} / ${r.serbestSn} / <b>${r.kilitSn}</b>`,
+    ];
+  });
   const giris = en
     ? `Interlocking control table derived from the line's switch zones: for each route, the required switch position (Normal/Reverse), the conflicting movements it locks, flank/overlap protection and setting/release times. ${ko.makas} switch zones · ${ko.rota} routes · ${ko.manevra} reverse moves · ${ko.tccli} require TCC · max locking ${ko.maxKilit} s.`
-    : `Hattın makas bölgelerinden türetilen güzergâh–kilit tablosu: her rota için gereken makas konumu (Normal/Ters), kilitlenen çakışan hareketler, flank/overlap koruması ve tanzim/serbest süreleri. ${ko.makas} makas bölgesi · ${ko.rota} rota · ${ko.manevra} manevra · ${ko.tccli} TCC · azami kilit ${ko.maxKilit} s.`;
+    : `Hattın makas bölgelerinden türetilen güzergâh–kilit tablosu: her rota için gereken makas konumu (Normal/Ters), kilitlenen çakışan hareketler, yan koruma / emniyet payı ve tanzim/serbest süreleri. ${ko.makas} makas bölgesi · ${ko.rota} rota · ${ko.manevra} manevra · ${ko.tccli} TCC · azami kilit ${ko.maxKilit} s.`;
   const not = en
-    ? "Normal = switch straight (main-line move); Reverse = switch thrown (crossover/manoeuvre). TCC = traffic-control approval required at every pass (facing/siding/depot). Locking = setting (switch throw × count) + route release; consistent with the blocking-time setup/release components."
-    : "Normal = makas düz (ana hat geçişi); Ters = makas dönük (crossover/manevra). TCC = her geçişte trafik kontrol onayı zorunlu (karşılaşmalı/barınma/depo). Kilit = tanzim (makas hareketi × adet) + rota serbest bırakma; blocking-time tanzim/serbest bileşenleriyle tutarlıdır.";
+    ? "Normal = switch straight (main-line move); Reverse = switch thrown (crossover/manoeuvre). TCC = traffic-control approval required at every pass (facing/siding/depot). Overlap = the protective distance beyond the switch a train would need to stop under service braking if it overran the danger point (limited by the next block boundary). Locking = setting (switch throw × count) + route release; consistent with the blocking-time setup/release components."
+    : "Normal = makas düz (ana hat geçişi); Ters = makas dönük (crossover/manevra). TCC = her geçişte trafik kontrol onayı zorunlu (karşılaşmalı/barınma/depo). Emniyet payı = tehlike noktasını aşan trenin servis freniyle duracağı koruma mesafesi (sonraki blok sınırıyla sınırlı). Kilit = tanzim (makas hareketi × adet) + rota serbest bırakma; blocking-time tanzim/serbest bileşenleriyle tutarlıdır.";
   return `<h3 class="sub">${en ? "3.2 Interlocking Control Table" : "3.2 Kilitleme Kontrol Tablosu"}</h3>
   <div class="gs" style="font-size:10pt">${giris}</div>
-  ${tbl([en ? "Switch / location" : "Makas / konum", en ? "Route" : "Rota", en ? "Switch" : "Konum", en ? "Locked (conflicting)" : "Kilitlenen (çakışan)", en ? "Flank / Overlap" : "Flank / Overlap", en ? "Set/Rel/Lock (s)" : "Tanzim/Serbest/Kilit (s)"], rows, { first: true })}
+  ${tbl([en ? "Switch / location" : "Makas / konum", en ? "Route" : "Rota", en ? "Switch" : "Konum", en ? "Locked (conflicting)" : "Kilitlenen (çakışan)", en ? "Flank / Overlap" : "Yan koruma / Emniyet payı", en ? "Set/Rel/Lock (s)" : "Tanzim/Serbest/Kilit (s)"], rows, { first: true })}
   <div class="gs" style="font-size:9pt">${not}</div>`;
 }
 

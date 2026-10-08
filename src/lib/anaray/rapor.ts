@@ -525,7 +525,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
     ...(ortAralik ? [[lang === "en" ? "Mean signal spacing (outbound)" : "Ortalama sinyal aralığı (giden)", `~${ortAralik} m`]] : []),
   ];
   // 3.2 Kilitleme (Interlocking) Kontrol Tablosu — makaslardan türetilir; seçiliyse eklenir (G).
-  const kilitlemeSub = dahil("kilitleme") ? bolumKilitleme(rings, en) : "";
+  const kilitlemeSub = dahil("kilitleme") ? bolumKilitleme(rings, en, cfg) : "";
 
   const sinyalBolum = `
   <div class="banner"><span class="no">03</span>${lang === "en" ? "SIGNALLING — SIGNAL LAMPS (SG)" : "SİNYALİZASYON — SİNYAL LAMBALARI (SG)"}</div>

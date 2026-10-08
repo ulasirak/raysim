@@ -9,16 +9,17 @@
 import { useMemo } from "react";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
-import { useProje } from "@/components/SimConfigProvider";
-import { kilitlemeTablosu, kilitlemeOzet } from "@/lib/anaray/kilitleme";
+import { useProje, useSimConfig } from "@/components/SimConfigProvider";
+import { kilitlemeTablosu, kilitlemeOzet, kilitlemeMetin } from "@/lib/anaray/kilitleme";
 import { BosDurum } from "@/components/BosDurum";
 import { useDil } from "@/components/DilProvider";
 
 export function KilitlemePaneli() {
   const { t } = useDil();
   const { rings } = useProje();
+  const { cfg } = useSimConfig();
 
-  const tablo = useMemo(() => kilitlemeTablosu(rings), [rings]);
+  const tablo = useMemo(() => kilitlemeTablosu(rings, cfg), [rings, cfg]);
   const ozet = useMemo(() => kilitlemeOzet(tablo), [tablo]);
 
   const kmFmt = (m: number) => `${Math.floor(m / 1000)}+${String(Math.round(m % 1000)).padStart(3, "0")}`;
@@ -30,7 +31,7 @@ export function KilitlemePaneli() {
           <div className="field-label">{t({ tr: "Kilitleme (Interlocking) Kontrol Tablosu", en: "Interlocking Control Table", de: "Verschluss-Kontrolltabelle (Interlocking)" })}</div>
           <h3 className="font-brand mt-0.5 text-lg font-semibold" style={{ color: brand.ink }}>{t({ tr: "Rota tesisi · makas konumu · kilit", en: "Route setting · switch position · lock", de: "Fahrstraße · Weichenlage · Verschluss" })}</h3>
           <p className="mt-1 max-w-2xl text-xs" style={{ color: brand.inkSoft }}>
-            {t({ tr: "Hattın makas bölgelerinden türetilen güzergâh–kilit tablosu: her rota için gereken makas konumu (Normal/Ters), kilitlenen çakışan hareketler, flank/overlap koruması ve tanzim/serbest-bırakma süreleri. Veriler ring modelinden gelir.", en: "A route–lock table derived from the line's switch zones: for each route the required switch position (Normal/Reverse), the conflicting moves that are locked out, flank/overlap protection and setting/release times. Data comes from the ring model.", de: "Eine aus den Weichenbereichen der Strecke abgeleitete Fahrstraßen-Verschlusstabelle: je Fahrstraße die erforderliche Weichenlage (Normal/Umgestellt), die verschlossenen gegenläufigen Fahrten, Flank-/Overlap-Schutz sowie Einstell-/Auflösezeiten. Die Daten stammen aus dem Ringmodell." })}
+            {t({ tr: "Hattın makas bölgelerinden türetilen güzergâh–kilit tablosu: her rota için gereken makas konumu (Normal/Ters), kilitlenen çakışan hareketler, yan koruma / emniyet payı ve tanzim/serbest-bırakma süreleri. Veriler ring modelinden gelir.", en: "A route–lock table derived from the line's switch zones: for each route the required switch position (Normal/Reverse), the conflicting moves that are locked out, flank/overlap protection and setting/release times. Data comes from the ring model.", de: "Eine aus den Weichenbereichen der Strecke abgeleitete Fahrstraßen-Verschlusstabelle: je Fahrstraße die erforderliche Weichenlage (Normal/Umgestellt), die verschlossenen gegenläufigen Fahrten, Flank-/Overlap-Schutz sowie Einstell-/Auflösezeiten. Die Daten stammen aus dem Ringmodell." })}
           </p>
         </div>
         <div className="text-right">
@@ -53,35 +54,38 @@ export function KilitlemePaneli() {
                 <th className="px-3 py-2 font-medium">{t({ tr: "Rota", en: "Route", de: "Fahrstraße" })}</th>
                 <th className="px-3 py-2 font-medium">{t({ tr: "Makas konumu", en: "Switch position", de: "Weichenlage" })}</th>
                 <th className="px-3 py-2 font-medium">{t({ tr: "Kilitlenen (çakışan)", en: "Locked out (conflicting)", de: "Verschlossen (gegenläufig)" })}</th>
-                <th className="px-3 py-2 font-medium">{t({ tr: "Flank / Overlap", en: "Flank / Overlap", de: "Flank / Overlap" })}</th>
+                <th className="px-3 py-2 font-medium">{t({ tr: "Yan koruma / Emniyet payı", en: "Flank / Overlap", de: "Flanke / Durchrutschweg" })}</th>
                 <th className="px-3 py-2 text-right font-medium">{t({ tr: "Tanzim", en: "Setting", de: "Einstellung" })}</th>
                 <th className="px-3 py-2 text-right font-medium">{t({ tr: "Serbest", en: "Release", de: "Auflösung" })}</th>
                 <th className="px-3 py-2 text-right font-medium">{t({ tr: "Kilit", en: "Lock", de: "Verschluss" })}</th>
               </tr>
             </thead>
             <tbody>
-              {tablo.map((r, i) => (
+              {tablo.map((r, i) => {
+                const x = kilitlemeMetin(r, t);
+                return (
                 <tr key={i} className="border-t align-top" style={{ borderColor: brand.border }}>
                   <td className="px-3 py-2.5">
                     <div className="font-medium" style={{ color: brand.ink }}>{r.makasAd}</div>
-                    <div className="text-[0.68rem] tabular-nums" style={{ color: brand.muted }}>k{kmFmt(r.km)} · {r.tipAd}{r.tcc ? " · TCC" : ""}</div>
+                    <div className="text-[0.68rem] tabular-nums" style={{ color: brand.muted }}>k{kmFmt(r.km)} · {x.tipAd}{r.tcc ? " · TCC" : ""}</div>
                   </td>
-                  <td className="px-3 py-2.5" style={{ color: brand.inkSoft }}>{r.rota}</td>
+                  <td className="px-3 py-2.5" style={{ color: brand.inkSoft }}>{x.rota}</td>
                   <td className="px-3 py-2.5">
                     <span className="rounded px-1.5 py-0.5 text-[0.62rem] font-semibold uppercase"
                       style={r.makasKonum === "Ters"
                         ? { background: "rgba(168,132,44,0.15)", color: CK.gold }
                         : { background: CK.track, color: brand.muted }}>
-                      {r.makasKonum}
+                      {x.konum}
                     </span>
                   </td>
-                  <td className="px-3 py-2.5 text-[0.8rem]" style={{ color: r.cakisan === "—" ? brand.muted : brand.inkSoft }}>{r.cakisan}</td>
-                  <td className="px-3 py-2.5 text-[0.75rem]" style={{ color: brand.muted }}>{r.flankOverlap}</td>
+                  <td className="px-3 py-2.5 text-[0.8rem]" style={{ color: r.rotaKod === "duz" ? brand.muted : brand.inkSoft }}>{x.cakisan}</td>
+                  <td className="px-3 py-2.5 text-[0.75rem]" style={{ color: brand.muted }}>{x.koruma}</td>
                   <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums" style={{ color: brand.inkSoft }}>{r.tanzimSn ? `${r.tanzimSn} s` : "—"}</td>
                   <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums" style={{ color: brand.inkSoft }}>{r.serbestSn} s</td>
                   <td className="whitespace-nowrap px-3 py-2.5 text-right font-semibold tabular-nums" style={{ color: brand.ink }}>{r.kilitSn} s</td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -89,7 +93,7 @@ export function KilitlemePaneli() {
 
       <div className="border-t px-5 py-3 text-[0.72rem] leading-relaxed" style={{ borderColor: brand.border, color: brand.muted }}>
         <b style={{ color: brand.inkSoft }}>Normal</b> {t({ tr: "= makas düz (ana hat geçişi) ·", en: "= switch straight (main-line move) ·", de: "= Weiche gerade (Hauptgleisfahrt) ·" })} <b style={{ color: brand.inkSoft }}>Ters</b> {t({ tr: "= makas dönük (crossover/manevra).", en: "= switch reversed (crossover/shunt).", de: "= Weiche umgestellt (Kreuzung/Rangierfahrt)." })}
-        <b style={{ color: brand.inkSoft }}> TCC</b> {t({ tr: "= her geçişte trafik kontrol onayı zorunlu (karşılaşmalı/barınma/depo). Kilit = tanzim (makas hareketi × adet) + rota serbest bırakma; blocking-time (Sperrzeit) tanzim/serbest bileşenleriyle tutarlıdır.", en: "= traffic-control approval required at every move (meets/stabling/depot). Lock = setting (switch move × count) + route release; the blocking time (Sperrzeit) is consistent with the setting/release components.", de: "= bei jeder Fahrt ist eine betriebliche Freigabe erforderlich (Begegnung/Abstellung/Depot). Verschluss = Einstellung (Weichenumstellung × Anzahl) + Fahrstraßenauflösung; die Sperrzeit (blocking time) ist mit den Einstell-/Auflöse-Komponenten konsistent." })}
+        <b style={{ color: brand.inkSoft }}> TCC</b> {t({ tr: "= her geçişte trafik kontrol onayı zorunlu (karşılaşmalı/barınma/depo). Emniyet payı = tehlike noktasını aşan trenin servis freniyle duracağı koruma mesafesi (sonraki blok sınırıyla sınırlı). Kilit = tanzim (makas hareketi × adet) + rota serbest bırakma; blocking-time (Sperrzeit) tanzim/serbest bileşenleriyle tutarlıdır.", en: "= traffic-control approval required at every move (meets/stabling/depot). Overlap = the protective distance beyond the switch a train would need to stop under service braking if it overran the danger point (limited by the next block boundary). Lock = setting (switch move × count) + route release; the blocking time (Sperrzeit) is consistent with the setting/release components.", de: "= bei jeder Fahrt ist eine betriebliche Freigabe erforderlich (Begegnung/Abstellung/Depot). Durchrutschweg = der Schutzabstand hinter der Weiche, den ein Zug bei Betriebsbremsung zum Anhalten benötigt, falls er den Gefahrpunkt überfährt (durch die nächste Blockgrenze begrenzt). Verschluss = Einstellung (Weichenumstellung × Anzahl) + Fahrstraßenauflösung; die Sperrzeit (blocking time) ist mit den Einstell-/Auflöse-Komponenten konsistent." })}
       </div>
     </div>
   );
