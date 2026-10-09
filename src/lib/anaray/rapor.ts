@@ -26,6 +26,7 @@ import { loopYorunge, monteCarlo, type LoopYorunge, type MonteCarloResult } from
 import { cakismaTespit } from "./cakisma";
 import { gecikmeYayilim } from "./gecikmeYayilim";
 import { ortakKesimAnaliz, subeIsletme } from "./ortakKesim";
+import { kavsakCakismaAnaliz } from "./kavsakCakisma";
 import { sure } from "./format";
 import { hatOzellikleri, sinyalKonumlari, kavsakliRingler, subeEfektifRingler } from "./network";
 import {
@@ -397,6 +398,36 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
     ]);
     const renk = ok.uygun ? "#0E7C57" : RED;
     return `${baslik}<div class="gs" style="font-size:10pt">${giris}</div>${tbl(head, rows, { first: true })}<div class="gs" style="font-size:10pt;border-left:3px solid ${renk};padding-left:10px"><b style="color:${renk}">${ok.uygun ? (en ? "Shared sections OK" : "Ortak kesimler uygun") : (en ? "Shared section over capacity" : "Ortak kesim aşırı yüklü")}:</b> ${esc(ok.ozet)}</div>`;
+  })() : "";
+
+  // 4.6 Kavşak Zaman-Çakışması (merge/diverge) — ortak kesimin ZAMAN-DOMENİ tamamlayıcısı.
+  const kavsakCakismaBolum = (subeler.length && subeler.some((s) => (s.servisTren ?? 0) > 0)) ? (() => {
+    const kc = kavsakCakismaAnaliz(ringsGiris, subeler, stock, cfg, isletme, filoGercek);
+    if (!kc.aktif || !kc.kavsaklar.length) return "";
+    const baslik = `<h3 class="sub" style="page-break-before:always">${en ? "4.6 Junction Time-Conflict (Merge/Diverge)" : "4.6 Kavşak Zaman-Çakışması (Merge/Diverge)"}</h3>`;
+    const giris = en
+      ? `The trunk and each branch service depart from the same start and share the trunk to the junction, so the junction passing interval equals the departure interval. When the service periods beat against each other, specific trains pass within the junction's min headway even if the average (4.5) fits. For each junction the tightest service pair, the widest separation reachable by phasing, and the resolving departure offset are given.`
+      : `Ana hat ve her şube servisi aynı başlangıçtan kalkıp ortak kesimi kavşağa kadar paylaşır; bu yüzden kavşaktaki geçiş aralığı kalkış aralığına eşittir. Servis periyotları birbirine vurduğunda, ortalama (4.5) sığsa bile belirli trenler kavşağın min headway'inden yakın geçer. Her kavşak için en sıkı servis çifti, faz ötelemesiyle erişilebilen en geniş ayrım ve çözüm ötelemesi verilir.`;
+    const head = en
+      ? ["Junction", "Tightest pair", "Best reachable gap", "Junction min HW", "Resolving offset", "Verdict"]
+      : ["Kavşak", "En sıkı çift", "Erişilebilir en iyi ayrım", "Kavşak min HW", "Çözüm ötelemesi", "Sonuç"];
+    const sonucMetin = (k: typeof kc.kavsaklar[number]) => k.cakismaVar
+      ? (k.kapasiteAsimi ? (en ? "OVERLOAD" : "AŞIRI") : (en ? "BEAT" : "VURU"))
+      : (en ? "OK (offset)" : "UYGUN (öteleme)");
+    const rows = kc.kavsaklar.map((k) => [
+      esc(k.junctionAd),
+      k.baglayan ? `${esc(k.baglayan.aAd)} ↔ ${esc(k.baglayan.bAd)}` : "—",
+      k.baglayan ? `${Math.round(k.baglayan.enIyiAralik)} s` : "—",
+      `${k.minHeadway} s`,
+      k.cakismaVar ? "—" : `${k.enIyiOfsetSn} s`,
+      sonucMetin(k),
+    ]);
+    const renk = kc.cakismaVar ? RED : "#0E7C57";
+    const notlar = kc.kavsaklar.filter((k) => k.cakismaVar || k.enIyiOfsetSn > 0)
+      .map((k) => `<li style="margin-bottom:3px">${esc(k.oneri)}</li>`).join("");
+    return `${baslik}<div class="gs" style="font-size:10pt">${giris}</div>${tbl(head, rows, { first: true })}`
+      + `<div class="gs" style="font-size:10pt;border-left:3px solid ${renk};padding-left:10px"><b style="color:${renk}">${kc.cakismaVar ? (en ? "Junction conflict" : "Kavşak çakışması") : (en ? "Resolvable by phasing" : "Ötelemeyle çözülür")}:</b> ${esc(kc.ozet)}</div>`
+      + (notlar ? `<ul style="font-size:9.5pt;color:#3A4A5A;margin-top:6px;padding-left:18px">${notlar}</ul>` : "");
   })() : "";
 
   // ---- YÖNETİCİ ÖZETİ (kapaktan sonra, 1. bölümden önce; 1 sayfa karar özeti) ----
@@ -989,7 +1020,8 @@ ${raporStil(INK, RED, GOLD)}</head>
   ${cakismaBolum}
   ${knockOnBolum}
   ${subeBolum}
-  ${ortakKesimBolum}` : ""}
+  ${ortakKesimBolum}
+  ${kavsakCakismaBolum}` : ""}
 
   <!-- 5: İşletme & Talep Analizi (ters işletme) -->
   ${dahil("isletme") ? isletmeBolum : ""}
