@@ -23,6 +23,7 @@ import { cakismaTespit } from "@/lib/anaray/cakisma";
 import { cakismaCoz } from "@/lib/anaray/cakismaCozum";
 import { gecikmeYayilim } from "@/lib/anaray/gecikmeYayilim";
 import { ortakKesimAnaliz } from "@/lib/anaray/ortakKesim";
+import { kavsakCakismaAnaliz } from "@/lib/anaray/kavsakCakisma";
 import { tersIsletmeAnaliz } from "@/lib/anaray/tersisletme";
 import { haritaKisitlari, type HaritaKisit } from "@/lib/anaray/ring";
 import { dwellUygulanmisRings, maxYolcuKapasitesi, netTabanAlani } from "@/lib/anaray/yolcu";
@@ -50,6 +51,7 @@ import { GrafikCerceve } from "@/components/GrafikCerceve";
 import { Tarife } from "@/components/Tarife";
 import { TersIsletme } from "@/components/TersIsletme";
 import { SeferTersEntegre } from "@/components/SeferTersEntegre";
+import { AgKavsakPanel } from "@/components/AgKavsakPanel";
 
 const KMH = 1 / 3.6;
 
@@ -446,6 +448,12 @@ function StudioIc() {
     () => ortakKesimAnaliz(dwellUygulanmisRings(ringsHam, stock, isletme), subeler, stock, cfg, isletme, filo),
     [ringsHam, subeler, stock, cfg, isletme, filo]
   );
+  // Kavşak zaman-çakışması (ortak kesimle aynı girdiler) — ⑤ Ağ & Kavşak sekmesi + sekme noktası.
+  const kavsakCakisma = useMemo(
+    () => kavsakCakismaAnaliz(dwellUygulanmisRings(ringsHam, stock, isletme), subeler, stock, cfg, isletme, filo),
+    [ringsHam, subeler, stock, cfg, isletme, filo]
+  );
+  const agVar = subeler.length > 0;
 
   const monteCarloCalistir = () => {
     setMcRunning(true);
@@ -520,8 +528,20 @@ function StudioIc() {
       </div>
 
       <TabBar pre="sf"
-        etiketler={[t({ tr: "① Kurulum & Filo", en: "① Setup & Fleet", de: "① Einrichtung & Flotte" }), t({ tr: "② Canlı Simülasyon", en: "② Live Simulation", de: "② Live-Simulation" }), t({ tr: "③ Mühendislik Grafikleri", en: "③ Engineering Charts", de: "③ Technische Diagramme" }), t({ tr: "④ Etkiler & Dayanıklılık", en: "④ Effects & Robustness", de: "④ Auswirkungen & Robustheit" })]}
-        durumlar={[filoAsim ? "ihlal" : "", "", "", (yolcuVeriVar && tersRapor && tersRapor.donusIhtiyaclari.length > 0) ? "ihlal" : ""]} />
+        etiketler={[
+          t({ tr: "① Kurulum & Filo", en: "① Setup & Fleet", de: "① Einrichtung & Flotte" }),
+          t({ tr: "② Canlı Simülasyon", en: "② Live Simulation", de: "② Live-Simulation" }),
+          t({ tr: "③ Mühendislik Grafikleri", en: "③ Engineering Charts", de: "③ Technische Diagramme" }),
+          t({ tr: "④ Etkiler & Dayanıklılık", en: "④ Effects & Robustness", de: "④ Auswirkungen & Robustheit" }),
+          ...(agVar ? [t({ tr: "⑤ Ağ & Kavşak", en: "⑤ Network & Junction", de: "⑤ Netz & Verzweigung" })] : []),
+        ]}
+        durumlar={[
+          filoAsim ? "ihlal" : "",
+          "",
+          "",
+          (yolcuVeriVar && tersRapor && tersRapor.donusIhtiyaclari.length > 0) ? "ihlal" : "",
+          ...(agVar ? [(kavsakCakisma.cakismaVar || (ortakKesim.aktif && !ortakKesim.uygun)) ? "uyari" : ""] : []),
+        ] as ("" | "uyari" | "ihlal")[]} />
 
       <div className="sf-panel" data-t="1">
       <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>{t({ tr: "Aracı, yolcu dinamiğini ve filoyu belirle: önerilen tramvay → onayla → sefer sıklığı.", en: "Define the vehicle, passenger dynamics and fleet: recommended trams → confirm → headway.", de: "Fahrzeug, Fahrgastdynamik und Flotte festlegen: empfohlene Straßenbahnen → bestätigen → Zugfolgezeit." })}</p>
@@ -1193,6 +1213,13 @@ function StudioIc() {
         </Panel>
       </section>
       </div>
+
+      {agVar && (
+        <div className="sf-panel" data-t="5">
+          <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>{t({ tr: "Dallı ağda ortak kesim yükü (ortalama) ve kavşak zaman-çakışması (merge/diverge) — ana hat + şube servislerinin kavşakta nasıl saplandığı, çakışma ve çözüm ötelemesi.", en: "In a branched network: shared-section load (average) and junction time-conflict (merge/diverge) — how main + branch services interleave at the junction, the conflict and the resolving offset.", de: "Im verzweigten Netz: Last des gemeinsamen Abschnitts (Mittel) und Verzweigungs-Zeitkonflikt (merge/diverge) — wie Haupt- + Zweigverkehr an der Verzweigung ineinandergreifen, der Konflikt und der lösende Versatz." })}</p>
+          <AgKavsakPanel subeler={subeler} ortak={ortakKesim} kavsak={kavsakCakisma} />
+        </div>
+      )}
 
     </div>
   );
