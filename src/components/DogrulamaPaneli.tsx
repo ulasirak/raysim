@@ -11,6 +11,7 @@ import { CK } from "@/lib/anaray/chartkit";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import { dogrulamaCalistir } from "@/lib/anaray/dogrulama";
+import { kavsakliRingler } from "@/lib/anaray/network";
 import { useDil } from "@/components/DilProvider";
 
 const say = (v: number, birim: string) => {
@@ -21,14 +22,17 @@ const say = (v: number, birim: string) => {
 export function DogrulamaPaneli() {
   const { t } = useDil();
   const { cfg } = useSimConfig();
-  const { rings: ringsHam } = useProje();
+  const { rings: ringsHam, subeler } = useProje();
   const { arac: stock } = useArac();
   const { isletme } = useIsletme();
 
   const rapor = useMemo(() => {
-    const rings = dwellUygulanmisRings(ringsHam, stock, isletme);
+    // UIC 406 kapasite kimliği aktif hatta koşar; şube varsa kavşak turnout'ları dâhil
+    // (Sefer/KUR kapasitesiyle aynı taban → doğrulanan sayı ekranda görünenle birebir).
+    // Şubesizse kavsakliRingler rings'i aynen döndürür (eski davranış korunur).
+    const rings = dwellUygulanmisRings(kavsakliRingler(ringsHam, subeler), stock, isletme);
     return dogrulamaCalistir(rings, stock, cfg, isletme);
-  }, [ringsHam, stock, cfg, isletme]);
+  }, [ringsHam, subeler, stock, cfg, isletme]);
 
   const hepGecti = rapor.gecen === rapor.toplam;
   const bagimsizN = rapor.sonuclar.filter((s) => s.bagimsiz).length;

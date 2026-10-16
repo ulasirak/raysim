@@ -10,6 +10,7 @@ import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { maksimumTren } from "@/lib/anaray/kapasite";
+import { kavsakliRingler } from "@/lib/anaray/network";
 import { filoHeadwayEgrisi, hedefFilo, enIyiHeadwaySn } from "@/lib/anaray/kararDestek";
 import { sure } from "@/lib/anaray/format";
 import { BosDurum } from "@/components/BosDurum";
@@ -19,11 +20,14 @@ import { useDil } from "@/components/DilProvider";
 export function KararDestekPaneli() {
   const { t } = useDil();
   const { cfg } = useSimConfig();
-  const { rings } = useProje();
+  const { rings, subeler } = useProje();
   const { arac: stock } = useArac();
   const { isletme } = useIsletme();
 
-  const maks = useMemo(() => maksimumTren(rings, stock, cfg, isletme), [rings, stock, cfg, isletme]);
+  // Filo↔headway ödünleşimi ana hat çevrimine dayanır; şube varsa kavşak turnout'ları
+  // darboğaza katılır (Sefer/KUR ile aynı taban). Şubesizse rings aynen döner.
+  const ringlerK = useMemo(() => kavsakliRingler(rings, subeler), [rings, subeler]);
+  const maks = useMemo(() => maksimumTren(ringlerK, stock, cfg, isletme), [ringlerK, stock, cfg, isletme]);
   const cevrim = maks.cevrimSuresi;
   const nMax = Math.max(1, maks.nTeorik);
   const hMin = maks.hMin;

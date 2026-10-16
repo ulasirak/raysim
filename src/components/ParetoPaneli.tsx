@@ -13,6 +13,7 @@ import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { maksimumTren } from "@/lib/anaray/kapasite";
+import { kavsakliRingler } from "@/lib/anaray/network";
 import { paretoAnaliz } from "@/lib/anaray/pareto";
 import { sure } from "@/lib/anaray/format";
 import { BosDurum } from "@/components/BosDurum";
@@ -22,14 +23,17 @@ const tl = (v: number) => `₺${Math.round(v).toLocaleString("tr-TR")}`;
 
 export function ParetoPaneli() {
   const { cfg } = useSimConfig();
-  const { rings } = useProje();
+  const { rings, subeler } = useProje();
   const { arac: stock } = useArac();
   const { isletme, patchIsletme, yazilabilir } = useIsletme();
 
   const VoT = isletme.zamanDegeriYolcuSaat ?? 50;
   const Cveh = isletme.aracSaatMaliyet ?? 800;
 
-  const maks = useMemo(() => maksimumTren(rings, stock, cfg, isletme), [rings, stock, cfg, isletme]);
+  // Ekonomik optimum ana hat çevrimine dayanır; şube varsa kavşak turnout'ları darboğaza
+  // katılır (Sefer/KUR ile aynı taban). Şubesizse kavsakliRingler rings'i aynen döndürür.
+  const ringlerK = useMemo(() => kavsakliRingler(rings, subeler), [rings, subeler]);
+  const maks = useMemo(() => maksimumTren(ringlerK, stock, cfg, isletme), [ringlerK, stock, cfg, isletme]);
   const r = useMemo(() => paretoAnaliz({
     cevrimSn: maks.cevrimSuresi,
     hMinSn: maks.hMin,
