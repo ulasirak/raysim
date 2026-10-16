@@ -7,7 +7,7 @@
 // Konumlar (pos, m) sıralanıp durak-arası mesafeler (pos farkı) ile ring zinciri kurulur.
 // Makas/sinyal detayı V1'de aktarılmaz (Ringler'de eklenir).
 
-import { yeniRing, ringDuraklari, ringSenaryo, MAKAS_TIP_AD, BELGE, type DurakArasiRing } from "./ring";
+import { yeniRing, ringDuraklari, ringSenaryo, MAKAS_TIP_AD, BELGE, type DurakArasiRing, type Sube } from "./ring";
 import type { RollingStock } from "./types";
 import type { SimConfig } from "./config";
 import { etkinArac } from "./config";
@@ -120,6 +120,7 @@ export function railmlIhrac(
     headwaySn?: number;
     servisBasSn?: number;
     servisBitSn?: number;
+    subeler?: Sube[];
   },
 ): string {
   const duraklar = ringDuraklari(rings); // {ad, konum}[] — kümülatif kilometraj (m)
@@ -128,6 +129,65 @@ export function railmlIhrac(
   const ocpXml = duraklar
     .map((d, i) => `      <ocp id="${id(i)}" name="${xmlKac(d.ad)}" code="${id(i)}"/>`)
     .join("\n");
+
+  // ——— ŞUBELER (tali hatlar) — her şube AYRI bir <track> olur, kavşak ocp'sinde ayrılır.
+  // Durak ve geometri kaybı YOK: şube durakları kendi ocp'lerini (ocp_b{bi}_{k}) alır,
+  // şube track'i kavşaktaki ana ocp'ye description'la bağlanır. Uydurma interlocking
+  // (switch mate) ÜRETİLMEZ — ayrım ocp'si dürüstçe belgelenir. Şubesizse hiçbir şey eklenmez
+  // (çıktı birebir eskisi gibi → golden korunur).
+  const subeler = (opts?.subeler ?? []).filter((s) => s.rings.length > 0);
+  const subeOcpXml: string[] = [];
+  const subeTrackXml: string[] = [];
+  subeler.forEach((sube, bi) => {
+    const at = Math.max(0, Math.min(duraklar.length - 1, Math.round(sube.atIndex)));
+    const bDur = ringDuraklari(sube.rings); // bDur[0] = kavşak kökü (= ana hat duraklar[at])
+    const bToplam = bDur.length ? Math.round(bDur[bDur.length - 1].konum) : 0;
+    const bOcp = (k: number) => `ocp_b${bi}_${k}`;
+    // Şube durakları (kavşak kökü HARİÇ, k≥1) kendi ocp'lerini alır.
+    for (let k = 1; k < bDur.length; k++) {
+      subeOcpXml.push(`      <ocp id="${bOcp(k)}" name="${xmlKac(bDur[k].ad)}" code="${bOcp(k)}"/>`);
+    }
+    // crossSection'lar: kök (pos 0) ana hat kavşak ocp'sine, sonrakiler şube ocp'lerine.
+    const bCs = bDur
+      .map((d, k) => `          <crossSection id="cs_b${bi}_${k}" pos="${Math.round(d.konum)}" ocpRef="${k === 0 ? id(at) : bOcp(k)}"/>`)
+      .join("\n");
+    // Şube eğim/makas/sinyal (kümülatif offset şube başından).
+    const bGrad: string[] = [], bSw: string[] = [], bSig: string[] = [];
+    let bOff = 0, bOncekiEgim: number | null = null;
+    sube.rings.forEach((r) => {
+      if (bOncekiEgim === null || Math.abs(r.egim - bOncekiEgim) > 1e-9) {
+        bGrad.push(`          <gradientChange id="g_b${bi}_${bGrad.length}" pos="${Math.round(bOff)}" slope="${r.egim.toFixed(1)}"/>`);
+        bOncekiEgim = r.egim;
+      }
+      for (const m of r.makaslar) {
+        const pos = Math.round(bOff + Math.max(0, Math.min(r.uzunluk, m.konum)));
+        bSw.push(`          <switch id="sw_b${bi}_${bSw.length}" name="${xmlKac(m.ad || MAKAS_TIP_AD[m.tip])}" pos="${pos}" description="${xmlKac(MAKAS_TIP_AD[m.tip])}; ${Math.round(m.gecisHizi * 3.6)} km/h"/>`);
+      }
+      for (const s of r.sinyaller ?? []) {
+        const pos = Math.round(bOff + Math.max(0, Math.min(r.uzunluk, s.konum)));
+        bSig.push(`          <signal id="sig_b${bi}_${bSig.length}" name="${xmlKac(s.ad || (s.yon === "giden" ? "Giden sinyal" : "Gelen sinyal"))}" pos="${pos}" dir="${s.yon === "giden" ? "up" : "down"}"${s.tersIsletme ? ` description="ters işletme"` : ""}/>`);
+      }
+      bOff += r.uzunluk;
+    });
+    const bGradXml = bGrad.length ? `          <gradientChanges>\n${bGrad.join("\n")}\n          </gradientChanges>\n` : "";
+    const bOcsXml = (bSw.length || bSig.length)
+      ? `        <ocsElements>\n${bSw.length ? `          <switches>\n${bSw.join("\n")}\n          </switches>\n` : ""}${bSig.length ? `          <signals>\n${bSig.join("\n")}\n          </signals>\n` : ""}        </ocsElements>\n`
+      : "";
+    const kavsakAd = duraklar[at]?.ad ?? `ocp_${at}`;
+    subeTrackXml.push(`      <track id="trk_b${bi}" name="${xmlKac(sube.ad || `Şube ${bi + 1}`)}" description="${xmlKac(`Tali hat — ${kavsakAd} (${id(at)}) kavşağından ayrılır`)}">
+        <trackTopology>
+          <trackBegin id="tb_b${bi}" pos="0"><openEnd id="oe_b${bi}_1"/></trackBegin>
+          <trackEnd id="te_b${bi}" pos="${bToplam}"><openEnd id="oe_b${bi}_2"/></trackEnd>
+        </trackTopology>
+        <trackElements>
+${bGradXml}          <crossSections>
+${bCs}
+          </crossSections>
+        </trackElements>
+${bOcsXml}      </track>`);
+  });
+  const subeOcpTumXml = subeOcpXml.length ? "\n" + subeOcpXml.join("\n") : "";
+  const subeTrackTumXml = subeTrackXml.length ? "\n" + subeTrackXml.join("\n") : "";
   const csXml = duraklar
     .map((d, i) => `          <crossSection id="cs_${i}" pos="${Math.round(d.konum)}" ocpRef="${id(i)}"/>`)
     .join("\n");
@@ -277,7 +337,7 @@ ${trains.join("\n")}
   </metadata>
   <infrastructure id="is_raysim" name="${xmlKac(hatAdi)}">
     <operationControlPoints>
-${ocpXml}
+${ocpXml}${subeOcpTumXml}
     </operationControlPoints>
     <tracks>
       <track id="trk_1" name="${xmlKac(hatAdi)}">
@@ -290,7 +350,7 @@ ${gradXml}          <crossSections>
 ${csXml}
           </crossSections>
         </trackElements>
-${ocsXml}      </track>
+${ocsXml}      </track>${subeTrackTumXml}
     </tracks>
   </infrastructure>
 ${rollingXml}${ttXml}</railml>

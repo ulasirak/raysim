@@ -15,6 +15,7 @@ import { HatIceAktar, type IceAktarMod } from "@/components/HatIceAktar";
 import { SubeEditor } from "@/components/SubeEditor";
 import { etkinBogazIsgali, terminalDonusParalel, etkinPeronSayisi, terminalMakasSayilari, terminalSeriDonus, type DonusTip, type TerminalConfig } from "@/lib/anaray/config";
 import { maksimumTren } from "@/lib/anaray/kapasite";
+import { kavsakliRingler } from "@/lib/anaray/network";
 import { tersIsletmeAnaliz } from "@/lib/anaray/tersisletme";
 import { yolcuAkisSuresi } from "@/lib/anaray/yolcu";
 import { brand } from "@/lib/anaray/brand";
@@ -51,7 +52,7 @@ export function RingEditor() {
   // Alias: terminal .map bloğunda `const t = isletme[uc]` çevirmeni gölgeler → orada `tt`.
   const tt = t;
   const { cfg } = useSimConfig();
-  const { rings, setRings, sifirlaRings, meta, patchMeta, yukleniyor, yazilabilir } = useProje();
+  const { rings, setRings, sifirlaRings, subeler, meta, patchMeta, yukleniyor, yazilabilir } = useProje();
   const { projeYeni } = useHesap();
   const [iceMesgul, setIceMesgul] = useState(false);
   // Araç ve işletme parametreleri KALICI (projeye kayıtlı) — tek kaynak.
@@ -75,7 +76,11 @@ export function RingEditor() {
     patchTerminal(uc, { varisTampon: n.varis, inisBinis: n.inis, tersDonus: n.ters, kalkisTemizleme: n.kalkis, toparlanma: n.topar, peronIsgali: n.varis + n.inis + n.ters + n.kalkis + n.topar });
   };
   // Canlı maksimum tramvay kapasitesi (bottleneck) — inputların hemen altında geri besleme.
-  const maks = useMemo(() => maksimumTren(rings, stock, cfg, isletme), [rings, stock, cfg, isletme]);
+  // Şube varsa ana hat ringlerine her kavşak ayrımının turnout makası EKLENİR
+  // (kavsakliRingler) → Sefer modülündeki ana-hat kapasitesiyle BİREBİR aynı sonuç.
+  // Şubesizse kavsakliRingler rings'i aynen döndürür → golden korunur.
+  const ringlerKavsakli = useMemo(() => kavsakliRingler(rings, subeler), [rings, subeler]);
+  const maks = useMemo(() => maksimumTren(ringlerKavsakli, stock, cfg, isletme), [ringlerKavsakli, stock, cfg, isletme]);
   // Kurp konfor uyarısını GERÇEK per-ring doluluğa bağlamak için (PDF 2.2 ile birebir).
   const dolulukByRing = useMemo(() => {
     const out: Record<string, number> = {};
@@ -331,6 +336,7 @@ export function RingEditor() {
                   const xml = railmlIhrac(rings, meta.hatAdi || "RaySim hattı", {
                     stock, cfg, headwaySn: cfg.headway,
                     servisBasSn: hhmm(isletme.servisBas), servisBitSn: hhmm(isletme.servisBit),
+                    subeler, // tali hatlar ayrı <track> olarak eklenir (durak/geometri kaybı yok)
                   });
                   const ad = (meta.hatAdi || "raysim-hat").trim().replace(/[^\w.-]+/g, "_") || "raysim-hat";
                   indir(new Blob([xml], { type: "application/xml" }), `${ad}.railml.xml`);
@@ -353,6 +359,26 @@ export function RingEditor() {
                     dz.push({ id: `S${i}`, ad: duraklar[i].ad, lat: k.lat, lon: k.lon, varisSn: varis, kalkisSn: kalkis });
                     if (i < rings.length) t = kalkis + ringSenaryo(rings[i], stock, cfg).nominalSeyir;
                   }
+                  // Tali hatlar: her şubenin durakları (kavşak kökü HARİÇ ana hatla paylaşılır).
+                  // Koordinatı tam olan şubeler GTFS rotası olur; eksik olansa atlanır (trunk iner).
+                  const trunkIdByAd = new Map(duraklar.map((d, i) => [d.ad, `S${i}`]));
+                  const subeGtfs = subeler.map((s, bi) => {
+                    const bDur = ringDuraklari(s.rings); // [0] = kavşak kökü
+                    if (bDur.length < 2) return null;
+                    const dzs: GtfsDurakZaman[] = [];
+                    let tb = 0;
+                    for (let i = 0; i < bDur.length; i++) {
+                      const k = kmap[bDur[i].ad];
+                      if (!k || !Number.isFinite(k.lat) || !Number.isFinite(k.lon)) return null; // eksik koordinat → şube atlanır
+                      const dwell = i === 0 ? 0 : Math.max(0, s.rings[i - 1]?.dwell ?? 0);
+                      const varis = tb;
+                      const kalkis = varis + dwell;
+                      const id = i === 0 ? (trunkIdByAd.get(bDur[i].ad) ?? `Sb${bi}_0`) : `Sb${bi}_${i}`;
+                      dzs.push({ id, ad: bDur[i].ad, lat: k.lat, lon: k.lon, varisSn: varis, kalkisSn: kalkis });
+                      if (i < s.rings.length) tb = kalkis + ringSenaryo(s.rings[i], stock, cfg).nominalSeyir;
+                    }
+                    return { ad: s.ad || `Şube ${bi + 1}`, duraklar: dzs, headwaySn: cfg.headway };
+                  }).filter((x): x is { ad: string; duraklar: GtfsDurakZaman[]; headwaySn: number } => x !== null);
                   const hhmm = (s?: string) => { const m = /^(\d{1,2}):(\d{2})$/.exec(s ?? ""); return m ? (+m[1]) * 3600 + (+m[2]) * 60 : undefined; };
                   const zip = gtfsIhrac({
                     hatAdi: meta.hatAdi || "RaySim hattı",
@@ -361,6 +387,7 @@ export function RingEditor() {
                     headwaySn: cfg.headway,
                     baslangicSn: hhmm(isletme.servisBas),
                     bitisSn: hhmm(isletme.servisBit),
+                    subeler: subeGtfs,
                   });
                   const ad = (meta.hatAdi || "raysim-hat").trim().replace(/[^\w.-]+/g, "_") || "raysim-hat";
                   indir(new Blob([new Uint8Array(zip)], { type: "application/zip" }), `${ad}.gtfs.zip`);
@@ -370,6 +397,11 @@ export function RingEditor() {
                 {t({ tr: "⬆ GTFS (.zip)", en: "⬆ GTFS (.zip)", de: "⬆ GTFS (.zip)" })}
               </button>
             </div>
+            {subeler.length > 0 && (
+              <p className="mt-2 rounded border-l-2 px-2 py-1 text-[0.7rem]" style={{ borderColor: brand.red, background: CK.badBgSoft, color: brand.inkSoft }}>
+                ◆ {subeler.length} {t({ tr: "tali hat da dışa aktarılır", en: "branch line(s) are also exported", de: "Abzweigung(en) werden ebenfalls exportiert" })}: <b>railML</b> {t({ tr: "her şubeyi ayrı <track> olarak (kavşak ocp'sinde ayrılır) yazar — durak ve geometri kaybı yok. ", en: "writes each branch as a separate <track> (diverging at the junction ocp) — no loss of stops or geometry. ", de: "schreibt jede Abzweigung als separaten <track> (Abzweig am Knoten-ocp) — kein Verlust von Haltestellen oder Geometrie. " })}<b>GTFS</b> {t({ tr: "her şubeyi ayrı route + çift yön sefer yapar (koordinatı tam olan şubeler).", en: "makes each branch a separate route + both-way service (branches with complete coordinates).", de: "macht jede Abzweigung zu einer eigenen Route + Betrieb in beide Richtungen (Abzweigungen mit vollständigen Koordinaten)." })}
+              </p>
+            )}
             {!gtfsKoordVar && (
               <p className="mt-2 text-[0.7rem]" style={{ color: brand.muted }}>
                 {t({ tr: "GTFS için durakların ", en: "For GTFS, the stops need their ", de: "Für GTFS benötigen die Haltestellen ihre " })}<b>{t({ tr: "coğrafi koordinatı (lat/lon)", en: "geographic coordinates (lat/lon)", de: "geografischen Koordinaten (lat/lon)" })}</b>{t({ tr: " gerekir — GTFS'ten içe aktarınca otomatik gelir, ya da ", en: " — they come automatically when importing from GTFS, or ", de: " — sie kommen automatisch beim Import aus GTFS, oder " })}<b>{t({ tr: "aşağıdan elle gir", en: "enter them manually below", de: "unten manuell eingeben" })}</b>{t({ tr: ". railML her hatta çalışır.", en: ". railML works for every line.", de: ". railML funktioniert für jede Strecke." })}
@@ -832,6 +864,11 @@ export function RingEditor() {
                   {t({ tr: "Darboğaz:", en: "Bottleneck:", de: "Engpass:" })} <b>{maks.baglayanAd}</b> · {t({ tr: "min. aralık", en: "min. interval", de: "min. Intervall" })} {sure(maks.hMin)} · {t({ tr: "çevrim", en: "cycle", de: "Umlauf" })} {sure(maks.cevrimSuresi)}
                   <span style={{ color: brand.faint }}> · {t({ tr: "aynı sayı Sefer'de de görünür (tek kaynak); tam kısıt & blocking-time dökümü ", en: "the same number also appears under Service (single source); full constraint & blocking-time breakdown in ", de: "dieselbe Zahl erscheint auch unter Betrieb (eine Quelle); vollständige Einschränkungs- & Blocking-Time-Aufschlüsselung in " })}<Link href="/#sistem" className="underline">{t({ tr: "Sistem Merkezi", en: "System Center", de: "Systemzentrale" })}</Link>{t({ tr: "'nde.", en: ".", de: "." })}</span>
                 </p>
+                {subeler.length > 0 && (
+                  <p className="mt-1.5 rounded border-l-2 px-2 py-1 text-[0.7rem]" style={{ borderColor: brand.red, background: CK.badBgSoft, color: brand.inkSoft }}>
+                    ◆ {t({ tr: "Bu değer ANA HATTA aittir — her şube ayrımındaki kavşak makası (turnout) darboğaza KATILIR. Bir şubenin kendi rota kapasitesi için ", en: "This value is for the MAIN LINE — the junction turnout at each branch divergence IS included in the bottleneck. For a branch's own route capacity, ", de: "Dieser Wert gilt für die HAUPTSTRECKE — die Weiche an jeder Abzweigung IST im Engpass enthalten. Für die Routenkapazität einer Abzweigung " })}<Link href="/#sefer" className="underline">{t({ tr: "Sefer'de şubeyi seç", en: "select the branch under Service", de: "wählen Sie die Abzweigung unter Betrieb" })}</Link>{t({ tr: ".", en: ".", de: "." })}
+                  </p>
+                )}
                 <div className="mt-2 flex flex-wrap gap-2">
                   {maks.kisitlar.map((k) => (
                     <span key={k.anahtar} title={k.aciklama}

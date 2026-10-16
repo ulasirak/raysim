@@ -3,6 +3,7 @@ import { unzipSync, strFromU8 } from "fflate";
 import { gtfsIhrac } from "@/lib/anaray/gtfs";
 import { railmlIhrac } from "@/lib/anaray/railml";
 import { hazirHatlar } from "@/lib/anaray/hazirHatlar";
+import { yeniRing, type Sube } from "@/lib/anaray/ring";
 
 const DURAKLAR = [
   { id: "S0", ad: "A", lat: 37.87, lon: 32.49, varisSn: 0, kalkisSn: 0 },
@@ -101,5 +102,52 @@ describe("#5 railML export tamlığı (rollingstock + timetable)", () => {
     const trainSayisi = (xml.match(/<train /g) || []).length;
     expect(trainSayisi).toBe(2); // tek kalkış × 2 yön
     expect(xml).toContain("sequence=\"1\"");
+  });
+});
+
+describe("#2 Şube (tali hat) export — durak/rota kaybı YOK", () => {
+  // Ana hat A–B–C, kavşak B'de (atIndex 1) ayrılan "Havalimanı Şubesi" B–D–E.
+  const anaRings = [yeniRing("A", "B"), yeniRing("B", "C")];
+  const subeRings = [yeniRing("B", "D"), yeniRing("D", "E")];
+  const sube: Sube = { id: "SUBE_1", ad: "Havalimanı Şubesi", atIndex: 1, rings: subeRings, servisTren: 3 };
+
+  it("railML: her şube AYRI <track> + şube durakları ocp olur; şubesizle geriye uyumlu", () => {
+    const xml = railmlIhrac(anaRings, "Test Hattı", { subeler: [sube] });
+    expect(xml).toContain('<track id="trk_b0"');
+    expect(xml).toContain("Havalimanı Şubesi");
+    // Şube durakları (D, E) kendi ocp'lerini aldı; kavşak (B) ana ocp'ye bağlı.
+    expect(xml).toContain('name="D"');
+    expect(xml).toContain('name="E"');
+    expect(xml).toContain("kavşağından ayrılır"); // ayrım dürüstçe belgelenir
+    // Şubesiz çağrı trk_b0 ÜRETMEZ (golden korunur).
+    expect(railmlIhrac(anaRings, "Test Hattı")).not.toContain("trk_b0");
+  });
+
+  it("GTFS: şube ayrı route (Rb0) + çift yön; kavşak durağı tek kez yazılır", () => {
+    const trunk = DURAKLAR; // A(S0) B(S1) C(S2)
+    // Şube durakları: kavşak B ana hat id'siyle (S1) paylaşılır; D/E yeni id.
+    const subeDur = [
+      { id: "S1", ad: "B", lat: 37.88, lon: 32.50, varisSn: 0, kalkisSn: 0 },
+      { id: "Sb0_1", ad: "D", lat: 37.90, lon: 32.52, varisSn: 100, kalkisSn: 120 },
+      { id: "Sb0_2", ad: "E", lat: 37.91, lon: 32.53, varisSn: 240, kalkisSn: 240 },
+    ];
+    const f = dosyalar(gtfsIhrac({
+      hatAdi: "Test", agency: "İdare", duraklar: trunk, headwaySn: 240,
+      subeler: [{ ad: "Havalimanı Şubesi", duraklar: subeDur, headwaySn: 300 }],
+    }));
+    // İki route: ana (R1) + şube (Rb0)
+    expect(f["routes.txt"]).toContain("R1,");
+    expect(f["routes.txt"]).toContain("Rb0,");
+    expect(f["routes.txt"]).toContain("Havalimanı Şubesi");
+    // Şube durakları stops.txt'te; kavşak B (S1) yalnız BİR kez (paylaşım).
+    expect(f["stops.txt"]).toContain("Sb0_1,D,");
+    expect(f["stops.txt"]).toContain("Sb0_2,E,");
+    expect(f["stops.txt"].match(/^S1,/gm)?.length ?? 0).toBe(1);
+    // Şube çift yön trip'leri + kendi frequencies (300 s)
+    expect(f["trips.txt"]).toContain("Rb0,HAFTAICI,Tb0_0,");
+    expect(f["trips.txt"]).toContain("Rb0,HAFTAICI,Tb0_1,");
+    expect(f["frequencies.txt"]).toContain("Tb0_0,06:00:00,24:00:00,300,0");
+    // Ana hat çıktısı korunur
+    expect(f["frequencies.txt"]).toContain("T0,06:00:00,24:00:00,240,0");
   });
 });
