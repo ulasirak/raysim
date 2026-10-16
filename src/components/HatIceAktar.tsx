@@ -13,6 +13,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useDil } from "@/components/DilProvider";
+import { Ikon } from "@/components/Ikon";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { parseGtfsZip, gtfsRotalar, gtfsYonler, gtfsHatKur, type GtfsFeed } from "@/lib/anaray/gtfs";
@@ -236,7 +237,7 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
         </p>
 
         <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.ink }}>
-          📁 {t({ tr: "Dosya seç", en: "Select file", de: "Datei wählen" })} (.zip / .xml / .dxf)
+          <Ikon ad="klasor" size={16} /> {t({ tr: "Dosya seç", en: "Select file", de: "Datei wählen" })} (.zip / .xml / .dxf)
           <input type="file" accept=".zip,.xml,.railml,.dxf,application/zip,text/xml,application/xml,image/vnd.dxf" className="hidden"
             onChange={(e) => { dosyaSec(e.target.files?.[0]); e.target.value = ""; }} />
         </label>
@@ -246,7 +247,7 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
         {/* OSM / Şehir hattı — sistemin kendi çekmesi (dosya gerektirmez) */}
         <div className="mt-3 rounded-md border p-3" style={{ borderColor: brand.border, background: "#F7FBFC" }}>
           <div className="mb-1.5 flex items-center gap-2">
-            <span className="text-sm font-semibold" style={{ color: brand.ink }}>🌍 {t({ tr: "OSM'den şehir hattı", en: "City line from OSM", de: "Stadtstrecke aus OSM" })}</span>
+            <span className="flex items-center gap-1.5 text-sm font-semibold" style={{ color: brand.ink }}><Ikon ad="kure" size={15} /> {t({ tr: "OSM'den şehir hattı", en: "City line from OSM", de: "Stadtstrecke aus OSM" })}</span>
             <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "dosya gerekmez — şehir yaz, sistem OpenStreetMap'ten gerçek hattı çeker", en: "no file needed — type a city, the system fetches the real line from OpenStreetMap", de: "keine Datei nötig — Stadt eingeben, das System holt die echte Strecke aus OpenStreetMap" })}</span>
           </div>
           <div className="flex flex-wrap items-center gap-2">

@@ -21,6 +21,7 @@ import { useCuzdan } from "@/components/CuzdanProvider";
 import { KREDI_PAKETLERI, paketAvantaj, hareketleriGetir, type KrediHareket } from "@/lib/cuzdan";
 import { tanitimAc } from "@/components/Karsilama";
 import { PaylasimPano } from "@/components/PaylasimPano";
+import { Ikon } from "@/components/Ikon";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 
@@ -330,7 +331,7 @@ export function HesapBildirimleri() {
       {paylasimGorunumu && (
         <Serit renk={CK.amber}>
           <span style={{ color: brand.ink }}>
-            👁 <b>{t({ tr: "Salt-okunur paylaşım görünümü", en: "Read-only shared view", de: "Schreibgeschützte Freigabeansicht" })}</b> — “{aktifAd}”. {t({ tr: "Değişiklik yapılamaz.", en: "No changes possible.", de: "Keine Änderungen möglich." })}
+            <Ikon ad="goz" size={14} className="mr-1 inline-block align-[-0.15em]" /> <b>{t({ tr: "Salt-okunur paylaşım görünümü", en: "Read-only shared view", de: "Schreibgeschützte Freigabeansicht" })}</b> — “{aktifAd}”. {t({ tr: "Değişiklik yapılamaz.", en: "No changes possible.", de: "Keine Änderungen möglich." })}
           </span>
           {/* Buton, adresteki ?proje= parametresini de siler — yalnız "/" linki
               vermek görünümden ÇIKARMIYORDU (sağlayıcı yeniden kurulmuyor). */}

@@ -99,7 +99,7 @@ export function TrenDetayKutusu({ st, no, dokum, periyot, cakismaVar, onKapat }:
             </div>
             {/* Anlık durum: konum (km) + şerit + hareket/duruş özeti */}
             <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs" style={{ color: brand.inkSoft }}>
-              <span>📍 <b>{(st.fp / 1000).toFixed(2)} km</b> · {legAd}</span>
+              <span><Ikon ad="konum" size={13} className="mr-0.5 inline-block align-[-2px]" /><b>{(st.fp / 1000).toFixed(2)} km</b> · {legAd}</span>
               <span>▶ {t({ tr: "hareket", en: "moving", de: "in Fahrt" })} <b style={{ color: CK.good }}>{Math.round(hareketPct)}%</b></span>
               <span>‖ {t({ tr: "duruş/kısıt", en: "stop/restriction", de: "Halt/Beschränkung" })} <b style={{ color: CK.amber }}>{Math.round(100 - hareketPct)}%</b> ({Math.round(duruklamaSn)} {t({ tr: "s/tur", en: "s/round", de: "s/Runde" })})</span>
             </div>

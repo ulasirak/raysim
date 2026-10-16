@@ -306,7 +306,7 @@ function Govde({ children }: { children: React.ReactNode }) {
                 : { background: "#0C2233", borderColor: "#274A63", color: "#6E8091" };
               return (
                 <li key={m.slug} className="flex min-w-0 flex-1 flex-col items-center px-1.5 text-center">
-                  <a href={href} className="group flex w-full flex-col items-center">
+                  <a href={href} title={`${t(m.ad)} — ${t(m.rol)}`} className="group flex w-full flex-col items-center">
                     {/* İstasyon nokrası — numara; rayı örtmek için dolu zemin */}
                     <span
                       className="relative z-10 flex h-[22px] w-[22px] items-center justify-center rounded-full border font-mono text-[0.68rem] font-semibold tabular-nums transition-all duration-200 group-hover:scale-110"
@@ -322,7 +322,7 @@ function Govde({ children }: { children: React.ReactNode }) {
                     </span>
                     <span
                       className={`text-[0.6rem] leading-snug transition-all ${kompakt ? "mt-0 h-0 overflow-hidden opacity-0" : "mt-0.5 opacity-100"}`}
-                      style={{ color: on ? "#E7A9B2" : "#5A6C7C" }}
+                      style={{ color: on ? "#E7A9B2" : "#8193A3" }}
                     >
                       {t(m.rol)}
                     </span>
@@ -343,6 +343,7 @@ function Govde({ children }: { children: React.ReactNode }) {
               <a
                 key={m.slug}
                 href={href}
+                title={`${t(m.ad)} — ${t(m.rol)}`}
                 className="flex min-w-0 items-center gap-2 rounded-lg px-2 py-1.5 leading-tight transition-colors"
                 style={{ background: on ? brand.red : "#0F2B40", border: `1px solid ${on ? brand.red : "#1E3A50"}` }}
               >
@@ -362,7 +363,7 @@ function Govde({ children }: { children: React.ReactNode }) {
                   <span className="block truncate text-[0.72rem] font-medium" style={{ color: on ? "#fff" : "#C7D2DC" }}>
                     {t(m.ad)}
                   </span>
-                  <span className={`block truncate text-[0.56rem] transition-all ${kompakt ? "h-0 overflow-hidden opacity-0" : "opacity-100"}`} style={{ color: on ? "#ffffffb0" : "#6E8091" }}>
+                  <span className={`block truncate text-[0.62rem] transition-all ${kompakt ? "h-0 overflow-hidden opacity-0" : "opacity-100"}`} style={{ color: on ? "#ffffffd0" : "#8193A3" }}>
                     {t(m.rol)}
                   </span>
                 </span>

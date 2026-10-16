@@ -625,7 +625,7 @@ function StudioIc() {
                 const val = Math.max(0, Math.round((isletme.parklanmaDagilim || {})[k] ?? 0));
                 return (
                   <div key={i} className="w-28">
-                    <span className="text-[0.6rem]" style={{ color: brand.inkSoft }}>🅿 {t({ tr: "Depo", en: "Depot", de: "Depot" })} @ {km(d.position)}</span>
+                    <span className="text-[0.6rem]" style={{ color: brand.inkSoft }}><Ikon ad="park" size={12} className="mr-0.5 inline-block align-[-1px]" />{t({ tr: "Depo", en: "Depot", de: "Depot" })} @ {km(d.position)}</span>
                     <input type="number" min={0} max={99} value={val}
                       onChange={(e) => {
                         const v = Math.max(0, Math.round(parseFloat(e.target.value) || 0));
@@ -828,7 +828,7 @@ function StudioIc() {
           </div>
           <button type="button" onClick={() => setKoordAcik((o) => !o)} className="rounded-md px-3 py-1 text-xs font-semibold"
             style={{ border: `1px solid ${haritaTam ? "#16794C" : brand.border}`, color: haritaTam ? "#16794C" : brand.ink }}>
-            ⌖ {t({ tr: "Koordinat gir", en: "Enter coordinates", de: "Koordinaten eingeben" })} {haritaTam ? "✓" : agKoordSay > 0 ? `${agKoordSay}/${agIstasyonlar.length}` : ""}
+            <Ikon ad="hedef" size={13} className="mr-1 inline-block align-[-2px]" />{t({ tr: "Koordinat gir", en: "Enter coordinates", de: "Koordinaten eingeben" })} {haritaTam ? "✓" : agKoordSay > 0 ? `${agKoordSay}/${agIstasyonlar.length}` : ""}
           </button>
           {/* Çakışmasız çizelge (opt-in): tek-hat çakışması varsa çözücü offset'lerini canlı sime uygular. */}
           {cakisma.spanOzet.length > 0 && cakismaCozum && (
@@ -861,7 +861,7 @@ function StudioIc() {
             )
           )}
           {agGorunum === "sematik" && haritaTam && (
-            <span className="text-[0.7rem] font-medium" style={{ color: CK.good }}>💡 {t({ tr: "Bu hattın gerçek haritası hazır — üstteki", en: "The real map of this line is ready — view it with", de: "Die echte Karte dieser Linie ist bereit — ansehen mit" })} <b>{t({ tr: "“Harita”", en: "“Map”", de: "„Karte“" })}</b> {t({ tr: "ile gör.", en: "above.", de: "oben." })}</span>
+            <span className="text-[0.7rem] font-medium" style={{ color: CK.good }}><Ikon ad="ampul" size={13} className="mr-1 inline-block align-[-2px]" />{t({ tr: "Bu hattın gerçek haritası hazır — üstteki", en: "The real map of this line is ready — view it with", de: "Die echte Karte dieser Linie ist bereit — ansehen mit" })} <b>{t({ tr: "“Harita”", en: "“Map”", de: "„Karte“" })}</b> {t({ tr: "ile gör.", en: "above.", de: "oben." })}</span>
           )}
         </div>
         {/* KAYNAK — İKİ AYRI YOL (koordinat yoksa): ① OSM'den çek (işleyen hatlar) ② CAD/GTFS içe aktar (OSM'de olmayan). */}
@@ -872,7 +872,7 @@ function StudioIc() {
             </div>
             <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
               <div className="flex flex-col rounded-md border p-2.5" style={{ borderColor: brand.border, background: CK.goodBgSoft }}>
-                <div className="text-[0.74rem] font-bold" style={{ color: brand.ink }}>① 🌍 {t({ tr: "OpenStreetMap’ten çek", en: "Fetch from OpenStreetMap", de: "Aus OpenStreetMap holen" })}</div>
+                <div className="text-[0.74rem] font-bold" style={{ color: brand.ink }}>① <Ikon ad="kure" size={13} className="mx-0.5 inline-block align-[-2px]" />{t({ tr: "OpenStreetMap’ten çek", en: "Fetch from OpenStreetMap", de: "Aus OpenStreetMap holen" })}</div>
                 <div className="mt-0.5 text-[0.68rem] leading-snug" style={{ color: brand.muted }}>
                   <b>{t({ tr: "İşleyen / OSM’de kayıtlı", en: "Operating / OSM-registered", de: "In Betrieb / in OSM erfasst" })}</b> {t({ tr: "hatlar için. Durak koordinatı + gerçek kavisli hiza", en: "lines. Stop coordinates + real curved alignment arrive", de: "Linien. Haltestellenkoordinaten + echte kurvige Trassierung kommen" })} <b>{t({ tr: "otomatik", en: "automatically", de: "automatisch" })}</b> {t({ tr: "gelir (~10 m).", en: "(~10 m).", de: "(~10 m)." })}
                 </div>
@@ -885,11 +885,11 @@ function StudioIc() {
                     title={t({ tr: "Hattın bölgesinden OpenStreetMap durak koordinatlarını + gerçek hattı çeker → projeye yazar.", en: "Fetches OpenStreetMap stop coordinates + the real line from the line's region → writes them to the project.", de: "Holt OpenStreetMap-Haltestellenkoordinaten + die echte Linie aus der Region der Linie → schreibt sie ins Projekt." })}>
                     {gtfsYukle === "yukleniyor" ? t({ tr: "⟳ OSM’den çekiliyor…", en: "⟳ Fetching from OSM…", de: "⟳ Wird aus OSM geholt…" }) : t({ tr: "⤓ OSM’den çek", en: "⤓ Fetch from OSM", de: "⤓ Aus OSM holen" })}
                   </button>
-                  <button type="button" onClick={() => setKoordAcik(true)} className="rounded px-2 py-1 text-[0.7rem] font-medium" style={{ border: `1px solid ${brand.border}`, color: brand.muted }}>⌖ {t({ tr: "elle gir", en: "enter by hand", de: "manuell eingeben" })}</button>
+                  <button type="button" onClick={() => setKoordAcik(true)} className="rounded px-2 py-1 text-[0.7rem] font-medium" style={{ border: `1px solid ${brand.border}`, color: brand.muted }}><Ikon ad="hedef" size={12} className="mr-0.5 inline-block align-[-1px]" />{t({ tr: "elle gir", en: "enter by hand", de: "manuell eingeben" })}</button>
                 </div>
               </div>
               <div className="flex flex-col rounded-md border p-2.5" style={{ borderColor: CK.amber, background: CK.amberBg }}>
-                <div className="text-[0.74rem] font-bold" style={{ color: CK.amberInk }}>② 📐 {t({ tr: "CAD / GTFS içe aktar", en: "Import CAD / GTFS", de: "CAD / GTFS importieren" })}</div>
+                <div className="text-[0.74rem] font-bold" style={{ color: CK.amberInk }}>② <Ikon ad="cetvel" size={13} className="mx-0.5 inline-block align-[-2px]" />{t({ tr: "CAD / GTFS içe aktar", en: "Import CAD / GTFS", de: "CAD / GTFS importieren" })}</div>
                 <div className="mt-0.5 text-[0.68rem] leading-snug" style={{ color: brand.inkSoft }}>
                   <b>{t({ tr: "İnşaat halindeki / OSM’de OLMAYAN", en: "Under construction / NOT in OSM", de: "Im Bau / NICHT in OSM" })}</b> {t({ tr: "hatlar için. CAD güzergâh projenizden koordinat + geometri", en: "lines. Coordinates + geometry from your CAD alignment project are imported into", de: "Linien. Koordinaten + Geometrie aus Ihrem CAD-Trassierungsprojekt werden in" })} <b>{t({ tr: "projenize", en: "your project", de: "Ihr Projekt" })}</b> {t({ tr: "aktarılır (~150 m, kaynak koduna gömülü değil).", en: "imported (~150 m, not embedded in source code).", de: "importiert (~150 m, nicht im Quellcode eingebettet)." })}
                 </div>
@@ -901,7 +901,7 @@ function StudioIc() {
                   </button>
                 ) : (
                   <Link href="/#ringler" className="mt-auto self-start rounded px-2.5 py-1 text-[0.7rem] font-semibold" style={{ border: `1px solid ${CK.amber}`, color: CK.amberInk, marginTop: "0.5rem" }}>
-                    📁 {t({ tr: "Ringler → Dosyadan İçe Aktar (GTFS / DXF)", en: "Rings → Import from File (GTFS / DXF)", de: "Ringe → Aus Datei importieren (GTFS / DXF)" })}
+                    <Ikon ad="klasor" size={13} className="mr-1 inline-block align-[-2px]" />{t({ tr: "Ringler → Dosyadan İçe Aktar (GTFS / DXF)", en: "Rings → Import from File (GTFS / DXF)", de: "Ringe → Aus Datei importieren (GTFS / DXF)" })}
                   </Link>
                 )}
               </div>

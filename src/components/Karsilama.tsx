@@ -43,9 +43,8 @@ export function Karsilama() {
     { no: 1, ad: t({ tr: "Durak Arası Ringler", en: "Inter-Stop Rings", de: "Haltestellen-Ringe" }), not: t({ tr: "Hattı ve makas bölgelerini kur — buradaki her veri kalıcı.", en: "Build the line and switch zones — every value here is persistent.", de: "Baue die Linie und Weichenbereiche auf — jeder Wert hier ist dauerhaft." }) },
     { no: 2, ad: t({ tr: "Sefer Simülasyonu", en: "Service Simulation", de: "Fahrtsimulation" }), not: t({ tr: "Kurduğun hattı simüle et: canlı ağ, fizik, sefer aralığı.", en: "Simulate the line you built: live network, physics, headway.", de: "Simuliere die aufgebaute Linie: Live-Netz, Physik, Taktzeit." }) },
     { no: 3, ad: t({ tr: "Sistem Merkezi", en: "System Center", de: "Systemzentrale" }), not: t({ tr: "Kapasite · blocking-time · darboğaz teşhisi.", en: "Capacity · blocking-time · bottleneck diagnosis.", de: "Kapazität · Blocking-Time · Engpassdiagnose." }) },
-    { no: 4, ad: t({ tr: "Ters İşletme", en: "Reverse Operation", de: "Umkehrbetrieb" }), not: t({ tr: "Kısa dönüş, makas varyasyonları, talebe göre filo.", en: "Short turns, switch variations, demand-based fleet.", de: "Kurzwenden, Weichenvarianten, nachfragebasierte Flotte." }) },
-    { no: 5, ad: t({ tr: "Teknik Belgeler", en: "Technical Documents", de: "Technische Dokumente" }), not: t({ tr: "Analizden profesyonel PDF rapor üret.", en: "Produce a professional PDF report from the analysis.", de: "Erstelle aus der Analyse einen professionellen PDF-Bericht." }) },
-    { no: 6, ad: t({ tr: "Karşılaştırma", en: "Comparison", de: "Vergleich" }), not: t({ tr: "Senaryoları yan yana koy — karar desteği.", en: "Put scenarios side by side — decision support.", de: "Stelle Szenarien nebeneinander — Entscheidungshilfe." }) },
+    { no: 4, ad: t({ tr: "Teknik Belgeler", en: "Technical Documents", de: "Technische Dokumente" }), not: t({ tr: "Analizden profesyonel PDF rapor üret.", en: "Produce a professional PDF report from the analysis.", de: "Erstelle aus der Analyse einen professionellen PDF-Bericht." }) },
+    { no: 5, ad: t({ tr: "Karşılaştırma", en: "Comparison", de: "Vergleich" }), not: t({ tr: "Senaryoları yan yana koy — karar desteği.", en: "Put scenarios side by side — decision support.", de: "Stelle Szenarien nebeneinander — Entscheidungshilfe." }) },
   ];
 
   const ADIMLAR: Adim[] = [
@@ -60,7 +59,7 @@ export function Karsilama() {
     },
     {
       rozet: t({ tr: "BORU HATTI", en: "PIPELINE", de: "PIPELINE" }),
-      baslik: t({ tr: "Altı istasyonluk bir iş akışı", en: "A six-station workflow", de: "Ein Arbeitsablauf mit sechs Stationen" }),
+      baslik: t({ tr: "Beş istasyonluk bir iş akışı", en: "A five-station workflow", de: "Ein Arbeitsablauf mit fünf Stationen" }),
       govde: (
         <div>
           <p className="mb-3 text-sm leading-relaxed" style={{ color: brand.inkSoft }}>

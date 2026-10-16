@@ -399,7 +399,7 @@ export function RingKart(p: KartProps) {
                           return (
                             <span className="rounded px-2 py-1 text-[0.7rem] leading-tight" style={{ background: "#EEF1F6", color: brand.inkSoft }}
                               title={t({ tr: "Kurbun hat başından mutlak kilometrajı ve üst duraktan mesafesi — iki istasyon ARASINDAKİ konum", en: "The curve's absolute chainage from the line start and its distance from the upper stop — position BETWEEN two stations", de: "Die absolute Kilometrierung des Bogens ab Streckenanfang und seine Entfernung zur oberen Haltestelle — Position ZWISCHEN zwei Stationen" })}>
-                              📍 km {kmStr} · <b>{ring.fromAd}</b>+{Math.round(k.konum)}m
+                              <Ikon ad="konum" size={12} className="mr-0.5 inline-block align-[-1px]" />km {kmStr} · <b>{ring.fromAd}</b>+{Math.round(k.konum)}m
                             </span>
                           );
                         })()}
