@@ -25,7 +25,7 @@ import { gecikmeYayilim } from "@/lib/anaray/gecikmeYayilim";
 import { ortakKesimAnaliz } from "@/lib/anaray/ortakKesim";
 import { kavsakCakismaAnaliz } from "@/lib/anaray/kavsakCakisma";
 import { tersIsletmeAnaliz } from "@/lib/anaray/tersisletme";
-import { haritaKisitlari, type HaritaKisit } from "@/lib/anaray/ring";
+import { haritaKisitlari, ringDuraklari, type HaritaKisit } from "@/lib/anaray/ring";
 import { dwellUygulanmisRings, maxYolcuKapasitesi, netTabanAlani } from "@/lib/anaray/yolcu";
 import { kmh, km, sure } from "@/lib/anaray/format";
 import { panelAcVeGit } from "@/lib/anaray/panelGezinme";
@@ -467,6 +467,17 @@ function StudioIc() {
       return { ad: sube.ad || sr.ad, count, ko };
     }).filter((x): x is { ad: string; count: number; ko: ReturnType<typeof gecikmeYayilim> | null } => x !== null);
   }, [analizSube, proje, network, subeler, subeLoops, stockSim, koGecikme, ulasilanHeadwaySn]);
+  // AĞ TOPLAMI (#7) — özet künye analiz edilen ROTAYA aittir (ana hat ya da seçili şube).
+  // Şube varsa ağ bütünü (ana hat + şubeler) ek satırda gösterilir; böylece künye tek-rota
+  // kalır (kavram karışmaz) ama ağ büyüklüğü de görünür. Yalnız ana-hat görünümünde.
+  const agToplam = useMemo(() => {
+    if (analizSube) return null;
+    const aktif = subeler.filter((s) => s.rings.length > 0);
+    if (aktif.length === 0) return null;
+    const subeUzunlukM = aktif.reduce((a, s) => a + s.rings.reduce((x, r) => x + Math.max(0, r.uzunluk), 0), 0);
+    const subeDurak = aktif.reduce((a, s) => a + Math.max(0, ringDuraklari(s.rings).length - 1), 0); // kavşak kökü paylaşılır
+    return { adet: aktif.length, subeUzunlukM, subeDurak };
+  }, [analizSube, subeler]);
   // Ortak kesim yükü (#1-B/D) — ana hat görünümünde, şubeye servis treni girildiyse.
   const ortakKesim = useMemo(
     () => ortakKesimAnaliz(dwellUygulanmisRings(ringsHam, stock, isletme), subeler, stock, cfg, isletme, filo),
@@ -1235,6 +1246,15 @@ function StudioIc() {
           <Field etiket={t({ tr: "Azami Hız", en: "Max Speed", de: "Höchstgeschwindigkeit" })} deger={`${kmh(vmax).toFixed(0)}`} birim="km/h" />
           <Field etiket={t({ tr: "Durak", en: "Stops", de: "Haltestellen" })} deger={`${result.stationEvents.length}`} alt={`${sure(durusSuresi)} ${t({ tr: "bekleme", en: "waiting", de: "Wartezeit" })}`} />
         </div>
+        {/* AĞ TOPLAMI (#7) — künye tek rota (ana hat) içindir; şube varsa ağ bütünü burada. */}
+        {agToplam && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t px-4 py-2 text-xs" style={{ borderColor: brand.border, background: CK.badBgSoft, color: brand.inkSoft }}>
+            <span style={{ color: brand.red }}>◆ {t({ tr: "Künye ana hattı gösterir.", en: "The summary shows the main line.", de: "Die Übersicht zeigt die Hauptstrecke." })} {agToplam.adet} {t({ tr: "tali hat ile ağ:", en: "with branch line(s), the network:", de: "mit Abzweigung(en) ergibt das Netz:" })}</span>
+            <span><b style={{ color: brand.ink }}>{km(line.length + agToplam.subeUzunlukM)} km</b> {t({ tr: "toplam hat", en: "total track", de: "Gleis gesamt" })} <span style={{ color: brand.muted }}>(+{km(agToplam.subeUzunlukM)})</span></span>
+            <span><b style={{ color: brand.ink }}>{result.stationEvents.length + agToplam.subeDurak}</b> {t({ tr: "durak", en: "stops", de: "Haltestellen" })} <span style={{ color: brand.muted }}>(+{agToplam.subeDurak})</span></span>
+            <span style={{ color: brand.muted }}>{t({ tr: "her şubeyi ayrı analiz için yukarıdan seç", en: "select each branch above to analyze it separately", de: "oben jede Abzweigung zur separaten Analyse auswählen" })}</span>
+          </div>
+        )}
       </section>
 
       {/* Monte-Carlo gecikme analizi */}

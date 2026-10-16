@@ -46,10 +46,16 @@ type DrawerId = "girdi" | "depo" | "donus" | "makas" | "profil";
 export function TersIsletme() {
   const { cfg } = useSimConfig();
   const { t } = useDil();
-  const { rings: ringsHam } = useProje();
+  const { rings: ringsHam, subeler } = useProje();
   const { arac: stock } = useArac();
   const { isletme, patchIsletme } = useIsletme();
   const rings = useMemo(() => dwellUygulanmisRings(ringsHam, stock, isletme), [ringsHam, stock, isletme]);
+  // AĞ FİLOSU (#7) — bu analiz ANA HAT talebine/filosuna ilişkindir; her tali hat kendi
+  // mekik filosunu (servisTren) işletir. Ağ filosu = ana hat önerisi + Σ şube mekiği.
+  const subeFilo = useMemo(
+    () => subeler.filter((s) => s.rings.length > 0 && (s.servisTren ?? 0) > 0).reduce((a, s) => a + Math.round(s.servisTren ?? 0), 0),
+    [subeler]
+  );
 
   const [mod, setMod] = useState<"toplam" | "istasyon">("toplam");
   const [acik, setAcik] = useState<Record<DrawerId, boolean>>({ girdi: true, depo: false, donus: false, makas: false, profil: false });
@@ -167,6 +173,11 @@ export function TersIsletme() {
           <p className="mt-1 text-xs" style={{ color: brand.muted }}>{t({ tr: "Kısa dönüşle dış kolda boş sefer azalır →", en: "Short-turning cuts empty runs on the outer leg →", de: "Kehren reduziert Leerfahrten auf dem Außenast →" })} ~{f.kisaDonusTasarruf} {t({ tr: "araç tasarruf", en: "vehicles saved", de: "Fahrzeuge gespart" })} ({f.gerekenAracKisaDonusle} {t({ tr: "araç", en: "vehicles", de: "Fahrzeuge" })}). {t({ tr: "Sürdürülebilir tavan", en: "Sustainable ceiling", de: "Nachhaltige Obergrenze" })} {rapor.maksSurdurulebilir} {t({ tr: "tramvay", en: "trams", de: "Straßenbahnen" })}.</p>
         )}
         <p className="mt-1 text-xs" style={{ color: brand.muted }}>{t({ tr: "Tepe yük:", en: "Peak load:", de: "Spitzenlast:" })} <b>{rapor.tepeDurak}</b> {rapor.tepeYuk} {t({ tr: "yolcu/saat", en: "pax/h", de: "Fahrgäste/h" })} · {t({ tr: "çevrim", en: "cycle", de: "Umlauf" })} {Math.round(rapor.cevrimSn / 60)} dk · {t({ tr: "frekans", en: "frequency", de: "Frequenz" })} {rapor.mevcutFrekans.toFixed(1)} {t({ tr: "tren/sa", en: "trains/h", de: "Züge/h" })} · {t({ tr: "araç", en: "vehicle", de: "Fahrzeug" })} {rapor.aracKapasite} {t({ tr: "kişi", en: "pax", de: "Pers." })}.</p>
+        {subeFilo > 0 && (
+          <p className="mt-2 rounded border-l-2 px-2 py-1 text-xs" style={{ borderColor: brand.red, background: CK.badBgSoft, color: brand.inkSoft }}>
+            ◆ {t({ tr: "Bu öneri ANA HATTA aittir. Tali hat mekikleri ayrıca", en: "This recommendation is for the MAIN LINE. Branch shuttles additionally run", de: "Diese Empfehlung gilt für die HAUPTSTRECKE. Abzweig-Pendelzüge fahren zusätzlich" })} <b style={{ color: brand.ink }}>{subeFilo} {t({ tr: "araç", en: "vehicle(s)", de: "Fahrzeug(e)" })}</b> {t({ tr: "işletir (Σ servis treni) →", en: "(Σ service trains) →", de: "(Σ Betriebszüge) →" })} <b style={{ color: brand.ink }}>{t({ tr: "ağ filosu", en: "network fleet", de: "Netzflotte" })} {f.gerekenArac + subeFilo}</b>.
+          </p>
+        )}
       </div>
 
       {/* TAVSİYE EDİLEN TRAMVAY SAYISI — dinamik, talep + kurp konforu + tüm parametreler */}
