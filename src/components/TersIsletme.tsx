@@ -97,6 +97,61 @@ export function TersIsletme() {
         </div>
       </div>
 
+      {/* GİRDİ — Toplam / Her İstasyon sekmeleri (çekmece) */}
+      <div id="talep-girdileri" className="scroll-mt-24">
+      <Cekmece baslik={t({ tr: "Talep Girdileri", en: "Demand Inputs", de: "Nachfrage-Eingaben" })} acik={acik.girdi} onToggle={() => topla("girdi")}
+        ozet={<span>{mod === "istasyon" ? t({ tr: "her istasyon", en: "each station", de: "jede Station" }) : t({ tr: "toplam", en: "total", de: "gesamt" })} · {toplamBinen}/sa</span>}>
+        <div className="mb-2 flex gap-1">
+          {([["toplam", t({ tr: "Toplam Talep", en: "Total demand", de: "Gesamtnachfrage" })], ["istasyon", t({ tr: "Her İstasyon", en: "Each station", de: "Jede Station" })]] as const).map(([m, ad]) => (
+            <button key={m} type="button" onClick={() => setMod(m)}
+              className="rounded border px-2.5 py-1 text-xs font-medium"
+              style={mod === m ? { background: brand.ink, color: "#fff", borderColor: brand.ink } : { borderColor: brand.border, color: brand.inkSoft }}>
+              {ad}
+            </button>
+          ))}
+        </div>
+        {/* ORTAK GİRDİLER — her iki görünümde de aynı; görünüm seçimi SONUCU DEĞİŞTİRMEZ */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div><Num label={t({ tr: "Pik saat yolcu (toplam)", en: "Peak-hour passengers (total)", de: "Fahrgäste Spitzenstunde (gesamt)" })} suffix={t({ tr: "yolcu/sa", en: "pax/h", de: "Fahrgäste/h" })} step={100} value={isletme.pikYolcuSaat}
+            onChange={(v) => patchIsletme({ pikYolcuSaat: Math.max(0, Math.round(v)) })} /><Kucuk>{t({ tr: "toplam talep tabanı — rolden duraklara dağıtılır", en: "total demand base — distributed to stations by role", de: "Nachfragebasis gesamt — nach Rolle auf Haltestellen verteilt" })}{gercekVar ? ` · ${t({ tr: "girili toplam", en: "entered total", de: "eingegebene Summe" })} ≈ ${toplamBinen} ${t({ tr: "biniş/sa", en: "boardings/h", de: "Einstiege/h" })}` : ""}</Kucuk></div>
+          <div><Num label={t({ tr: "Araç yolcu kapasitesi", en: "Vehicle passenger capacity", de: "Fahrgastkapazität Fahrzeug" })} suffix={t({ tr: "kişi", en: "pax", de: "Pers." })} step={10} value={isletme.aracYolcuKapasite}
+            onChange={(v) => patchIsletme({ aracYolcuKapasite: Math.max(1, Math.round(v)) })} /><Kucuk>{t({ tr: "tıkanmadan taşınan — seçili araç", en: "carried without crowding — selected vehicle", de: "ohne Überfüllung befördert — gewähltes Fahrzeug" })} <b>{stock.name}</b> ~{maxYolcuKapasitesi(stock, isletme.konforIndeksi)}</Kucuk></div>
+          <div><Num label={t({ tr: "Doluluk hedefi", en: "Occupancy target", de: "Auslastungsziel" })} suffix="%" step={5} value={Math.round(hedef * 100)}
+            onChange={(v) => patchIsletme({ dolulukHedefi: Math.min(1, Math.max(0.3, v / 100)) })} /><Kucuk>{t({ tr: 'bu oranın üstü "tıkanma"', en: 'above this ratio is "crowding"', de: 'über diesem Wert "Überfüllung"' })}</Kucuk></div>
+        </div>
+        <p className="mt-2 text-xs" style={{ color: brand.muted }}>
+          ℹ️ <b>{t({ tr: "İki görünüm de AYNI modeli besler", en: "Both views feed the SAME model", de: "Beide Ansichten speisen DASSELBE Modell" })}</b> {t({ tr: "— sekme değiştirmek sonucu değiştirmez.", en: "— switching tabs does not change the result.", de: "— ein Wechsel des Tabs ändert das Ergebnis nicht." })} <b>{t({ tr: "Toplam Talep", en: "Total demand", de: "Gesamtnachfrage" })}</b>: {t({ tr: "tek sayı girersin, rolden (hastane/aktarma/stadyum/merkez=yoğun) duraklara dağıtılır.", en: "you enter a single number; it is distributed to stations by role (hospital/interchange/stadium/center=busy).", de: "Sie geben eine einzige Zahl ein; sie wird nach Rolle auf die Haltestellen verteilt (Krankenhaus/Umstieg/Stadion/Zentrum=voll)." })} <b>{t({ tr: "Her İstasyon", en: "Each station", de: "Jede Station" })}</b>: {t({ tr: "durak-başı gerçek iniş/biniş girersin (girilenler tahmini EZER). Girdiğin durak-başı değerler her iki görünümde de geçerlidir.", en: "you enter real per-station alighting/boarding (entries OVERRIDE the estimate). The per-station values you enter apply in both views.", de: "Sie geben reale Ausstiege/Einstiege je Haltestelle ein (Eingaben ÜBERSCHREIBEN die Schätzung). Die von Ihnen eingegebenen Werte je Haltestelle gelten in beiden Ansichten." })}
+        </p>
+        {mod === "istasyon" && (
+          <div className="mt-2">
+            <p className="mb-1 text-xs" style={{ color: brand.muted }}>{t({ tr: "Her durakta pik saat iniş/biniş (yolcu/saat). Tablo, üstteki toplamdan rol-tahminiyle DOLU gelir — düzenlediğin değer kalıcı kaydolur ve tahmini ezer. Yük ", en: "Peak-hour alighting/boarding at each station (pax/h). The table is PRE-FILLED from the total above by role estimate — the value you edit is saved permanently and overrides the estimate. Load is ", de: "Ausstiege/Einstiege in der Spitzenstunde je Haltestelle (Fahrgäste/h). Die Tabelle ist aus der Summe oben per Rollenschätzung VORAUSGEFÜLLT — der von Ihnen bearbeitete Wert wird dauerhaft gespeichert und überschreibt die Schätzung. Die Last wird " })}<b>{t({ tr: "kümülatif", en: "cumulative", de: "kumulativ" })}</b>{t({ tr: " hesaplanır (Σbinen − Σinen). Dwell/kapasiteyi etkilemez. ", en: " (Σboarding − Σalighting). Does not affect dwell/capacity. ", de: " berechnet (Σ Einstiege − Σ Ausstiege). Beeinflusst Haltezeit/Kapazität nicht. " })}{gercekVar ? <>{t({ tr: "Girili toplam biniş:", en: "Entered total boardings:", de: "Eingegebene Einstiege gesamt:" })} <b>{toplamBinen}/sa</b>.</> : t({ tr: "Henüz elle giriş yok — hepsi tahmin.", en: "No manual entry yet — all estimated.", de: "Noch keine manuelle Eingabe — alles geschätzt." })}</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs" style={{ color: brand.inkSoft }}>
+                <thead><tr style={{ color: brand.muted }}>
+                  <th className="px-1 py-0.5 text-left">{t({ tr: "Durak", en: "Station", de: "Haltestelle" })}</th><th className="px-1 py-0.5 text-right">{t({ tr: "Binen", en: "Boarding", de: "Einstieg" })}</th><th className="px-1 py-0.5 text-right">{t({ tr: "İnen", en: "Alighting", de: "Ausstieg" })}</th><th className="px-1 py-0.5 text-right">{t({ tr: "Yük", en: "Load", de: "Last" })}</th>
+                </tr></thead>
+                <tbody>
+                  {rapor.duraklar.map((d, i) => (
+                    <tr key={i} style={{ background: i % 2 ? "#FBFCFD" : "transparent" }}>
+                      <td className="px-1 py-0.5 text-left">{d.makasVar ? "◆ " : ""}{d.terminal ? "⊚ " : ""}{d.ad}</td>
+                      <td className="px-1 py-0.5 text-right"><input type="number" value={d.binen} onChange={(e) => setIstYolcu(d.ad, "binen", +e.target.value)}
+                        className="w-16 rounded border px-1 py-0.5 text-right tabular-nums" style={{ borderColor: brand.border }} /></td>
+                      <td className="px-1 py-0.5 text-right"><input type="number" value={d.inen} onChange={(e) => setIstYolcu(d.ad, "inen", +e.target.value)}
+                        className="w-16 rounded border px-1 py-0.5 text-right tabular-nums" style={{ borderColor: brand.border }} /></td>
+                      <td className="px-1 py-0.5 text-right tabular-nums font-semibold" style={{ color: d.doluluk > hedef ? CK.red : brand.inkSoft }}>{d.tepeYuk}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {isletme.istasyonYolcu && Object.keys(isletme.istasyonYolcu).length > 0 && (
+              <button type="button" onClick={() => patchIsletme({ istasyonYolcu: {} })} className="mt-1 text-xs underline" style={{ color: brand.muted }}>{t({ tr: "tahmine sıfırla", en: "reset to estimate", de: "auf Schätzung zurücksetzen" })}</button>
+            )}
+          </div>
+        )}
+      </Cekmece>
+      </div>
+
       {/* FİLO ÖNERİSİ — headline, daima görünür */}
       <div className="rounded-lg border-2 p-4" style={{ borderColor: renk.bd, background: renk.bg }}>
         <div className="flex items-center justify-between">
@@ -162,61 +217,6 @@ export function TersIsletme() {
           </div>
         </div>
       )}
-
-      {/* GİRDİ — Toplam / Her İstasyon sekmeleri (çekmece) */}
-      <div id="talep-girdileri" className="scroll-mt-24">
-      <Cekmece baslik={t({ tr: "Talep Girdileri", en: "Demand Inputs", de: "Nachfrage-Eingaben" })} acik={acik.girdi} onToggle={() => topla("girdi")}
-        ozet={<span>{mod === "istasyon" ? t({ tr: "her istasyon", en: "each station", de: "jede Station" }) : t({ tr: "toplam", en: "total", de: "gesamt" })} · {toplamBinen}/sa</span>}>
-        <div className="mb-2 flex gap-1">
-          {([["toplam", t({ tr: "Toplam Talep", en: "Total demand", de: "Gesamtnachfrage" })], ["istasyon", t({ tr: "Her İstasyon", en: "Each station", de: "Jede Station" })]] as const).map(([m, ad]) => (
-            <button key={m} type="button" onClick={() => setMod(m)}
-              className="rounded border px-2.5 py-1 text-xs font-medium"
-              style={mod === m ? { background: brand.ink, color: "#fff", borderColor: brand.ink } : { borderColor: brand.border, color: brand.inkSoft }}>
-              {ad}
-            </button>
-          ))}
-        </div>
-        {/* ORTAK GİRDİLER — her iki görünümde de aynı; görünüm seçimi SONUCU DEĞİŞTİRMEZ */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <div><Num label={t({ tr: "Pik saat yolcu (toplam)", en: "Peak-hour passengers (total)", de: "Fahrgäste Spitzenstunde (gesamt)" })} suffix={t({ tr: "yolcu/sa", en: "pax/h", de: "Fahrgäste/h" })} step={100} value={isletme.pikYolcuSaat}
-            onChange={(v) => patchIsletme({ pikYolcuSaat: Math.max(0, Math.round(v)) })} /><Kucuk>{t({ tr: "toplam talep tabanı — rolden duraklara dağıtılır", en: "total demand base — distributed to stations by role", de: "Nachfragebasis gesamt — nach Rolle auf Haltestellen verteilt" })}{gercekVar ? ` · ${t({ tr: "girili toplam", en: "entered total", de: "eingegebene Summe" })} ≈ ${toplamBinen} ${t({ tr: "biniş/sa", en: "boardings/h", de: "Einstiege/h" })}` : ""}</Kucuk></div>
-          <div><Num label={t({ tr: "Araç yolcu kapasitesi", en: "Vehicle passenger capacity", de: "Fahrgastkapazität Fahrzeug" })} suffix={t({ tr: "kişi", en: "pax", de: "Pers." })} step={10} value={isletme.aracYolcuKapasite}
-            onChange={(v) => patchIsletme({ aracYolcuKapasite: Math.max(1, Math.round(v)) })} /><Kucuk>{t({ tr: "tıkanmadan taşınan — seçili araç", en: "carried without crowding — selected vehicle", de: "ohne Überfüllung befördert — gewähltes Fahrzeug" })} <b>{stock.name}</b> ~{maxYolcuKapasitesi(stock, isletme.konforIndeksi)}</Kucuk></div>
-          <div><Num label={t({ tr: "Doluluk hedefi", en: "Occupancy target", de: "Auslastungsziel" })} suffix="%" step={5} value={Math.round(hedef * 100)}
-            onChange={(v) => patchIsletme({ dolulukHedefi: Math.min(1, Math.max(0.3, v / 100)) })} /><Kucuk>{t({ tr: 'bu oranın üstü "tıkanma"', en: 'above this ratio is "crowding"', de: 'über diesem Wert "Überfüllung"' })}</Kucuk></div>
-        </div>
-        <p className="mt-2 text-xs" style={{ color: brand.muted }}>
-          ℹ️ <b>{t({ tr: "İki görünüm de AYNI modeli besler", en: "Both views feed the SAME model", de: "Beide Ansichten speisen DASSELBE Modell" })}</b> {t({ tr: "— sekme değiştirmek sonucu değiştirmez.", en: "— switching tabs does not change the result.", de: "— ein Wechsel des Tabs ändert das Ergebnis nicht." })} <b>{t({ tr: "Toplam Talep", en: "Total demand", de: "Gesamtnachfrage" })}</b>: {t({ tr: "tek sayı girersin, rolden (hastane/aktarma/stadyum/merkez=yoğun) duraklara dağıtılır.", en: "you enter a single number; it is distributed to stations by role (hospital/interchange/stadium/center=busy).", de: "Sie geben eine einzige Zahl ein; sie wird nach Rolle auf die Haltestellen verteilt (Krankenhaus/Umstieg/Stadion/Zentrum=voll)." })} <b>{t({ tr: "Her İstasyon", en: "Each station", de: "Jede Station" })}</b>: {t({ tr: "durak-başı gerçek iniş/biniş girersin (girilenler tahmini EZER). Girdiğin durak-başı değerler her iki görünümde de geçerlidir.", en: "you enter real per-station alighting/boarding (entries OVERRIDE the estimate). The per-station values you enter apply in both views.", de: "Sie geben reale Ausstiege/Einstiege je Haltestelle ein (Eingaben ÜBERSCHREIBEN die Schätzung). Die von Ihnen eingegebenen Werte je Haltestelle gelten in beiden Ansichten." })}
-        </p>
-        {mod === "istasyon" && (
-          <div className="mt-2">
-            <p className="mb-1 text-xs" style={{ color: brand.muted }}>{t({ tr: "Her durakta pik saat iniş/biniş (yolcu/saat). Tablo, üstteki toplamdan rol-tahminiyle DOLU gelir — düzenlediğin değer kalıcı kaydolur ve tahmini ezer. Yük ", en: "Peak-hour alighting/boarding at each station (pax/h). The table is PRE-FILLED from the total above by role estimate — the value you edit is saved permanently and overrides the estimate. Load is ", de: "Ausstiege/Einstiege in der Spitzenstunde je Haltestelle (Fahrgäste/h). Die Tabelle ist aus der Summe oben per Rollenschätzung VORAUSGEFÜLLT — der von Ihnen bearbeitete Wert wird dauerhaft gespeichert und überschreibt die Schätzung. Die Last wird " })}<b>{t({ tr: "kümülatif", en: "cumulative", de: "kumulativ" })}</b>{t({ tr: " hesaplanır (Σbinen − Σinen). Dwell/kapasiteyi etkilemez. ", en: " (Σboarding − Σalighting). Does not affect dwell/capacity. ", de: " berechnet (Σ Einstiege − Σ Ausstiege). Beeinflusst Haltezeit/Kapazität nicht. " })}{gercekVar ? <>{t({ tr: "Girili toplam biniş:", en: "Entered total boardings:", de: "Eingegebene Einstiege gesamt:" })} <b>{toplamBinen}/sa</b>.</> : t({ tr: "Henüz elle giriş yok — hepsi tahmin.", en: "No manual entry yet — all estimated.", de: "Noch keine manuelle Eingabe — alles geschätzt." })}</p>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs" style={{ color: brand.inkSoft }}>
-                <thead><tr style={{ color: brand.muted }}>
-                  <th className="px-1 py-0.5 text-left">{t({ tr: "Durak", en: "Station", de: "Haltestelle" })}</th><th className="px-1 py-0.5 text-right">{t({ tr: "Binen", en: "Boarding", de: "Einstieg" })}</th><th className="px-1 py-0.5 text-right">{t({ tr: "İnen", en: "Alighting", de: "Ausstieg" })}</th><th className="px-1 py-0.5 text-right">{t({ tr: "Yük", en: "Load", de: "Last" })}</th>
-                </tr></thead>
-                <tbody>
-                  {rapor.duraklar.map((d, i) => (
-                    <tr key={i} style={{ background: i % 2 ? "#FBFCFD" : "transparent" }}>
-                      <td className="px-1 py-0.5 text-left">{d.makasVar ? "◆ " : ""}{d.terminal ? "⊚ " : ""}{d.ad}</td>
-                      <td className="px-1 py-0.5 text-right"><input type="number" value={d.binen} onChange={(e) => setIstYolcu(d.ad, "binen", +e.target.value)}
-                        className="w-16 rounded border px-1 py-0.5 text-right tabular-nums" style={{ borderColor: brand.border }} /></td>
-                      <td className="px-1 py-0.5 text-right"><input type="number" value={d.inen} onChange={(e) => setIstYolcu(d.ad, "inen", +e.target.value)}
-                        className="w-16 rounded border px-1 py-0.5 text-right tabular-nums" style={{ borderColor: brand.border }} /></td>
-                      <td className="px-1 py-0.5 text-right tabular-nums font-semibold" style={{ color: d.doluluk > hedef ? CK.red : brand.inkSoft }}>{d.tepeYuk}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {isletme.istasyonYolcu && Object.keys(isletme.istasyonYolcu).length > 0 && (
-              <button type="button" onClick={() => patchIsletme({ istasyonYolcu: {} })} className="mt-1 text-xs underline" style={{ color: brand.muted }}>{t({ tr: "tahmine sıfırla", en: "reset to estimate", de: "auf Schätzung zurücksetzen" })}</button>
-            )}
-          </div>
-        )}
-      </Cekmece>
-      </div>
 
       {/* DEPO DAĞILIMI */}
       <Cekmece baslik={t({ tr: "Depo Çıkışı — Tek Depodan İki Yön", en: "Depot Exit — Two Directions from One Depot", de: "Depotausfahrt — Zwei Richtungen aus einem Depot" })} acik={acik.depo} onToggle={() => topla("depo")}

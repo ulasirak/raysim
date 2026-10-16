@@ -76,8 +76,8 @@ export function KararDestekPaneli() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 p-5 lg:grid-cols-[1fr_260px]">
-        {/* Eğri */}
-        <div className="overflow-hidden rounded-md" style={{ border: `1px solid ${brand.border}` }}>
+        {/* Eğri (grafik = sonuç; mobilde girdinin ALTINDA, masaüstünde solda) */}
+        <div className="order-2 overflow-hidden rounded-md lg:order-1" style={{ border: `1px solid ${brand.border}` }}>
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label={t({ tr: "Filo–headway ödünleşim eğrisi", en: "Fleet–headway trade-off curve", de: "Flotte–Zugfolgezeit-Kompromisskurve" })}>
             {/* Izgara + eksenler */}
             <line x1={padL} y1={padT + ch} x2={padL + cw} y2={padT + ch} stroke={brand.border} strokeWidth={1} />
@@ -108,8 +108,8 @@ export function KararDestekPaneli() {
           </svg>
         </div>
 
-        {/* Hedef-arama + sonuç */}
-        <div className="flex flex-col gap-3">
+        {/* Hedef-arama + sonuç (girdi önce → mobilde grafiğin ÜstÜnde) */}
+        <div className="order-1 flex flex-col gap-3 lg:order-2">
           <div>
             <span className="field-label block">{t({ tr: "Hedef sefer aralığı", en: "Target headway", de: "Ziel-Zugfolgezeit" })}</span>
             <div className="mt-1 flex items-center gap-2">

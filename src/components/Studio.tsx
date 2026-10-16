@@ -662,6 +662,13 @@ function StudioIc() {
       <section className="mt-6">
         <Panel katlanir ozet={t({ tr: "çift hat · dönüş bekleme → çevrim", en: "double track · turnaround wait → cycle", de: "zweigleisig · Wendezeit → Umlauf" })} baslik={t({ tr: "Sefer Sıklığı", en: "Headway", de: "Zugfolgezeit" })} aciklama={t({ tr: "Hat çift hat, gidiş-dönüş çalışır. Sabit blok sinyal sistemi — tren dolu bloğa giremez (kırmızı sinyalde durur). Dönüş Bekleme çevrim süresini ve gereken filoyu besler.", en: "The line is double-track, running outbound and return. Fixed-block signalling — a train cannot enter an occupied block (it stops at a red signal). The turnaround wait feeds the cycle time and the required fleet.", de: "Die Linie ist zweigleisig und fährt Hin- und Rückfahrt. Festblock-Signalisierung — ein Zug kann keinen belegten Block befahren (er hält am roten Signal). Die Wendezeit fließt in die Umlaufzeit und die erforderliche Flotte ein." })}>
 
+          <div className="mb-3 rounded border-l-4 px-3 py-2 text-xs" style={{ borderColor: brand.ink, background: CK.goodBgSoft, color: brand.inkSoft }}>
+            ℹ️ {t({ tr: "Filo, ulaşılan sefer aralığı ve hedef headway artık yukarıdaki", en: "Fleet, achieved headway and target headway are now in the", de: "Flotte, erreichte Zugfolgezeit und Ziel-Zugfolgezeit sind jetzt im" })} <b>{t({ tr: "Filo Paneli", en: "Fleet Panel", de: "Flotten-Panel" })}</b>{t({ tr: "'nde (öneri → onayla → filo → parklanma). Burada yalnız", en: " above (recommend → confirm → fleet → parking). Here you only set the", de: " oben (empfehlen → bestätigen → Flotte → Abstellung). Hier stellen Sie nur die" })} <b>{t({ tr: "Dönüş Bekleme", en: "Turnaround Wait", de: "Wendezeit" })}</b> {t({ tr: "ayarlanır (çevrim süresini ve öneriyi besler).", en: "(it feeds the cycle time and the recommendation).", de: "ein (sie fließt in die Umlaufzeit und die Empfehlung ein)." })}
+          </div>
+          <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <Num label={t({ tr: "Dönüş Bekleme", en: "Turnaround Wait", de: "Wendezeit" })} suffix={t({ tr: "dk", en: "min", de: "Min" })} step={0.5} value={turnaroundDk} onChange={(v) => setTurnaroundDk(Math.max(0, v))} />
+          </div>
+
           {/* TEK SONUÇ — bu hatta en fazla kaç tramvay (Ringler ile birebir aynı) */}
           {maks.gecerli && (
             <div className="mb-4 rounded-md border-l-4 px-4 py-3" style={{ background: CK.goodBgSoft, borderColor: brand.ink }}>
@@ -687,13 +694,6 @@ function StudioIc() {
               </p>
             </div>
           )}
-
-          <div className="mb-3 rounded border-l-4 px-3 py-2 text-xs" style={{ borderColor: brand.ink, background: CK.goodBgSoft, color: brand.inkSoft }}>
-            ℹ️ {t({ tr: "Filo, ulaşılan sefer aralığı ve hedef headway artık yukarıdaki", en: "Fleet, achieved headway and target headway are now in the", de: "Flotte, erreichte Zugfolgezeit und Ziel-Zugfolgezeit sind jetzt im" })} <b>{t({ tr: "Filo Paneli", en: "Fleet Panel", de: "Flotten-Panel" })}</b>{t({ tr: "'nde (öneri → onayla → filo → parklanma). Burada yalnız", en: " above (recommend → confirm → fleet → parking). Here you only set the", de: " oben (empfehlen → bestätigen → Flotte → Abstellung). Hier stellen Sie nur die" })} <b>{t({ tr: "Dönüş Bekleme", en: "Turnaround Wait", de: "Wendezeit" })}</b> {t({ tr: "ayarlanır (çevrim süresini ve öneriyi besler).", en: "(it feeds the cycle time and the recommendation).", de: "ein (sie fließt in die Umlaufzeit und die Empfehlung ein)." })}
-          </div>
-          <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
-            <Num label={t({ tr: "Dönüş Bekleme", en: "Turnaround Wait", de: "Wendezeit" })} suffix={t({ tr: "dk", en: "min", de: "Min" })} step={0.5} value={turnaroundDk} onChange={(v) => setTurnaroundDk(Math.max(0, v))} />
-          </div>
 
           {/* Ulaşılan aralık fiziksel minimumun altında mı? (filo kapasiteyi aşıyorsa) */}
           {maks.gecerli && ulasilanHeadwaySn < maks.hMin - 1e-6 && (

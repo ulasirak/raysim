@@ -609,6 +609,79 @@ export function RingEditor() {
         </div>
       )}
 
+      {/* Eksik şart uyarısı */}
+      {tumEksik.length > 0 && (
+        <div className="mt-4 rounded-lg border p-4" style={{ borderColor: brand.red, background: CK.badBgSoft }}>
+          <div className="mb-1 text-sm font-semibold" style={{ color: brand.red }}>{t({ tr: "⚠ Zorunlu şartlar eksik — loop kurulamaz (", en: "⚠ Mandatory conditions missing — loop cannot be built (", de: "⚠ Pflichtbedingungen fehlen — Umlauf kann nicht aufgebaut werden (" })}{tumEksik.length})</div>
+          <ul className="ml-4 list-disc text-xs" style={{ color: brand.inkSoft }}>
+            {tumEksik.slice(0, 8).map((e, i) => (<li key={i}>{e.mesaj}</li>))}
+            {tumEksik.length > 8 && <li>{t({ tr: "… ve ", en: "… and ", de: "… und " })}{tumEksik.length - 8}{t({ tr: " tane daha", en: " more", de: " weitere" })}</li>}
+          </ul>
+        </div>
+      )}
+
+      {/* Hat verisi yükleniyorken (girişli hesapta sayfa yenileme) rings henüz []'dir.
+          "Hattınız boş / ring ekle" davetini burada göstermek, veri gelince kaybolan
+          bir "aç-kapa" titremesine yol açıyordu; yükleme bitene kadar nötr bir yer
+          tutucu gösterip gerçek boşluk kararını veriye bırakıyoruz. */}
+      {yukleniyor && rings.length === 0 && (
+        <div className="mt-6 rounded-lg border-2 border-dashed px-6 py-8 text-center text-sm" style={{ borderColor: brand.border, color: brand.muted }}>
+          {t({ tr: "⟳ Hat yükleniyor…", en: "⟳ Loading line…", de: "⟳ Strecke wird geladen…" })}
+        </div>
+      )}
+
+
+      {/* RİNG EDİTÖRÜ başlığı — alttaki kartlar durak zincirinin İLERİ şartlarıdır
+          (worst/best köşeleri + makas/hemzemin/tehlike). Üst paneldan görsel olarak ayrık. */}
+      {rings.length > 0 && (
+        <div className="mt-8 mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b-2 pb-2" style={{ borderColor: brand.ink }}>
+          <span className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{t({ tr: "Ring Editörü", en: "Section Editor", de: "Abschnitts-Editor" })}</span>
+          <span className="rounded-full px-2 py-0.5 text-[0.65rem] font-semibold" style={{ background: CK.badBgSoft, color: brand.red }}>{rings.length} {t({ tr: "hücre", en: "cells", de: "Zellen" })}</span>
+          <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "— her durak-arası hücrenin ileri şartları: worst/best köşeleri · makas · hemzemin · tehlike. Yukarıda kurduğun zinciri burada detaylandır.", en: "— the advanced conditions of each inter-stop cell: worst/best corner cases · switch · level crossing · hazard. Detail the chain you built above here.", de: "— die erweiterten Bedingungen jeder Abschnittszelle: Worst/Best-Grenzfälle · Weiche · Bahnübergang · Gefahr. Detaillieren Sie hier die oben aufgebaute Kette." })}</span>
+        </div>
+      )}
+
+      {/* Ring kartları — her biri `ring-<id>` ankoru taşır (Sistem Merkezi teşhis
+          butonu buraya kaydırır); scroll-mt sticky nav altında kalmasını önler. */}
+      <div className="flex flex-col gap-3">
+        {rings.map((r, i) => (
+          <div key={r.id} id={`ring-${r.id}`} className="scroll-mt-28">
+          <RingKart
+            ring={r}
+            index={i}
+            stock={stock}
+            acik={!!acik[r.id]}
+            cfg={cfg}
+            isletme={isletme}
+            doluluk={dolulukByRing[r.id]}
+            ringBasiKm={ringBasiKm[i]}
+            duzenlenebilir={yazilabilir}
+            onToggle={() => setAcik((a) => ({ ...a, [r.id]: !a[r.id] }))}
+            onPatch={(p) => patch(r.id, p)}
+            onSil={() => ringSil(r.id)}
+            onMakasEkle={(tip, konum, ekstra) => makasEkle(r.id, tip, konum, ekstra)}
+            onMakasSil={(mid) => makasSil(r.id, mid)}
+            onMakasPatch={(mid, p) => patchMakas(r.id, mid, p)}
+            onHzEkle={(tip, konum, ekstra) => hzEkle(r.id, tip, konum, ekstra)}
+            onHzSil={(hid) => hzSil(r.id, hid)}
+            onHzPatch={(hid, p) => patchHz(r.id, hid, p)}
+            onTnEkle={(konum, ekstra) => tnEkle(r.id, konum, ekstra)}
+            onTnSil={(tid) => tnSil(r.id, tid)}
+            onTnPatch={(tid, p) => patchTn(r.id, tid, p)}
+            onKurpEkle={(konum, ekstra) => kurpEkle(r.id, konum, ekstra)}
+            onKurpSil={(kid) => kurpSil(r.id, kid)}
+            onKurpPatch={(kid, pp) => patchKurp(r.id, kid, pp)}
+            onSinyalEkle={(yon, konum, ters) => sinyalEkle(r.id, yon, konum, ters)}
+            onSinyalSil={(sid) => sinyalSil(r.id, sid)}
+            onSinyalPatch={(sid, pp) => patchSinyal(r.id, sid, pp)}
+          />
+          </div>
+        ))}
+      </div>
+
+      {/* Ring ekleme artık ÜSTTEKİ "Duraklar & Mesafeler" panelinden (durak zinciri) —
+          tek ekleme yeri, çift buton karmaşası yok. */}
+
       {/* MAKSİMUM TRAMVAY & TERMİNALLER — hat DAİMA çift hat gidiş-dönüş çalışır.
           Terminal dönüş şartları girilir → tek sonuç: bu hatta en fazla kaç tramvay.
           En az 2 durak olunca anlamlı; boş hatta gösterilmez. */}
@@ -775,79 +848,6 @@ export function RingEditor() {
           </Panel>
         </div>
       )}
-
-      {/* Eksik şart uyarısı */}
-      {tumEksik.length > 0 && (
-        <div className="mt-4 rounded-lg border p-4" style={{ borderColor: brand.red, background: CK.badBgSoft }}>
-          <div className="mb-1 text-sm font-semibold" style={{ color: brand.red }}>{t({ tr: "⚠ Zorunlu şartlar eksik — loop kurulamaz (", en: "⚠ Mandatory conditions missing — loop cannot be built (", de: "⚠ Pflichtbedingungen fehlen — Umlauf kann nicht aufgebaut werden (" })}{tumEksik.length})</div>
-          <ul className="ml-4 list-disc text-xs" style={{ color: brand.inkSoft }}>
-            {tumEksik.slice(0, 8).map((e, i) => (<li key={i}>{e.mesaj}</li>))}
-            {tumEksik.length > 8 && <li>{t({ tr: "… ve ", en: "… and ", de: "… und " })}{tumEksik.length - 8}{t({ tr: " tane daha", en: " more", de: " weitere" })}</li>}
-          </ul>
-        </div>
-      )}
-
-      {/* Hat verisi yükleniyorken (girişli hesapta sayfa yenileme) rings henüz []'dir.
-          "Hattınız boş / ring ekle" davetini burada göstermek, veri gelince kaybolan
-          bir "aç-kapa" titremesine yol açıyordu; yükleme bitene kadar nötr bir yer
-          tutucu gösterip gerçek boşluk kararını veriye bırakıyoruz. */}
-      {yukleniyor && rings.length === 0 && (
-        <div className="mt-6 rounded-lg border-2 border-dashed px-6 py-8 text-center text-sm" style={{ borderColor: brand.border, color: brand.muted }}>
-          {t({ tr: "⟳ Hat yükleniyor…", en: "⟳ Loading line…", de: "⟳ Strecke wird geladen…" })}
-        </div>
-      )}
-
-
-      {/* RİNG EDİTÖRÜ başlığı — alttaki kartlar durak zincirinin İLERİ şartlarıdır
-          (worst/best köşeleri + makas/hemzemin/tehlike). Üst paneldan görsel olarak ayrık. */}
-      {rings.length > 0 && (
-        <div className="mt-8 mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b-2 pb-2" style={{ borderColor: brand.ink }}>
-          <span className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{t({ tr: "Ring Editörü", en: "Section Editor", de: "Abschnitts-Editor" })}</span>
-          <span className="rounded-full px-2 py-0.5 text-[0.65rem] font-semibold" style={{ background: CK.badBgSoft, color: brand.red }}>{rings.length} {t({ tr: "hücre", en: "cells", de: "Zellen" })}</span>
-          <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "— her durak-arası hücrenin ileri şartları: worst/best köşeleri · makas · hemzemin · tehlike. Yukarıda kurduğun zinciri burada detaylandır.", en: "— the advanced conditions of each inter-stop cell: worst/best corner cases · switch · level crossing · hazard. Detail the chain you built above here.", de: "— die erweiterten Bedingungen jeder Abschnittszelle: Worst/Best-Grenzfälle · Weiche · Bahnübergang · Gefahr. Detaillieren Sie hier die oben aufgebaute Kette." })}</span>
-        </div>
-      )}
-
-      {/* Ring kartları — her biri `ring-<id>` ankoru taşır (Sistem Merkezi teşhis
-          butonu buraya kaydırır); scroll-mt sticky nav altında kalmasını önler. */}
-      <div className="flex flex-col gap-3">
-        {rings.map((r, i) => (
-          <div key={r.id} id={`ring-${r.id}`} className="scroll-mt-28">
-          <RingKart
-            ring={r}
-            index={i}
-            stock={stock}
-            acik={!!acik[r.id]}
-            cfg={cfg}
-            isletme={isletme}
-            doluluk={dolulukByRing[r.id]}
-            ringBasiKm={ringBasiKm[i]}
-            duzenlenebilir={yazilabilir}
-            onToggle={() => setAcik((a) => ({ ...a, [r.id]: !a[r.id] }))}
-            onPatch={(p) => patch(r.id, p)}
-            onSil={() => ringSil(r.id)}
-            onMakasEkle={(tip, konum, ekstra) => makasEkle(r.id, tip, konum, ekstra)}
-            onMakasSil={(mid) => makasSil(r.id, mid)}
-            onMakasPatch={(mid, p) => patchMakas(r.id, mid, p)}
-            onHzEkle={(tip, konum, ekstra) => hzEkle(r.id, tip, konum, ekstra)}
-            onHzSil={(hid) => hzSil(r.id, hid)}
-            onHzPatch={(hid, p) => patchHz(r.id, hid, p)}
-            onTnEkle={(konum, ekstra) => tnEkle(r.id, konum, ekstra)}
-            onTnSil={(tid) => tnSil(r.id, tid)}
-            onTnPatch={(tid, p) => patchTn(r.id, tid, p)}
-            onKurpEkle={(konum, ekstra) => kurpEkle(r.id, konum, ekstra)}
-            onKurpSil={(kid) => kurpSil(r.id, kid)}
-            onKurpPatch={(kid, pp) => patchKurp(r.id, kid, pp)}
-            onSinyalEkle={(yon, konum, ters) => sinyalEkle(r.id, yon, konum, ters)}
-            onSinyalSil={(sid) => sinyalSil(r.id, sid)}
-            onSinyalPatch={(sid, pp) => patchSinyal(r.id, sid, pp)}
-          />
-          </div>
-        ))}
-      </div>
-
-      {/* Ring ekleme artık ÜSTTEKİ "Duraklar & Mesafeler" panelinden (durak zinciri) —
-          tek ekleme yeri, çift buton karmaşası yok. */}
 
       {/* Eşit şartlar — durak-çiftleri dengeleme önerisi. Hattın ALTINDA: önce hattı
           gör/kur, sonra iyileştirme tavsiyesi (dolu hatta sayfa artık öneriyle açılmaz). */}

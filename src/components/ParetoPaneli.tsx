@@ -116,8 +116,8 @@ export function ParetoPaneli() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 p-5 lg:grid-cols-[1fr_260px]">
-        {/* Maliyet çanağı */}
-        <div className="overflow-hidden rounded-md" style={{ border: `1px solid ${brand.border}` }}>
+        {/* Maliyet çanağı (grafik = sonuç; mobilde girdilerin ALTINDA, masaüstünde solda) */}
+        <div className="order-2 overflow-hidden rounded-md lg:order-1" style={{ border: `1px solid ${brand.border}` }}>
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Toplam maliyet çanağı (ekonomik optimum)">
             {/* eksenler */}
             <line x1={padL} y1={padT + ch} x2={padL + cw} y2={padT + ch} stroke={brand.border} strokeWidth={1} />
@@ -173,8 +173,8 @@ export function ParetoPaneli() {
           </svg>
         </div>
 
-        {/* Ekonomik girdiler + optimum sonucu */}
-        <div className="flex flex-col gap-3">
+        {/* Ekonomik girdiler + optimum sonucu (girdiler önce → mobilde grafiğin ÜstÜnde) */}
+        <div className="order-1 flex flex-col gap-3 lg:order-2">
           <div className="grid grid-cols-1 gap-2">
             <label className="block">
               <span className="field-label block">Zaman değeri (₺/yolcu-saat)</span>
