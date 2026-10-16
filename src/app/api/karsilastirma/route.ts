@@ -12,7 +12,7 @@ import { yoneticiMi, yoneticiUidMi } from "@/lib/anaray/yetki";
 import { karsilastirmaHTML, type KarsSenaryo } from "@/lib/anaray/karsilastirma";
 import { saglamArac, saglamCfg, saglamIsletme } from "@/lib/anaray/saglamGirdi";
 import { varsayilanMeta, type SimConfig, type ProjeMeta, type Isletme } from "@/lib/anaray/config";
-import type { DurakArasiRing } from "@/lib/anaray/ring";
+import type { DurakArasiRing, Sube } from "@/lib/anaray/ring";
 import type { RollingStock } from "@/lib/anaray/types";
 
 export const runtime = "nodejs";
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   const hiz = await hizSiniri(`kars:${uid}`, 20, 300, true); // ücretli+ağır → fail-closed
   if (!hiz.izin) return NextResponse.json({ hata: "Çok fazla istek — lütfen biraz bekleyin.", sifirlaSn: hiz.sifirlaSn }, { status: 429 });
 
-  let govde: { senaryolar?: { ad?: string; rings?: DurakArasiRing[]; cfg?: Partial<SimConfig>; arac?: RollingStock; isletme?: Partial<Isletme> }[]; meta?: Partial<ProjeMeta>; altBaslik?: string };
+  let govde: { senaryolar?: { ad?: string; rings?: DurakArasiRing[]; cfg?: Partial<SimConfig>; arac?: RollingStock; isletme?: Partial<Isletme>; subeler?: Sube[] }[]; meta?: Partial<ProjeMeta>; altBaslik?: string };
   try { govde = await req.json(); } catch { return NextResponse.json({ hata: "Geçersiz istek." }, { status: 400 }); }
 
   const gelen = Array.isArray(govde.senaryolar) ? govde.senaryolar : [];
@@ -47,8 +47,12 @@ export async function POST(req: Request) {
     cfg: saglamCfg(s.cfg),
     stock: saglamArac(s.arac),
     isletme: saglamIsletme(s.isletme),
+    // Tali hatlar (dallanma) — ham rings ile aynı güven modeli; en çok 40 şube.
+    subeler: (Array.isArray(s.subeler) ? s.subeler : []).slice(0, 40),
   }));
-  if (senaryolar.some((s) => s.rings.length > 1000)) {
+  // Ring üst sınırı: ana hat + tüm şube ringleri birlikte (DoS freni).
+  const ringSay = (s: KarsSenaryo) => s.rings.length + (s.subeler ?? []).reduce((a, sb) => a + (Array.isArray(sb.rings) ? sb.rings.length : 0), 0);
+  if (senaryolar.some((s) => ringSay(s) > 1000)) {
     return NextResponse.json({ hata: "Hat verisi çok büyük (senaryo başına en çok 1000 ring)." }, { status: 413 });
   }
   if (senaryolar.filter((s) => s.rings.length >= 1).length < 2) {

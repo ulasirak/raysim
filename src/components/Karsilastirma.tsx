@@ -17,7 +17,7 @@ import { type Metrik, metrikHesapla, SATIRLAR, enIyiIndeks } from "@/lib/anaray/
 import { projeGetir, type ProjeVerisi } from "@/lib/projeler";
 import { varsayilanArac } from "@/lib/anaray/vehicles";
 import { varsayilanConfig, varsayilanIsletme, type SimConfig, type Isletme } from "@/lib/anaray/config";
-import type { DurakArasiRing } from "@/lib/anaray/ring";
+import type { DurakArasiRing, Sube } from "@/lib/anaray/ring";
 import type { RollingStock } from "@/lib/anaray/types";
 import { getAuthInstance } from "@/lib/firebase";
 import { useCuzdan } from "@/components/CuzdanProvider";
@@ -38,11 +38,11 @@ const WHATIF = {
 type WhatifKey = keyof typeof WHATIF;
 
 // PDF için bir senaryonun ham verisi (sunucu aynı çekirdekle yeniden hesaplar).
-interface SenaryoPayload { ad: string; rings: DurakArasiRing[]; cfg: SimConfig; arac: RollingStock; isletme: Isletme; }
+interface SenaryoPayload { ad: string; rings: DurakArasiRing[]; cfg: SimConfig; arac: RollingStock; isletme: Isletme; subeler: Sube[]; }
 
 export function Karsilastirma() {
   const { cfg } = useSimConfig();
-  const { rings: ringsHam, meta } = useProje();
+  const { rings: ringsHam, subeler, meta } = useProje();
   const { arac: stock } = useArac();
   const { isletme } = useIsletme();
   const { projeler } = useHesap();
@@ -82,6 +82,7 @@ export function Karsilastirma() {
         cfg: { ...varsayilanConfig, ...(veri!.cfg ?? {}) },
         arac: veri!.arac ?? varsayilanArac,
         isletme: { ...varsayilanIsletme, ...(veri!.isletme ?? {}) },
+        subeler: veri!.subeler ?? [],
       }));
   }, [secili, cache, projeler]);
 
@@ -94,13 +95,13 @@ export function Karsilastirma() {
     const w = WHATIF[wparam];
     return wdegerler.filter((v) => Number.isFinite(v) && v > 0).map((v) => {
       const ev = w.etkin(v); // etiket VE hesap aynı etkin değerle → çelişki yok
-      return { ad: `${ev} ${w.suffix}`, rings: ringsHam, cfg: w.uygula(cfg, ev), arac: stock, isletme };
+      return { ad: `${ev} ${w.suffix}`, rings: ringsHam, cfg: w.uygula(cfg, ev), arac: stock, isletme, subeler };
     });
-  }, [wparam, wdegerler, cfg, ringsHam, stock, isletme]);
+  }, [wparam, wdegerler, cfg, ringsHam, stock, isletme, subeler]);
 
   const senaryolar = mod === "projeler" ? projeSenaryolar : whatifSenaryolar;
   const metrikler = useMemo<Metrik[]>(
-    () => senaryolar.map((s) => metrikHesapla(s.ad, s.rings, s.arac, s.cfg, s.isletme)),
+    () => senaryolar.map((s) => metrikHesapla(s.ad, s.rings, s.arac, s.cfg, s.isletme, s.subeler)),
     [senaryolar]
   );
   const yeterli = metrikler.filter((m) => m.gecerli).length >= 2;

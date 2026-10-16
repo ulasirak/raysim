@@ -7,9 +7,9 @@ import { aslsLogoSvg, firmaAslsMi } from "./aslsLogo";
 import { maksimumTren } from "./kapasite";
 import { tersIsletmeAnaliz } from "./tersisletme";
 import { dwellUygulanmisRings } from "./yolcu";
-import { hatOzellikleri } from "./network";
+import { hatOzellikleri, kavsakliRingler } from "./network";
 import { loopToHat } from "./hatsim";
-import type { DurakArasiRing } from "./ring";
+import { ringDuraklari, type DurakArasiRing, type Sube } from "./ring";
 import type { RollingStock } from "./types";
 import type { SimConfig, Isletme, ProjeMeta } from "./config";
 
@@ -20,10 +20,19 @@ export interface Metrik {
   nTeorik: number; nSurdurulebilir: number; hMin: number; cevrimDk: number;
   isletmeKap: number; teorikKap: number; uic: number; siganTren: number;
   gerekenFilo: number; tepeYuk: number; baglayan: string;
+  sube: number; // tali hat (şube) sayısı — ağ büyüklüğü göstergesi (0 = tek hat)
 }
 
-export function metrikHesapla(ad: string, ringsHam: DurakArasiRing[], stock: RollingStock, cfg: SimConfig, isletme: Isletme): Metrik {
-  const rings = dwellUygulanmisRings(ringsHam ?? [], stock, isletme);
+/**
+ * Bir senaryonun motor metrikleri. KAPASİTE metrikleri (nTeorik/hMin/çevrim) ANA HATTA
+ * aittir; şube varsa `kavsakliRingler` ile her ayrımın kavşak turnout'u darboğaza katılır
+ * (#1/Sefer ile birebir tutarlı). BETİMLEYİCİ toplamlar (uzunluk/durak/makas/sinyal) ise
+ * AĞ BÜTÜNÜnü (ana hat + şubeler) yansıtır → senaryo büyüklüğü eksik gösterilmez.
+ * Şubesiz senaryoda sonuç birebir eskisi gibidir (kavsakliRingler rings'i aynen döndürür).
+ */
+export function metrikHesapla(ad: string, ringsHam: DurakArasiRing[], stock: RollingStock, cfg: SimConfig, isletme: Isletme, subelerArg: Sube[] = []): Metrik {
+  const subeler = subelerArg.filter((s) => s.rings.length > 0);
+  const rings = dwellUygulanmisRings(kavsakliRingler(ringsHam ?? [], subeler), stock, isletme);
   const m = maksimumTren(rings, stock, cfg, isletme);
   const oz = hatOzellikleri(rings, cfg);
   const line = rings.length ? loopToHat(rings, false, cfg).line : null;
@@ -32,17 +41,23 @@ export function metrikHesapla(ad: string, ringsHam: DurakArasiRing[], stock: Rol
   const uic = (m.hMin > 0 && cfg.headway > 0) ? (m.hMin / cfg.headway) * 100 : 0;
   const siganTren = m.gecerli ? Math.ceil(m.cevrimSuresi / Math.max(1, cfg.headway)) : 0;
   const tia = rings.length >= 2 ? tersIsletmeAnaliz(rings, stock, isletme, cfg) : null;
+  // Şube katkıları (ağ bütünü betimleyici toplamlar) — kavşak kökü durağı hariç.
+  const subeUzunlukM = subeler.reduce((s, sb) => s + sb.rings.reduce((a, r) => a + Math.max(0, r.uzunluk), 0), 0);
+  const subeDurak = subeler.reduce((s, sb) => s + Math.max(0, ringDuraklari(sb.rings).length - 1), 0); // kök paylaşılır
+  const subeMakas = subeler.reduce((s, sb) => s + sb.rings.reduce((a, r) => a + r.makaslar.length, 0), 0);
+  const subeSinyal = subeler.reduce((s, sb) => s + sb.rings.reduce((a, r) => a + (r.sinyaller?.length ?? 0), 0), 0);
   return {
     ad, gecerli: m.gecerli,
-    uzunlukKm: line ? line.length / 1000 : 0,
-    durak: line ? line.stations.filter((s) => s.tip !== "gecit").length : 0,
-    makas: rings.reduce((n, r) => n + r.makaslar.length, 0),
-    sinyal: oz.filter((f) => f.kind === "sinyal").length,
+    uzunlukKm: (line ? line.length : 0) / 1000 + subeUzunlukM / 1000,
+    durak: (line ? line.stations.filter((s) => s.tip !== "gecit").length : 0) + subeDurak,
+    makas: rings.reduce((n, r) => n + r.makaslar.length, 0) + subeMakas,
+    sinyal: oz.filter((f) => f.kind === "sinyal").length + subeSinyal,
     nTeorik: m.nTeorik, nSurdurulebilir: m.nSurdurulebilir, hMin: Math.round(m.hMin),
     cevrimDk: Math.round(m.cevrimSuresi / 60), isletmeKap: Math.round(isletmeKap),
     teorikKap: Math.round(teorikKap), uic: Math.round(uic), siganTren,
     gerekenFilo: tia ? tia.filo.gerekenArac : 0, tepeYuk: tia ? tia.tepeYuk : 0,
     baglayan: m.baglayanAd,
+    sube: subeler.length,
   };
 }
 
@@ -53,6 +68,7 @@ export const SATIRLAR: Satir[] = [
   { etiket: "Durak", al: (m) => m.durak, yaz: (m) => `${m.durak}`, yon: "none" },
   { etiket: "Makas", al: (m) => m.makas, yaz: (m) => `${m.makas}`, yon: "none" },
   { etiket: "Sinyal (SG)", al: (m) => m.sinyal, yaz: (m) => `${m.sinyal}`, yon: "none" },
+  { etiket: "Tali hat (şube)", al: (m) => m.sube, yaz: (m) => `${m.sube}`, yon: "none" },
   { etiket: "Teorik maks tramvay", al: (m) => m.nTeorik, yaz: (m) => `${m.nTeorik}`, yon: "yuksek" },
   { etiket: "Sürdürülebilir (UIC 406)", al: (m) => m.nSurdurulebilir, yaz: (m) => `${m.nSurdurulebilir}`, yon: "yuksek" },
   { etiket: "Min headway (s)", al: (m) => m.hMin, yaz: (m) => `${m.hMin}`, yon: "dusuk" },
@@ -83,11 +99,11 @@ function esc(s: unknown): string {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 }
 
-export interface KarsSenaryo { ad: string; rings: DurakArasiRing[]; stock: RollingStock; cfg: SimConfig; isletme: Isletme; }
+export interface KarsSenaryo { ad: string; rings: DurakArasiRing[]; stock: RollingStock; cfg: SimConfig; isletme: Isletme; subeler?: Sube[]; }
 
 /** Senaryolardan baskıya hazır kurumsal KARAR raporu (tek dil: tr — yapısal metinler). */
 export function karsilastirmaHTML(senaryolar: KarsSenaryo[], meta: ProjeMeta, altBaslik: string): string {
-  const ms = senaryolar.map((s) => metrikHesapla(s.ad, s.rings, s.stock, s.cfg, s.isletme));
+  const ms = senaryolar.map((s) => metrikHesapla(s.ad, s.rings, s.stock, s.cfg, s.isletme, s.subeler ?? []));
   const gecerli = ms.filter((m) => m.gecerli);
   const bugun = meta.tarih || "";
   const firmaAsls = firmaAslsMi(meta.sinyalizasyonFirmasi);
