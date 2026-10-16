@@ -443,6 +443,30 @@ function StudioIc() {
     () => gecikmeYayilim(line, stockSim, { headway: ulasilanHeadwaySn, count: filo, sinyaller: sinyalSimKonum }, koHedef, koGecikme),
     [line, stockSim, ulasilanHeadwaySn, filo, sinyalSimKonum, koHedef, koGecikme]
   );
+  // ŞUBE KNOCK-ON (#6) — ana hat görünümünde her şube mekiği KENDİ rotasında ayrı bir
+  // knock-on zinciri işletir (trunk ile aynı çekirdek: gecikmeYayilim). Böylece "şube
+  // gecikmesi görünmez" boşluğu kapanır: servisTren≥2 şubede ilk mekiğe AYNI birincil
+  // gecikme verilir, aralık = şube çevrimi/mekik sayısı. servisTren<2 → ardışık tren
+  // yok (tek mekik), yalnız bilgi. Şube seçiliyken (analizSube) ana knock-on zaten o
+  // rotadadır → liste boş. Freeze-güvenli: saf türetme, sınırlı (≤6 mekik, kısa hat).
+  const subeKnockOn = useMemo(() => {
+    if (analizSube || !proje) return [] as { ad: string; count: number; ko: ReturnType<typeof gecikmeYayilim> | null }[];
+    const edgeById = Object.fromEntries(network.edges.map((e) => [e.id, e]));
+    return (proje.subeRotalar ?? []).map((sr) => {
+      const sube = subeler.find((s) => s.id === sr.id);
+      if (!sube || !(sube.servisTren && sube.servisTren > 0)) return null;
+      const seIds = sr.route.edgeIds.filter((id) => id.startsWith("se_"));
+      const ilk = seIds.length ? edgeById[seIds[0]] : undefined;
+      if (!ilk) return null;
+      const bLine = flattenRoute(network, { id: `mekik_${sr.id}`, name: sr.ad, edgeIds: seIds, startNodeId: ilk.from });
+      if (bLine.stations.length < 2) return null;
+      const count = Math.max(1, Math.min(Math.round(sube.servisTren ?? 1), 6));
+      const periyot = subeLoops.find((l) => l.subeId === sube.id)?.loop.periyot ?? 0;
+      const hw = count > 0 && periyot > 0 ? periyot / count : ulasilanHeadwaySn;
+      const ko = count >= 2 ? gecikmeYayilim(bLine, stockSim, { headway: hw, count, sinyaller: [] }, 0, koGecikme) : null;
+      return { ad: sube.ad || sr.ad, count, ko };
+    }).filter((x): x is { ad: string; count: number; ko: ReturnType<typeof gecikmeYayilim> | null } => x !== null);
+  }, [analizSube, proje, network, subeler, subeLoops, stockSim, koGecikme, ulasilanHeadwaySn]);
   // Ortak kesim yükü (#1-B/D) — ana hat görünümünde, şubeye servis treni girildiyse.
   const ortakKesim = useMemo(
     () => ortakKesimAnaliz(dwellUygulanmisRings(ringsHam, stock, isletme), subeler, stock, cfg, isletme, filo),
@@ -1092,6 +1116,33 @@ function StudioIc() {
               <span>{t({ tr: "Sönümleme:", en: "Damping:", de: "Dämpfung:" })} <b>{knockOn.sonumleme !== null ? `${knockOn.sonumleme - knockOn.hedefTren} ${t({ tr: "tren sonra", en: "trains later", de: "Züge später" })}` : t({ tr: "pencere içinde sönmez", en: "does not damp within the window", de: "dämpft nicht innerhalb des Fensters" })}</b></span>
             </div>
           </div>
+
+          {/* ŞUBE KNOCK-ON (#6) — ana hat görünümünde her şube mekiği KENDİ rotasında ayrı
+              zincir işletir. Böylece şube gecikme yayılımı burada da görünür (önce yalnız
+              şube elle seçilince görünüyordu). Aynı birincil gecikme (koGecikme) ilk mekiğe. */}
+          {subeKnockOn.length > 0 && (
+            <div className="mt-3 rounded-lg border px-4 py-3" style={{ borderColor: brand.red + "55", background: CK.badBgSoft }}>
+              <div className="mb-1.5 text-xs font-semibold" style={{ color: brand.red }}>
+                ◆ {t({ tr: "Tali hat mekikleri — kendi knock-on zincirleri", en: "Branch shuttles — their own knock-on chains", de: "Abzweig-Pendelzüge — eigene Folgeverspätungsketten" })}
+                <span className="ml-1 font-normal" style={{ color: brand.muted }}>({t({ tr: "ilk mekiğe", en: "first shuttle gets", de: "erster Pendelzug erhält" })} {koGecikme} s)</span>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {subeKnockOn.map((sk, i) => (
+                  <div key={i} className="flex flex-wrap items-baseline gap-x-3 text-xs" style={{ color: brand.inkSoft }}>
+                    <b style={{ color: brand.ink }}>{sk.ad}</b>
+                    <span style={{ color: brand.muted }}>{sk.count} {t({ tr: "mekik", en: "shuttle(s)", de: "Pendelzug/-züge" })}</span>
+                    {sk.ko
+                      ? <span style={{ color: sk.ko.etkilenen === 0 ? "#0E7C57" : (sk.ko.etkilenen >= 3 ? CK.red : "#8A6D1F") }}>
+                          {sk.ko.etkilenen === 0
+                            ? t({ tr: "✓ ardışık mekiğe yansımaz", en: "✓ does not carry to the next shuttle", de: "✓ überträgt sich nicht auf den nächsten" })
+                            : `⚠ ${sk.ko.etkilenen} ${t({ tr: "mekik etkilenir", en: "shuttle(s) affected", de: "Pendelzug/-züge betroffen" })} · ${t({ tr: "maks", en: "max", de: "max." })} ${sure(sk.ko.maxIkincil)}`}
+                        </span>
+                      : <span style={{ color: brand.muted }}>{t({ tr: "tek mekik — ardışık tren yok", en: "single shuttle — no following train", de: "einzelner Pendelzug — kein Folgezug" })}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </Panel>
       )}
 
