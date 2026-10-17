@@ -32,7 +32,7 @@ import { hatOzellikleri, sinyalKonumlari, kavsakliRingler, subeEfektifRingler } 
 import {
   INK, RED, GOLD, esc, s0, kmFmt, qrSvg, tbl, ringSemaSvg, blockingBarSvg, reverseLineOf, bildfahrplanSvg, kisitBarSvg, hizProfilSvg, yukDwellSvg, turnbackTbl, hemzeminSvg, seferTersSvg, sperrzeitSvg, mcHistSvg, mcYayilimSvg, raporStil,
 } from "./raporCizim";
-import { bolumKilitleme, bolumDogrulama, bolumIzlenebilirlik, bolumPareto } from "./raporBolumler";
+import { bolumKilitleme, bolumDogrulama, bolumIzlenebilirlik } from "./raporBolumler";
 
 
 
@@ -880,13 +880,6 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
     ? bolumIzlenebilirlik({ en, meta, rings, line, stock, isletme, cfg, filoGercek, maks, bfHeadway, bt, uicDoluluk, siganTren })
     : "";
 
-  // ——— ÇOK-AMAÇLI OPTİMİZASYON (PARETO) — bölüm 11 (Büyük sıçrama F) ———
-  // Filo kararının çakışan amaçlarını (maliyet ↔ yolcu bekleme ↔ doluluk) birlikte
-  // değerlendirir: Pareto-etkin cephe + diz (matematiksel dirsek) + ağırlıklı optimum
-  // (dengeli %50 maliyet/servis) + KONFOR KISITI (optimum, doluluk ≤ tavan kümesinde).
-  // Motordan (maksimumTren: çevrim, hMin, nMax) türer — uydurma yok.
-  const paretoBolum = dahil("pareto") ? bolumPareto(maks, isletme, en) : "";
-
   // ——— GRAFİKLER (Görsel Analiz) — bölüm 08 ———
   // TÜM şekiller burada toplanır; yalnız "grafikler" seçiliyken (g) üretilir. Böylece
   // kullanıcı sadece grafikleri seçtiğinde dahi dolu, tek başına anlamlı bir görsel bölüm
@@ -971,7 +964,6 @@ ${raporStil(INK, RED, GOLD)}</head>
       ${g ? `<li><b>08</b>${en ? "Visual Analysis (Charts)" : "Görsel Analiz (Grafikler)"}</li>` : ""}
       ${dahil("dogrulama") ? `<li><b>09</b>${en ? "Verification & Validation" : "Doğrulama & Geçerleme"}</li>` : ""}
       ${dahil("izlenebilirlik") ? `<li><b>10</b>${en ? "Traceability & Reproducibility" : "İzlenebilirlik & Tekrar-Üretilebilirlik"}</li>` : ""}
-      ${dahil("pareto") ? `<li><b>11</b>${en ? "Multi-Objective Optimization (Pareto)" : "Çok-Amaçlı Optimizasyon (Pareto)"}</li>` : ""}
     </ol>
     ${g ? `<div class="toc-fig">${en ? "Figures" : "Şekiller"}<ul>
       <li>${en ? "Fig. 1 — Line schematic" : "Şekil 1 — Hat şeması"}</li>
@@ -1038,9 +1030,6 @@ ${raporStil(INK, RED, GOLD)}</head>
 
   <!-- 10: İzlenebilirlik & Tekrar-Üretilebilirlik — motor sürümü + girdi künyesi + sayı→yöntem izi -->
   ${izlenebilirlikBolum}
-
-  <!-- 11: Çok-Amaçlı Optimizasyon (Pareto) — maliyet↔bekleme↔doluluk cephe + diz + optimum + konfor kısıtı -->
-  ${paretoBolum}
 
   ${cekirdekNot}
 

@@ -9,7 +9,6 @@ import type { SimConfig, Isletme, ProjeMeta } from "./config";
 import { tbl, esc, kmFmt, RED } from "./raporCizim";
 import { kilitlemeTablosu, kilitlemeOzet, kilitlemeMetin, type CeviriFn } from "./kilitleme";
 import { dogrulamaCalistir } from "./dogrulama";
-import { paretoAnaliz } from "./pareto";
 import type { maksimumTren } from "./kapasite";
 import type { blockingTimeRing } from "./blockingtime";
 import { MOTOR_ADI, MOTOR_SURUMU, YONTEM_STANDARTLARI } from "./surum";
@@ -114,49 +113,3 @@ export function bolumIzlenebilirlik(p: {
   ${tbl([en ? "Quantity" : "Büyüklük", en ? "Value" : "Değer", en ? "Inputs" : "Girdiler", en ? "Method" : "Yöntem", en ? "Section" : "Bölüm"], izRows, { first: true })}`;
 }
 
-/** 11 Çok-Amaçlı Optimizasyon (Pareto). */
-export function bolumPareto(maks: MaksTip, isletme: Isletme, en: boolean): string {
-  if (!maks.gecerli) return "";
-  const pr = paretoAnaliz({
-    cevrimSn: maks.cevrimSuresi, hMinSn: maks.hMin, nMax: maks.nTeorik,
-    pikYolcuSaat: isletme.pikYolcuSaat, aracKapasite: isletme.aracYolcuKapasite,
-    konforTavani: isletme.dolulukHedefi, agirlik: 0.5,
-  });
-  if (!pr.noktalar.length) return "";
-  const YESIL = "#2E7D57";
-  const hw = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
-  const nk = (f: number) => pr.noktalar.find((n) => n.filo === f);
-  const dol = (n?: { doluluk: number | null }) => (n && n.doluluk != null ? `%${Math.round(n.doluluk * 100)}` : "—");
-  const satir = (rol: string, f: number, vurgu?: string) => {
-    const n = nk(f);
-    if (!n) return null;
-    return [
-      vurgu ? `<b style="color:${vurgu}">${rol}</b>` : `<b>${rol}</b>`,
-      `${f}`, hw(n.headwaySn), `${n.beklemeDk.toFixed(1)} dk`, dol(n),
-    ];
-  };
-  const rows = [
-    satir(en ? "Knee (best balance)" : "Diz (en iyi denge)", pr.dizFilo),
-    ...(pr.demandVar && pr.konforFilo ? [satir(en ? "Comfort limit" : "Konfor sınırı", pr.konforFilo)] : []),
-    satir(en ? "Weighted optimum" : "Ağırlıklı optimum", pr.optimumFilo, YESIL),
-    satir(en ? "Capacity wall" : "Kapasite duvarı", pr.duvarFilo, RED),
-  ].filter((r): r is string[] => !!r);
-  const giris = en
-    ? `Fleet sizing has conflicting objectives: more vehicles raise cost but cut passenger waiting${pr.demandVar ? " and crowding" : ""}. Beyond the capacity wall (${pr.duvarFilo} vehicles) extra fleet no longer cuts waiting (headway floors at the minimum) — those points are dominated (over-fleeting). The weighted optimum below balances cost and service equally (½ / ½)${pr.demandVar ? "; a comfort constraint keeps the optimum within the fleets whose occupancy stays under the target, so it never recommends an over-crowded service" : ""}.`
-    : `Filo boyutlandırması çakışan amaçlar taşır: daha çok araç maliyeti artırır ama yolcu beklemesini${pr.demandVar ? " ve doluluğu" : ""} düşürür. Kapasite duvarını (${pr.duvarFilo} araç) aşan filo beklemeyi artık düşürmez (headway fiziksel minimuma dayanır) — o noktalar baskındır (aşırı filo). Aşağıdaki ağırlıklı optimum maliyet ile servisi eşit (½ / ½) dengeler${pr.demandVar ? "; konfor kısıtı optimumu, doluluğu hedefin altında tutan filolarla sınırlar → aşırı-kalabalık servis önerilmez" : ""}.`;
-  const konforNot = pr.demandVar
-    ? (pr.konforSaglanabilir
-        ? (en
-            ? `Comfort (occupancy ≤ %${Math.round(pr.konforTavani * 100)}) requires at least ${pr.konforFilo} vehicles; the optimum (${pr.optimumFilo}) satisfies it at ${dol(nk(pr.optimumFilo))} occupancy.`
-            : `Konfor (doluluk ≤ %${Math.round(pr.konforTavani * 100)}) için en az ${pr.konforFilo} araç gerekir; optimum (${pr.optimumFilo}) bunu ${dol(nk(pr.optimumFilo))} dolulukla sağlar.`)
-        : (en
-            ? `Even at the capacity wall (${pr.duvarFilo} vehicles) occupancy exceeds the comfort target (%${Math.round(pr.konforTavani * 100)}) — larger vehicles or higher line capacity are required.`
-            : `Kapasite duvarında (${pr.duvarFilo} araç) bile doluluk konfor tavanını (%${Math.round(pr.konforTavani * 100)}) aşıyor — daha büyük araç veya daha yüksek hat kapasitesi gerekir.`))
-    : (en
-        ? "Knee = the most balanced point (nearest the utopia). Optimum = best under the equal cost/service weight."
-        : "Diz = en dengeli nokta (ütopyaya en yakın). Optimum = eşit maliyet/servis ağırlığında en iyi.");
-  return `<div class="banner breakbefore"><span class="no">11</span>${en ? "MULTI-OBJECTIVE OPTIMIZATION (PARETO)" : "ÇOK-AMAÇLI OPTİMİZASYON (PARETO)"}</div>
-  <p>${giris}</p>
-  ${tbl([en ? "Role" : "Rol", en ? "Fleet" : "Filo", en ? "Interval" : "Aralık", en ? "Wait" : "Bekleme", en ? "Occupancy" : "Doluluk"], rows, { first: true })}
-  <div class="gs${pr.demandVar && !pr.konforSaglanabilir ? "" : " ok"}" style="font-size:10pt">${konforNot}</div>`;
-}
