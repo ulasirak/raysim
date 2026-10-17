@@ -567,6 +567,28 @@ function StudioIc() {
         </div>
       </div>
 
+      {/* ÖZET KÜNYE — hat kimliği (km/süre/hız/durak). Rapor başlığının hemen altında,
+          DAİMA görünür (eskiden ④ sekmesinin dibindeydi; temel tanımlayıcı bilgi üstte). */}
+      <section className="mt-4 overflow-hidden rounded-lg border bg-white" style={{ borderColor: brand.border }}>
+        <div className="grid grid-cols-2 divide-x divide-y divide-[#DCE1E7] sm:grid-cols-3 lg:grid-cols-6">
+          <Field etiket={t({ tr: "Hat Uzunluğu", en: "Line Length", de: "Linienlänge" })} deger={`${km(line.length)} km`} />
+          <Field etiket={t({ tr: "Toplam Süre", en: "Total Time", de: "Gesamtzeit" })} deger={sure(result.totalTime)} alt={t({ tr: "duruşlar dahil", en: "incl. dwells", de: "inkl. Halte" })} />
+          <Field etiket={t({ tr: "Seyahat Hızı", en: "Travel Speed", de: "Reisegeschwindigkeit" })} deger={`${kmh(ortHiz).toFixed(1)}`} birim="km/h" alt={t({ tr: "bekleme dahil", en: "incl. waiting", de: "inkl. Wartezeit" })} />
+          <Field etiket={t({ tr: "Teknik Hız", en: "Technical Speed", de: "technische Geschwindigkeit" })} deger={`${kmh(teknikHiz).toFixed(1)}`} birim="km/h" alt={t({ tr: "bekleme hariç", en: "excl. waiting", de: "ohne Wartezeit" })} />
+          <Field etiket={t({ tr: "Azami Hız", en: "Max Speed", de: "Höchstgeschwindigkeit" })} deger={`${kmh(vmax).toFixed(0)}`} birim="km/h" />
+          <Field etiket={t({ tr: "Durak", en: "Stops", de: "Haltestellen" })} deger={`${result.stationEvents.length}`} alt={`${sure(durusSuresi)} ${t({ tr: "bekleme", en: "waiting", de: "Wartezeit" })}`} />
+        </div>
+        {/* AĞ TOPLAMI (#7) — künye tek rota (ana hat) içindir; şube varsa ağ bütünü burada. */}
+        {agToplam && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t px-4 py-2 text-xs" style={{ borderColor: brand.border, background: CK.badBgSoft, color: brand.inkSoft }}>
+            <span style={{ color: brand.red }}>◆ {t({ tr: "Künye ana hattı gösterir.", en: "The summary shows the main line.", de: "Die Übersicht zeigt die Hauptstrecke." })} {agToplam.adet} {t({ tr: "tali hat ile ağ:", en: "with branch line(s), the network:", de: "mit Abzweigung(en) ergibt das Netz:" })}</span>
+            <span><b style={{ color: brand.ink }}>{km(line.length + agToplam.subeUzunlukM)} km</b> {t({ tr: "toplam hat", en: "total track", de: "Gleis gesamt" })} <span style={{ color: brand.muted }}>(+{km(agToplam.subeUzunlukM)})</span></span>
+            <span><b style={{ color: brand.ink }}>{result.stationEvents.length + agToplam.subeDurak}</b> {t({ tr: "durak", en: "stops", de: "Haltestellen" })} <span style={{ color: brand.muted }}>(+{agToplam.subeDurak})</span></span>
+            <span style={{ color: brand.muted }}>{t({ tr: "her şubeyi ayrı analiz için yukarıdan seç", en: "select each branch above to analyze it separately", de: "oben jede Abzweigung zur separaten Analyse auswählen" })}</span>
+          </div>
+        )}
+      </section>
+
       <TabBar pre="sf"
         etiketler={[
           t({ tr: "① Kurulum & Filo", en: "① Setup & Fleet", de: "① Einrichtung & Flotte" }),
@@ -1225,27 +1247,6 @@ function StudioIc() {
           <SeferTersEntegre rings={rings} stock={stock} cfg={cfg} isletme={isletme} headwayDk={headwayDk} onHeadwayChange={setHeadwayDk} />
         </Panel>
       )}
-
-      {/* Özet künye */}
-      <section className="mt-6 overflow-hidden rounded-lg border bg-white" style={{ borderColor: brand.border }}>
-        <div className="grid grid-cols-2 divide-x divide-y divide-[#DCE1E7] sm:grid-cols-3 lg:grid-cols-6">
-          <Field etiket={t({ tr: "Hat Uzunluğu", en: "Line Length", de: "Linienlänge" })} deger={`${km(line.length)} km`} />
-          <Field etiket={t({ tr: "Toplam Süre", en: "Total Time", de: "Gesamtzeit" })} deger={sure(result.totalTime)} alt={t({ tr: "duruşlar dahil", en: "incl. dwells", de: "inkl. Halte" })} />
-          <Field etiket={t({ tr: "Seyahat Hızı", en: "Travel Speed", de: "Reisegeschwindigkeit" })} deger={`${kmh(ortHiz).toFixed(1)}`} birim="km/h" alt={t({ tr: "bekleme dahil", en: "incl. waiting", de: "inkl. Wartezeit" })} />
-          <Field etiket={t({ tr: "Teknik Hız", en: "Technical Speed", de: "technische Geschwindigkeit" })} deger={`${kmh(teknikHiz).toFixed(1)}`} birim="km/h" alt={t({ tr: "bekleme hariç", en: "excl. waiting", de: "ohne Wartezeit" })} />
-          <Field etiket={t({ tr: "Azami Hız", en: "Max Speed", de: "Höchstgeschwindigkeit" })} deger={`${kmh(vmax).toFixed(0)}`} birim="km/h" />
-          <Field etiket={t({ tr: "Durak", en: "Stops", de: "Haltestellen" })} deger={`${result.stationEvents.length}`} alt={`${sure(durusSuresi)} ${t({ tr: "bekleme", en: "waiting", de: "Wartezeit" })}`} />
-        </div>
-        {/* AĞ TOPLAMI (#7) — künye tek rota (ana hat) içindir; şube varsa ağ bütünü burada. */}
-        {agToplam && (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t px-4 py-2 text-xs" style={{ borderColor: brand.border, background: CK.badBgSoft, color: brand.inkSoft }}>
-            <span style={{ color: brand.red }}>◆ {t({ tr: "Künye ana hattı gösterir.", en: "The summary shows the main line.", de: "Die Übersicht zeigt die Hauptstrecke." })} {agToplam.adet} {t({ tr: "tali hat ile ağ:", en: "with branch line(s), the network:", de: "mit Abzweigung(en) ergibt das Netz:" })}</span>
-            <span><b style={{ color: brand.ink }}>{km(line.length + agToplam.subeUzunlukM)} km</b> {t({ tr: "toplam hat", en: "total track", de: "Gleis gesamt" })} <span style={{ color: brand.muted }}>(+{km(agToplam.subeUzunlukM)})</span></span>
-            <span><b style={{ color: brand.ink }}>{result.stationEvents.length + agToplam.subeDurak}</b> {t({ tr: "durak", en: "stops", de: "Haltestellen" })} <span style={{ color: brand.muted }}>(+{agToplam.subeDurak})</span></span>
-            <span style={{ color: brand.muted }}>{t({ tr: "her şubeyi ayrı analiz için yukarıdan seç", en: "select each branch above to analyze it separately", de: "oben jede Abzweigung zur separaten Analyse auswählen" })}</span>
-          </div>
-        )}
-      </section>
 
       {/* Monte-Carlo gecikme analizi */}
       <section className="mt-6">

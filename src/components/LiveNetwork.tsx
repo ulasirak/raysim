@@ -956,31 +956,9 @@ export function LiveNetwork({
         return st ? <TrenDetayKutusu st={st} no={secili + 1} dokum={loop!.dokum} periyot={loop!.periyot} cakismaVar={cakisanIdx.has(secili)} onKapat={() => setSecili(null)} /> : null;
       })()}
 
-      {/* KAVŞAK ÇAKIŞMASI bilgi şeridi — bir ters-işletme treni crossover'ı geçerken aynı
-          fouling bölgesine giren normal tren(ler). Gerçek interlocking bunları bekletirdi. */}
-      {loop && cakisanIdx.size > 0 && (
-        <div className="mb-2 overflow-hidden rounded-md border-l-4 text-xs" style={{ background: CK.badBgSoft, borderColor: brand.red, color: brand.inkSoft }}>
-          <div className="px-3 py-2">
-            <b style={{ color: brand.red }}>{tt({ tr: "⚠ Kavşak çakışması", en: "⚠ Junction conflict", de: "⚠ Kreuzungskonflikt" })} ({cakisanIdx.size} {tt({ tr: "tramvay", en: "trams", de: "Straßenbahnen" })})</b> {tt({ tr: "— bir", en: "— while a", de: "— während ein" })} <b>{tt({ tr: "ters işletme", en: "reverse operation", de: "Kehrbetrieb" })}</b> {tt({ tr: "treni crossover’dan karşı hatta geçerken (kavşak her iki hattı çaprazlar),", en: "train crosses to the opposite track via the crossover (the junction crosses both tracks),", de: "-Zug über die Weichenverbindung auf das Gegengleis wechselt (die Kreuzung überquert beide Gleise)," })} {cakisanIdx.size === 1 ? tt({ tr: "bir tramvay", en: "one tram", de: "eine Straßenbahn" }) : `${cakisanIdx.size} ${tt({ tr: "tramvay", en: "trams", de: "Straßenbahnen" })}`} {tt({ tr: "aynı", en: "entered the same", de: "ist in denselben" })} <b>{tt({ tr: "fouling bölgesine", en: "fouling zone", de: "Fahrgefährdungsbereich" })}</b> {tt({ tr: "girdi. Gerçek interlocking bu hareketi", en: "entered. A real interlocking would", de: "eingefahren. Eine echte Stellwerkslogik würde diese Bewegung" })} <b>{tt({ tr: "bekletir", en: "hold", de: "anhalten" })}</b> {tt({ tr: "(kavşak sırayla kullanılır — bkz. Sistem Merkezi kavşak blocking-time). Çakışan tramvaylar kırmızı halkayla işaretli.", en: "this movement (the junction is used in turn — see System Center junction blocking-time). Conflicting trams are marked with a red ring.", de: " (die Kreuzung wird nacheinander genutzt — siehe Systemzentrale Kreuzungs-blocking-time). Konfliktbehaftete Straßenbahnen sind mit einem roten Ring markiert." })}
-          </div>
-        </div>
-      )}
-
-      {/* Arıza aktif → FAIL-SAFE bilgi kartı (bkz. liveNetworkKartlar.FailSafeKart). */}
-      {loop && faultBlocks.length > 0 && <FailSafeKart faultCount={faultBlocks.length} kuyruk={tutulanIdx.size} />}
-
-      {/* TERS İŞLETME MODU — SADECE istasyon makasları için geçerli. Aktivasyon:
-          Kapalı / Sadece giden hat / Çift taraflı. Kalıcı (isletme.tersMod). */}
-      {loop && (
-        <TersModSecici
-          tersMod={tersMod}
-          disabled={!onTersMod}
-          tersMakasSayisi={tersMakaslar.length}
-          onSec={(m) => { if (m !== tersMod) { onTersMod?.(m); if (m === "kapali") { setKarar(null); } } }}
-        />
-      )}
-
-      {/* Kontroller */}
+      {/* Kontroller — SVG'nin hemen ALTINDA (simülasyona bitişik). İkincil bilgi/mod
+          panelleri (çakışma/fail-safe/ters-mod) kontrollerin ALTINA alındı → bunlar
+          açılınca Oynat butonu aşağı itilmez. */}
       <div className="flex flex-wrap items-center gap-3">
         <button onClick={oynatDurdur} className="rounded-md px-4 py-1.5 text-sm font-medium text-white transition hover:opacity-90" style={{ background: brand.red }}>
           {oynat ? tt({ tr: "⏸ Duraklat", en: "⏸ Pause", de: "⏸ Pause" }) : t >= T ? tt({ tr: "↻ Baştan", en: "↻ Restart", de: "↻ Von vorn" }) : tt({ tr: "▶ Oynat", en: "▶ Play", de: "▶ Abspielen" })}
@@ -997,6 +975,31 @@ export function LiveNetwork({
           className="min-w-[160px] flex-1" style={{ accentColor: brand.red }} aria-label={tt({ tr: "Zaman çubuğu", en: "Time bar", de: "Zeitleiste" })} />
         <span className="font-mono text-xs" style={{ color: brand.muted }}>{saat(t)} / {saat(T)}</span>
       </div>
+
+      {/* TERS İŞLETME MODU — SADECE istasyon makasları için geçerli. Aktivasyon:
+          Kapalı / Sadece giden hat / Çift taraflı. Kalıcı (isletme.tersMod). */}
+      {loop && (
+        <TersModSecici
+          tersMod={tersMod}
+          disabled={!onTersMod}
+          tersMakasSayisi={tersMakaslar.length}
+          onSec={(m) => { if (m !== tersMod) { onTersMod?.(m); if (m === "kapali") { setKarar(null); } } }}
+        />
+      )}
+
+      {/* Arıza aktif → FAIL-SAFE bilgi kartı (bkz. liveNetworkKartlar.FailSafeKart). */}
+      {loop && faultBlocks.length > 0 && <FailSafeKart faultCount={faultBlocks.length} kuyruk={tutulanIdx.size} />}
+
+      {/* KAVŞAK ÇAKIŞMASI bilgi şeridi — bir ters-işletme treni crossover'ı geçerken aynı
+          fouling bölgesine giren normal tren(ler). Gerçek interlocking bunları bekletirdi. */}
+      {loop && cakisanIdx.size > 0 && (
+        <div className="mt-2 overflow-hidden rounded-md border-l-4 text-xs" style={{ background: CK.badBgSoft, borderColor: brand.red, color: brand.inkSoft }}>
+          <div className="px-3 py-2">
+            <b style={{ color: brand.red }}>{tt({ tr: "⚠ Kavşak çakışması", en: "⚠ Junction conflict", de: "⚠ Kreuzungskonflikt" })} ({cakisanIdx.size} {tt({ tr: "tramvay", en: "trams", de: "Straßenbahnen" })})</b> {tt({ tr: "— bir", en: "— while a", de: "— während ein" })} <b>{tt({ tr: "ters işletme", en: "reverse operation", de: "Kehrbetrieb" })}</b> {tt({ tr: "treni crossover’dan karşı hatta geçerken (kavşak her iki hattı çaprazlar),", en: "train crosses to the opposite track via the crossover (the junction crosses both tracks),", de: "-Zug über die Weichenverbindung auf das Gegengleis wechselt (die Kreuzung überquert beide Gleise)," })} {cakisanIdx.size === 1 ? tt({ tr: "bir tramvay", en: "one tram", de: "eine Straßenbahn" }) : `${cakisanIdx.size} ${tt({ tr: "tramvay", en: "trams", de: "Straßenbahnen" })}`} {tt({ tr: "aynı", en: "entered the same", de: "ist in denselben" })} <b>{tt({ tr: "fouling bölgesine", en: "fouling zone", de: "Fahrgefährdungsbereich" })}</b> {tt({ tr: "girdi. Gerçek interlocking bu hareketi", en: "entered. A real interlocking would", de: "eingefahren. Eine echte Stellwerkslogik würde diese Bewegung" })} <b>{tt({ tr: "bekletir", en: "hold", de: "anhalten" })}</b> {tt({ tr: "(kavşak sırayla kullanılır — bkz. Sistem Merkezi kavşak blocking-time). Çakışan tramvaylar kırmızı halkayla işaretli.", en: "this movement (the junction is used in turn — see System Center junction blocking-time). Conflicting trams are marked with a red ring.", de: " (die Kreuzung wird nacheinander genutzt — siehe Systemzentrale Kreuzungs-blocking-time). Konfliktbehaftete Straßenbahnen sind mit einem roten Ring markiert." })}
+          </div>
+        </div>
+      )}
+
       <LiveNetworkLegend depoVar={depoToplam > 0} tersMakasVar={tersMakaslar.length > 0} tersMod={tersMod} terminalVar={!!(terminalBas || terminalSon)} />
 
       {/* ETKİLEŞİMLİ TERS İŞLETME — onay pop-up (süre durdurulmuşken) */}
