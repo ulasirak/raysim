@@ -326,7 +326,7 @@ export function RingKart(p: KartProps) {
           <details className="group mt-4 border-t pt-3" style={{ borderColor: brand.border }}>
             <summary className="mb-2 flex cursor-pointer select-none items-center justify-between">
               <span className="flex items-center gap-1.5"><SubBaslik>{t({ tr: "Tehlike / Acil Frenleme Noktaları", en: "Hazard / Emergency Braking Points", de: "Gefahren- / Notbremspunkte" })}</SubBaslik>{ring.tehlikeNoktalari.length > 0 && <span className="rounded-full px-1.5 py-0.5 text-[0.6rem] font-bold leading-none" style={{ background: brand.ink, color: "#fff" }}>{ring.tehlikeNoktalari.length}</span>}<span className="text-[0.65rem]" style={{ color: brand.faint }}>{t({ tr: "▸ aç/kapa", en: "▸ toggle", de: "▸ auf/zu" })}</span></span>
-              <button onClick={(e) => { e.preventDefault(); p.onTnEkle(); }} title={HIZLI_EKLE_IPUCU} className="rounded px-2 py-1 text-xs font-medium" style={{ background: CK.track, color: brand.inkSoft }}>{t({ tr: "＋ ekle", en: "＋ add", de: "＋ hinzufügen" })}</button>
+              <button onClick={(e) => { e.preventDefault(); p.onTnEkle(); const d = (e.currentTarget as HTMLElement).closest("details"); if (d) d.open = true; }} title={HIZLI_EKLE_IPUCU} className="rounded px-2 py-1 text-xs font-medium" style={{ background: CK.track, color: brand.inkSoft }}>{t({ tr: "＋ ekle", en: "＋ add", de: "＋ hinzufügen" })}</button>
             </summary>
             {ring.tehlikeNoktalari.length === 0 ? (
               <p className="text-xs" style={{ color: brand.faint }}>{t({ tr: "Tehlike noktası yok.", en: "No hazard point.", de: "Kein Gefahrenpunkt." })}</p>
