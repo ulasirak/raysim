@@ -136,7 +136,7 @@ export function SistemMerkezi() {
       {bosHat && (
         <div className="mb-6 rounded border-l-4 px-4 py-3 text-sm" style={{ borderColor: CK.amber, background: CK.amberBg, color: CK.amberInk }}>
           {t({ tr: "▲ Bu hatta henüz ring (durak arası hücre) yok — canlı durum ve kapasite panelleri gizlendi. Parametreleri header'daki (üst çubuk) ", en: "▲ This line has no rings (inter-stop cells) yet — live status and capacity panels are hidden. Set the parameters from the ", de: "▲ Diese Linie hat noch keine Ringe (Zwischenhaltstellen-Zellen) — Live-Status- und Kapazitätspanels sind ausgeblendet. Stellen Sie die Parameter über die Schaltfläche " })}<b>⚙ {t({ tr: "Parametreler", en: "Parameters", de: "Parameter" })}</b>{t({ tr: " butonundan, hattı ", en: " in the header (top bar), and build the line from the ", de: " in der Kopfzeile (obere Leiste) ein und bauen Sie die Linie über das " })}
-          <Link href="/ringler" className="underline">{t({ tr: "Ringler modülünden", en: "Ringler module", de: "Ringler-Modul" })}</Link>{t({ tr: " kurabilirsiniz.", en: ".", de: " auf." })}
+          <Link href="/#ringler" className="underline">{t({ tr: "Ringler modülünden", en: "Ringler module", de: "Ringler-Modul" })}</Link>{t({ tr: " kurabilirsiniz.", en: ".", de: " auf." })}
         </div>
       )}
 
@@ -145,7 +145,7 @@ export function SistemMerkezi() {
         etiketler={[
           t({ tr: "① Kapasite & Kısıt", en: "① Capacity & Constraint", de: "① Kapazität & Engpass" }),
           t({ tr: "② Terminal & Yol", en: "② Terminal & Track", de: "② Endstelle & Strecke" }),
-          t({ tr: "③ Motor Doğruluğu", en: "③ Engine Accuracy", de: "③ Engine-Genauigkeit" }),
+          t({ tr: "③ Doğrulama & Duyarlılık", en: "③ Validation & Sensitivity", de: "③ Validierung & Sensitivität" }),
           t({ tr: "④ Filo Kararı", en: "④ Fleet Decision", de: "④ Flottenentscheidung" }),
         ]}
         durumlar={[bt ? (!bt.hedefUygun ? "ihlal" : bt.dolulukHedef > 80 ? "uyari" : "") : "", "", "", ""]} />
@@ -157,7 +157,7 @@ export function SistemMerkezi() {
       {bt && (
       <Panel baslik={t({ tr: "Blocking-Time / Sperrzeitentreppe (blok işgal süresi) & UIC 406 Kapasite", en: "Blocking-Time / Sperrzeitentreppe (block occupancy time) & UIC 406 Capacity", de: "Sperrzeit / Sperrzeitentreppe (Blockbelegungszeit) & UIC 406 Kapazität" })} aciklama={t({ tr: "Her sinyal bloğunun rezerve süresi = 6 bileşen (rota kurma + görme + yaklaşma + seyir + temizleme + release). En yüksek blocking-time'lı blok min headway'i belirler; UIC 406 doluluk = min headway / hedef headway.", en: "Each signal block's reserved time = 6 components (route setup + sighting + approach + running + clearing + release). The block with the highest blocking-time sets the min headway; UIC 406 utilization = min headway / target headway.", de: "Die Sperrzeit jedes Signalblocks = 6 Komponenten (Fahrstraßenbildung + Sicht + Annäherung + Fahrt + Räumung + Auflösung). Der Block mit der höchsten Sperrzeit bestimmt die Zugfolgezeit; UIC-406-Auslastung = Zugfolgezeit / Ziel-Zugfolgezeit." })}>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <MiniStat etiket={`${t({ tr: "Min headway (", en: "Min headway (", de: "Zugfolgezeit (" })}${kritikAd}${t({ tr: " blok)", en: " block)", de: " Block)" })}`} deger={sure(bt.minHeadway)} alt={`${t({ tr: "blok #", en: "block #", de: "Block #" })}${bt.kritikBlok}${bt.bloklar[bt.kritikBlok]?.makasBlok ? t({ tr: " (makas)", en: " (switch)", de: " (Weiche)" }) : ""}`} vurgu={kritikRenk} />
+          <MiniStat etiket={t({ tr: "Blok min headway (Sperrzeit)", en: "Block min headway (Sperrzeit)", de: "Block-Zugfolgezeit (Sperrzeit)" })} deger={sure(bt.minHeadway)} alt={`${kritikAd} · ${t({ tr: "blok #", en: "block #", de: "Block #" })}${bt.kritikBlok}${bt.bloklar[bt.kritikBlok]?.makasBlok ? t({ tr: " (makas)", en: " (switch)", de: " (Weiche)" }) : ""} · ${t({ tr: "bağlayan hMin ↓ Belirleyici Kısıt", en: "governing hMin ↓ Governing Constraint", de: "maßgebende hMin ↓ Maßg. Engpass" })}`} vurgu={kritikRenk} />
           <MiniStat etiket={t({ tr: "Teorik kapasite", en: "Theoretical capacity", de: "Theoretische Kapazität" })} deger={`${bt.teorikKapasite.toFixed(0)}/sa`} alt={t({ tr: "tren/saat üst sınır", en: "trains/hour upper bound", de: "Züge/Stunde Obergrenze" })} />
           <MiniStat etiket={t({ tr: "İşletme kapasitesi", en: "Operating capacity", de: "Betriebskapazität" })} deger={`${bt.pratikKapasite.toFixed(0)}/sa`} alt={`UIC 406 ${t({ tr: "%", en: "", de: "" })}${(bt.dolulukTavani * 100).toFixed(0)}${t({ tr: " tavan", en: "% cap", de: " % Obergrenze" })}`} vurgu={OK} />
           <MiniStat etiket={t({ tr: "UIC 406 doluluk", en: "UIC 406 utilization", de: "UIC 406 Auslastung" })} deger={`%${bt.dolulukHedef.toFixed(0)}`} alt={`${t({ tr: "hedef ", en: "target ", de: "Ziel " })}${bt.hedefHeadway} s`} vurgu={bt.dolulukHedef > 80 ? CK.red : bt.dolulukHedef > 60 ? CK.amber : OK} />

@@ -283,18 +283,14 @@ export function CografiAg({
     () => geoProjeksiyon.map((y) => ({ insaat: y.insaat, d: y.pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ") })),
     [geoProjeksiyon]
   );
-  const featureSimge = (f: HatOzellik, idx: number) => {
+  // Yalnız SİNYAL lambası çizer (çağrı tarafı f.kind==="sinyal" ile süzer). Makas/geçit
+  // bu katmanda DEĞİL — aşağıdaki hız-kısıt işaretinde km/h ile gösterilir (eski ölü
+  // makas/geçit dalları kaldırıldı).
+  const sinyalSimge = (f: HatOzellik, idx: number) => {
     const b = g.konum(f.pos);
-    const sr = gercekGeo ? snapRay(b.x, b.y) : null; // özellikler de raya otursun
+    const sr = gercekGeo ? snapRay(b.x, b.y) : null; // sinyal de raya otursun
     const p = sr ? { x: sr.x, y: sr.y } : b;
-    if (f.kind === "makas") {
-      return <rect key={`f${idx}`} x={p.x - 4} y={p.y - 4} width={8} height={8} transform={`rotate(45 ${p.x.toFixed(1)} ${p.y.toFixed(1)})`} fill={CK.gold} stroke="#fff" strokeWidth={1}><title>{f.ad}</title></rect>;
-    }
-    if (f.kind === "sinyal") {
-      return <circle key={`f${idx}`} cx={p.x} cy={p.y} r={3.4} fill={f.tersIsletme ? CK.orange : CK.good} stroke="#fff" strokeWidth={1}><title>{f.ad}</title></circle>;
-    }
-    // yaya / karayolu geçidi
-    return <g key={`f${idx}`} stroke={CK.red} strokeWidth={1.4} strokeLinecap="round"><line x1={p.x - 3} y1={p.y - 3} x2={p.x + 3} y2={p.y + 3} /><line x1={p.x + 3} y1={p.y - 3} x2={p.x - 3} y2={p.y + 3} /><title>{f.ad}</title></g>;
+    return <circle key={`f${idx}`} cx={p.x} cy={p.y} r={3.4} fill={f.tersIsletme ? CK.orange : CK.good} stroke="#fff" strokeWidth={1}><title>{f.ad}</title></circle>;
   };
 
   // ——— ZOOM / PAN ———
@@ -491,8 +487,8 @@ export function CografiAg({
             <path key={`bd${i}`} d={d} fill="none" stroke={CK.red} strokeWidth={5} strokeOpacity={0.32} strokeLinecap="round" />
           ))}
 
-          {/* Sinyal lambaları (makas/geçit artık aşağıdaki hız-kısıt işaretinde km/h ile). */}
-          {features.map((f, i) => (f.kind === "sinyal" ? featureSimge(f, i) : null))}
+          {/* Sinyal lambaları (makas/geçit aşağıdaki hız-kısıt işaretinde km/h ile). */}
+          {features.map((f, i) => (f.kind === "sinyal" ? sinyalSimge(f, i) : null))}
 
           {/* Ters işletme: kısa dönüş önerilen istasyon makasları ↺ (overlay) */}
           {tersGoster && tersMakaslar.map((m, i) => {
@@ -631,7 +627,7 @@ export function CografiAg({
         <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm" style={{ background: UP_COL }} /> {tt({ tr: "gidiş ▶", en: "outbound ▶", de: "Hinfahrt ▶" })}</span>
         <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm" style={{ background: DOWN }} /> {tt({ tr: "◀ dönüş", en: "◀ return", de: "◀ Rückfahrt" })}</span>
         <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full" style={{ background: CK.good }} /> {tt({ tr: "sinyal", en: "signal", de: "Signal" })}</span>
-        {hizKisitlari.length > 0 && <span className="flex items-center gap-1"><span className="inline-flex h-3 w-3 items-center justify-center rounded-full text-[0.55rem] font-bold" style={{ border: `1.4px solid ${CK.gold}`, color: CK.gold }}>◆</span> {tt({ tr: "hız sınırı km/h —", en: "speed limit km/h —", de: "Geschwindigkeit km/h —" })} <b>{tt({ tr: "tıkla → detay", en: "click → detail", de: "klicken → Detail" })}</b></span>}
+        {hizKisitlari.length > 0 && <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">{tt({ tr: "hız sınırı (km/h):", en: "speed limit (km/h):", de: "Geschwindigkeit (km/h):" })} <span style={{ color: CK.gold, fontWeight: 700 }}>◆ {tt({ tr: "makas", en: "switch", de: "Weiche" })}</span> <span style={{ color: CK.orange, fontWeight: 700 }}>✕ {tt({ tr: "hemzemin", en: "crossing", de: "Übergang" })}</span> <span style={{ color: CK.red, fontWeight: 700 }}>! {tt({ tr: "tehlike", en: "hazard", de: "Gefahr" })}</span> <span style={{ color: brand.muted, fontWeight: 700 }}>⤾ {tt({ tr: "kurp", en: "curve", de: "Kurve" })}</span> <b>{tt({ tr: "tıkla → detay", en: "click → detail", de: "klicken → Detail" })}</b></span>}
         <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5" style={{ background: brand.ink }} /> {tt({ tr: "parklanma", en: "parking", de: "Abstellung" })}</span>
         {gercekGeo && (
           <>

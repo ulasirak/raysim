@@ -358,18 +358,6 @@ export function Belgeler() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <button onClick={raporUret} disabled={!!mesgul || !hatTam}
-            className="rounded-md px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: brand.red }}>
-            {mesgul === "rapor" ? t({ tr: "Açılıyor…", en: "Opening…", de: "Wird geöffnet…" }) : `🖨 ${t({ tr: "PDF Rapor", en: "PDF Report", de: "PDF-Bericht" })} · ${toplamKredi} ${t({ tr: "kredi", en: "credits", de: "Credits" })}`}
-          </button>
-          {durum && (
-            <span className="text-sm" style={{ color: durum.tip === "err" ? brand.red : durum.tip === "ok" ? CK.good : brand.muted }}>
-              {durum.tip === "ok" ? "✓ " : durum.tip === "err" ? "⚠ " : ""}{durum.metin}
-            </span>
-          )}
-        </div>
-
         {/* Belge içeriği özeti — ekranda HER ZAMAN gerçek değerler (mod yok). */}
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <MiniStat etiket={t({ tr: "Durak arası hücre", en: "Inter-stop cell", de: "Streckenabschnitt" })} deger={`${ozet.ring}`} alt={`${ozet.makas} makas`} />
@@ -395,6 +383,19 @@ export function Belgeler() {
             </span>
           </label>
         )}
+        {/* ÜRET butonu EN SONA: kullanıcı önce bölüm seçimini + içerik özetini görür,
+            sonra kredi harcayıp üretir ("önce incele, sonra üret"). */}
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button onClick={raporUret} disabled={!!mesgul || !hatTam}
+            className="rounded-md px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: brand.red }}>
+            {mesgul === "rapor" ? t({ tr: "Açılıyor…", en: "Opening…", de: "Wird geöffnet…" }) : `🖨 ${t({ tr: "PDF Rapor", en: "PDF Report", de: "PDF-Bericht" })} · ${toplamKredi} ${t({ tr: "kredi", en: "credits", de: "Credits" })}`}
+          </button>
+          {durum && (
+            <span className="text-sm" style={{ color: durum.tip === "err" ? brand.red : durum.tip === "ok" ? CK.good : brand.muted }}>
+              {durum.tip === "ok" ? "✓ " : durum.tip === "err" ? "⚠ " : ""}{durum.metin}
+            </span>
+          )}
+        </div>
       </Panel>
 
       <footer className="mt-10 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>

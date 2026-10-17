@@ -258,15 +258,6 @@ export function Karsilastirma() {
             </div>
           )}
 
-          {/* PDF butonu */}
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <button onClick={pdfUret} disabled={pdfMesgul}
-              className="rounded-md px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: brand.red }}>
-              {pdfMesgul ? t({ tr: "Açılıyor…", en: "Opening…", de: "Wird geöffnet…" }) : t({ tr: "🖨 PDF Karşılaştırma Raporu", en: "🖨 PDF Comparison Report", de: "🖨 PDF-Vergleichsbericht" })}
-            </button>
-            {pdfDurum && <span className="text-sm" style={{ color: pdfDurum.tip === "err" ? brand.red : CK.good }}>{pdfDurum.tip === "ok" ? "✓ " : "⚠ "}{pdfDurum.metin}</span>}
-          </div>
-
           {/* Öneri özeti */}
           {oneri && (
             <div className="mt-6 rounded-lg border p-4" style={{ borderColor: brand.ink, background: "#F7F9FA" }}>
@@ -327,6 +318,15 @@ export function Karsilastirma() {
             <CubukKart baslik={t({ tr: "Teorik maks tramvay", en: "Theoretical max trams", de: "Theoretisch max. Straßenbahnen" })} ms={metrikler} al={(m) => m.nTeorik} renk={CK.blue} />
             <CubukKart baslik={t({ tr: "İşletme kapasitesi (tren/sa)", en: "Operating capacity (trains/h)", de: "Betriebskapazität (Züge/h)" })} ms={metrikler} al={(m) => m.isletmeKap} renk={CK.good} />
             <CubukKart baslik={t({ tr: "Gereken filo (talep)", en: "Required fleet (demand)", de: "Benötigte Flotte (Nachfrage)" })} ms={metrikler} al={(m) => m.gerekenFilo} renk={CK.orange} />
+          </div>
+
+          {/* PDF butonu EN SONDA: önce öneri/tablo/çubuklar incelenir, sonra dışa aktarılır. */}
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <button onClick={pdfUret} disabled={pdfMesgul}
+              className="rounded-md px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50" style={{ background: brand.red }}>
+              {pdfMesgul ? t({ tr: "Açılıyor…", en: "Opening…", de: "Wird geöffnet…" }) : t({ tr: "🖨 PDF Karşılaştırma Raporu", en: "🖨 PDF Comparison Report", de: "🖨 PDF-Vergleichsbericht" })}
+            </button>
+            {pdfDurum && <span className="text-sm" style={{ color: pdfDurum.tip === "err" ? brand.red : CK.good }}>{pdfDurum.tip === "ok" ? "✓ " : "⚠ "}{pdfDurum.metin}</span>}
           </div>
         </>
       )}

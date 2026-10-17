@@ -39,19 +39,21 @@ export const BOLUM_SLUG = [
 export type BolumSlug = (typeof BOLUM_SLUG)[number];
 
 /** Faz başlığı olan bölümler yeni bir boru-hattı aşaması açar (KUR/ANALİZ/BELGELE). */
-const BOLUMLER: { slug: BolumSlug; el: React.ReactNode; faz?: { ad: string; not: string } }[] = [
-  { slug: "ringler", el: <RingEditor />, faz: { ad: "KUR", not: "Hattı ve makas bölgelerini tanımla — buradaki her veri kalıcıdır." } },
-  { slug: "sefer", el: <Studio />, faz: { ad: "ANALİZ ET", not: "Kurduğun hattı simüle et — canlı ağ, ters işletme, tarife, kapasite ve darboğazlar." } },
-  { slug: "sistem", el: <SistemMerkezi />, faz: { ad: "İNCELE", not: "Kapasite, darboğaz, motor doğruluğu ve filo kararını derinlemesine incele." } },
-  { slug: "belgeler", el: <Belgeler />, faz: { ad: "BELGELE", not: "Analizden profesyonel tasarım dokümantasyonu üret." } },
-  { slug: "karsilastirma", el: <Karsilastirma />, faz: { ad: "KARŞILAŞTIR", not: "Senaryoları/projeleri yan yana koy — objektif karar desteği." } },
+const BOLUMLER: { slug: BolumSlug; el: React.ReactNode; faz?: { ad: string; modul: string; not: string } }[] = [
+  { slug: "ringler", el: <RingEditor />, faz: { ad: "KUR", modul: "Durak Arası Ringler", not: "Hattı ve makas bölgelerini tanımla — buradaki her veri kalıcıdır." } },
+  { slug: "sefer", el: <Studio />, faz: { ad: "ANALİZ ET", modul: "Sefer Simülasyonu", not: "Kurduğun hattı simüle et — canlı ağ, ters işletme, tarife, kapasite ve darboğazlar." } },
+  { slug: "sistem", el: <SistemMerkezi />, faz: { ad: "İNCELE", modul: "Sistem Merkezi", not: "Kapasite, darboğaz, motor doğruluğu ve filo kararını derinlemesine incele." } },
+  { slug: "belgeler", el: <Belgeler />, faz: { ad: "BELGELE", modul: "Teknik Belgeler", not: "Analizden profesyonel tasarım dokümantasyonu üret." } },
+  { slug: "karsilastirma", el: <Karsilastirma />, faz: { ad: "KARŞILAŞTIR", modul: "Karşılaştırma", not: "Senaryoları/projeleri yan yana koy — objektif karar desteği." } },
 ];
 
-function FazBasligi({ ad, not }: { ad: string; not: string }) {
+function FazBasligi({ ad, modul, not }: { ad: string; modul: string; not: string }) {
   return (
     <div className="mx-auto max-w-6xl px-6 pt-12">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b pb-2" style={{ borderColor: brand.borderStrong }}>
         <span className="font-brand text-sm font-bold tracking-[0.22em]" style={{ color: brand.red }}>{ad}</span>
+        {/* Nav istasyon adıyla hizalı — "ANALİZ ET" ↔ "Sefer Simülasyonu" göz eşleşmesi */}
+        <span className="font-brand text-sm font-semibold" style={{ color: brand.ink }}>{modul}</span>
         <span className="text-xs" style={{ color: brand.muted }}>{not}</span>
       </div>
     </div>
@@ -64,7 +66,7 @@ export function TekSayfa() {
       <div>
         {BOLUMLER.map((b, i) => (
           <div key={b.slug}>
-            {b.faz && <FazBasligi ad={b.faz.ad} not={b.faz.not} />}
+            {b.faz && <FazBasligi ad={b.faz.ad} modul={b.faz.modul} not={b.faz.not} />}
             <section
               id={b.slug}
               // scroll-mt: sticky nav yüksekliği kadar tepe payı, ankora kayınca

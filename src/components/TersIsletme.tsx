@@ -203,9 +203,9 @@ export function TersIsletme() {
             <span style={{ color: brand.muted }}>{t({ tr: "Etkileyen girdiler →", en: "Influencing inputs →", de: "Einflussgrößen →" })}</span>
             <button type="button" onClick={acGirdi} className="rounded border px-2 py-0.5 font-medium" style={{ borderColor: brand.border, color: brand.ink }}
               title={t({ tr: "Durak yolcu talebi + araç kapasitesi + doluluk hedefi (bu sayfada)", en: "Station passenger demand + vehicle capacity + occupancy target (on this page)", de: "Fahrgastnachfrage der Haltestelle + Fahrzeugkapazität + Auslastungsziel (auf dieser Seite)" })}>{t({ tr: "📊 Talep · kapasite · doluluk", en: "📊 Demand · capacity · occupancy", de: "📊 Nachfrage · Kapazität · Auslastung" })}</button>
-            <Link href="/ringler" className="rounded border px-2 py-0.5 font-medium" style={{ borderColor: brand.border, color: brand.ink }}
+            <Link href="/#ringler" className="rounded border px-2 py-0.5 font-medium" style={{ borderColor: brand.border, color: brand.ink }}
               title={t({ tr: "Kurplar (çevrimi ve konforu etkiler) + sahasal hız — Ringler", en: "Curves (affect cycle and comfort) + field speed — Rings", de: "Kurven (beeinflussen Umlauf und Komfort) + Feldgeschwindigkeit — Ringe" })}>{t({ tr: "🛤 Kurplar & hız", en: "🛤 Curves & speed", de: "🛤 Kurven & Geschwindigkeit" })}</Link>
-            <Link href="/sistem" className="rounded border px-2 py-0.5 font-medium" style={{ borderColor: brand.border, color: brand.ink }}
+            <Link href="/#sistem" className="rounded border px-2 py-0.5 font-medium" style={{ borderColor: brand.border, color: brand.ink }}
               title={t({ tr: "Hedef sefer aralığı (headway) + yanal ivme/konfor tavanı + ivme/fren — Sistem Merkezi", en: "Target headway + lateral acceleration/comfort ceiling + acceleration/braking — System Center", de: "Ziel-Zugfolgezeit + Querbeschleunigung/Komfortgrenze + Beschleunigung/Bremsung — Systemzentrum" })}>{t({ tr: "⚙ Hedef aralık · konfor", en: "⚙ Target headway · comfort", de: "⚙ Ziel-Zugfolgezeit · Komfort" })}</Link>
           </div>
         </div>

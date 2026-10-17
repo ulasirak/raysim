@@ -198,7 +198,7 @@ export function EkleFormu({ tur, konum: konum0, uzunluk, konumSuresi, sureKonumu
             <Num label={t({ tr: "Geçiş hızı", en: "Transit speed", de: "Durchfahrgeschwindigkeit" })} suffix="km/h" step={1} value={gecisHizi} onChange={setGecisHizi} />
             <Num label={t({ tr: "Makas sayısı", en: "Switch count", de: "Weichenanzahl" })} suffix="ad" step={1} value={makasSayisi} onChange={(v) => setMakasSayisi(Math.max(1, Math.round(v)))} />
             <label className="block">
-              <span className="field-label">{t({ tr: "Makas tipi", en: "Switch type", de: "Weichentyp" })}</span>
+              <span className="field-label">{t({ tr: "Makas geometrisi (S/X)", en: "Switch geometry (S/X)", de: "Weichengeometrie (S/X)" })}</span>
               <div className="mt-1 flex gap-1">
                 {([["s", t({ tr: "S-makas", en: "S switch", de: "S-Weiche" })], ["x", t({ tr: "X-makas", en: "X switch", de: "X-Weiche" })]] as const).map(([cv, ad]) => (
                   <button key={cv} type="button" onClick={() => setCrossover(cv)}

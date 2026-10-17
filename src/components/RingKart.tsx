@@ -158,7 +158,7 @@ export function RingKart(p: KartProps) {
             <div>
               <SubBaslik>{t({ tr: "Senaryo Çıktısı", en: "Scenario Output", de: "Szenario-Ausgabe" })}</SubBaslik>
               <div className="grid grid-cols-2 gap-2">
-                <MiniStat etiket={t({ tr: "Worst seyir", en: "Worst run", de: "Worst-Fahrt" })} deger={sure(sen.worstSeyir)} alt={t({ tr: "1500 m + kısıtlar", en: "1500 m + constraints", de: "1500 m + Einschränkungen" })} />
+                <MiniStat etiket={t({ tr: "Worst seyir", en: "Worst run", de: "Worst-Fahrt" })} deger={sure(sen.worstSeyir)} alt={`${Math.round(ring.worstUzunluk)} m + ${t({ tr: "kısıtlar", en: "constraints", de: "Einschränkungen" })}`} />
                 <MiniStat etiket={t({ tr: "Best seyir", en: "Best run", de: "Best-Fahrt" })} deger={sure(sen.bestSeyir)} alt={t({ tr: "yakın mesafe", en: "short distance", de: "kurze Entfernung" })} />
                 <MiniStat etiket={t({ tr: "Makas/route ek", en: "Switch/route add-on", de: "Weichen-/Routenzuschlag" })} deger={`${sen.timingEk.toFixed(0)} s`} alt={t({ tr: "tanzim + release", en: "setting + release", de: "Stellen + Release" })} />
                 <MiniStat etiket={t({ tr: "Worst toplam", en: "Worst total", de: "Worst-Summe" })} deger={sure(sen.worstToplam)} alt={t({ tr: "+ bekleme", en: "+ dwell", de: "+ Haltezeit" })} vurgu={sen.headwayUygun ? OK : brand.red} />
@@ -364,7 +364,7 @@ export function RingKart(p: KartProps) {
                   <li><b>Kurptan çıkışta hızlanma</b> = <b>Kalkış ivme tavanı (a)</b> + aracın çekiş/güç/kütlesi. Daha hızlı kalkış için aracın çekişini artır.</li>
                 </ol>
                 <div className="mt-1.5 flex flex-wrap gap-2">
-                  <Link href="/sistem" className="rounded px-2 py-1 font-semibold text-white" style={{ background: brand.ink }}>{t({ tr: "→ Sistem Merkezi (a / b ayarı)", en: "→ System Center (a / b setting)", de: "→ Systemzentrale (a-/b-Einstellung)" })}</Link>
+                  <Link href="/#sistem" className="rounded px-2 py-1 font-semibold text-white" style={{ background: brand.ink }}>{t({ tr: "→ Sistem Merkezi (a / b ayarı)", en: "→ System Center (a / b setting)", de: "→ Systemzentrale (a-/b-Einstellung)" })}</Link>
                   <span style={{ color: brand.muted }}>{t({ tr: "Araç çekişi/gücü: Studio → ", en: "Vehicle traction/power: Studio → ", de: "Fahrzeug-Traktion/-Leistung: Studio → " })}<b>{t({ tr: "Çeken Araç", en: "Traction Unit", de: "Triebfahrzeug" })}</b>.</span>
                 </div>
               </div>
