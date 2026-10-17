@@ -313,129 +313,8 @@ export function RingEditor() {
         <HatIceAktar onIceAktar={iceAktarUygula} mevcutSonKoord={mevcutSonKoord} disabled={!yazilabilir} mesgulDis={iceMesgul} />
       )}
 
-      {/* ŞUBE / TALİ HAT EDİTÖRÜ (dallanma, #1) — ana hattan ayrılan tali hatlar */}
-      {!yukleniyor && rings.length > 0 && <SubeEditor />}
-
-      {/* railML DIŞA AKTARMA — hattı endüstri-standart railML 2.x XML olarak indir
-          (OpenTrack/RailSys köprüsü). */}
-      {!yukleniyor && rings.length > 0 && (
-        <details className="mt-4 rounded-lg border bg-white" style={{ borderColor: brand.border }}>
-          <summary className="flex cursor-pointer select-none items-center gap-2 p-4">
-            <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
-            <span className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{t({ tr: "Dışa Aktar", en: "Export", de: "Export" })}</span>
-            <span className="ml-2 text-xs" style={{ color: brand.muted }}>{t({ tr: "railML 2.2 (altyapı + araç + çizelge) · GTFS (çift yön + servis)", en: "railML 2.2 (infrastructure + rolling stock + timetable) · GTFS (both directions + service)", de: "railML 2.2 (Infrastruktur + Fahrzeuge + Fahrplan) · GTFS (beide Richtungen + Betrieb)" })}</span>
-          </summary>
-          <div className="border-t px-4 pb-4 pt-3" style={{ borderColor: brand.border }}>
-            <p className="mb-3 text-xs" style={{ color: brand.muted }}>
-              Hattı standart formatlara indir. <b>railML 2.2</b> = altyapı (istasyon · kilometraj · <b>makas · sinyal · eğim</b>) + <b>araç (rollingstock)</b> + <b>çizelge (timetable, çift yön)</b> → OpenTrack/RailSys köprüsü. <b>GTFS</b> = duraklar + <b>çift yön çizelge</b> + <b>frequencies (servis penceresi)</b> + shapes (transit araçları).
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <button type="button"
-                onClick={() => {
-                  const hhmm = (s?: string) => { const m = /^(\d{1,2}):(\d{2})$/.exec(s ?? ""); return m ? (+m[1]) * 3600 + (+m[2]) * 60 : undefined; };
-                  const xml = railmlIhrac(rings, meta.hatAdi || "RaySim hattı", {
-                    stock, cfg, headwaySn: cfg.headway,
-                    servisBasSn: hhmm(isletme.servisBas), servisBitSn: hhmm(isletme.servisBit),
-                    subeler, // tali hatlar ayrı <track> olarak eklenir (durak/geometri kaybı yok)
-                  });
-                  const ad = (meta.hatAdi || "raysim-hat").trim().replace(/[^\w.-]+/g, "_") || "raysim-hat";
-                  indir(new Blob([xml], { type: "application/xml" }), `${ad}.railml.xml`);
-                }}
-                className="rounded-md px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: brand.ink }}>
-                {t({ tr: "⬆ railML (.xml)", en: "⬆ railML (.xml)", de: "⬆ railML (.xml)" })}
-              </button>
-              <button type="button" disabled={!gtfsKoordVar}
-                title={gtfsKoordVar ? t({ tr: "GTFS .zip indir (duraklar + RaySim çizelgesi)", en: "Download GTFS .zip (stops + RaySim timetable)", de: "GTFS-.zip herunterladen (Haltestellen + RaySim-Fahrplan)" }) : t({ tr: "GTFS için durak koordinatı (lat/lon) gerekli — hattı GTFS'ten içe aktarın", en: "Stop coordinates (lat/lon) required for GTFS — import the line from GTFS", de: "Für GTFS sind Haltestellenkoordinaten (lat/lon) erforderlich — Strecke aus GTFS importieren" })}
-                onClick={() => {
-                  const kmap = isletme.istasyonKoordinat ?? {};
-                  const dz: GtfsDurakZaman[] = [];
-                  let t = 0;
-                  for (let i = 0; i < duraklar.length; i++) {
-                    const k = kmap[duraklar[i].ad];
-                    if (!k || !Number.isFinite(k.lat) || !Number.isFinite(k.lon)) return; // eksik koordinat → GTFS geçersiz (buton zaten kapalı)
-                    const dwell = i === 0 ? 0 : Math.max(0, rings[i - 1]?.dwell ?? 0);
-                    const varis = t;
-                    const kalkis = varis + dwell;
-                    dz.push({ id: `S${i}`, ad: duraklar[i].ad, lat: k.lat, lon: k.lon, varisSn: varis, kalkisSn: kalkis });
-                    if (i < rings.length) t = kalkis + ringSenaryo(rings[i], stock, cfg).nominalSeyir;
-                  }
-                  // Tali hatlar: her şubenin durakları (kavşak kökü HARİÇ ana hatla paylaşılır).
-                  // Koordinatı tam olan şubeler GTFS rotası olur; eksik olansa atlanır (trunk iner).
-                  const trunkIdByAd = new Map(duraklar.map((d, i) => [d.ad, `S${i}`]));
-                  const subeGtfs = subeler.map((s, bi) => {
-                    const bDur = ringDuraklari(s.rings); // [0] = kavşak kökü
-                    if (bDur.length < 2) return null;
-                    const dzs: GtfsDurakZaman[] = [];
-                    let tb = 0;
-                    for (let i = 0; i < bDur.length; i++) {
-                      const k = kmap[bDur[i].ad];
-                      if (!k || !Number.isFinite(k.lat) || !Number.isFinite(k.lon)) return null; // eksik koordinat → şube atlanır
-                      const dwell = i === 0 ? 0 : Math.max(0, s.rings[i - 1]?.dwell ?? 0);
-                      const varis = tb;
-                      const kalkis = varis + dwell;
-                      const id = i === 0 ? (trunkIdByAd.get(bDur[i].ad) ?? `Sb${bi}_0`) : `Sb${bi}_${i}`;
-                      dzs.push({ id, ad: bDur[i].ad, lat: k.lat, lon: k.lon, varisSn: varis, kalkisSn: kalkis });
-                      if (i < s.rings.length) tb = kalkis + ringSenaryo(s.rings[i], stock, cfg).nominalSeyir;
-                    }
-                    return { ad: s.ad || `Şube ${bi + 1}`, duraklar: dzs, headwaySn: cfg.headway };
-                  }).filter((x): x is { ad: string; duraklar: GtfsDurakZaman[]; headwaySn: number } => x !== null);
-                  const hhmm = (s?: string) => { const m = /^(\d{1,2}):(\d{2})$/.exec(s ?? ""); return m ? (+m[1]) * 3600 + (+m[2]) * 60 : undefined; };
-                  const zip = gtfsIhrac({
-                    hatAdi: meta.hatAdi || "RaySim hattı",
-                    agency: meta.idare || meta.sinyalizasyonFirmasi || "RaySim",
-                    duraklar: dz,
-                    headwaySn: cfg.headway,
-                    baslangicSn: hhmm(isletme.servisBas),
-                    bitisSn: hhmm(isletme.servisBit),
-                    subeler: subeGtfs,
-                  });
-                  const ad = (meta.hatAdi || "raysim-hat").trim().replace(/[^\w.-]+/g, "_") || "raysim-hat";
-                  indir(new Blob([new Uint8Array(zip)], { type: "application/zip" }), `${ad}.gtfs.zip`);
-                }}
-                className="rounded-md border px-4 py-2 text-sm font-semibold transition enabled:hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45"
-                style={{ borderColor: brand.borderStrong, color: brand.ink }}>
-                {t({ tr: "⬆ GTFS (.zip)", en: "⬆ GTFS (.zip)", de: "⬆ GTFS (.zip)" })}
-              </button>
-            </div>
-            {subeler.length > 0 && (
-              <p className="mt-2 rounded border-l-2 px-2 py-1 text-[0.7rem]" style={{ borderColor: brand.red, background: CK.badBgSoft, color: brand.inkSoft }}>
-                ◆ {subeler.length} {t({ tr: "tali hat da dışa aktarılır", en: "branch line(s) are also exported", de: "Abzweigung(en) werden ebenfalls exportiert" })}: <b>railML</b> {t({ tr: "her şubeyi ayrı <track> olarak (kavşak ocp'sinde ayrılır) yazar — durak ve geometri kaybı yok. ", en: "writes each branch as a separate <track> (diverging at the junction ocp) — no loss of stops or geometry. ", de: "schreibt jede Abzweigung als separaten <track> (Abzweig am Knoten-ocp) — kein Verlust von Haltestellen oder Geometrie. " })}<b>GTFS</b> {t({ tr: "her şubeyi ayrı route + çift yön sefer yapar (koordinatı tam olan şubeler).", en: "makes each branch a separate route + both-way service (branches with complete coordinates).", de: "macht jede Abzweigung zu einer eigenen Route + Betrieb in beide Richtungen (Abzweigungen mit vollständigen Koordinaten)." })}
-              </p>
-            )}
-            {!gtfsKoordVar && (
-              <p className="mt-2 text-[0.7rem]" style={{ color: brand.muted }}>
-                {t({ tr: "GTFS için durakların ", en: "For GTFS, the stops need their ", de: "Für GTFS benötigen die Haltestellen ihre " })}<b>{t({ tr: "coğrafi koordinatı (lat/lon)", en: "geographic coordinates (lat/lon)", de: "geografischen Koordinaten (lat/lon)" })}</b>{t({ tr: " gerekir — GTFS'ten içe aktarınca otomatik gelir, ya da ", en: " — they come automatically when importing from GTFS, or ", de: " — sie kommen automatisch beim Import aus GTFS, oder " })}<b>{t({ tr: "aşağıdan elle gir", en: "enter them manually below", de: "unten manuell eingeben" })}</b>{t({ tr: ". railML her hatta çalışır.", en: ". railML works for every line.", de: ". railML funktioniert für jede Strecke." })}
-              </p>
-            )}
-
-            {/* ELLE KOORDİNAT — her durağa WGS84 lat/lon gir → GTFS herhangi bir hatta açılır.
-                (Shapefile/DXF projeksiyonlu koordinat WGS84'e çevrilmez — CRS/proj4 gerekir;
-                elle giriş her durumda çalışan güvenli yoldur.) */}
-            {yazilabilir && duraklar.length > 0 && (
-              <details className="mt-3 rounded border" style={{ borderColor: brand.border }}>
-                <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium" style={{ color: brand.ink }}>
-                  {t({ tr: "İstasyon koordinatları (GTFS için) — ", en: "Station coordinates (for GTFS) — ", de: "Stationskoordinaten (für GTFS) — " })}<span style={{ color: koordSayisi === duraklar.length ? "#16794C" : CK.amberInk }}>{koordSayisi}/{duraklar.length}</span> {t({ tr: "girildi", en: "entered", de: "eingegeben" })}
-                </summary>
-                <div className="max-h-64 overflow-auto border-t px-3 py-2" style={{ borderColor: brand.border }}>
-                  <p className="mb-2 text-[0.68rem]" style={{ color: brand.muted }}>{t({ tr: "Enlem/boylam (WGS84, ondalık derece). Tümü dolunca GTFS indirilebilir. ", en: "Latitude/longitude (WGS84, decimal degrees). Once all are filled, GTFS can be downloaded. ", de: "Breite/Länge (WGS84, Dezimalgrad). Sobald alle ausgefüllt sind, kann GTFS heruntergeladen werden. " })}<b>{t({ tr: "İpucu:", en: "Tip:", de: "Tipp:" })}</b>{t({ tr: " Google Maps'te durağa sağ tık → koordinat çiftini kopyala.", en: " In Google Maps, right-click the stop → copy the coordinate pair.", de: " In Google Maps mit Rechtsklick auf die Haltestelle → das Koordinatenpaar kopieren." })}</p>
-                  {duraklar.map((d, i) => {
-                    const k = isletme.istasyonKoordinat?.[d.ad];
-                    return (
-                      <div key={i} className="flex items-center gap-2 py-0.5 text-xs">
-                        <span className="w-40 shrink-0 truncate" title={d.ad} style={{ color: brand.inkSoft }}>{i + 1}. {d.ad}</span>
-                        <input type="number" step="0.000001" placeholder={t({ tr: "enlem", en: "latitude", de: "Breite" })} value={k && Number.isFinite(k.lat) ? k.lat : ""} onChange={(e) => koordGuncelle(d.ad, "lat", parseFloat(e.target.value))}
-                          className="w-28 rounded border px-1.5 py-0.5" style={{ borderColor: brand.border, color: brand.ink }} />
-                        <input type="number" step="0.000001" placeholder={t({ tr: "boylam", en: "longitude", de: "Länge" })} value={k && Number.isFinite(k.lon) ? k.lon : ""} onChange={(e) => koordGuncelle(d.ad, "lon", parseFloat(e.target.value))}
-                          className="w-28 rounded border px-1.5 py-0.5" style={{ borderColor: brand.border, color: brand.ink }} />
-                      </div>
-                    );
-                  })}
-                </div>
-              </details>
-            )}
-          </div>
-        </details>
-      )}
+      {/* ŞUBELER ve DIŞA AKTAR aşağıya taşındı — önce hattı kur (Duraklar + ring kartları),
+          sonra şube ekle (ring kartlarının altında), en sonda dışa aktar (çıktı adımı). */}
 
       {/* DURAKLAR & MESAFELER — hattın GİRİŞ NOKTASI. Boş hatta da görünür: müşteri
           önce buradan durak/mesafe/hız girer, ring hücreleri buradan doğar. Detaylı
@@ -711,6 +590,10 @@ export function RingEditor() {
         ))}
       </div>
 
+      {/* ŞUBE / TALİ HAT EDİTÖRÜ (dallanma, #1) — ana hattan ayrılan tali hatlar.
+          Ring kartlarının hemen altında (ayrıldığı hat yapısına bitişik). */}
+      {!yukleniyor && rings.length > 0 && <SubeEditor />}
+
       {/* Ring ekleme artık ÜSTTEKİ "Duraklar & Mesafeler" panelinden (durak zinciri) —
           tek ekleme yeri, çift buton karmaşası yok. */}
 
@@ -906,6 +789,126 @@ export function RingEditor() {
             </div>
           </Panel>
         </div>
+      )}
+
+      {/* railML / GTFS DIŞA AKTARMA — EN ALTTA (çıktı adımı): önce hat kurulur, en son dışa aktarılır. */}
+      {!yukleniyor && rings.length > 0 && (
+        <details className="mt-4 rounded-lg border bg-white" style={{ borderColor: brand.border }}>
+          <summary className="flex cursor-pointer select-none items-center gap-2 p-4">
+            <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
+            <span className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{t({ tr: "Dışa Aktar", en: "Export", de: "Export" })}</span>
+            <span className="ml-2 text-xs" style={{ color: brand.muted }}>{t({ tr: "railML 2.2 (altyapı + araç + çizelge) · GTFS (çift yön + servis)", en: "railML 2.2 (infrastructure + rolling stock + timetable) · GTFS (both directions + service)", de: "railML 2.2 (Infrastruktur + Fahrzeuge + Fahrplan) · GTFS (beide Richtungen + Betrieb)" })}</span>
+          </summary>
+          <div className="border-t px-4 pb-4 pt-3" style={{ borderColor: brand.border }}>
+            <p className="mb-3 text-xs" style={{ color: brand.muted }}>
+              Hattı standart formatlara indir. <b>railML 2.2</b> = altyapı (istasyon · kilometraj · <b>makas · sinyal · eğim</b>) + <b>araç (rollingstock)</b> + <b>çizelge (timetable, çift yön)</b> → OpenTrack/RailSys köprüsü. <b>GTFS</b> = duraklar + <b>çift yön çizelge</b> + <b>frequencies (servis penceresi)</b> + shapes (transit araçları).
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button"
+                onClick={() => {
+                  const hhmm = (s?: string) => { const m = /^(\d{1,2}):(\d{2})$/.exec(s ?? ""); return m ? (+m[1]) * 3600 + (+m[2]) * 60 : undefined; };
+                  const xml = railmlIhrac(rings, meta.hatAdi || "RaySim hattı", {
+                    stock, cfg, headwaySn: cfg.headway,
+                    servisBasSn: hhmm(isletme.servisBas), servisBitSn: hhmm(isletme.servisBit),
+                    subeler, // tali hatlar ayrı <track> olarak eklenir (durak/geometri kaybı yok)
+                  });
+                  const ad = (meta.hatAdi || "raysim-hat").trim().replace(/[^\w.-]+/g, "_") || "raysim-hat";
+                  indir(new Blob([xml], { type: "application/xml" }), `${ad}.railml.xml`);
+                }}
+                className="rounded-md px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: brand.ink }}>
+                {t({ tr: "⬆ railML (.xml)", en: "⬆ railML (.xml)", de: "⬆ railML (.xml)" })}
+              </button>
+              <button type="button" disabled={!gtfsKoordVar}
+                title={gtfsKoordVar ? t({ tr: "GTFS .zip indir (duraklar + RaySim çizelgesi)", en: "Download GTFS .zip (stops + RaySim timetable)", de: "GTFS-.zip herunterladen (Haltestellen + RaySim-Fahrplan)" }) : t({ tr: "GTFS için durak koordinatı (lat/lon) gerekli — hattı GTFS'ten içe aktarın", en: "Stop coordinates (lat/lon) required for GTFS — import the line from GTFS", de: "Für GTFS sind Haltestellenkoordinaten (lat/lon) erforderlich — Strecke aus GTFS importieren" })}
+                onClick={() => {
+                  const kmap = isletme.istasyonKoordinat ?? {};
+                  const dz: GtfsDurakZaman[] = [];
+                  let t = 0;
+                  for (let i = 0; i < duraklar.length; i++) {
+                    const k = kmap[duraklar[i].ad];
+                    if (!k || !Number.isFinite(k.lat) || !Number.isFinite(k.lon)) return; // eksik koordinat → GTFS geçersiz (buton zaten kapalı)
+                    const dwell = i === 0 ? 0 : Math.max(0, rings[i - 1]?.dwell ?? 0);
+                    const varis = t;
+                    const kalkis = varis + dwell;
+                    dz.push({ id: `S${i}`, ad: duraklar[i].ad, lat: k.lat, lon: k.lon, varisSn: varis, kalkisSn: kalkis });
+                    if (i < rings.length) t = kalkis + ringSenaryo(rings[i], stock, cfg).nominalSeyir;
+                  }
+                  // Tali hatlar: her şubenin durakları (kavşak kökü HARİÇ ana hatla paylaşılır).
+                  // Koordinatı tam olan şubeler GTFS rotası olur; eksik olansa atlanır (trunk iner).
+                  const trunkIdByAd = new Map(duraklar.map((d, i) => [d.ad, `S${i}`]));
+                  const subeGtfs = subeler.map((s, bi) => {
+                    const bDur = ringDuraklari(s.rings); // [0] = kavşak kökü
+                    if (bDur.length < 2) return null;
+                    const dzs: GtfsDurakZaman[] = [];
+                    let tb = 0;
+                    for (let i = 0; i < bDur.length; i++) {
+                      const k = kmap[bDur[i].ad];
+                      if (!k || !Number.isFinite(k.lat) || !Number.isFinite(k.lon)) return null; // eksik koordinat → şube atlanır
+                      const dwell = i === 0 ? 0 : Math.max(0, s.rings[i - 1]?.dwell ?? 0);
+                      const varis = tb;
+                      const kalkis = varis + dwell;
+                      const id = i === 0 ? (trunkIdByAd.get(bDur[i].ad) ?? `Sb${bi}_0`) : `Sb${bi}_${i}`;
+                      dzs.push({ id, ad: bDur[i].ad, lat: k.lat, lon: k.lon, varisSn: varis, kalkisSn: kalkis });
+                      if (i < s.rings.length) tb = kalkis + ringSenaryo(s.rings[i], stock, cfg).nominalSeyir;
+                    }
+                    return { ad: s.ad || `Şube ${bi + 1}`, duraklar: dzs, headwaySn: cfg.headway };
+                  }).filter((x): x is { ad: string; duraklar: GtfsDurakZaman[]; headwaySn: number } => x !== null);
+                  const hhmm = (s?: string) => { const m = /^(\d{1,2}):(\d{2})$/.exec(s ?? ""); return m ? (+m[1]) * 3600 + (+m[2]) * 60 : undefined; };
+                  const zip = gtfsIhrac({
+                    hatAdi: meta.hatAdi || "RaySim hattı",
+                    agency: meta.idare || meta.sinyalizasyonFirmasi || "RaySim",
+                    duraklar: dz,
+                    headwaySn: cfg.headway,
+                    baslangicSn: hhmm(isletme.servisBas),
+                    bitisSn: hhmm(isletme.servisBit),
+                    subeler: subeGtfs,
+                  });
+                  const ad = (meta.hatAdi || "raysim-hat").trim().replace(/[^\w.-]+/g, "_") || "raysim-hat";
+                  indir(new Blob([new Uint8Array(zip)], { type: "application/zip" }), `${ad}.gtfs.zip`);
+                }}
+                className="rounded-md border px-4 py-2 text-sm font-semibold transition enabled:hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45"
+                style={{ borderColor: brand.borderStrong, color: brand.ink }}>
+                {t({ tr: "⬆ GTFS (.zip)", en: "⬆ GTFS (.zip)", de: "⬆ GTFS (.zip)" })}
+              </button>
+            </div>
+            {subeler.length > 0 && (
+              <p className="mt-2 rounded border-l-2 px-2 py-1 text-[0.7rem]" style={{ borderColor: brand.red, background: CK.badBgSoft, color: brand.inkSoft }}>
+                ◆ {subeler.length} {t({ tr: "tali hat da dışa aktarılır", en: "branch line(s) are also exported", de: "Abzweigung(en) werden ebenfalls exportiert" })}: <b>railML</b> {t({ tr: "her şubeyi ayrı <track> olarak (kavşak ocp'sinde ayrılır) yazar — durak ve geometri kaybı yok. ", en: "writes each branch as a separate <track> (diverging at the junction ocp) — no loss of stops or geometry. ", de: "schreibt jede Abzweigung als separaten <track> (Abzweig am Knoten-ocp) — kein Verlust von Haltestellen oder Geometrie. " })}<b>GTFS</b> {t({ tr: "her şubeyi ayrı route + çift yön sefer yapar (koordinatı tam olan şubeler).", en: "makes each branch a separate route + both-way service (branches with complete coordinates).", de: "macht jede Abzweigung zu einer eigenen Route + Betrieb in beide Richtungen (Abzweigungen mit vollständigen Koordinaten)." })}
+              </p>
+            )}
+            {!gtfsKoordVar && (
+              <p className="mt-2 text-[0.7rem]" style={{ color: brand.muted }}>
+                {t({ tr: "GTFS için durakların ", en: "For GTFS, the stops need their ", de: "Für GTFS benötigen die Haltestellen ihre " })}<b>{t({ tr: "coğrafi koordinatı (lat/lon)", en: "geographic coordinates (lat/lon)", de: "geografischen Koordinaten (lat/lon)" })}</b>{t({ tr: " gerekir — GTFS'ten içe aktarınca otomatik gelir, ya da ", en: " — they come automatically when importing from GTFS, or ", de: " — sie kommen automatisch beim Import aus GTFS, oder " })}<b>{t({ tr: "aşağıdan elle gir", en: "enter them manually below", de: "unten manuell eingeben" })}</b>{t({ tr: ". railML her hatta çalışır.", en: ". railML works for every line.", de: ". railML funktioniert für jede Strecke." })}
+              </p>
+            )}
+
+            {/* ELLE KOORDİNAT — her durağa WGS84 lat/lon gir → GTFS herhangi bir hatta açılır.
+                (Shapefile/DXF projeksiyonlu koordinat WGS84'e çevrilmez — CRS/proj4 gerekir;
+                elle giriş her durumda çalışan güvenli yoldur.) */}
+            {yazilabilir && duraklar.length > 0 && (
+              <details className="mt-3 rounded border" style={{ borderColor: brand.border }}>
+                <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium" style={{ color: brand.ink }}>
+                  {t({ tr: "İstasyon koordinatları (GTFS için) — ", en: "Station coordinates (for GTFS) — ", de: "Stationskoordinaten (für GTFS) — " })}<span style={{ color: koordSayisi === duraklar.length ? "#16794C" : CK.amberInk }}>{koordSayisi}/{duraklar.length}</span> {t({ tr: "girildi", en: "entered", de: "eingegeben" })}
+                </summary>
+                <div className="max-h-64 overflow-auto border-t px-3 py-2" style={{ borderColor: brand.border }}>
+                  <p className="mb-2 text-[0.68rem]" style={{ color: brand.muted }}>{t({ tr: "Enlem/boylam (WGS84, ondalık derece). Tümü dolunca GTFS indirilebilir. ", en: "Latitude/longitude (WGS84, decimal degrees). Once all are filled, GTFS can be downloaded. ", de: "Breite/Länge (WGS84, Dezimalgrad). Sobald alle ausgefüllt sind, kann GTFS heruntergeladen werden. " })}<b>{t({ tr: "İpucu:", en: "Tip:", de: "Tipp:" })}</b>{t({ tr: " Google Maps'te durağa sağ tık → koordinat çiftini kopyala.", en: " In Google Maps, right-click the stop → copy the coordinate pair.", de: " In Google Maps mit Rechtsklick auf die Haltestelle → das Koordinatenpaar kopieren." })}</p>
+                  {duraklar.map((d, i) => {
+                    const k = isletme.istasyonKoordinat?.[d.ad];
+                    return (
+                      <div key={i} className="flex items-center gap-2 py-0.5 text-xs">
+                        <span className="w-40 shrink-0 truncate" title={d.ad} style={{ color: brand.inkSoft }}>{i + 1}. {d.ad}</span>
+                        <input type="number" step="0.000001" placeholder={t({ tr: "enlem", en: "latitude", de: "Breite" })} value={k && Number.isFinite(k.lat) ? k.lat : ""} onChange={(e) => koordGuncelle(d.ad, "lat", parseFloat(e.target.value))}
+                          className="w-28 rounded border px-1.5 py-0.5" style={{ borderColor: brand.border, color: brand.ink }} />
+                        <input type="number" step="0.000001" placeholder={t({ tr: "boylam", en: "longitude", de: "Länge" })} value={k && Number.isFinite(k.lon) ? k.lon : ""} onChange={(e) => koordGuncelle(d.ad, "lon", parseFloat(e.target.value))}
+                          className="w-28 rounded border px-1.5 py-0.5" style={{ borderColor: brand.border, color: brand.ink }} />
+                      </div>
+                    );
+                  })}
+                </div>
+              </details>
+            )}
+          </div>
+        </details>
       )}
 
       <footer className="mt-10 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
