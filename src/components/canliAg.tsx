@@ -10,6 +10,8 @@ import type { RailNetwork, Route } from "@/lib/anaray/types";
 import { flattenRoute, ringlerdenSebeke, hemzeminDuruslari, duruslariEkle, kalkisEkle, hatOzellikleri, hatAdiTemiz } from "@/lib/anaray/network";
 import { simulate } from "@/lib/anaray/sim";
 import { simulateSignalled, reverseRoute, planDepotDispatch, loopYorunge } from "@/lib/anaray/signalling";
+import type { LoopDurum } from "@/lib/anaray/signalling";
+import { DURUM_STIL } from "./liveNetworkGeo";
 import { maksimumTren } from "@/lib/anaray/kapasite";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import { subeCanliYorungeler } from "@/lib/anaray/subeCanli";
@@ -130,14 +132,14 @@ export function useCanliAgProps() {
   };
 }
 
-// Tren üstü rozet açıklamaları (mobil-uyumlu). Glyph'ler DURUM_STIL ile birebir aynı;
-// etiketler i18n (t(r.ad) ile render).
-const ROZETLER: { s: string; ad: { tr: string; en: string; de: string } }[] = [
-  { s: "→", ad: { tr: "seyir (blok içinde ilerliyor)", en: "cruising (advancing within block)", de: "Fahrt (bewegt sich im Block)" } },
-  { s: "↗", ad: { tr: "hızlanma (kalkış / hız artışı)", en: "accelerating (departure / speed-up)", de: "Beschleunigung (Anfahrt / Tempozunahme)" } },
-  { s: "⤵", ad: { tr: "hız kısıtı (makas / geçit / eğim yavaşlaması)", en: "speed restriction (turnout / crossing / gradient)", de: "Geschwindigkeitsbeschränkung (Weiche / Übergang / Steigung)" } },
-  { s: "‖", ad: { tr: "istasyon duruşu (yolcu iniş-biniş)", en: "station dwell (boarding / alighting)", de: "Stationshalt (Ein-/Aussteigen)" } },
-  { s: "↻", ad: { tr: "terminal dönüşü (uçta turnback)", en: "terminal turnback (at the end)", de: "Terminalwende (am Ende)" } },
+// Tren üstü rozet açıklamaları (mobil-uyumlu). Glyph TEK KAYNAK: DURUM_STIL[durum].ikon
+// (motorla aynı → glyph bayatlamaz). Burada yalnız ziyaretçiye özel AÇIKLAMA tutulur.
+const ROZETLER: { durum: LoopDurum; ad: { tr: string; en: string; de: string } }[] = [
+  { durum: "seyir", ad: { tr: "seyir (blok içinde ilerliyor)", en: "cruising (advancing within block)", de: "Fahrt (bewegt sich im Block)" } },
+  { durum: "hizlanma", ad: { tr: "hızlanma (kalkış / hız artışı)", en: "accelerating (departure / speed-up)", de: "Beschleunigung (Anfahrt / Tempozunahme)" } },
+  { durum: "kisit", ad: { tr: "hız kısıtı (makas / geçit / eğim yavaşlaması)", en: "speed restriction (turnout / crossing / gradient)", de: "Geschwindigkeitsbeschränkung (Weiche / Übergang / Steigung)" } },
+  { durum: "dwell", ad: { tr: "istasyon duruşu (yolcu iniş-biniş)", en: "station dwell (boarding / alighting)", de: "Stationshalt (Ein-/Aussteigen)" } },
+  { durum: "donus", ad: { tr: "terminal dönüşü (uçta turnback)", en: "terminal turnback (at the end)", de: "Terminalwende (am Ende)" } },
 ];
 
 /** QR'dan gelen ziyaretçi için sade, mobil tam ekran canlı ağ simülasyonu sayfası. */
@@ -181,9 +183,9 @@ export function CanliAgSayfa() {
           <div className="mb-1 font-semibold" style={{ color: brand.ink }}>{t({ tr: "Trenin üstündeki işaretler", en: "Markers above the train", de: "Markierungen über dem Zug" })}</div>
           <ul className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
             {ROZETLER.map((r) => (
-              <li key={r.s} className="flex items-center gap-2">
+              <li key={r.durum} className="flex items-center gap-2">
                 <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-sm font-bold"
-                  style={{ background: brand.ink, color: "#fff" }}>{r.s}</span>
+                  style={{ background: brand.ink, color: "#fff" }}>{DURUM_STIL[r.durum].ikon}</span>
                 <span>{t(r.ad)}</span>
               </li>
             ))}

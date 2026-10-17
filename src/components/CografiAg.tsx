@@ -389,7 +389,7 @@ export function CografiAg({
               {HIZLAR.map((hh) => (
                 <button key={hh} type="button" onClick={() => setHiz(hh)} className="rounded px-2 py-1 text-xs font-semibold tabular-nums"
                   style={{ background: hiz === hh ? brand.ink : "transparent", color: hiz === hh ? "#fff" : brand.muted, border: `1px solid ${hiz === hh ? brand.ink : brand.border}` }}>
-                  ×{hh}
+                  {hh}×
                 </button>
               ))}
             </div>
