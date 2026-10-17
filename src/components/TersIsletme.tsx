@@ -34,13 +34,6 @@ function Cekmece({ baslik, ozet, acik, onToggle, vurgu, children }: {
   );
 }
 
-const FILO_RENK: Record<string, { bg: string; bd: string; ad: string }> = {
-  arttir: { bg: "#FEF2F2", bd: CK.red, ad: "ARAÇ EKLE" },
-  azalt: { bg: CK.goodBgSoft, bd: brand.ink, ad: "ARAÇ ÇEK" },
-  yeterli: { bg: CK.goodBgSoft, bd: "#16794C", ad: "FİLO YETERLİ" },
-  kapasiteYetmez: { bg: "#FEF2F2", bd: CK.red, ad: "KAPASİTE YETMEZ" },
-};
-
 type DrawerId = "girdi" | "depo" | "donus" | "makas" | "profil";
 
 export function TersIsletme() {
@@ -77,7 +70,6 @@ export function TersIsletme() {
   }
 
   const f = rapor.filo;
-  const renk = FILO_RENK[f.oneri];
   const pct = (x: number) => `%${Math.round(x * 100)}`;
   const hedef = isletme.dolulukHedefi || 0.85;
   const gercekVar = rapor.gercekVeri; // durak-başı gerçek iniş/biniş girildi mi
@@ -158,29 +150,9 @@ export function TersIsletme() {
       </Cekmece>
       </div>
 
-      {/* FİLO ÖNERİSİ — headline, daima görünür */}
-      <div className="rounded-lg border-2 p-4" style={{ borderColor: renk.bd, background: renk.bg }}>
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold uppercase tracking-wide" style={{ color: renk.bd }}>{renk.ad}</span>
-          <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "pik talebi", en: "peak demand at", de: "Spitzennachfrage bei" })} {pct(hedef)} {t({ tr: "dolulukla", en: "occupancy", de: "Auslastung" })} · {mod === "istasyon" ? t({ tr: "durak-başı veri", en: "per-station data", de: "Daten je Haltestelle" }) : t({ tr: "toplam tahmin", en: "total estimate", de: "Gesamtschätzung" })}</span>
-        </div>
-        <div className="mt-1 flex items-baseline gap-3">
-          <span className="text-3xl font-bold tabular-nums" style={{ color: brand.ink }}>{f.gerekenArac}</span>
-          <span className="text-sm" style={{ color: brand.inkSoft }}>{t({ tr: "gereken araç", en: "vehicles needed", de: "Fahrzeuge nötig" })} · {t({ tr: "mevcut pik", en: "current peak", de: "aktuelle Spitze" })} {f.mevcutPik} · {f.fark > 0 ? `+${f.fark} ${t({ tr: "ekle", en: "more", de: "mehr" })}` : f.fark < 0 ? `${f.fark} ${t({ tr: "çek", en: "fewer", de: "weniger" })}` : t({ tr: "değişim yok", en: "no change", de: "keine Änderung" })}</span>
-        </div>
-        <p className="mt-1 text-sm" style={{ color: brand.inkSoft }}>{f.aciklama}</p>
-        {f.kisaDonusTasarruf > 0 && (
-          <p className="mt-1 text-xs" style={{ color: brand.muted }}>{t({ tr: "Kısa dönüşle dış kolda boş sefer azalır →", en: "Short-turning cuts empty runs on the outer leg →", de: "Kehren reduziert Leerfahrten auf dem Außenast →" })} ~{f.kisaDonusTasarruf} {t({ tr: "araç tasarruf", en: "vehicles saved", de: "Fahrzeuge gespart" })} ({f.gerekenAracKisaDonusle} {t({ tr: "araç", en: "vehicles", de: "Fahrzeuge" })}). {t({ tr: "Sürdürülebilir tavan", en: "Sustainable ceiling", de: "Nachhaltige Obergrenze" })} {rapor.maksSurdurulebilir} {t({ tr: "tramvay", en: "trams", de: "Straßenbahnen" })}.</p>
-        )}
-        <p className="mt-1 text-xs" style={{ color: brand.muted }}>{t({ tr: "Tepe yük:", en: "Peak load:", de: "Spitzenlast:" })} <b>{rapor.tepeDurak}</b> {rapor.tepeYuk} {t({ tr: "yolcu/saat", en: "pax/h", de: "Fahrgäste/h" })} · {t({ tr: "çevrim", en: "cycle", de: "Umlauf" })} {Math.round(rapor.cevrimSn / 60)} dk · {t({ tr: "frekans", en: "frequency", de: "Frequenz" })} {rapor.mevcutFrekans.toFixed(1)} {t({ tr: "tren/sa", en: "trains/h", de: "Züge/h" })} · {t({ tr: "araç", en: "vehicle", de: "Fahrzeug" })} {rapor.aracKapasite} {t({ tr: "kişi", en: "pax", de: "Pers." })}.</p>
-        {subeFilo > 0 && (
-          <p className="mt-2 rounded border-l-2 px-2 py-1 text-xs" style={{ borderColor: brand.red, background: CK.badBgSoft, color: brand.inkSoft }}>
-            ◆ {t({ tr: "Bu öneri ANA HATTA aittir. Tali hat mekikleri ayrıca", en: "This recommendation is for the MAIN LINE. Branch shuttles additionally run", de: "Diese Empfehlung gilt für die HAUPTSTRECKE. Abzweig-Pendelzüge fahren zusätzlich" })} <b style={{ color: brand.ink }}>{subeFilo} {t({ tr: "araç", en: "vehicle(s)", de: "Fahrzeug(e)" })}</b> {t({ tr: "işletir (Σ servis treni) →", en: "(Σ service trains) →", de: "(Σ Betriebszüge) →" })} <b style={{ color: brand.ink }}>{t({ tr: "ağ filosu", en: "network fleet", de: "Netzflotte" })} {f.gerekenArac + subeFilo}</b>.
-          </p>
-        )}
-      </div>
-
-      {/* TAVSİYE EDİLEN TRAMVAY SAYISI — dinamik, talep + kurp konforu + tüm parametreler */}
+      {/* TEK FİLO KARTI — "Tavsiye Edilen Tramvay" headline; eski ayrı "Filo Önerisi"
+          kartının benzersiz parçaları (tepe yük · kısa-dönüş tasarrufu · ağ filosu)
+          buraya alt-döküm olarak taşındı (iki rakip kart → tek karar noktası). */}
       {tavsiye && (
         <div className="rounded-lg border-2 p-4" style={{ borderColor: brand.ink, background: "#F7F9FB" }}>
           <div className="flex items-center justify-between">
@@ -210,6 +182,16 @@ export function TersIsletme() {
               <div style={{ color: brand.muted }}>{t({ tr: "sürdürülebilir tavan", en: "sustainable ceiling", de: "nachhaltige Obergrenze" })}</div>
             </div>
           </div>
+          {/* Alt-döküm — eski "Filo Önerisi" kartından taşınan benzersiz bilgiler */}
+          <p className="mt-2 text-xs" style={{ color: brand.muted }}>{t({ tr: "Tepe yük:", en: "Peak load:", de: "Spitzenlast:" })} <b>{rapor.tepeDurak}</b> {rapor.tepeYuk} {t({ tr: "yolcu/saat", en: "pax/h", de: "Fahrgäste/h" })} · {t({ tr: "çevrim", en: "cycle", de: "Umlauf" })} {Math.round(rapor.cevrimSn / 60)} dk · {t({ tr: "frekans", en: "frequency", de: "Frequenz" })} {rapor.mevcutFrekans.toFixed(1)} {t({ tr: "tren/sa", en: "trains/h", de: "Züge/h" })} · {t({ tr: "araç", en: "vehicle", de: "Fahrzeug" })} {rapor.aracKapasite} {t({ tr: "kişi", en: "pax", de: "Pers." })}.</p>
+          {f.kisaDonusTasarruf > 0 && (
+            <p className="mt-1 text-xs" style={{ color: brand.muted }}>{t({ tr: "Kısa dönüşle dış kolda boş sefer azalır →", en: "Short-turning cuts empty runs on the outer leg →", de: "Kehren reduziert Leerfahrten auf dem Außenast →" })} ~{f.kisaDonusTasarruf} {t({ tr: "araç tasarruf", en: "vehicles saved", de: "Fahrzeuge gespart" })} ({f.gerekenAracKisaDonusle} {t({ tr: "araç", en: "vehicles", de: "Fahrzeuge" })}). {t({ tr: "Sürdürülebilir tavan", en: "Sustainable ceiling", de: "Nachhaltige Obergrenze" })} {rapor.maksSurdurulebilir} {t({ tr: "tramvay", en: "trams", de: "Straßenbahnen" })}.</p>
+          )}
+          {subeFilo > 0 && (
+            <p className="mt-2 rounded border-l-2 px-2 py-1 text-xs" style={{ borderColor: brand.red, background: CK.badBgSoft, color: brand.inkSoft }}>
+              ◆ {t({ tr: "Bu tavsiye ANA HATTA aittir. Tali hat mekikleri ayrıca", en: "This recommendation is for the MAIN LINE. Branch shuttles additionally run", de: "Diese Empfehlung gilt für die HAUPTSTRECKE. Abzweig-Pendelzüge fahren zusätzlich" })} <b style={{ color: brand.ink }}>{subeFilo} {t({ tr: "araç", en: "vehicle(s)", de: "Fahrzeug(e)" })}</b> {t({ tr: "işletir (Σ servis treni) →", en: "(Σ service trains) →", de: "(Σ Betriebszüge) →" })} <b style={{ color: brand.ink }}>{t({ tr: "ağ filosu", en: "network fleet", de: "Netzflotte" })} {tavsiye.tavsiye + subeFilo}</b>.
+            </p>
+          )}
           {tavsiye.kurpAdet > 0 && (
             <p className="mt-2 text-xs" style={{ color: tavsiye.kurpUyariTavsiye < tavsiye.kurpUyariMevcut ? "#2E7D32" : brand.muted }}>
               🛤 Kurp konforu: {tavsiye.kurpAdet} kurptan {tavsiye.kurpUyariMevcut}'inde ayakta-yolcu uyarısı vardı; bu filoda <b>{tavsiye.kurpUyariTavsiye}</b>'e iniyor{tavsiye.kurpUyariTavsiye < tavsiye.kurpUyariMevcut ? " (düşük doluluk → kurplarda konfor düzeliyor)" : ""}.

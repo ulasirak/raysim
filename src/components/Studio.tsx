@@ -648,7 +648,7 @@ function StudioIc() {
                 className="w-14 rounded border px-2 py-1 text-sm" style={{ borderColor: CK.amber, color: brand.ink }} />
               <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "dk", en: "min", de: "Min" })}</span>
             </div>
-            <span className="mt-0.5 block text-[0.6rem]" style={{ color: CK.amberInk }}>{t({ tr: "⚠ değiştirilmesi önerilmez (240 s tasarım kuralı)", en: "⚠ changing not recommended (240 s design rule)", de: "⚠ Änderung nicht empfohlen (240-s-Auslegungsregel)" })}</span>
+            <span className="mt-0.5 block text-[0.6rem]" style={{ color: CK.amberInk }}>{t({ tr: "önerilen tramvayı DOĞRUDAN belirler (240 s tasarım kuralı)", en: "DIRECTLY sets the recommended trams (240 s design rule)", de: "bestimmt DIREKT die empfohlenen Bahnen (240-s-Auslegungsregel)" })}</span>
           </div>
           {/* Terminal dönüş beklemesi — uçta bekleme; çevrim süresini (RTT) ve gereken filoyu besler */}
           <div>
@@ -671,18 +671,10 @@ function StudioIc() {
             Sıklığı" bölümünden kararın verildiği bu panele taşındı (tek kaynak). */}
         {maks.gecerli && (
           <div className="mt-4 rounded-md border-l-4 px-4 py-3" style={{ background: CK.goodBgSoft, borderColor: brand.ink }}>
+            {/* Sayılar (teorik/sürdürülebilir) üstteki öneri kutusunda; burada tekrar
+                edilmez — bu kutu çevrim/darboğaz/gereken tren gerekçesine odaklanır. */}
             <div className="field-label mb-1">{t({ tr: "Kapasite & Çevrim", en: "Capacity & Cycle", de: "Kapazität & Umlauf" })}</div>
-            <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
-              <div>
-                <span className="text-3xl font-semibold" style={{ color: brand.ink }}>{maks.nTeorik}</span>
-                <span className="ml-1 text-xs" style={{ color: brand.muted }}>{t({ tr: "tramvay — teorik maksimum", en: "trams — theoretical maximum", de: "Straßenbahnen — theoretisches Maximum" })}</span>
-              </div>
-              <div>
-                <span className="text-2xl font-semibold" style={{ color: CK.good }}>{maks.nSurdurulebilir}</span>
-                <span className="ml-1 text-xs" style={{ color: brand.muted }}>{t({ tr: "sürdürülebilir (UIC 406 tamponlu)", en: "sustainable (UIC 406 buffered)", de: "nachhaltig (UIC 406 gepuffert)" })}</span>
-              </div>
-            </div>
-            <p className="mt-1 text-[0.7rem]" style={{ color: brand.muted }}>
+            <p className="text-[0.7rem]" style={{ color: brand.muted }}>
               <b>{t({ tr: "Teorik maksimum", en: "Theoretical maximum", de: "Theoretisches Maximum" })}</b>: {t({ tr: "darboğazın izin verdiği fiziksel tavan — sıfır pay, her tren sürekli tam kapasite.", en: "the physical ceiling the bottleneck allows — zero margin, every train continuously at full capacity.", de: "die vom Engpass erlaubte physikalische Obergrenze — keine Reserve, jeder Zug durchgehend an voller Kapazität." })} <b>{t({ tr: "Sürdürülebilir", en: "Sustainable", de: "Nachhaltig" })}</b>: {t({ tr: "UIC 406 doluluk tavanıyla (blok başına ~%60–75 kullanım)", en: "with the UIC 406 occupancy ceiling (~60–75% use per block)", de: "mit der UIC-406-Auslastungsobergrenze (~60–75 % Nutzung je Block)" })} <b>{t({ tr: "her gün güvenle", en: "safely every day", de: "sicher jeden Tag" })}</b> {t({ tr: "çalıştırılabilen sayı — küçük gecikmeler birbirini tetiklemesin, toparlanma payı kalsın diye teorikten düşüktür (gerçek işletme bu değeri hedefler).", en: "the number that can be operated — lower than the theoretical so small delays do not trigger each other and a recovery margin remains (real operation targets this value).", de: "die betreibbare Zahl — niedriger als die theoretische, damit kleine Verspätungen sich nicht gegenseitig auslösen und eine Erholungsreserve bleibt (der reale Betrieb zielt auf diesen Wert)." })}
             </p>
             <p className="mt-1 text-xs" style={{ color: brand.inkSoft }}>
@@ -1019,7 +1011,7 @@ function StudioIc() {
         </div>
         {/* Filo kaynağı + kapasite bağlantısı */}
         <div className="mt-2 text-xs" style={{ color: brand.inkSoft }}>
-          🚋 {t({ tr: "Canlı Ağ filosu", en: "Live Network fleet", de: "Live-Netz-Flotte" })} <b>{filo}</b> {t({ tr: "tren =", en: "trains =", de: "Züge =" })} <b>{t({ tr: "Filo Paneli", en: "Fleet Panel", de: "Flotten-Panel" })}</b>{t({ tr: "'nden (yukarıda)", en: " (above)", de: " (oben)" })}{depoVar ? t({ tr: " · parklanma dizilimine göre depolardan çıkar", en: " · departs from depots per the parking layout", de: " · fährt gemäß Abstellungsaufteilung aus den Depots" }) : t({ tr: " · hat başından", en: " · from the line start", de: " · vom Linienanfang" })} · {t({ tr: "her yön aynı filoyla · ulaşılan aralık", en: "each direction with the same fleet · achieved headway", de: "jede Richtung mit derselben Flotte · erreichte Zugfolgezeit" })} <b>{sure(ulasilanHeadwaySn)}</b>
+          🚋 {t({ tr: "Canlı Ağ filosu", en: "Live Network fleet", de: "Live-Netz-Flotte" })} <b>{filo}</b> {t({ tr: "tren =", en: "trains =", de: "Züge =" })} <b>{t({ tr: "Filo Paneli", en: "Fleet Panel", de: "Flotten-Panel" })}</b>{t({ tr: "'nden (① Kurulum & Filo sekmesi)", en: " (① Setup & Fleet tab)", de: " (Reiter ① Einrichtung & Flotte)" })}{depoVar ? t({ tr: " · parklanma dizilimine göre depolardan çıkar", en: " · departs from depots per the parking layout", de: " · fährt gemäß Abstellungsaufteilung aus den Depots" }) : t({ tr: " · hat başından", en: " · from the line start", de: " · vom Linienanfang" })} · {t({ tr: "her yön aynı filoyla · ulaşılan aralık", en: "each direction with the same fleet · achieved headway", de: "jede Richtung mit derselben Flotte · erreichte Zugfolgezeit" })} <b>{sure(ulasilanHeadwaySn)}</b>
           {maks.gecerli && <> · {t({ tr: "hat kapasitesi", en: "line capacity", de: "Linienkapazität" })} <b>{maks.nTeorik}</b></>}
         </div>
         {filoAsim && (
@@ -1226,15 +1218,6 @@ function StudioIc() {
         )}
       </Panel>
       )}
-
-      {/* Sefer sıklığı */}
-
-      {/* YOLCU DİNAMİĞİ & DURUŞ — dwell fiziksel yolcu akışından hesaplanır. */}
-
-      {/* GÜN İÇİ SERVİS & PARKLANMA — filo gün boyu sabit değil: pik saatte hepsi
-          hatta, pik-dışında fazlası depoya döner (parklanma), gece hepsi depoda. */}
-
-
 
       {/* SEFER ↔ TERS İŞLETME ENTEGRE — manuel headway + zaman → araç konumları → araca bağlı kısa dönüş önerileri */}
       {maks.gecerli && rings.length >= 2 && (

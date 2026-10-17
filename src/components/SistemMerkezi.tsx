@@ -339,11 +339,13 @@ export function SistemMerkezi() {
         </div>
       )}
 
-      {/* Karar Destek & Optimizasyon — OPERASYONEL: filo↔headway ödünleşimi + hedef-arama (F). */}
-      <Kapanir baslik={t({ tr: "Operasyonel — Filo ↔ Sefer Aralığı", en: "Operational — Fleet ↔ Headway", de: "Betrieblich — Flotte ↔ Zugfolgezeit" })} ozet={t({ tr: "istenen aralığı hangi filo verir + hedef-arama", en: "which fleet delivers the desired headway + goal-seek", de: "welche Flotte die gewünschte Zugfolgezeit liefert + Zielsuche" })}><KararDestekPaneli /></Kapanir>
-
-      {/* Robustluk-Kısıtlı Filo — RİSK: kapasite × Monte-Carlo; %X güvenilirlik + konfor altında min filo. */}
-      <Kapanir baslik={t({ tr: "Risk — Robustluk-Kısıtlı Filo", en: "Risk — Robustness-Constrained Fleet", de: "Risiko — Robustheitsbeschränkte Flotte" })} ozet={t({ tr: "gecikmeye rağmen güvenilirlik+konfor için min filo", en: "min fleet for reliability+comfort despite delays", de: "Mindestflotte für Zuverlässigkeit+Komfort trotz Verzögerungen" })}><RobustFiloPaneli /></Kapanir>
+      {/* FİLO KARARI — OPERASYONEL (filo↔aralık + hedef-arama) + RİSK (robustluk-kısıtlı,
+          Monte-Carlo) TEK çekmecede. İki bileşen kendi başlığını (Operasyonel / Risk chip)
+          taşır → alt-bölüm kimliği korunur; iki rakip çekmece yerine tek karar noktası. */}
+      <Kapanir baslik={t({ tr: "Filo Kararı", en: "Fleet Decision", de: "Flottenentscheidung" })} ozet={t({ tr: "operasyonel (filo ↔ aralık) + risk (robustluk) — tek yerde", en: "operational (fleet ↔ headway) + risk (robustness) — in one place", de: "betrieblich (Flotte ↔ Zugfolgezeit) + Risiko (Robustheit) — an einem Ort" })}>
+        <KararDestekPaneli />
+        <div className="mt-4"><RobustFiloPaneli /></div>
+      </Kapanir>
 
       {/* Çakışma Çözücüsü — tek-hat meet/pass; kalkış-offset optimizasyonuyla çakışmasız çizelge. */}
       <Kapanir baslik={t({ tr: "Çakışma Çözücüsü (tek hat)", en: "Conflict Resolver (single track)", de: "Konfliktlöser (Eingleis)" })} ozet={t({ tr: "kalkış-offset ile çakışmasız çizelge", en: "conflict-free schedule via departure offset", de: "konfliktfreier Fahrplan über Abfahrts-Offset" })}><CakismaCozumPaneli /></Kapanir>

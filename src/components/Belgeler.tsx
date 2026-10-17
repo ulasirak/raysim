@@ -383,20 +383,19 @@ export function Belgeler() {
             : (ozet.headwayUygun && ozet.dengeli) ? t({ tr: "Belge: tüm hücreler headway'e uygun ve dengeli.", en: "Document: all cells are headway-compliant and balanced.", de: "Dokument: alle Abschnitte sind zugfolgezeitkonform und ausgeglichen." }) : t({ tr: "Belge, headway ihlali / dengesizlik uyarılarını içerecek.", en: "The document will include headway-violation / imbalance warnings.", de: "Das Dokument enthält Warnungen zu Zugfolgezeit-Verstößen / Ungleichgewicht." })}
           {sunum && <span style={{ color: brand.muted }}> {t({ tr: "· Not: PDF ", en: "· Note: the PDF ", de: "· Hinweis: Das PDF " })}<b>{t({ tr: "müşteri sunumu", en: "customer presentation", de: "Kundenpräsentation" })}</b>{t({ tr: " olarak, onaylı tasarım dilinde üretilecek.", en: " will be produced as one, in the approved-design language.", de: " wird als solche in der Sprache der freigegebenen Planung erstellt." })}</span>}
         </div>
+        {/* MÜŞTERİ SUNUMU (yalnız PDF) — ekranı DEĞİŞTİRMEZ; üretilecek PDF'in dilini
+            belirler. PDF Rapor panelinin İÇİNDE (etkisinin özetlendiği yerin hemen yanında).
+            Paylaşım/demo görünümünde (yazilabilir=false) hiç render edilmez. */}
+        {yazilabilir && (
+          <label className="mt-3 flex items-start gap-2 rounded border p-2.5 text-xs" style={{ borderColor: sunum ? CK.good : brand.border, background: sunum ? CK.goodBgSoft : "transparent", color: brand.inkSoft }}>
+            <input type="checkbox" checked={sunum} onChange={(e) => patchMeta({ sunumModu: e.target.checked })} className="mt-0.5 shrink-0" />
+            <span>
+              <b>{t({ tr: "PDF'i müşteri sunumu olarak üret", en: "Produce the PDF as a customer presentation", de: "PDF als Kundenpräsentation erstellen" })}</b>{t({ tr: " — üretilecek raporda ihlal/risk/denge uyarıları, hat ", en: " — in the generated report, violation/risk/balance warnings are presented as an ", de: " — im erstellten Bericht werden Verstoß-/Risiko-/Ausgeglichenheits-Warnungen als " })}<b>{t({ tr: "onaylı/kesinleşmiş tasarım", en: "approved/finalized design", de: "freigegebene/endgültige Planung" })}</b>{t({ tr: " dilinde sunulur (belirleyici kısıt nötr anlatılır).", en: " (the governing constraint is described neutrally).", de: " dargestellt (die maßgebende Einschränkung wird neutral beschrieben)." })}
+              <span style={{ color: brand.faint }}> {t({ tr: "Bu seçenek yalnızca PDF çıktısını etkiler; ", en: "This option only affects the PDF output; ", de: "Diese Option betrifft nur die PDF-Ausgabe; " })}<b>{t({ tr: "ekranda her zaman gerçek", en: "on screen you always see the real", de: "auf dem Bildschirm sehen Sie stets die echten" })}</b>{t({ tr: " headway/denge/kritik değerleri görürsünüz. Mühendislik teslimi için KAPALI bırakın.", en: " headway/balance/critical values. Leave OFF for engineering delivery.", de: " Zugfolgezeit-/Ausgeglichenheits-/kritischen Werte. Für die Ingenieurabgabe AUS lassen." })}</span>
+            </span>
+          </label>
+        )}
       </Panel>
-
-      {/* MÜŞTERİ SUNUMU (yalnız PDF) — ekranı DEĞİŞTİRMEZ; sadece üretilecek PDF'in
-          dilini belirler. Düzenlenebilir bağlamda görünür; paylaşım/demo görünümünde
-          (yazilabilir=false) hiç render edilmez. */}
-      {yazilabilir && (
-        <label className="mt-6 flex items-start gap-2 rounded border p-2.5 text-xs" style={{ borderColor: sunum ? CK.good : brand.border, background: sunum ? CK.goodBgSoft : "transparent", color: brand.inkSoft }}>
-          <input type="checkbox" checked={sunum} onChange={(e) => patchMeta({ sunumModu: e.target.checked })} className="mt-0.5 shrink-0" />
-          <span>
-            <b>{t({ tr: "PDF'i müşteri sunumu olarak üret", en: "Produce the PDF as a customer presentation", de: "PDF als Kundenpräsentation erstellen" })}</b>{t({ tr: " — üretilecek raporda ihlal/risk/denge uyarıları, hat ", en: " — in the generated report, violation/risk/balance warnings are presented as an ", de: " — im erstellten Bericht werden Verstoß-/Risiko-/Ausgeglichenheits-Warnungen als " })}<b>{t({ tr: "onaylı/kesinleşmiş tasarım", en: "approved/finalized design", de: "freigegebene/endgültige Planung" })}</b>{t({ tr: " dilinde sunulur (belirleyici kısıt nötr anlatılır).", en: " (the governing constraint is described neutrally).", de: " dargestellt (die maßgebende Einschränkung wird neutral beschrieben)." })}
-            <span style={{ color: brand.faint }}> {t({ tr: "Bu seçenek yalnızca PDF çıktısını etkiler; ", en: "This option only affects the PDF output; ", de: "Diese Option betrifft nur die PDF-Ausgabe; " })}<b>{t({ tr: "ekranda her zaman gerçek", en: "on screen you always see the real", de: "auf dem Bildschirm sehen Sie stets die echten" })}</b>{t({ tr: " headway/denge/kritik değerleri görürsünüz. Mühendislik teslimi için KAPALI bırakın.", en: " headway/balance/critical values. Leave OFF for engineering delivery.", de: " Zugfolgezeit-/Ausgeglichenheits-/kritischen Werte. Für die Ingenieurabgabe AUS lassen." })}</span>
-          </span>
-        </label>
-      )}
 
       <footer className="mt-10 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
         {t({ tr: "RaySim · Belge üretici — hat verisi Ringler modülünden, parametreler Sistem Merkezi'nden gelir; belgeler bu tek kaynaktan üretilir.", en: "RaySim · Document generator — line data comes from the Ringler module, parameters from the System Center; documents are produced from this single source.", de: "RaySim · Dokumentgenerator — Liniendaten stammen aus dem Modul Ringler, Parameter aus dem Systemzentrum; Dokumente werden aus dieser einzigen Quelle erstellt." })}
