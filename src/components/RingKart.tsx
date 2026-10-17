@@ -119,6 +119,11 @@ export function RingKart(p: KartProps) {
     setBekleyen(null);
   };
 
+  // Bölüm başlıklarındaki "＋" düğmeleri HIZLI ekler (varsayılan konum); üstteki
+  // "Kısıtlar" şeridindeki düğmeler ise konumu GÖRSEL seçtirir. İkisi de kalır
+  // (farklı yollar) — ipucu farkı açıklar.
+  const HIZLI_EKLE_IPUCU = t({ tr: "Hızlı ekle (varsayılan konum). Belirli bir konum için üstteki “Kısıtlar” şeridini kullan.", en: "Quick-add (default position). Use the “Constraints” strip above to place at a specific position.", de: "Schnell hinzufügen (Standardposition). Nutzen Sie den „Einschränkungen“-Streifen oben für eine bestimmte Position." });
+
   return (
     <div className="overflow-hidden rounded-lg border bg-white" style={{ borderColor: tam ? brand.border : brand.red, borderLeftWidth: 4, borderLeftColor: tam ? brand.gold : brand.red }}>
       {/* Başlık satırı — üstteki durak satırlarından AYRIK: kare "R#" rozet + altın kenar. */}
@@ -291,8 +296,8 @@ export function RingKart(p: KartProps) {
             <div className="mb-2 flex items-center justify-between">
               <SubBaslik>{t({ tr: "Hemzemin & Yaya Geçitleri", en: "Level & Pedestrian Crossings", de: "Bahnübergänge & Fußgängerübergänge" })}</SubBaslik>
               <div className="flex gap-1">
-                <button onClick={() => p.onHzEkle("yaya")} className="rounded px-2 py-1 text-xs font-medium" style={{ background: CK.track, color: brand.inkSoft }}>{t({ tr: "＋ yaya", en: "＋ pedestrian", de: "＋ Fußgänger" })}</button>
-                <button onClick={() => p.onHzEkle("karayolu")} className="rounded px-2 py-1 text-xs font-medium" style={{ background: CK.track, color: brand.inkSoft }}>{t({ tr: "＋ karayolu", en: "＋ road", de: "＋ Straße" })}</button>
+                <button onClick={() => p.onHzEkle("yaya")} title={HIZLI_EKLE_IPUCU} className="rounded px-2 py-1 text-xs font-medium" style={{ background: CK.track, color: brand.inkSoft }}>{t({ tr: "＋ yaya", en: "＋ pedestrian", de: "＋ Fußgänger" })}</button>
+                <button onClick={() => p.onHzEkle("karayolu")} title={HIZLI_EKLE_IPUCU} className="rounded px-2 py-1 text-xs font-medium" style={{ background: CK.track, color: brand.inkSoft }}>{t({ tr: "＋ karayolu", en: "＋ road", de: "＋ Straße" })}</button>
               </div>
             </div>
             {ring.hemzeminler.length === 0 ? (
@@ -317,12 +322,12 @@ export function RingKart(p: KartProps) {
             )}
           </div>
 
-          {/* Tehlike / acil frenleme noktaları */}
-          <div className="mt-4 border-t pt-3" style={{ borderColor: brand.border }}>
-            <div className="mb-2 flex items-center justify-between">
-              <SubBaslik>{t({ tr: "Tehlike / Acil Frenleme Noktaları", en: "Hazard / Emergency Braking Points", de: "Gefahren- / Notbremspunkte" })}</SubBaslik>
-              <button onClick={() => p.onTnEkle()} className="rounded px-2 py-1 text-xs font-medium" style={{ background: CK.track, color: brand.inkSoft }}>{t({ tr: "＋ ekle", en: "＋ add", de: "＋ hinzufügen" })}</button>
-            </div>
+          {/* Tehlike / acil frenleme noktaları — nadir; katlanır (varsayılan kapalı, sayı rozetli) */}
+          <details className="group mt-4 border-t pt-3" style={{ borderColor: brand.border }}>
+            <summary className="mb-2 flex cursor-pointer select-none items-center justify-between">
+              <span className="flex items-center gap-1.5"><SubBaslik>{t({ tr: "Tehlike / Acil Frenleme Noktaları", en: "Hazard / Emergency Braking Points", de: "Gefahren- / Notbremspunkte" })}</SubBaslik>{ring.tehlikeNoktalari.length > 0 && <span className="rounded-full px-1.5 py-0.5 text-[0.6rem] font-bold leading-none" style={{ background: brand.ink, color: "#fff" }}>{ring.tehlikeNoktalari.length}</span>}<span className="text-[0.65rem]" style={{ color: brand.faint }}>{t({ tr: "▸ aç/kapa", en: "▸ toggle", de: "▸ auf/zu" })}</span></span>
+              <button onClick={(e) => { e.preventDefault(); p.onTnEkle(); }} title={HIZLI_EKLE_IPUCU} className="rounded px-2 py-1 text-xs font-medium" style={{ background: CK.track, color: brand.inkSoft }}>{t({ tr: "＋ ekle", en: "＋ add", de: "＋ hinzufügen" })}</button>
+            </summary>
             {ring.tehlikeNoktalari.length === 0 ? (
               <p className="text-xs" style={{ color: brand.faint }}>{t({ tr: "Tehlike noktası yok.", en: "No hazard point.", de: "Kein Gefahrenpunkt." })}</p>
             ) : (
@@ -341,7 +346,7 @@ export function RingKart(p: KartProps) {
                 ))}
               </div>
             )}
-          </div>
+          </details>
 
           {/* Kurplar (kavisler) — yatay yarıçaptan türeyen hız kısıtı */}
           <div className="mt-4 border-t pt-3" style={{ borderColor: brand.border }}>
@@ -353,7 +358,7 @@ export function RingKart(p: KartProps) {
                   style={kurpBilgi ? { background: brand.ink, color: "#fff", borderColor: brand.ink } : { borderColor: brand.border, color: brand.inkSoft }}
                   title={t({ tr: "Kurp hızı ile fren/ivme nasıl bağlanır?", en: "How is curve speed linked to braking/acceleration?", de: "Wie hängt die Bogengeschwindigkeit mit Bremsung/Beschleunigung zusammen?" })}>{t({ tr: "ⓘ nasıl çalışır?", en: "ⓘ how does it work?", de: "ⓘ wie funktioniert es?" })}</button>
               </div>
-              <button onClick={() => p.onKurpEkle()} className="rounded px-2 py-1 text-xs font-medium" style={{ background: CK.track, color: brand.inkSoft }}>{t({ tr: "＋ ekle", en: "＋ add", de: "＋ hinzufügen" })}</button>
+              <button onClick={() => p.onKurpEkle()} title={HIZLI_EKLE_IPUCU} className="rounded px-2 py-1 text-xs font-medium" style={{ background: CK.track, color: brand.inkSoft }}>{t({ tr: "＋ ekle", en: "＋ add", de: "＋ hinzufügen" })}</button>
             </div>
             {kurpBilgi && (
               <div className="mb-2 rounded-md border p-3 text-xs leading-relaxed" style={{ borderColor: brand.ink, background: "#F7F9FB", color: brand.ink }}>
@@ -440,9 +445,13 @@ export function RingKart(p: KartProps) {
             )}
           </div>
 
-          {/* Sinyal Lambaları — istasyon başına yönlü sinyal (manuel blok aralığı yerine) */}
-          <div className="mt-4 border-t pt-3" style={{ borderColor: brand.border }}>
-            <SubBaslik>{t({ tr: "Sinyal Lambaları", en: "Signal Lamps", de: "Signale" })}</SubBaslik>
+          {/* Sinyal Lambaları — nadir; katlanır (varsayılan kapalı, sayı rozetli) */}
+          <details className="mt-4 border-t pt-3" style={{ borderColor: brand.border }}>
+            <summary className="mb-2 flex cursor-pointer select-none items-center gap-1.5">
+              <SubBaslik>{t({ tr: "Sinyal Lambaları", en: "Signal Lamps", de: "Signale" })}</SubBaslik>
+              {(ring.sinyaller ?? []).length > 0 && <span className="rounded-full px-1.5 py-0.5 text-[0.6rem] font-bold leading-none" style={{ background: brand.ink, color: "#fff" }}>{(ring.sinyaller ?? []).length}</span>}
+              <span className="text-[0.65rem]" style={{ color: brand.faint }}>{t({ tr: "▸ aç/kapa", en: "▸ toggle", de: "▸ auf/zu" })}</span>
+            </summary>
             <p className="mb-2 text-xs" style={{ color: brand.muted }}>
               Manuel blok aralığı yerine gerçek sinyalleri buraya koy. Her sinyal bir <b>yön</b> (giden/gelen) trafiğini görür, <b>kilometraj</b>ında durur ve <b>aspect süreleri</b> (yeşil→sarı→kırmızı→yeşil) taşır — bu süreler canlı simde lambayı animasyonlar HEM blocking-time/headway tabanına girer. İstasyon başına birden fazla eklenebilir.
             </p>
@@ -506,7 +515,7 @@ export function RingKart(p: KartProps) {
                 })}
               </div>
             )}
-          </div>
+          </details>
 
           {/* Eksik listesi */}
           {eksik.length > 0 && (
