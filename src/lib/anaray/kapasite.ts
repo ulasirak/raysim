@@ -176,7 +176,9 @@ export function maksimumTren(
       const d = kavsakSperr(m, stock, cfg);
       if (d.isgal > hKavsak) {
         hKavsak = d.isgal;
-        kavsakAd = `Kavşak — ${m.ad || r.ad || `${r.fromAd}–${r.toAd}`}`;
+        // m.ad zaten "Kavşak — …" (türetilmiş şube turnout'u) olabilir → çift önek yazma.
+        const makasAd = m.ad || r.ad || `${r.fromAd}–${r.toAd}`;
+        kavsakAd = /^kavşak/i.test(makasAd) ? makasAd : `Kavşak — ${makasAd}`;
         kavsakDetay = { ...d, ad: kavsakAd };
       }
     }
