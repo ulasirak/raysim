@@ -145,19 +145,54 @@ export function SistemMerkezi() {
         etiketler={[
           t({ tr: "① Kapasite & Kısıt", en: "① Capacity & Constraint", de: "① Kapazität & Engpass" }),
           t({ tr: "② Terminal & Yol", en: "② Terminal & Track", de: "② Endstelle & Strecke" }),
-          t({ tr: "③ Doğrulama & Duyarlılık", en: "③ Validation & Sensitivity", de: "③ Validierung & Sensitivität" }),
-          t({ tr: "④ Filo Kararı", en: "④ Fleet Decision", de: "④ Flottenentscheidung" }),
+          t({ tr: "③ Filo Kararı", en: "③ Fleet Decision", de: "③ Flottenentscheidung" }),
+          t({ tr: "④ Doğrulama & Duyarlılık", en: "④ Validation & Sensitivity", de: "④ Validierung & Sensitivität" }),
         ]}
         durumlar={[bt ? (!bt.hedefUygun ? "ihlal" : bt.dolulukHedef > 80 ? "uyari" : "") : "", "", "", ""]} />
 
       <section className="sm-panel" data-t="1">
       <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>{t({ tr: "Hattı fiziksel olarak hangi kısıt bağlıyor — blok işgali (Sperrzeit), rakip headway kısıtları, sinyal ve kilitleme.", en: "Which constraint physically governs the line — block occupancy (Sperrzeit), competing headway constraints, signalling and interlocking.", de: "Welcher Engpass die Linie physisch bestimmt — Blockbelegung (Sperrzeit), konkurrierende Zugfolgezeit-Engpässe, Signalisierung und Verschluss (Interlocking)." })}</p>
 
-      {/* Blocking-Time (Sperrzeitentreppe) + UIC 406 */}
+      {/* BELİRLEYİCİ KISIT — hangi kısıt bağlıyor (genel bakış); detaylı blok dökümü ALTTA. */}
+      {maks && maks.gecerli && maks.kisitlar.length > 0 && (
+        <Panel ozet={<><b>{maks.baglayanAd}</b>{t({ tr: " bağlıyor · ", en: " governs · ", de: " bestimmt · " })}{sure(maks.hMin)}</>} baslik={t({ tr: "Belirleyici Kısıt — Rakip Headway Kısıtları", en: "Governing Constraint — Competing Headway Constraints", de: "Maßgebender Engpass — Konkurrierende Zugfolgezeit-Engpässe" })} aciklama={t({ tr: "Min headway (hMin) beş rakip kısıdın EN YÜKSEĞİdir: blok (Sperrzeit) · terminal turnback (makas geometrisi) · tek hat · kavşak · sinyal. En uzun çubuk hattı bağlar. Diğerlerinin ne kadar geride olduğu, o kısıtta ne kadar pay (headway marjı) olduğunu gösterir — bir kısıt iyileştirilirse sıradaki bağlar. Tramvay hatlarında çoğu kez terminal turnback bağlar.", en: "The min headway (hMin) is the HIGHEST of five competing constraints: block (Sperrzeit) · terminal turnback (switch geometry) · single track · junction · signal. The longest bar governs the line. How far the others trail shows how much margin (headway slack) remains in that constraint — if one constraint is improved, the next one governs. On tram lines terminal turnback usually governs.", de: "Die Zugfolgezeit (hMin) ist die HÖCHSTE von fünf konkurrierenden Engpässen: Block (Sperrzeit) · Endstellen-Wende (Weichengeometrie) · Eingleis · Kreuzung · Signal. Der längste Balken bestimmt die Linie. Wie weit die anderen zurückliegen, zeigt, wie viel Reserve (Zugfolgezeit-Spielraum) in diesem Engpass verbleibt — wird ein Engpass verbessert, bestimmt der nächste. Auf Straßenbahnlinien bestimmt meist die Endstellen-Wende." })}>
+          <KisitKarsilastirma kisitlar={maks.kisitlar} kritikRenk={kritikRenk} />
+          <Kaynak etiket={t({ tr: "Bağlayan kısıtı nereden iyileştirirsin", en: "Where to improve the governing constraint", de: "Wo Sie den maßgebenden Engpass verbessern" })} yerler={[{ ad: t({ tr: "Ringler (makas/terminal/sinyal)", en: "Ringler (switch/terminal/signal)", de: "Ringler (Weiche/Endstelle/Signal)" }), href: "/#ringler" }, "parametreler"]} />
+
+          {/* KAVŞAK SPERRZEIT DÖKÜMÜ — kritik düz kavşağın blocking-time bileşenleri.
+              Kavşak kısıtı varsa gösterilir: neden bu kadar? Tren boyu kavşağı ne kadar
+              işgal ediyor (eski model bunu yok sayıyordu). */}
+          {maks.kavsakDetay && (
+            <div className="mt-4 rounded-md border p-3" style={{ borderColor: brand.border, background: brand.paper }}>
+              <div className="mb-2 flex items-baseline justify-between gap-2">
+                <span className="text-xs font-semibold" style={{ color: brand.ink }}>
+                  {t({ tr: "Kritik kavşak blocking-time — ", en: "Critical junction blocking-time — ", de: "Kritische Kreuzungs-Sperrzeit — " })}{maks.kavsakDetay.ad.replace(/^Kavşak — /, "")}
+                </span>
+                <span className="text-xs tabular-nums" style={{ color: maks.baglayanAnahtar === "kavsak" ? kritikRenk : brand.muted }}>
+                  {Math.round(maks.kavsakDetay.isgal)} s
+                  <span style={{ color: brand.faint }}> (×{maks.kavsakDetay.faktor})</span>
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[0.72rem]" style={{ color: brand.inkSoft }}>
+                <span>{t({ tr: "tanzim ", en: "setup ", de: "Bildung " })}<b>{Math.round(maks.kavsakDetay.tSetup)} s</b></span>
+                <span>{t({ tr: "görme ", en: "sighting ", de: "Sicht " })}<b>{maks.kavsakDetay.tGorme} s</b></span>
+                <span>{t({ tr: "geçiş + ", en: "transit + ", de: "Durchfahrt + " })}<b>{Math.round(stock.length)} m</b>{t({ tr: " tren temizleme ", en: " train clearing ", de: " Zugräumung " })}<b>{Math.round(maks.kavsakDetay.tGecis)} s</b></span>
+                <span>{t({ tr: "release ", en: "release ", de: "Auflösung " })}<b>{Math.round(maks.kavsakDetay.tRelease)} s</b></span>
+                <span style={{ color: brand.muted }}>{t({ tr: "= tek geçiş ", en: "= single transit ", de: "= Einzeldurchfahrt " })}{Math.round(maks.kavsakDetay.tekGecis)} s</span>
+              </div>
+              <div className="mt-1.5 text-[0.7rem]" style={{ color: brand.muted }}>
+                {t({ tr: "Fouling bölgesi ", en: "The fouling zone ", de: "Der Gefahrraum " })}{Math.round(maks.kavsakDetay.foulUzunluk)}{t({ tr: " m (kısıt bölgesi + tren boyu) ", en: " m (constraint zone + train length) ", de: " m (Engpassbereich + Zuglänge) " })}{Math.round(maks.kavsakDetay.gecisHizi * 3.6)}{t({ tr: " km/h geçiş hızında temizlenir; karşı-yön varış+kalkış crossover'ı sırayla kullandığından ×", en: " km/h transit speed clears it; since the opposing-direction arrival+departure use the crossover in sequence, ×", de: " km/h Durchfahrtsgeschwindigkeit räumt ihn; da Ankunft+Abfahrt der Gegenrichtung den Crossover nacheinander nutzen, ×" })}{maks.kavsakDetay.faktor}{t({ tr: ". Uzun araç kavşağı daha uzun işgal eder.", en: ". A longer vehicle occupies the junction longer.", de: ". Ein längeres Fahrzeug belegt die Kreuzung länger." })}
+              </div>
+            </div>
+          )}
+        </Panel>
+      )}
+
+      {/* Blocking-Time (Sperrzeitentreppe) + UIC 406 — belirleyici kısıttaki BLOK kısmının detayı */}
       {bt && (
       <Panel baslik={t({ tr: "Blocking-Time / Sperrzeitentreppe (blok işgal süresi) & UIC 406 Kapasite", en: "Blocking-Time / Sperrzeitentreppe (block occupancy time) & UIC 406 Capacity", de: "Sperrzeit / Sperrzeitentreppe (Blockbelegungszeit) & UIC 406 Kapazität" })} aciklama={t({ tr: "Her sinyal bloğunun rezerve süresi = 6 bileşen (rota kurma + görme + yaklaşma + seyir + temizleme + release). En yüksek blocking-time'lı blok min headway'i belirler; UIC 406 doluluk = min headway / hedef headway.", en: "Each signal block's reserved time = 6 components (route setup + sighting + approach + running + clearing + release). The block with the highest blocking-time sets the min headway; UIC 406 utilization = min headway / target headway.", de: "Die Sperrzeit jedes Signalblocks = 6 Komponenten (Fahrstraßenbildung + Sicht + Annäherung + Fahrt + Räumung + Auflösung). Der Block mit der höchsten Sperrzeit bestimmt die Zugfolgezeit; UIC-406-Auslastung = Zugfolgezeit / Ziel-Zugfolgezeit." })}>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <MiniStat etiket={t({ tr: "Blok min headway (Sperrzeit)", en: "Block min headway (Sperrzeit)", de: "Block-Zugfolgezeit (Sperrzeit)" })} deger={sure(bt.minHeadway)} alt={`${kritikAd} · ${t({ tr: "blok #", en: "block #", de: "Block #" })}${bt.kritikBlok}${bt.bloklar[bt.kritikBlok]?.makasBlok ? t({ tr: " (makas)", en: " (switch)", de: " (Weiche)" }) : ""} · ${t({ tr: "bağlayan hMin ↓ Belirleyici Kısıt", en: "governing hMin ↓ Governing Constraint", de: "maßgebende hMin ↓ Maßg. Engpass" })}`} vurgu={kritikRenk} />
+          <MiniStat etiket={t({ tr: "Blok min headway (Sperrzeit)", en: "Block min headway (Sperrzeit)", de: "Block-Zugfolgezeit (Sperrzeit)" })} deger={sure(bt.minHeadway)} alt={`${kritikAd} · ${t({ tr: "blok #", en: "block #", de: "Block #" })}${bt.kritikBlok}${bt.bloklar[bt.kritikBlok]?.makasBlok ? t({ tr: " (makas)", en: " (switch)", de: " (Weiche)" }) : ""} · ${t({ tr: "bağlayan hMin ↑ Belirleyici Kısıt", en: "governing hMin ↑ Governing Constraint", de: "maßgebende hMin ↑ Maßg. Engpass" })}`} vurgu={kritikRenk} />
           <MiniStat etiket={t({ tr: "Teorik kapasite", en: "Theoretical capacity", de: "Theoretische Kapazität" })} deger={`${bt.teorikKapasite.toFixed(0)}/sa`} alt={t({ tr: "tren/saat üst sınır", en: "trains/hour upper bound", de: "Züge/Stunde Obergrenze" })} />
           <MiniStat etiket={t({ tr: "İşletme kapasitesi", en: "Operating capacity", de: "Betriebskapazität" })} deger={`${bt.pratikKapasite.toFixed(0)}/sa`} alt={`UIC 406 ${t({ tr: "%", en: "", de: "" })}${(bt.dolulukTavani * 100).toFixed(0)}${t({ tr: " tavan", en: "% cap", de: " % Obergrenze" })}`} vurgu={OK} />
           <MiniStat etiket={t({ tr: "UIC 406 doluluk", en: "UIC 406 utilization", de: "UIC 406 Auslastung" })} deger={`%${bt.dolulukHedef.toFixed(0)}`} alt={`${t({ tr: "hedef ", en: "target ", de: "Ziel " })}${bt.hedefHeadway} s`} vurgu={bt.dolulukHedef > 80 ? CK.red : bt.dolulukHedef > 60 ? CK.amber : OK} />
@@ -249,41 +284,6 @@ export function SistemMerkezi() {
       </Panel>
       )}
 
-      {/* BELİRLEYİCİ KISIT — hMin'i oluşturan rakip headway kısıtları yan yana (hangisi bağlar) */}
-      {maks && maks.gecerli && maks.kisitlar.length > 0 && (
-        <Panel ozet={<><b>{maks.baglayanAd}</b>{t({ tr: " bağlıyor · ", en: " governs · ", de: " bestimmt · " })}{sure(maks.hMin)}</>} baslik={t({ tr: "Belirleyici Kısıt — Rakip Headway Kısıtları", en: "Governing Constraint — Competing Headway Constraints", de: "Maßgebender Engpass — Konkurrierende Zugfolgezeit-Engpässe" })} aciklama={t({ tr: "Min headway (hMin) beş rakip kısıdın EN YÜKSEĞİdir: blok (Sperrzeit) · terminal turnback (makas geometrisi) · tek hat · kavşak · sinyal. En uzun çubuk hattı bağlar. Diğerlerinin ne kadar geride olduğu, o kısıtta ne kadar pay (headway marjı) olduğunu gösterir — bir kısıt iyileştirilirse sıradaki bağlar. Tramvay hatlarında çoğu kez terminal turnback bağlar.", en: "The min headway (hMin) is the HIGHEST of five competing constraints: block (Sperrzeit) · terminal turnback (switch geometry) · single track · junction · signal. The longest bar governs the line. How far the others trail shows how much margin (headway slack) remains in that constraint — if one constraint is improved, the next one governs. On tram lines terminal turnback usually governs.", de: "Die Zugfolgezeit (hMin) ist die HÖCHSTE von fünf konkurrierenden Engpässen: Block (Sperrzeit) · Endstellen-Wende (Weichengeometrie) · Eingleis · Kreuzung · Signal. Der längste Balken bestimmt die Linie. Wie weit die anderen zurückliegen, zeigt, wie viel Reserve (Zugfolgezeit-Spielraum) in diesem Engpass verbleibt — wird ein Engpass verbessert, bestimmt der nächste. Auf Straßenbahnlinien bestimmt meist die Endstellen-Wende." })}>
-          <KisitKarsilastirma kisitlar={maks.kisitlar} kritikRenk={kritikRenk} />
-          <Kaynak etiket={t({ tr: "Bağlayan kısıtı nereden iyileştirirsin", en: "Where to improve the governing constraint", de: "Wo Sie den maßgebenden Engpass verbessern" })} yerler={[{ ad: t({ tr: "Ringler (makas/terminal/sinyal)", en: "Ringler (switch/terminal/signal)", de: "Ringler (Weiche/Endstelle/Signal)" }), href: "/#ringler" }, "parametreler"]} />
-
-          {/* KAVŞAK SPERRZEIT DÖKÜMÜ — kritik düz kavşağın blocking-time bileşenleri.
-              Kavşak kısıtı varsa gösterilir: neden bu kadar? Tren boyu kavşağı ne kadar
-              işgal ediyor (eski model bunu yok sayıyordu). */}
-          {maks.kavsakDetay && (
-            <div className="mt-4 rounded-md border p-3" style={{ borderColor: brand.border, background: brand.paper }}>
-              <div className="mb-2 flex items-baseline justify-between gap-2">
-                <span className="text-xs font-semibold" style={{ color: brand.ink }}>
-                  {t({ tr: "Kritik kavşak blocking-time — ", en: "Critical junction blocking-time — ", de: "Kritische Kreuzungs-Sperrzeit — " })}{maks.kavsakDetay.ad.replace(/^Kavşak — /, "")}
-                </span>
-                <span className="text-xs tabular-nums" style={{ color: maks.baglayanAnahtar === "kavsak" ? kritikRenk : brand.muted }}>
-                  {Math.round(maks.kavsakDetay.isgal)} s
-                  <span style={{ color: brand.faint }}> (×{maks.kavsakDetay.faktor})</span>
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[0.72rem]" style={{ color: brand.inkSoft }}>
-                <span>{t({ tr: "tanzim ", en: "setup ", de: "Bildung " })}<b>{Math.round(maks.kavsakDetay.tSetup)} s</b></span>
-                <span>{t({ tr: "görme ", en: "sighting ", de: "Sicht " })}<b>{maks.kavsakDetay.tGorme} s</b></span>
-                <span>{t({ tr: "geçiş + ", en: "transit + ", de: "Durchfahrt + " })}<b>{Math.round(stock.length)} m</b>{t({ tr: " tren temizleme ", en: " train clearing ", de: " Zugräumung " })}<b>{Math.round(maks.kavsakDetay.tGecis)} s</b></span>
-                <span>{t({ tr: "release ", en: "release ", de: "Auflösung " })}<b>{Math.round(maks.kavsakDetay.tRelease)} s</b></span>
-                <span style={{ color: brand.muted }}>{t({ tr: "= tek geçiş ", en: "= single transit ", de: "= Einzeldurchfahrt " })}{Math.round(maks.kavsakDetay.tekGecis)} s</span>
-              </div>
-              <div className="mt-1.5 text-[0.7rem]" style={{ color: brand.muted }}>
-                {t({ tr: "Fouling bölgesi ", en: "The fouling zone ", de: "Der Gefahrraum " })}{Math.round(maks.kavsakDetay.foulUzunluk)}{t({ tr: " m (kısıt bölgesi + tren boyu) ", en: " m (constraint zone + train length) ", de: " m (Engpassbereich + Zuglänge) " })}{Math.round(maks.kavsakDetay.gecisHizi * 3.6)}{t({ tr: " km/h geçiş hızında temizlenir; karşı-yön varış+kalkış crossover'ı sırayla kullandığından ×", en: " km/h transit speed clears it; since the opposing-direction arrival+departure use the crossover in sequence, ×", de: " km/h Durchfahrtsgeschwindigkeit räumt ihn; da Ankunft+Abfahrt der Gegenrichtung den Crossover nacheinander nutzen, ×" })}{maks.kavsakDetay.faktor}{t({ tr: ". Uzun araç kavşağı daha uzun işgal eder.", en: ". A longer vehicle occupies the junction longer.", de: ". Ein längeres Fahrzeug belegt die Kreuzung länger." })}
-              </div>
-            </div>
-          )}
-        </Panel>
-      )}
-
       {/* Kilitleme (Interlocking) Kontrol Tablosu — sinyalizasyon kümesinde (rota/makas/kilit). */}
       <Kapanir baslik={t({ tr: "Kilitleme (Interlocking) Kontrol Tablosu", en: "Interlocking Control Table", de: "Verschluss-(Interlocking-)Verschlusstabelle" })} ozet={t({ tr: "rota tesisi · makas konumu · kilit", en: "route setting · switch position · lock", de: "Fahrstraße · Weichenlage · Verschluss" })}><KilitlemePaneli /></Kapanir>
       </section>
@@ -306,7 +306,7 @@ export function SistemMerkezi() {
       </>)}
       </section>
 
-      <section className="sm-panel" data-t="3">
+      <section className="sm-panel" data-t="4">
       <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>{t({ tr: "Sonuçların hangi girdiye ne kadar duyarlı olduğu (tornado) ve motorun analitik referanslara karşı doğrulanması (V&V). Derin analiz — açılır bloklarda.", en: "How sensitive the results are to each input (tornado) and validation of the engine against analytical references (V&V). Deep analysis — in the expandable blocks.", de: "Wie empfindlich die Ergebnisse auf jede Eingabe reagieren (Tornado) und die Verifikation der Engine gegen analytische Referenzen (V&V). Tiefenanalyse — in den aufklappbaren Blöcken." })}</p>
 
         {/* Duyarlılık (tornado) — hangi parametre kapasiteyi en çok oynatıyor. */}
@@ -319,7 +319,7 @@ export function SistemMerkezi() {
 
       </section>
 
-      <section className="sm-panel" data-t="4">
+      <section className="sm-panel" data-t="3">
       <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>{t({ tr: "Aynı temel kapasiteden iki karar: operasyonel (istenen aralık) ve risk (dayanıklılık) — ve tek-hat çakışma çözümü.", en: "Two decisions from the same base capacity: operational (desired headway) and risk (robustness) — plus single-track conflict resolution.", de: "Zwei Entscheidungen aus derselben Grundkapazität: betrieblich (gewünschte Zugfolgezeit) und Risiko (Robustheit) — sowie Eingleis-Konfliktauflösung." })}</p>
 
       {/* FİLO & KAPASİTE KARARI — iki panelin ORTAK temeli tek yerde (tekrarı önler). */}

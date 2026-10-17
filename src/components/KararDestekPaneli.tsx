@@ -11,7 +11,7 @@ import { CK } from "@/lib/anaray/chartkit";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { maksimumTren } from "@/lib/anaray/kapasite";
 import { kavsakliRingler } from "@/lib/anaray/network";
-import { filoHeadwayEgrisi, hedefFilo, enIyiHeadwaySn } from "@/lib/anaray/kararDestek";
+import { filoHeadwayEgrisi, hedefFilo } from "@/lib/anaray/kararDestek";
 import { sure } from "@/lib/anaray/format";
 import { BosDurum } from "@/components/BosDurum";
 import { Kpi } from "@/components/Kpi";
@@ -35,7 +35,6 @@ export function KararDestekPaneli() {
 
   const [hedefDk, setHedefDk] = useState(() => Math.max(0.5, Math.round((cfg.headway / 60) * 2) / 2) || 4);
   const hedef = useMemo(() => hedefFilo(cevrim, hedefDk * 60, nMax), [cevrim, hedefDk, nMax]);
-  const enIyi = enIyiHeadwaySn(cevrim, nMax);
 
   if (!maks.gecerli || egri.length === 0) {
     return (
@@ -138,12 +137,10 @@ export function KararDestekPaneli() {
               </div>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <Kpi etiket={t({ tr: "Önerilen (sürd.)", en: "Recommended (sust.)", de: "Empfohlen (nachh.)" })} deger={`${oneri}`} ton="success" boyut="sm" alt={`${t({ tr: "aralık", en: "interval", de: "Intervall" })} ${sure(cevrim / oneri)}`} />
-            <Kpi etiket={t({ tr: "En iyi (duvar)", en: "Best (wall)", de: "Bestes (Grenze)" })} deger={sure(enIyi)} boyut="sm" alt={`${nMax} araç`} />
-          </div>
+          {/* Taban kapasite sayıları (önerilen · duvar · çevrim · min aralık) üstteki
+              ortak "Filo & Kapasite kararı" kutusunda — burada tekrar edilmez (tek kaynak). */}
           <p className="text-[0.68rem] leading-snug" style={{ color: brand.muted }}>
-            {t({ tr: "Çevrim", en: "Cycle", de: "Umlauf" })} {sure(cevrim)} {t({ tr: "· fiziksel min aralık", en: "· physical min interval", de: "· physikalisches Mindestintervall" })} {sure(hMin)}{t({ tr: ". Hedef aralık ne kadar küçükse gereken filo o kadar artar; kapasite duvarını aşan hedef sağlanamaz.", en: ". The smaller the target interval, the larger the required fleet; a target beyond the capacity wall cannot be met.", de: ". Je kleiner das Zielintervall, desto größer die erforderliche Flotte; ein Ziel jenseits der Kapazitätsgrenze ist nicht erreichbar." })}
+            {t({ tr: "Önerilen filo · kapasite duvarı · çevrim · min aralık → yukarıdaki “Filo & Kapasite kararı” kutusunda. Hedef aralık ne kadar küçükse gereken filo o kadar artar; kapasite duvarını aşan hedef sağlanamaz.", en: "Recommended fleet · capacity wall · cycle · min interval → in the “Fleet & Capacity decision” box above. The smaller the target interval, the larger the required fleet; a target beyond the capacity wall cannot be met.", de: "Empfohlene Flotte · Kapazitätsgrenze · Umlauf · Mindestintervall → im Kasten „Flotten- & Kapazitätsentscheidung“ oben. Je kleiner das Zielintervall, desto größer die erforderliche Flotte; ein Ziel jenseits der Kapazitätsgrenze ist nicht erreichbar." })}
           </p>
         </div>
       </div>
