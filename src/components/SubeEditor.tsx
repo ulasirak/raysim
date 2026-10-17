@@ -146,6 +146,14 @@ export function SubeEditor() {
                   style={{ borderColor: brand.red, color: brand.red }}>{t({ tr: "Şubeyi sil", en: "Delete branch", de: "Zweigstrecke löschen" })}</button>
               </div>
 
+              {/* Keşfedilebilirlik: servisTren 0 iken kolun analizleri UYKUDA — belirgin nudge.
+                  (0 varsayılanı korunur: dürüstlük = tahmin yok; ama ne kazanacağı açıkça söylenir.) */}
+              {(s.servisTren ?? 0) === 0 && (
+                <p className="mt-2 rounded border-l-2 px-2.5 py-1.5 text-[0.72rem] leading-snug" style={{ borderColor: brand.red, background: "#FEF5F5", color: brand.inkSoft }}>
+                  ◆ {t({ tr: "Servis treni 0 — kol şu an yalnız kendi başına analiz ediliyor. Bir sayı girersen", en: "Service trains 0 — the branch is analyzed on its own for now. Enter a number and", de: "Betriebszüge 0 — der Zweig wird vorerst allein analysiert. Geben Sie eine Zahl ein, dann" })} <b style={{ color: brand.ink }}>{t({ tr: "ortak kesim yükü + kavşak zaman-çakışması + canlı mekik treni + gecikme yayılımı", en: "shared-section load + junction time-conflict + live shuttle train + delay propagation", de: "gemeinsame Abschnittslast + Knoten-Zeitkonflikt + Live-Pendelzug + Verspätungsausbreitung" })}</b> {t({ tr: "aktifleşir. (0 = kapalı, tahmin yok.)", en: "activate. (0 = off, no estimate.)", de: "werden aktiv. (0 = aus, keine Schätzung.)" })}
+                </p>
+              )}
+
               {/* Otomatik özet: nereden / ne kadar / ne işe yarar */}
               {o && (
                 <div className="mt-3 flex flex-wrap items-stretch gap-2">

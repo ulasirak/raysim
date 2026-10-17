@@ -42,7 +42,7 @@ export type BolumSlug = (typeof BOLUM_SLUG)[number];
 const BOLUMLER: { slug: BolumSlug; el: React.ReactNode; faz?: { ad: string; not: string } }[] = [
   { slug: "ringler", el: <RingEditor />, faz: { ad: "KUR", not: "Hattı ve makas bölgelerini tanımla — buradaki her veri kalıcıdır." } },
   { slug: "sefer", el: <Studio />, faz: { ad: "ANALİZ ET", not: "Kurduğun hattı simüle et — canlı ağ, ters işletme, tarife, kapasite ve darboğazlar." } },
-  { slug: "sistem", el: <SistemMerkezi /> },
+  { slug: "sistem", el: <SistemMerkezi />, faz: { ad: "İNCELE", not: "Kapasite, darboğaz, motor doğruluğu ve filo kararını derinlemesine incele." } },
   { slug: "belgeler", el: <Belgeler />, faz: { ad: "BELGELE", not: "Analizden profesyonel tasarım dokümantasyonu üret." } },
   { slug: "karsilastirma", el: <Karsilastirma />, faz: { ad: "KARŞILAŞTIR", not: "Senaryoları/projeleri yan yana koy — objektif karar desteği." } },
 ];

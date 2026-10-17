@@ -720,14 +720,18 @@ export function RingEditor() {
       {duraklar.length >= 2 && (
         <div className="mt-4">
           <Panel katlanir ozet={maks.gecerli ? `${maks.nTeorik} ${t({ tr: "tramvay · sürd.", en: "trams · sust.", de: "Straßenbahnen · nachh." })} ${maks.nSurdurulebilir}` : t({ tr: "terminal dönüş kapasitesi", en: "terminal turnback capacity", de: "Endstellen-Wendekapazität" })} baslik={t({ tr: "Maksimum Tramvay Kapasitesi", en: "Maximum Tram Capacity", de: "Maximale Straßenbahnkapazität" })} aciklama={t({ tr: "Hat çift hat, gidiş-dönüş çalışır (tramvay gider, döner, tekrar gider — sürekli çevrim). Terminal dönüş şartlarını gir; sistem bu hatta aynı anda en fazla kaç tramvayın sığacağını hesaplar. Darboğaz otomatik isimlenir.", en: "The line runs double-track, out and back (a tram goes, turns back, goes again — a continuous cycle). Enter the terminal turnback conditions; the system computes how many trams can fit on this line at once. The bottleneck is named automatically.", de: "Die Strecke fährt zweigleisig, hin und zurück (eine Straßenbahn fährt, wendet, fährt wieder — ein durchgehender Umlauf). Geben Sie die Endstellen-Wendebedingungen ein; das System berechnet, wie viele Straßenbahnen gleichzeitig auf diese Strecke passen. Der Engpass wird automatisch benannt." })}>
-            {/* Bilgilendirme: neden makaslı turnback hesabı */}
-            <div className="mb-2 rounded border-l-4 px-3 py-2 text-xs leading-relaxed" style={{ background: CK.goodBgSoft, borderColor: brand.ink, color: brand.inkSoft }}>
-              ℹ️ <b>Neden makaslı hesap?</b> Tramvay uçta dönmek için karşı hatta <b>makasla (crossover)</b> geçmek zorundadır — yoksa gelen hatla <b>kafa kafaya çarpışır</b>. Terminalin en fazla kaç tramvay çevirebileceğini asıl bu makasın tipi belirler:
+            {/* Bilgilendirme: neden makaslı turnback hesabı — kademeli açılım (uzun eğitim
+                metni varsayılan kapalı; panel girdilerle açılır, bilgiyle boğmaz). */}
+            <details className="mb-2 rounded border-l-4 px-3 py-2 text-xs leading-relaxed" style={{ background: CK.goodBgSoft, borderColor: brand.ink, color: brand.inkSoft }}>
+              <summary className="cursor-pointer select-none font-semibold" style={{ color: brand.ink }}>ℹ️ Neden makaslı turnback hesabı? <span className="font-normal" style={{ color: brand.muted }}>(nasıl hesaplanır — aç)</span></summary>
+              <div className="mt-1.5">
+              Tramvay uçta dönmek için karşı hatta <b>makasla (crossover)</b> geçmek zorundadır — yoksa gelen hatla <b>kafa kafaya çarpışır</b>. Terminalin en fazla kaç tramvay çevirebileceğini asıl bu makasın tipi belirler:
               <br />• <b>S-makas:</b> dönüşler <b>seri, tek tek</b> — bir tramvay dönüp boğazı boşaltmadan öbürü giremez → terminal aralığı = <b>tam peron işgali</b> (peron çok olsa da hızlanmaz).
               <br />• <b>X-makas:</b> iki bağımsız hareket → 2 tramvay <b>eş-zamanlı olmadan ardışık</b> hızlıca dönebilir → her X-makas = <b>2 dönüş yolu</b>.
               <br /><b>Dönüş yolu = (S sayısı × 1) + (X sayısı × 2).</b> Ör. Şehir Hastanesi <b>2 S + 1 X</b> → 2+2 = 4 yol; Adliye <b>2 S</b> → 2 yol.
               <br /><b>Peron sayısı</b> = terminaldeki dönüş rayı adedi (çift hatta genelde 2). <b>Tek yön</b> modunda yön başına girersin, sistem ×2 yapar. Etkin dönüş = <b>min(peron, dönüş yolu)</b> → terminal aralığı = peron işgali ÷ etkin dönüş. (n ardışık dönüş için hem n peron hem yeterli makas yolu gerekir.)
-            </div>
+              </div>
+            </details>
             {/* Terminal (dönüş) girdileri — iki uç */}
             <div className="mb-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
               {(["terminalBas", "terminalSon"] as const).map((uc) => {
