@@ -388,3 +388,43 @@ export function hatOzellikleri(
   }
   return out;
 }
+
+// ————————————————————————————————————————————————
+// HAT BAŞLIĞI — CANLI özet (km · istasyon · kavşak), bayatlamaz
+// ————————————————————————————————————————————————
+// Hat adı başlığında eskiden sayılar ELLE gömülüydü ("… (~25,5 km · 29 istasyon …)")
+// → hat düzenlenince bayatlıyordu. Artık ad = SADE isim; sayılar line'dan CANLI türer.
+
+/** Sondaki SAYISAL betimleyici parantezini ("… km · … istasyon/durak …") atar; sayısal
+ *  olmayan editöryel parantezleri (kavşak notu, kısaltma) KORUR. Boşalırsa orijinali verir. */
+export function hatAdiTemiz(hatAdi: string): string {
+  const t = (hatAdi ?? "").replace(/\s*\((?=[^)]*(?:\bkm\b|istasyon|durak))[^)]*\)\s*$/i, "").trim();
+  return t || hatAdi;
+}
+
+/** Şubelerin ana hattan ayrıldığı KAVŞAK istasyon adları (yalnız iç kavşaklar —
+ *  hat başı/son değil). Tek GÜVENİLİR kavşak kaynağı budur; birleşim (merge) kavşakları
+ *  veriden türetilemez, hat adında editöryel not olarak kalır. */
+export function subeKavsakAdlari(rings: DurakArasiRing[], subeler: Sube[] = []): string[] {
+  if (!rings.length) return [];
+  const out = new Set<string>();
+  for (const s of subeler) {
+    if (!s.rings?.length) continue;
+    const at = Math.max(0, Math.min(rings.length, Math.round(s.atIndex)));
+    if (at <= 0 || at >= rings.length) continue; // hat başı/son = kavşak değil
+    const ad = rings[at - 1]?.toAd;
+    if (ad) out.add(ad);
+  }
+  return [...out];
+}
+
+/** CANLI hat özeti: "<km> km · <N> istasyon[ · <kavşaklar> kavşaklı]". Sayılar line'dan
+ *  türer → hat değişince kendiliğinden güncellenir (greenwashing/bayatlama yok). Geçit
+ *  (yolcusuz duruş) istasyon sayılmaz. */
+export function hatOzetMetni(line: Line, rings: DurakArasiRing[] = [], subeler: Sube[] = []): string {
+  const istasyon = line.stations.filter((s) => s.tip !== "gecit").length;
+  const parts = [`${(line.length / 1000).toFixed(1)} km`, `${istasyon} istasyon`];
+  const kavsaklar = subeKavsakAdlari(rings, subeler);
+  if (kavsaklar.length) parts.push(`${kavsaklar.join(" & ")} kavşaklı`);
+  return parts.join(" · ");
+}

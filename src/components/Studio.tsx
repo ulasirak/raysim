@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import type { RailNetwork, Route } from "@/lib/anaray/types";
-import { flattenRoute, ringlerdenSebeke, hemzeminDuruslari, duruslariEkle, kalkisEkle, hatOzellikleri, kavsakliRingler, subeEfektifRingler } from "@/lib/anaray/network";
+import { flattenRoute, ringlerdenSebeke, hemzeminDuruslari, duruslariEkle, kalkisEkle, hatOzellikleri, kavsakliRingler, subeEfektifRingler, hatAdiTemiz, hatOzetMetni } from "@/lib/anaray/network";
 import { subeCanliYorungeler } from "@/lib/anaray/subeCanli";
 import { parkAnahtar, konumDurakIndex, queuedYaz } from "@/lib/anaray/parklanma";
 import { simulate } from "@/lib/anaray/sim";
@@ -555,7 +555,12 @@ function StudioIc() {
       {/* Rapor başlığı */}
       <div className="mb-6 border-b pb-4" style={{ borderColor: brand.border }}>
         <div className="field-label">{t({ tr: "Sefer Simülasyon Raporu", en: "Service Simulation Report", de: "Betriebssimulationsbericht" })}</div>
-        <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>{network.name}</h1>
+        {/* Başlık: ad SADE (gömülü sayı yok) + CANLI özet (km · istasyon · kavşak) —
+            hat düzenlenince kendiliğinden güncellenir, bayatlamaz. */}
+        <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>
+          {hatAdiTemiz(network.name)}
+          <span className="ml-2 align-middle text-base font-normal" style={{ color: brand.muted }}>· {hatOzetMetni(line, ringsHam, analizSube ? [] : subeler)}</span>
+        </h1>
         <div className="mt-1 text-xs" style={{ color: brand.muted }}>
           {t({ tr: "Kaynak:", en: "Source:", de: "Quelle:" })} <b>{t({ tr: "paylaşılan proje hattı", en: "shared project line", de: "gemeinsame Projektlinie" })}</b> ({line.stations.filter((s) => s.tip !== "gecit").length} {t({ tr: "durak", en: "stops", de: "Haltestellen" })} · {km(line.length)} km). {t({ tr: "Hattı düzenlemek için", en: "To edit the line, go to", de: "Zum Bearbeiten der Linie gehen Sie zu" })}{" "}
           <Link href="/#ringler" className="underline">{t({ tr: "Ringler (KUR)", en: "Rings (BUILD)", de: "Ringe (BAUEN)" })}</Link> {t({ tr: "bölümüne gidin — değişiklikler burada anında yansır.", en: "— changes are reflected here instantly.", de: "— Änderungen werden hier sofort übernommen." })}

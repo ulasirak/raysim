@@ -374,7 +374,7 @@ export function hazirHatlar(): HazirHat[] {
       isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 8, turnaroundDk: 4, terminalBas: term(2, 1), terminalSon: term(2, 0) },
       meta: meta({
         projeAdi: "Konya Tramvay — Mevcut Hat (Alaaddin–Adliye) Sinyalizasyon",
-        hatAdi: "Alaaddin – Adliye (5,2 km · 8 istasyon)",
+        hatAdi: "Alaaddin – Adliye",
         idare: "T.C. Ulaştırma ve Altyapı Bakanlığı · AYGM",
         yuklenici: "Uğursal Elektrik – ABU Yapı İş Ortaklığı",
         musavir: "EMAY Uluslararası Mühendislik ve Müşavirlik A.Ş.",
@@ -418,7 +418,7 @@ export function hazirHatlar(): HazirHat[] {
       isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 6, turnaroundDk: 4, terminalBas: term(2, 0), terminalSon: term(2, 1) },
       meta: meta({
         projeAdi: "Konya Tramvay 1. Etap Sinyalizasyon (Aslım Sanayi–Şehir Hastanesi–Adliye)",
-        hatAdi: "1. Etap · U10 Aslım Sanayi – U22 Adliye (~10,8 km · 13 istasyon)",
+        hatAdi: "1. Etap · U10 Aslım Sanayi – U22 Adliye",
         idare: "T.C. Ulaştırma ve Altyapı Bakanlığı · AYGM",
         yuklenici: "Uğursal Elektrik – ABU Yapı İş Ortaklığı",
         musavir: "EMAY Uluslararası Mühendislik ve Müşavirlik A.Ş.",
@@ -464,7 +464,7 @@ export function hazirHatlar(): HazirHat[] {
       isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 6, turnaroundDk: 4, terminalBas: term(2, 1), terminalSon: term(2, 0) },
       meta: meta({
         projeAdi: "Konya Tramvay 2. Etap Sinyalizasyon (Stadyum–Aslım Sanayi)",
-        hatAdi: "2. Etap · U1 Stadyum – U10 Aslım Sanayi (~8,6 km · 10 istasyon)",
+        hatAdi: "2. Etap · U1 Stadyum – U10 Aslım Sanayi",
         idare: "T.C. Ulaştırma ve Altyapı Bakanlığı · AYGM",
         yuklenici: "Uğursal Elektrik – ABU Yapı İş Ortaklığı",
         musavir: "EMAY Uluslararası Mühendislik ve Müşavirlik A.Ş.",
@@ -494,7 +494,7 @@ export function hazirHatlar(): HazirHat[] {
       isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 10, turnaroundDk: 5, terminalBas: term(2, 1), terminalSon: term(2, 1) },
       meta: meta({
         projeAdi: "Konya Tramvay — Bütünleşik Hat (Alaaddin–Stadyum) Sinyalizasyon",
-        hatAdi: "Alaaddin – Stadyum (~25,5 km · 29 istasyon · Adliye & Aslım kavşaklı)",
+        hatAdi: "Alaaddin – Stadyum (Adliye & Aslım kavşaklı)",
         idare: "T.C. Ulaştırma ve Altyapı Bakanlığı · AYGM",
         yuklenici: "Uğursal Elektrik – ABU Yapı İş Ortaklığı",
         musavir: "EMAY Uluslararası Mühendislik ve Müşavirlik A.Ş.",
@@ -525,7 +525,7 @@ export function hazirHatlar(): HazirHat[] {
       isletme: { ...varsayilanIsletme, kapali: false, seferSayisi: 8, turnaroundDk: 4, terminalBas: term(1, 0), terminalSon: term(1, 0) },
       meta: meta({
         projeAdi: "Samsun Tramvayı Sinyalizasyon (OMÜ Rektörlük – Tekkeköy)",
-        hatAdi: "Samsun Tramvayı · OMÜ Rektörlük (Eczaneler) – Tekkeköy (~27,0 km · 35 istasyon)",
+        hatAdi: "Samsun Tramvayı · OMÜ Rektörlük (Eczaneler) – Tekkeköy",
         idare: "Samsun Büyükşehir Belediyesi · SAMULAŞ",
         yuklenici: "Yüklenici Firma",
         musavir: "Müşavir Firma",

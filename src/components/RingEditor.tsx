@@ -15,7 +15,7 @@ import { HatIceAktar, type IceAktarMod } from "@/components/HatIceAktar";
 import { SubeEditor } from "@/components/SubeEditor";
 import { etkinBogazIsgali, terminalDonusParalel, etkinPeronSayisi, terminalMakasSayilari, terminalSeriDonus, type DonusTip, type TerminalConfig } from "@/lib/anaray/config";
 import { maksimumTren } from "@/lib/anaray/kapasite";
-import { kavsakliRingler } from "@/lib/anaray/network";
+import { kavsakliRingler, hatAdiTemiz } from "@/lib/anaray/network";
 import { tersIsletmeAnaliz } from "@/lib/anaray/tersisletme";
 import { yolcuAkisSuresi } from "@/lib/anaray/yolcu";
 import { brand } from "@/lib/anaray/brand";
@@ -285,7 +285,7 @@ export function RingEditor() {
       <div className="mb-6 flex items-end justify-between border-b pb-4" style={{ borderColor: brand.border }}>
         <div>
           <div className="field-label">{t({ tr: "Durak Arası Ring Editörü — Gerçek-Hayat İşletim Hücreleri", en: "Inter-Stop Section Editor — Real-Life Operating Cells", de: "Editor für Streckenabschnitte — Betriebszellen aus der Praxis" })}</div>
-          <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>{meta.hatAdi || t({ tr: "Adsız Hat", en: "Untitled Line", de: "Unbenannte Strecke" })} · {t({ tr: "Loop (Çevrim) Şartları", en: "Loop (Cycle) Conditions", de: "Umlauf-Bedingungen" })}</h1>
+          <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>{hatAdiTemiz(meta.hatAdi || t({ tr: "Adsız Hat", en: "Untitled Line", de: "Unbenannte Strecke" }))} · {t({ tr: "Loop (Çevrim) Şartları", en: "Loop (Cycle) Conditions", de: "Umlauf-Bedingungen" })}</h1>
         </div>
         <button
           onClick={() => {

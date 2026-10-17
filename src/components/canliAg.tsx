@@ -7,7 +7,7 @@
 
 import { useMemo, useState } from "react";
 import type { RailNetwork, Route } from "@/lib/anaray/types";
-import { flattenRoute, ringlerdenSebeke, hemzeminDuruslari, duruslariEkle, kalkisEkle, hatOzellikleri } from "@/lib/anaray/network";
+import { flattenRoute, ringlerdenSebeke, hemzeminDuruslari, duruslariEkle, kalkisEkle, hatOzellikleri, hatAdiTemiz } from "@/lib/anaray/network";
 import { simulate } from "@/lib/anaray/sim";
 import { simulateSignalled, reverseRoute, planDepotDispatch, loopYorunge } from "@/lib/anaray/signalling";
 import { maksimumTren } from "@/lib/anaray/kapasite";
@@ -166,7 +166,7 @@ export function CanliAgSayfa() {
       <header className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b px-3 py-2 backdrop-blur"
         style={{ borderColor: brand.border, background: "rgba(255,255,255,0.9)" }}>
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold" style={{ color: brand.ink }}>{p.hatAdi || p.projeAdi || t({ tr: "Canlı Ağ Simülasyonu", en: "Live Network Simulation", de: "Live-Netz-Simulation" })}</div>
+          <div className="truncate text-sm font-semibold" style={{ color: brand.ink }}>{hatAdiTemiz(p.hatAdi || p.projeAdi || t({ tr: "Canlı Ağ Simülasyonu", en: "Live Network Simulation", de: "Live-Netz-Simulation" }))}</div>
           <div className="text-[11px]" style={{ color: brand.muted }}>{t({ tr: "Canlı Ağ Simülasyonu", en: "Live Network Simulation", de: "Live-Netz-Simulation" })} · {p.filo} {t({ tr: "tramvay", en: "trams", de: "Straßenbahnen" })}</div>
         </div>
         <button type="button" onClick={() => setAcikLegend((v) => !v)}
