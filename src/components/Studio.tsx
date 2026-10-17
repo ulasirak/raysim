@@ -626,8 +626,10 @@ function StudioIc() {
           </div>
         </div>
 
-        {/* ② Filo (oynanır) + ulaşılan/hedef headway + kapasite */}
-        <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {/* ② Filo (oynanır) + hedef/ulaşılan headway + dönüş bekleme + kapasite.
+            (Dönüş Bekleme eski "Sefer Sıklığı" bölümünden buraya alındı — tüm çevrim
+            girdileri tek yerde.) */}
+        <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           <div>
             <span className="field-label">{t({ tr: "Filo (parktaki araç)", en: "Fleet (vehicles in depot)", de: "Flotte (Fahrzeuge in Abstellung)" })}</span>
             <div className="mt-1 flex items-center gap-1.5">
@@ -648,10 +650,64 @@ function StudioIc() {
             </div>
             <span className="mt-0.5 block text-[0.6rem]" style={{ color: CK.amberInk }}>{t({ tr: "⚠ değiştirilmesi önerilmez (240 s tasarım kuralı)", en: "⚠ changing not recommended (240 s design rule)", de: "⚠ Änderung nicht empfohlen (240-s-Auslegungsregel)" })}</span>
           </div>
+          {/* Terminal dönüş beklemesi — uçta bekleme; çevrim süresini (RTT) ve gereken filoyu besler */}
+          <div>
+            <span className="field-label">{t({ tr: "Terminal Dönüş Beklemesi", en: "Terminal Turnaround Wait", de: "Wendezeit am Terminal" })}</span>
+            <div className="mt-1 flex items-center gap-1">
+              <input type="number" min={0} step={0.5} value={turnaroundDk} onChange={(e) => setTurnaroundDk(Math.max(0, parseFloat(e.target.value) || 0))}
+                className="w-14 rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
+              <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "dk", en: "min", de: "Min" })}</span>
+            </div>
+            <span className="mt-0.5 block text-[0.6rem]" style={{ color: brand.muted }}>{t({ tr: "uçta bekleme → çevrime (RTT) eklenir", en: "wait at the terminal → added to the cycle (RTT)", de: "Warten am Endpunkt → zur Umlaufzeit (RTT) addiert" })}</span>
+          </div>
           <Kpi
             title={t({ tr: "Aynı anda bu hatta sığabilen EN FAZLA tramvay (darboğazın izin verdiği fiziksel üst sınır). Filon bu sayıyı aşamaz — aşarsa trenler kaçınılmaz kuyruklanır.", en: "The MAXIMUM trams that can fit on this line at once (the physical upper limit the bottleneck allows). Your fleet cannot exceed this — if it does, trains inevitably queue.", de: "Die MAXIMALE Anzahl Straßenbahnen, die gleichzeitig auf diese Linie passen (die vom Engpass erlaubte physikalische Obergrenze). Ihre Flotte kann dies nicht überschreiten — sonst stauen sich die Züge unvermeidlich." })}
             etiket={t({ tr: "Hat kapasitesi", en: "Line capacity", de: "Linienkapazität" })} deger={nMax} ton={filoAsim ? "danger" : "notr"}
             alt={filoAsim ? `⚠ ${t({ tr: "filo", en: "fleet", de: "Flotte" })} ${filoTek} > ${t({ tr: "kapasite", en: "capacity", de: "Kapazität" })} ${nMax}` : t({ tr: "araç · üst sınır (darboğaz)", en: "vehicles · upper limit (bottleneck)", de: "Fahrzeuge · Obergrenze (Engpass)" })} />
+        </div>
+
+        {/* KAPASİTE & ÇEVRİM — filo kararının gerekçesi: teorik/sürdürülebilir tavan,
+            tur süresi (RTT), darboğaz, seçilen sıklık için gereken tren. Eski "Sefer
+            Sıklığı" bölümünden kararın verildiği bu panele taşındı (tek kaynak). */}
+        {maks.gecerli && (
+          <div className="mt-4 rounded-md border-l-4 px-4 py-3" style={{ background: CK.goodBgSoft, borderColor: brand.ink }}>
+            <div className="field-label mb-1">{t({ tr: "Kapasite & Çevrim", en: "Capacity & Cycle", de: "Kapazität & Umlauf" })}</div>
+            <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
+              <div>
+                <span className="text-3xl font-semibold" style={{ color: brand.ink }}>{maks.nTeorik}</span>
+                <span className="ml-1 text-xs" style={{ color: brand.muted }}>{t({ tr: "tramvay — teorik maksimum", en: "trams — theoretical maximum", de: "Straßenbahnen — theoretisches Maximum" })}</span>
+              </div>
+              <div>
+                <span className="text-2xl font-semibold" style={{ color: CK.good }}>{maks.nSurdurulebilir}</span>
+                <span className="ml-1 text-xs" style={{ color: brand.muted }}>{t({ tr: "sürdürülebilir (UIC 406 tamponlu)", en: "sustainable (UIC 406 buffered)", de: "nachhaltig (UIC 406 gepuffert)" })}</span>
+              </div>
+            </div>
+            <p className="mt-1 text-[0.7rem]" style={{ color: brand.muted }}>
+              <b>{t({ tr: "Teorik maksimum", en: "Theoretical maximum", de: "Theoretisches Maximum" })}</b>: {t({ tr: "darboğazın izin verdiği fiziksel tavan — sıfır pay, her tren sürekli tam kapasite.", en: "the physical ceiling the bottleneck allows — zero margin, every train continuously at full capacity.", de: "die vom Engpass erlaubte physikalische Obergrenze — keine Reserve, jeder Zug durchgehend an voller Kapazität." })} <b>{t({ tr: "Sürdürülebilir", en: "Sustainable", de: "Nachhaltig" })}</b>: {t({ tr: "UIC 406 doluluk tavanıyla (blok başına ~%60–75 kullanım)", en: "with the UIC 406 occupancy ceiling (~60–75% use per block)", de: "mit der UIC-406-Auslastungsobergrenze (~60–75 % Nutzung je Block)" })} <b>{t({ tr: "her gün güvenle", en: "safely every day", de: "sicher jeden Tag" })}</b> {t({ tr: "çalıştırılabilen sayı — küçük gecikmeler birbirini tetiklemesin, toparlanma payı kalsın diye teorikten düşüktür (gerçek işletme bu değeri hedefler).", en: "the number that can be operated — lower than the theoretical so small delays do not trigger each other and a recovery margin remains (real operation targets this value).", de: "die betreibbare Zahl — niedriger als die theoretische, damit kleine Verspätungen sich nicht gegenseitig auslösen und eine Erholungsreserve bleibt (der reale Betrieb zielt auf diesen Wert)." })}
+            </p>
+            <p className="mt-1 text-xs" style={{ color: brand.inkSoft }}>
+              {t({ tr: "Bu hatta aynı anda en fazla", en: "At most", de: "Höchstens" })} <b>{maks.nTeorik}</b> {t({ tr: "tramvay sığar. Darboğaz:", en: "trams fit on this line at once. Bottleneck:", de: "Straßenbahnen passen gleichzeitig auf diese Linie. Engpass:" })} <b>{maks.baglayanAd}</b> · {t({ tr: "min. aralık", en: "min. headway", de: "min. Zugfolgezeit" })} {sure(maks.hMin)} · {t({ tr: "çevrim", en: "cycle", de: "Umlauf" })} {sure(maks.cevrimSuresi)}. <span style={{ color: brand.faint }}>{t({ tr: "Aynı sayı Ringler ve Sistem Merkezi'nde de görünür — tek kaynaktan.", en: "The same number also appears in Rings and the System Centre — from a single source.", de: "Dieselbe Zahl erscheint auch in Ringe und der Systemzentrale — aus einer einzigen Quelle." })}</span> {t({ tr: "Terminal girdileri", en: "Terminal inputs in", de: "Terminaleingaben in" })} <Link href="/#ringler" className="underline">{t({ tr: "Ringler", en: "Rings", de: "Ringe" })}</Link>{t({ tr: "’de; tam kısıt & blocking-time dökümü", en: "; full constraint & blocking-time breakdown in", de: "; vollständige Kanten- & Sperrzeit-Aufschlüsselung in" })} <Link href="/#sistem" className="underline">{t({ tr: "Sistem Merkezi", en: "System Centre", de: "Systemzentrale" })}</Link>{t({ tr: "’nde.", en: ".", de: "." })}
+            </p>
+            {/* Gereken tren = ⌈RTT ÷ hedef headway⌉ — kullanıcının hedef sıklığı için filo */}
+            <p className="mt-1 text-xs" style={{ color: brand.ink }}>
+              📐 {t({ tr: "Tur süresi (RTT)", en: "Round-trip time (RTT)", de: "Umlaufzeit (RTT)" })} <b>{sure(maks.cevrimSuresi)}</b> ({t({ tr: "2×seyir + tüm durak dwell'leri + terminaller", en: "2×run + all stop dwells + terminals", de: "2×Fahrt + alle Haltezeiten + Terminals" })}). {headwayDk} {t({ tr: "dk sefer sıklığı için", en: "min headway requires", de: "Min Zugfolgezeit erfordert" })} <b>{t({ tr: "gereken tren =", en: "trains needed =", de: "erforderliche Züge =" })} {Math.ceil(maks.cevrimSuresi / Math.max(1, headwayDk * 60))}</b> (⌈RTT ÷ headway⌉) — <span style={{ color: brand.muted }}>{t({ tr: "seçtiğin sıklıkta çalışmak için hatta bulunması gereken tramvay: bir tren tam turu (RTT) tamamlayana dek arkasından kaç tren dolması gerektiği (tur süresi ÷ sefer aralığı).", en: "the trams that must be on the line to run at your chosen frequency: how many trains must follow before one completes a full round-trip (RTT) (round-trip time ÷ headway).", de: "die Straßenbahnen, die auf der Linie sein müssen, um in Ihrer gewählten Taktung zu fahren: wie viele Züge folgen müssen, bis einer einen vollen Umlauf (RTT) abschließt (Umlaufzeit ÷ Zugfolgezeit)." })}</span>
+            </p>
+            <p className="mt-1 text-[0.65rem]" style={{ color: brand.faint }}>{t({ tr: "Hat çift hat (gidiş-dönüş) + sabit blok sinyal — tren dolu bloğa giremez (kırmızıda durur). Terminal dönüş beklemesi çevrime eklenir.", en: "Double-track (outbound/return) + fixed-block signalling — a train cannot enter an occupied block (it stops at red). The terminal turnaround wait is added to the cycle.", de: "Zweigleisig (Hin-/Rückfahrt) + Festblock-Signalisierung — ein Zug kann keinen belegten Block befahren (hält bei Rot). Die Wendezeit am Terminal wird zur Umlaufzeit addiert." })}</p>
+          </div>
+        )}
+        {/* Ulaşılan aralık fiziksel minimumun altında mı? (filo kapasiteyi aşıyorsa) */}
+        {maks.gecerli && ulasilanHeadwaySn < maks.hMin - 1e-6 && (
+          <div className="mt-2 text-sm" style={{ color: brand.red }}>
+            ⚠ {t({ tr: "Ulaşılan sefer aralığı", en: "The achieved headway", de: "Die erreichte Zugfolgezeit" })} ({sure(ulasilanHeadwaySn)}) {t({ tr: "fiziksel minimum aralığın", en: "is below the physical minimum headway", de: "liegt unter der physikalischen Mindest-Zugfolgezeit" })} ({sure(maks.hMin)}) {t({ tr: "altında — filo çok yüksek, trenler kaçınılmaz kuyruklanır. En sık güvenli aralık ≈", en: "— the fleet is too high, trains inevitably queue. Most frequent safe headway ≈", de: "— die Flotte ist zu hoch, Züge stauen sich unvermeidlich. Häufigste sichere Zugfolgezeit ≈" })} {sure(maks.hMin)} (≈ {nMax} {t({ tr: "araç", en: "vehicles", de: "Fahrzeuge" })}).
+          </div>
+        )}
+        {/* Bekleme durumu — seçilen aralıkta trenler birbirini bekliyor mu */}
+        <div className="mt-2 text-sm">
+          {canliGidis.anyDelay ? (
+            <span style={{ color: brand.red }}>⚠ {t({ tr: "Bu aralıkta trenler birbirini bekliyor — en fazla", en: "At this headway trains wait for each other — up to", de: "Bei dieser Zugfolgezeit warten Züge aufeinander — bis zu" })} {sure(canliGidis.maxDelay)} {t({ tr: "gecikme.", en: "delay.", de: "Verspätung." })}</span>
+          ) : (
+            <span style={{ color: CK.good }}>✓ {t({ tr: "Bu aralıkta bekleme yok — trenler serbest akıyor.", en: "No waiting at this headway — trains flow freely.", de: "Kein Warten bei dieser Zugfolgezeit — Züge fließen frei." })}</span>
+          )}
         </div>
 
         {/* ③ Parklanma dizilimi (elle) */}
@@ -698,60 +754,6 @@ function StudioIc() {
       </Panel>
       </div>
       )}
-
-      <section className="mt-6">
-        <Panel katlanir ozet={t({ tr: "çift hat · dönüş bekleme → çevrim", en: "double track · turnaround wait → cycle", de: "zweigleisig · Wendezeit → Umlauf" })} baslik={t({ tr: "Sefer Sıklığı", en: "Headway", de: "Zugfolgezeit" })} aciklama={t({ tr: "Hat çift hat, gidiş-dönüş çalışır. Sabit blok sinyal sistemi — tren dolu bloğa giremez (kırmızı sinyalde durur). Dönüş Bekleme çevrim süresini ve gereken filoyu besler.", en: "The line is double-track, running outbound and return. Fixed-block signalling — a train cannot enter an occupied block (it stops at a red signal). The turnaround wait feeds the cycle time and the required fleet.", de: "Die Linie ist zweigleisig und fährt Hin- und Rückfahrt. Festblock-Signalisierung — ein Zug kann keinen belegten Block befahren (er hält am roten Signal). Die Wendezeit fließt in die Umlaufzeit und die erforderliche Flotte ein." })}>
-
-          <div className="mb-3 rounded border-l-4 px-3 py-2 text-xs" style={{ borderColor: brand.ink, background: CK.goodBgSoft, color: brand.inkSoft }}>
-            ℹ️ {t({ tr: "Filo, ulaşılan sefer aralığı ve hedef headway artık yukarıdaki", en: "Fleet, achieved headway and target headway are now in the", de: "Flotte, erreichte Zugfolgezeit und Ziel-Zugfolgezeit sind jetzt im" })} <b>{t({ tr: "Filo Paneli", en: "Fleet Panel", de: "Flotten-Panel" })}</b>{t({ tr: "'nde (öneri → onayla → filo → parklanma). Burada yalnız", en: " above (recommend → confirm → fleet → parking). Here you only set the", de: " oben (empfehlen → bestätigen → Flotte → Abstellung). Hier stellen Sie nur die" })} <b>{t({ tr: "Dönüş Bekleme", en: "Turnaround Wait", de: "Wendezeit" })}</b> {t({ tr: "ayarlanır (çevrim süresini ve öneriyi besler).", en: "(it feeds the cycle time and the recommendation).", de: "ein (sie fließt in die Umlaufzeit und die Empfehlung ein)." })}
-          </div>
-          <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
-            <Num label={t({ tr: "Dönüş Bekleme", en: "Turnaround Wait", de: "Wendezeit" })} suffix={t({ tr: "dk", en: "min", de: "Min" })} step={0.5} value={turnaroundDk} onChange={(v) => setTurnaroundDk(Math.max(0, v))} />
-          </div>
-
-          {/* TEK SONUÇ — bu hatta en fazla kaç tramvay (Ringler ile birebir aynı) */}
-          {maks.gecerli && (
-            <div className="mb-4 rounded-md border-l-4 px-4 py-3" style={{ background: CK.goodBgSoft, borderColor: brand.ink }}>
-              <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
-                <div>
-                  <span className="text-3xl font-semibold" style={{ color: brand.ink }}>{maks.nTeorik}</span>
-                  <span className="ml-1 text-xs" style={{ color: brand.muted }}>{t({ tr: "tramvay — teorik maksimum", en: "trams — theoretical maximum", de: "Straßenbahnen — theoretisches Maximum" })}</span>
-                </div>
-                <div>
-                  <span className="text-2xl font-semibold" style={{ color: CK.good }}>{maks.nSurdurulebilir}</span>
-                  <span className="ml-1 text-xs" style={{ color: brand.muted }}>{t({ tr: "sürdürülebilir (UIC 406 tamponlu)", en: "sustainable (UIC 406 buffered)", de: "nachhaltig (UIC 406 gepuffert)" })}</span>
-                </div>
-              </div>
-              <p className="mt-1 text-[0.7rem]" style={{ color: brand.muted }}>
-                <b>{t({ tr: "Teorik maksimum", en: "Theoretical maximum", de: "Theoretisches Maximum" })}</b>: {t({ tr: "darboğazın izin verdiği fiziksel tavan — sıfır pay, her tren sürekli tam kapasite.", en: "the physical ceiling the bottleneck allows — zero margin, every train continuously at full capacity.", de: "die vom Engpass erlaubte physikalische Obergrenze — keine Reserve, jeder Zug durchgehend an voller Kapazität." })} <b>{t({ tr: "Sürdürülebilir", en: "Sustainable", de: "Nachhaltig" })}</b>: {t({ tr: "UIC 406 doluluk tavanıyla (blok başına ~%60–75 kullanım)", en: "with the UIC 406 occupancy ceiling (~60–75% use per block)", de: "mit der UIC-406-Auslastungsobergrenze (~60–75 % Nutzung je Block)" })} <b>{t({ tr: "her gün güvenle", en: "safely every day", de: "sicher jeden Tag" })}</b> {t({ tr: "çalıştırılabilen sayı — küçük gecikmeler birbirini tetiklemesin, toparlanma payı kalsın diye teorikten düşüktür (gerçek işletme bu değeri hedefler).", en: "the number that can be operated — lower than the theoretical so small delays do not trigger each other and a recovery margin remains (real operation targets this value).", de: "die betreibbare Zahl — niedriger als die theoretische, damit kleine Verspätungen sich nicht gegenseitig auslösen und eine Erholungsreserve bleibt (der reale Betrieb zielt auf diesen Wert)." })}
-              </p>
-              <p className="mt-1 text-xs" style={{ color: brand.inkSoft }}>
-                {t({ tr: "Bu hatta aynı anda en fazla", en: "At most", de: "Höchstens" })} <b>{maks.nTeorik}</b> {t({ tr: "tramvay sığar. Darboğaz:", en: "trams fit on this line at once. Bottleneck:", de: "Straßenbahnen passen gleichzeitig auf diese Linie. Engpass:" })} <b>{maks.baglayanAd}</b> · {t({ tr: "min. aralık", en: "min. headway", de: "min. Zugfolgezeit" })} {sure(maks.hMin)} · {t({ tr: "çevrim", en: "cycle", de: "Umlauf" })} {sure(maks.cevrimSuresi)}. <span style={{ color: brand.faint }}>{t({ tr: "Aynı sayı Ringler ve Sistem Merkezi'nde de görünür — tek kaynaktan.", en: "The same number also appears in Rings and the System Centre — from a single source.", de: "Dieselbe Zahl erscheint auch in Ringe und der Systemzentrale — aus einer einzigen Quelle." })}</span> {t({ tr: "Terminal girdileri", en: "Terminal inputs in", de: "Terminaleingaben in" })} <Link href="/#ringler" className="underline">{t({ tr: "Ringler", en: "Rings", de: "Ringe" })}</Link>{t({ tr: "’de; tam kısıt & blocking-time dökümü", en: "; full constraint & blocking-time breakdown in", de: "; vollständige Kanten- & Sperrzeit-Aufschlüsselung in" })} <Link href="/#sistem" className="underline">{t({ tr: "Sistem Merkezi", en: "System Centre", de: "Systemzentrale" })}</Link>{t({ tr: "’nde.", en: ".", de: "." })}
-              </p>
-              {/* Gereken tren = ⌈RTT ÷ hedef headway⌉ — kullanıcının hedef sıklığı için filo */}
-              <p className="mt-1 text-xs" style={{ color: brand.ink }}>
-                📐 {t({ tr: "Tur süresi (RTT)", en: "Round-trip time (RTT)", de: "Umlaufzeit (RTT)" })} <b>{sure(maks.cevrimSuresi)}</b> ({t({ tr: "2×seyir + tüm durak dwell'leri + terminaller", en: "2×run + all stop dwells + terminals", de: "2×Fahrt + alle Haltezeiten + Terminals" })}). {headwayDk} {t({ tr: "dk sefer sıklığı için", en: "min headway requires", de: "Min Zugfolgezeit erfordert" })} <b>{t({ tr: "gereken tren =", en: "trains needed =", de: "erforderliche Züge =" })} {Math.ceil(maks.cevrimSuresi / Math.max(1, headwayDk * 60))}</b> (⌈RTT ÷ headway⌉) — <span style={{ color: brand.muted }}>{t({ tr: "seçtiğin sıklıkta çalışmak için hatta bulunması gereken tramvay: bir tren tam turu (RTT) tamamlayana dek arkasından kaç tren dolması gerektiği (tur süresi ÷ sefer aralığı).", en: "the trams that must be on the line to run at your chosen frequency: how many trains must follow before one completes a full round-trip (RTT) (round-trip time ÷ headway).", de: "die Straßenbahnen, die auf der Linie sein müssen, um in Ihrer gewählten Taktung zu fahren: wie viele Züge folgen müssen, bis einer einen vollen Umlauf (RTT) abschließt (Umlaufzeit ÷ Zugfolgezeit)." })}</span>
-              </p>
-            </div>
-          )}
-
-          {/* Ulaşılan aralık fiziksel minimumun altında mı? (filo kapasiteyi aşıyorsa) */}
-          {maks.gecerli && ulasilanHeadwaySn < maks.hMin - 1e-6 && (
-            <div className="mb-2 text-sm" style={{ color: brand.red }}>
-              ⚠ {t({ tr: "Ulaşılan sefer aralığı", en: "The achieved headway", de: "Die erreichte Zugfolgezeit" })} ({sure(ulasilanHeadwaySn)}) {t({ tr: "fiziksel minimum aralığın", en: "is below the physical minimum headway", de: "liegt unter der physikalischen Mindest-Zugfolgezeit" })} ({sure(maks.hMin)}) {t({ tr: "altında — filo çok yüksek, trenler kaçınılmaz kuyruklanır. En sık güvenli aralık ≈", en: "— the fleet is too high, trains inevitably queue. Most frequent safe headway ≈", de: "— die Flotte ist zu hoch, Züge stauen sich unvermeidlich. Häufigste sichere Zugfolgezeit ≈" })} {sure(maks.hMin)} (≈ {nMax} {t({ tr: "araç", en: "vehicles", de: "Fahrzeuge" })}).
-            </div>
-          )}
-
-          {/* Bekleme durumu */}
-          <div className="text-sm">
-            {canliGidis.anyDelay ? (
-              <span style={{ color: brand.red }}>⚠ {t({ tr: "Bu aralıkta trenler birbirini bekliyor — en fazla", en: "At this headway trains wait for each other — up to", de: "Bei dieser Zugfolgezeit warten Züge aufeinander — bis zu" })} {sure(canliGidis.maxDelay)} {t({ tr: "gecikme.", en: "delay.", de: "Verspätung." })}</span>
-            ) : (
-              <span style={{ color: CK.good }}>✓ {t({ tr: "Bu aralıkta bekleme yok — trenler serbest akıyor.", en: "No waiting at this headway — trains flow freely.", de: "Kein Warten bei dieser Zugfolgezeit — Züge fließen frei." })}</span>
-            )}
-          </div>
-        </Panel>
-      </section>
 
       {/* ÇEKEN ARAÇ — Sefer'in tek düzenleme yüzeyi. Hat (istasyon/mesafe/hız/makas/
           depo) düzenlemesi Ringler'de (KUR) → ikili düzenleme sadeleştirildi. */}
