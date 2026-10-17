@@ -152,7 +152,9 @@ export function Bildfahrplan({ loop, line, cakismalar = [] }: { loop: LoopVeri; 
 
   return (
     <div>
-      <div className="mb-2 flex flex-wrap items-center gap-1.5">
+      {/* sağda pr-28: üstteki GrafikCerceve "⛶ Tam ekran" düğmesi sağ-üstte mutlak
+          konumlandığından, dışa aktarma düğmelerini sola kaydırıp çakışmayı önler */}
+      <div className="mb-2 flex flex-wrap items-center gap-1.5 pr-28">
         <button type="button" onClick={() => zoom(1.3)} className={dugme} style={{ background: brand.ink, color: "#fff" }} aria-label={t({ tr: "Yakınlaştır", en: "Zoom in", de: "Vergrößern" })}>+</button>
         <button type="button" onClick={() => zoom(1 / 1.3)} className={dugme} style={{ background: brand.ink, color: "#fff" }} aria-label={t({ tr: "Uzaklaştır", en: "Zoom out", de: "Verkleinern" })}>−</button>
         <button type="button" onClick={sifirla} className={dugme} style={{ border: `1px solid ${brand.border}`, color: brand.ink }}>{t({ tr: "Sıfırla", en: "Reset", de: "Zurücksetzen" })}</button>
