@@ -31,9 +31,10 @@ export function KilitlemePaneli() {
     );
   }
 
+  // makas bölgesi ile manevra sayısı eşit olmayabilir (crossover'sız blok makası manevra
+  // üretmez) → ikisini slash ile tek kutuda göster: "makas / manevra".
   const KUTU = [
-    { deger: ozet.makas, ad: t({ tr: "makas bölgesi", en: "switch zones", de: "Weichenbereiche" }), renk: brand.ink },
-    { deger: ozet.manevra, ad: t({ tr: "manevra rotası", en: "shunt routes", de: "Rangierfahrstraßen" }), renk: brand.ink },
+    { deger: `${ozet.makas} / ${ozet.manevra}`, ad: t({ tr: "makas bölgesi / manevra", en: "switch zones / maneuvers", de: "Weichenbereiche / Rangieren" }), renk: brand.ink },
     { deger: ozet.tccli, ad: "TCC", renk: ozet.tccli > 0 ? CK.gold : brand.ink },
     { deger: `${ozet.maxKilit} s`, ad: t({ tr: "maks kilit", en: "max lock", de: "max. Verschluss" }), renk: brand.ink },
   ];
@@ -48,7 +49,7 @@ export function KilitlemePaneli() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 p-5 sm:grid-cols-4">
+      <div className="grid grid-cols-3 gap-3 p-5">
         {KUTU.map((k, i) => (
           <div key={i} className="rounded-lg border px-3 py-3 text-center" style={{ borderColor: brand.border, background: "#F9FAFB" }}>
             <div className="text-2xl font-bold tabular-nums" style={{ color: k.renk }}>{k.deger}</div>
@@ -61,9 +62,17 @@ export function KilitlemePaneli() {
         {t({ tr: "Tam kilitleme kontrol tablosu — her makasın her rotası, Normal/Ters konumu, kilitlenen hareketler, yan koruma ve süreleriyle — ", en: "The full interlocking control table — every route of every switch, with Normal/Reverse position, locked moves, flank protection and times — is produced in ", de: "Die vollständige Verschluss-Kontrolltabelle — jede Fahrstraße jeder Weiche mit Normal/Umgestellt-Lage, verschlossenen Fahrten, Flankenschutz und Zeiten — wird erzeugt in " })}
         <Link href="/#belgeler" className="font-semibold underline" style={{ color: brand.red }}>{t({ tr: "Teknik Belgeler → PDF raporu (bölüm 3.2)", en: "Technical Documents → PDF report (section 3.2)", de: "Technische Dokumente → PDF-Bericht (Abschnitt 3.2)" })}</Link>
         {t({ tr: " içinde üretilir.", en: ".", de: "." })}
-        <div className="mt-1.5" style={{ color: brand.muted }}>
-          <b style={{ color: brand.inkSoft }}>Normal</b> {t({ tr: "= makas düz (ana hat) ·", en: "= switch straight (main line) ·", de: "= Weiche gerade (Hauptgleis) ·" })} <b style={{ color: brand.inkSoft }}>Ters</b> {t({ tr: "= makas dönük (crossover/manevra) ·", en: "= switch reversed (crossover/shunt) ·", de: "= Weiche umgestellt (Kreuzung/Rangieren) ·" })} <b style={{ color: brand.inkSoft }}>TCC</b> {t({ tr: "= her geçişte trafik kontrol onayı zorunlu (karşılaşmalı/barınma/depo).", en: "= traffic-control approval required at every move (crossover/siding/depot).", de: "= betriebliche Freigabe bei jeder Fahrt erforderlich (Gleiswechsel/Abstellung/Depot)." })}
-        </div>
+        <ul className="mt-2 list-disc space-y-1 pl-4" style={{ color: brand.muted }}>
+          <li>
+            <b style={{ color: brand.inkSoft }}>{t({ tr: "Normal / Ters", en: "Normal / Reverse", de: "Normal / Umgestellt" })}</b> {t({ tr: "— gerçek sinyalizasyon pratiği: bir makas daima iki konumdan birinde kilitlenir. Normal = varsayılan konum (ana hat düz geçiş); Ters = sapan yola / crossover'a çevrili. Rota, her makası gereken konuma getirip kilitleyerek tesis edilir; kontrol tablosu bunu rota başına N/R olarak gösterir.", en: "— real signalling practice: a point is always locked in one of two positions. Normal = default position (straight main-line move); Reverse = thrown to the diverging route / crossover. A route is set by driving each point to its required position and locking it; the control table records this as N/R per route.", de: "— echte Signalpraxis: eine Weiche ist stets in einer von zwei Lagen verschlossen. Normal = Grundstellung (gerade Hauptgleisfahrt); Umgestellt = in den abzweigenden Strang / Gleiswechsel gestellt. Eine Fahrstraße wird gebildet, indem jede Weiche in ihre Soll-Lage gebracht und verschlossen wird; die Kontrolltabelle führt dies je Fahrstraße als N/R." })}
+          </li>
+          <li>
+            <b style={{ color: brand.inkSoft }}>TCC</b> {t({ tr: `— makas tipi karşılaşmalı, barınma veya depo olduğunda (ya da makasta elle işaretlendiğinde) her geçişte trafik kontrol onayı zorunludur. Bu hatta ${ozet.tccli} rotada gerekli.`, en: `— traffic-control approval is required at every pass when the switch type is crossover, siding or depot (or when flagged on the switch). Required on ${ozet.tccli} routes on this line.`, de: `— eine betriebliche Freigabe ist bei jeder Fahrt erforderlich, wenn der Weichentyp Gleiswechsel, Abstellung oder Depot ist (oder an der Weiche markiert). Auf dieser Strecke bei ${ozet.tccli} Fahrstraßen erforderlich.` })}
+          </li>
+          <li>
+            <b style={{ color: brand.inkSoft }}>{t({ tr: "Maks kilit", en: "Max lock", de: "Max. Verschluss" })}</b> {t({ tr: `— tüm rotalar içindeki en yüksek kilit süresi (bu hatta ${ozet.maxKilit} s). Her rotanın kilidi = tanzim (makas hareketi × makas sayısı) + rota serbest bırakma.`, en: `— the longest locking time across all routes (${ozet.maxKilit} s here). Each route's lock = setting (switch throw × count) + route release.`, de: `— die längste Verschlusszeit über alle Fahrstraßen (${ozet.maxKilit} s hier). Verschluss je Fahrstraße = Einstellung (Weichenumstellung × Anzahl) + Fahrstraßenauflösung.` })}
+          </li>
+        </ul>
       </div>
     </div>
   );
