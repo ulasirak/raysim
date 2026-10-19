@@ -310,7 +310,7 @@ export function RingEditor() {
       {/* GTFS içe aktarma — bir toplu taşıma ağının .zip'inden hattı otomatik kurar
           (mevcut hattın üzerine yazar; "Silmeyi geri al" ile dönülebilir). */}
       {!yukleniyor && (
-        <HatIceAktar onIceAktar={iceAktarUygula} mevcutSonKoord={mevcutSonKoord} disabled={!yazilabilir} mesgulDis={iceMesgul} />
+        <HatIceAktar onIceAktar={iceAktarUygula} mevcutSonKoord={mevcutSonKoord} mevcutDurakVar={duraklar.length > 0} mevcutKoordVar={gtfsKoordVar} disabled={!yazilabilir} mesgulDis={iceMesgul} />
       )}
 
       {/* ŞUBELER ve DIŞA AKTAR aşağıya taşındı — önce hattı kur (Duraklar + ring kartları),

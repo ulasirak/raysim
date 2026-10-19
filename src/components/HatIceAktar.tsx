@@ -38,7 +38,7 @@ function haversineM(a: { lat: number; lon: number }, b: { lat: number; lon: numb
   return 2 * 6371000 * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
-export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, mevcutSonKoord = null }: {
+export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, mevcutSonKoord = null, mevcutDurakVar = false, mevcutKoordVar = false }: {
   onIceAktar: (rings: DurakArasiRing[], ad: string, mod: IceAktarMod, koord?: Record<string, { lat: number; lon: number }>, geometri?: { insaat?: boolean; noktalar: [number, number][] }[]) => void | Promise<void>;
   disabled?: boolean;
   mesgulDis?: boolean;
@@ -46,6 +46,10 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
   gomulu?: boolean;
   /** Mevcut hattın SON durak koordinatı — "Ekle" modunda süreklilik (kopukluk) kontrolü için. */
   mevcutSonKoord?: { ad: string; lat: number; lon: number } | null;
+  /** Mevcut hatta durak var mı? ("Ekle" karışık-koordinat uyarısı boş ağda gösterilmesin.) */
+  mevcutDurakVar?: boolean;
+  /** Mevcut ağın TÜM duraklarının geçerli lat/lon'u var mı? "Ekle"de koordinat uyumunu ölçer. */
+  mevcutKoordVar?: boolean;
 }) {
   const { t } = useDil();
   const [kaynak, setKaynak] = useState<"gtfs" | "railml" | "cad" | "osm" | null>(null);
@@ -195,6 +199,14 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
     ? haversineM(mevcutSonKoord, ilkImportKoord) : NaN;
   const ekleKopuk = Number.isFinite(ekleKopukMesafe) && ekleKopukMesafe > KOPUK_ESIK;
 
+  // İçe aktarılan hat koordinatlı mı? (yalnız OSM/GTFS gerçek lat/lon taşır; railML/CAD taşımaz.)
+  const importKoordVar = (kaynak === "gtfs" && !!gtfsFull?.duraklar?.length) || (kaynak === "osm" && !!osmFull);
+  // "Ekle" KARIŞIK KOORDİNAT: mevcut ağ dolu ve koordinat durumu eklenen hatla UYUŞMUYORSA
+  // (biri koordinatlı, diğeri değil) → birleşik set KISMİ koordinatlı kalır. cografiGeometri TÜM
+  // durakların koordinatını ister (kısmi üretmez), olmayınca coğrafi harita kapanıp düz şematiğe
+  // düşer. ekleKopuk (iki taraf da koordinatlı ama uzak) ayrı bir durum; çakışmasın diye !ekleKopuk.
+  const karisikKoord = mod === "ekle" && mevcutDurakVar && mevcutKoordVar !== importKoordVar && !ekleKopuk;
+
   const katmanTikla = (k: string, alan: "guzergahKatman" | "durakKatman") =>
     setEsle((e) => ({ ...e, [alan]: e[alan].includes(k) ? e[alan].filter((x) => x !== k) : [...e[alan], k] }));
 
@@ -210,6 +222,10 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
     // Ekle + kopuk: mevcut hatla eklenen hat fiziksel olarak bağlı değil → ek onay iste.
     if (ekleKopuk && !confirm(
       `⚠ KOPUK EKLEME\n\nEklenecek hattın başı (“${ilkImportKoord!.ad ?? "?"}”), mevcut hattın sonundan (“${mevcutSonKoord!.ad}”) ~${(ekleKopukMesafe / 1000).toFixed(1)} km uzak.\n\nBunlar fiziksel olarak BAĞLI DEĞİL — “Ekle” dersen sistem aralarında ışınlanma olan tek bir hat kurar. Genelde bunun yerine “Değiştir” veya “Yeni hat” istenir.\n\nYine de birleştirilsin mi?`,
+    )) return;
+    // Ekle + karışık koordinat: birleşik ağ kısmi koordinatlı kalır → harita şematiğe düşer.
+    if (karisikKoord && !confirm(
+      `⚠ KARIŞIK KOORDİNAT\n\n${mevcutKoordVar ? "Mevcut ağ koordinatlı, eklenen hatta koordinat yok." : "Mevcut ağın koordinatı yok, eklenen hat koordinatlı."}\n\nBirleştirilince duraklar KISMEN koordinatlı kalır — coğrafi harita kapanır ve ağ düz şematik çizgiye düşer. Eklenen kısım farklı bir coğrafyada olabilir; sistem onu kilometraja göre hattın sonuna bağlar.\n\nYine de eklensin mi? (Ayrı tutmak için “Yeni hat” kullan.)`,
     )) return;
     // GTFS ise durak koordinatlarını (lat/lon) da geçir → GTFS export için saklanır.
     let koord: Record<string, { lat: number; lon: number }> | undefined;
@@ -375,6 +391,18 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
             {!gomulu && mod === "degistir" && (
               <div className="mt-2 rounded-md border-l-4 px-3 py-2 text-xs" style={{ borderColor: CK.red, background: "#FDF2F4", color: brand.inkSoft }}>
                 <b style={{ color: CK.red }}>{t({ tr: "⚠ Mevcut ağ silinecek.", en: "⚠ The current network will be erased.", de: "⚠ Das aktuelle Netz wird gelöscht." })}</b> {t({ tr: "“Değiştir”, mevcut hattın TÜM ringlerini — makaslar, sinyaller, tehlike noktaları, kurplar ve duraklar dâhil — içe aktarılan ağla değiştirir. Filo ve ayarlar korunur; işlem 15 sn içinde geri alınabilir. Mevcut ağı korumak için", en: "“Replace” swaps ALL rings of the current line — including switches, signals, hazard points, curves and stops — with the imported network. Fleet and settings are kept; undoable within 15 s. To keep the current network, use", de: "„Ersetzen“ tauscht ALLE Ringe der aktuellen Strecke — einschließlich Weichen, Signale, Gefahrenpunkte, Bögen und Haltestellen — gegen das importierte Netz. Flotte und Einstellungen bleiben erhalten; innerhalb von 15 s widerrufbar. Um das aktuelle Netz zu behalten," })} <b>{t({ tr: "Ekle", en: "Append", de: "Anhängen" })}</b> {t({ tr: "ya da", en: "or", de: "oder" })} <b>{t({ tr: "Yeni hat", en: "New line", de: "Neue Strecke" })}</b> {t({ tr: "seç.", en: ".", de: "verwenden." })}
+              </div>
+            )}
+
+            {/* "Ekle" KARIŞIK KOORDİNAT uyarısı — mevcut ağla eklenen hattın koordinat durumu uyuşmuyor */}
+            {!gomulu && karisikKoord && (
+              <div className="mt-2 rounded-md border-l-4 px-3 py-2 text-xs" style={{ borderColor: CK.amberInk, background: "#FFFBEB", color: brand.inkSoft }}>
+                <b style={{ color: CK.amberInk }}>{t({ tr: "⚠ Karışık koordinat.", en: "⚠ Mixed coordinates.", de: "⚠ Gemischte Koordinaten." })}</b>{" "}
+                {mevcutKoordVar
+                  ? t({ tr: "Mevcut ağ koordinatlı, eklenen hatta koordinat yok.", en: "The current network has coordinates; the appended line has none.", de: "Das aktuelle Netz hat Koordinaten; die angehängte Strecke nicht." })
+                  : t({ tr: "Mevcut ağın koordinatı yok, eklenen hat koordinatlı.", en: "The current network has no coordinates; the appended line has them.", de: "Das aktuelle Netz hat keine Koordinaten; die angehängte Strecke schon." })}
+                {" "}{t({ tr: "Birleşince duraklar kısmen koordinatlı kalır → coğrafi harita kapanır, ağ düz şematik çizgiye düşer. Eklenen kısım farklı bir coğrafyada olabilir; sistem onu kilometraja göre hattın sonuna bağlar. Ayrı tutmak için", en: "After merging, stops stay partially coordinated → the geographic map turns off and the network drops to a flat schematic line. The appended part may sit in a different geography; the system attaches it to the end by kilometrage. To keep them separate, use", de: "Nach dem Zusammenführen bleiben die Haltestellen teils koordiniert → die geografische Karte wird deaktiviert und das Netz fällt auf eine flache schematische Linie. Der angehängte Teil kann in einer anderen Geografie liegen; das System hängt ihn nach Kilometrierung an das Ende an. Um sie getrennt zu halten," })}{" "}
+                <b>{t({ tr: "Yeni hat", en: "New line", de: "Neue Strecke" })}</b> {t({ tr: "seç.", en: ".", de: "verwenden." })}
               </div>
             )}
 
