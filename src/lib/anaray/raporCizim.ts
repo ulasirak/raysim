@@ -9,7 +9,7 @@ import type { DurakTalep } from "./tersisletme";
 import type { SeferTersSonuc } from "./seferters";
 import { hizDegisimNoktalari, bildIstasyonZamanlari, bildKesisimZamanlari, satirYerlesim } from "./grafikNoktalar";
 import { terminalHeadway } from "./kapasite";
-import type { DurakArasiRing, Sube } from "./ring";
+import { hemzeminBeklemeSn, type DurakArasiRing, type Sube } from "./ring";
 import { blockingTimeRing } from "./blockingtime";
 import type { LoopYorunge, MonteCarloResult } from "./signalling";
 import { sure } from "./format";
@@ -389,7 +389,7 @@ export function hemzeminSvg(rings: DurakArasiRing[], cfg: SimConfig): { svg: str
     for (const h of r.hemzeminler) {
       const hiz = Math.max(0.1, h.hiz);
       const yavas = hiz < vmax ? W * (1 / hiz - 1 / vmax) : 0;
-      g.push({ konum: acc + Math.max(0, Math.min(r.uzunluk, h.konum)), tip: h.tip, yavas, bekle: h.tip === "karayolu" ? (h.bekleme ?? 0) : 0 });
+      g.push({ konum: acc + Math.max(0, Math.min(r.uzunluk, h.konum)), tip: h.tip, yavas, bekle: hemzeminBeklemeSn(h) }); // TEK kaynak: TSP modeli dâhil
     }
     acc += r.uzunluk;
   }
