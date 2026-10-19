@@ -11,6 +11,7 @@ import { AutoAciklama } from "@/components/AutoAciklama";
 import { CK } from "@/lib/anaray/chartkit";
 import { sure } from "@/lib/anaray/format";
 import { useSimConfig, useProje, useArac, useIsletme, useHesap } from "@/components/SimConfigProvider";
+import { HatDisaAktar } from "@/components/HatDisaAktar";
 import { PROJE_META_ALANLAR } from "@/lib/anaray/config";
 
 // Proje künyesi alan etiketleri (config.ts veri haritasındaki TR karşılıkları) →
@@ -406,6 +407,10 @@ export function Belgeler() {
           )}
         </div>
       </Panel>
+
+      {/* DIŞA AKTAR — railML/GTFS. Çıktı adımı olduğu için Ringler'den buraya (BELGELE,
+          akışta SM'den sonra) taşındı; PDF raporuyla aynı "çıktı" evinde. */}
+      <HatDisaAktar />
 
       <footer className="mt-10 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
         {t({ tr: "RaySim · Belge üretici — hat verisi Ringler modülünden, parametreler Sistem Merkezi'nden gelir; belgeler bu tek kaynaktan üretilir.", en: "RaySim · Document generator — line data comes from the Ringler module, parameters from the System Center; documents are produced from this single source.", de: "RaySim · Dokumentgenerator — Liniendaten stammen aus dem Modul Ringler, Parameter aus dem Systemzentrum; Dokumente werden aus dieser einzigen Quelle erstellt." })}
