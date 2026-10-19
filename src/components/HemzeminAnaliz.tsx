@@ -1,10 +1,11 @@
 "use client";
 
-// raysim — HEMZEMİN GEÇİT & SİNYAL ÖNCELİĞİ (TSP) GECİKME ANALİZİ.
-// Tramvaylar sokakta çok geçitli çalışır (OpenTrack bunu ayrı vurgulamaz). Her geçit iki
-// gecikme üretir: (1) YAVAŞLAMA — tren geçit hızına (ör. 25 km/h) düşer, (2) BEKLEME —
-// karayolu geçidinde trafik/öncelik (TSP) beklemesi. bekleme, sinyal önceliğinin doğrudan
-// ölçüsüdür: iyi TSP → düşük bekleme. Grafik geçitlerin tur süresine katkısını gösterir.
+// raysim — HEMZEMİN GEÇİT GECİKMESİ.
+// Tramvaylar sokakta çok geçitli çalışır (OpenTrack bunu ayrı vurgulamaz). Her geçit tur
+// süresine iki şey ekler: (1) YAVAŞLAMA — tren geçit hızına düşer (fizik: W·(1/hiz−1/vmax)),
+// (2) BEKLEME — yalnız KARAYOLU geçidinde, kullanıcının Ringler'de girdiği DURMA süresi
+// (motorda tren gerçekten durur). TSP MODELLENMEZ: bekleme doğrudan girilen veridir; sinyal
+// önceliği (TSP) gerçek-dünyada o beklemeyi azaltan kaldıraçtır (tahmin üretmeyiz).
 
 import { useMemo } from "react";
 import { brand } from "@/lib/anaray/brand";
@@ -35,13 +36,17 @@ export function HemzeminAnaliz({ rings, cfg, cevrimSn }: { rings: DurakArasiRing
     const toplamTek = g.reduce((s, x) => s + x.yavas + x.bekle, 0);
     const toplamTur = toplamTek * 2; // gidiş + dönüş
     const karayolu = g.filter((x) => x.tip === "karayolu").length;
-    return { g, L, toplamTur, karayolu, yaya: g.length - karayolu, top: Math.max(...g.map((x) => x.yavas + x.bekle), 1) };
+    const toplamBekle = g.reduce((s, x) => s + x.bekle, 0); // girilen toplam durma (TSP duyarlı bileşen)
+    let worstIdx = 0;
+    for (let i = 1; i < g.length; i++) if (g[i].yavas + g[i].bekle > g[worstIdx].yavas + g[worstIdx].bekle) worstIdx = i;
+    return { g, L, toplamTur, karayolu, yaya: g.length - karayolu, top: Math.max(...g.map((x) => x.yavas + x.bekle), 1), toplamBekle, worstIdx };
   }, [rings, cfg, t]);
 
   if (!veri || veri.g.length === 0) {
     return <div className="text-sm" style={{ color: brand.muted }}>{t({ tr: "Bu hatta tanımlı hemzemin geçit yok.", en: "No level crossings defined on this line.", de: "Auf dieser Linie sind keine Bahnübergänge definiert." })}</div>;
   }
-  const { g, L, toplamTur, karayolu, yaya, top } = veri;
+  const { g, L, toplamTur, karayolu, yaya, top, toplamBekle, worstIdx } = veri;
+  const worst = g[worstIdx];
   const W = 860, H = 190, padL = 40, padR = 14, padT = 22, padB = 34;
   const pw = W - padL - padR, ph = H - padT - padB;
   const X = (k: number) => padL + (k / L) * pw;
@@ -54,6 +59,8 @@ export function HemzeminAnaliz({ rings, cfg, cevrimSn }: { rings: DurakArasiRing
       <div className="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-xs" style={{ color: brand.inkSoft }}>
         <span><b>{g.length}</b>{t({ tr: " geçit (", en: " crossings (", de: " Übergänge (" })}{karayolu}{t({ tr: " karayolu · ", en: " road · ", de: " Straße · " })}{yaya}{t({ tr: " yaya)", en: " pedestrian)", de: " Fußgänger)" })}</span>
         <span>{t({ tr: "Tur başına geçit gecikmesi: ", en: "Crossing delay per round trip: ", de: "Übergangsverzögerung pro Umlauf: " })}<b style={{ color: yuzde > 8 ? CK.red : brand.ink }}>{sure(Math.round(toplamTur))}</b>{t({ tr: " (çevrimin %", en: " (", de: " (" })}{yuzde.toFixed(1)}{t({ tr: "'i)", en: "% of the cycle)", de: " % des Umlaufs)" })}</span>
+        {worst && worst.yavas + worst.bekle > 0 && <span>{t({ tr: "En yüksek: ", en: "Highest: ", de: "Höchste: " })}<b style={{ color: brand.ink }}>{worst.ad}</b> ({Math.round(worst.yavas + worst.bekle)} s)</span>}
+        {toplamBekle === 0 && karayolu > 0 && <span style={{ color: CK.amberInk }}>{t({ tr: "⚠ karayolu beklemesi girilmedi — Ringler → geçit “Bekleme (durma)”", en: "⚠ no road wait entered — Rings → crossing “Wait (stop)”", de: "⚠ keine Straßen-Wartezeit — Ringe → Übergang „Wartezeit (Halt)“" })}</span>}
       </div>
       <div className="-mx-1 overflow-x-auto px-1 sm:mx-0" style={{ WebkitOverflowScrolling: "touch" }}>
         <div className="min-w-[680px] sm:min-w-0">
@@ -78,7 +85,8 @@ export function HemzeminAnaliz({ rings, cfg, cevrimSn }: { rings: DurakArasiRing
                   {x.bekle > 0 && <rect x={cx - bw / 2} y={yBek} width={bw} height={Math.max(0, base - yBek)} fill={bekRenk}><title>{x.ad}{t({ tr: ": bekleme (TSP/trafik) ", en: ": wait (TSP/traffic) ", de: ": Wartezeit (ÖPNV-Bevorrechtigung/Verkehr) " })}{Math.round(x.bekle)} s</title></rect>}
                   {x.yavas === 0 && x.bekle === 0 && <rect x={cx - bw / 2} y={base - 2} width={bw} height={2} fill="#9AA7B2" />}
                   {/* gecikme değeri (üstte) + tam km (altta) — DİNAMİK */}
-                  {toplam > 0 && <text x={cx} y={yTop - 2} textAnchor="middle" fontSize={7} fontWeight={600} fill={brand.inkSoft}>{Math.round(toplam)}s</text>}
+                  {toplam > 0 && <text x={cx} y={yTop - 2} textAnchor="middle" fontSize={7} fontWeight={i === worstIdx ? 800 : 600} fill={i === worstIdx ? CK.red : brand.inkSoft}>{Math.round(toplam)}s</text>}
+                  {i === worstIdx && toplam > 0 && <text x={cx} y={yTop - 10} textAnchor="middle" fontSize={8} fill={CK.red}>▼</text>}
                   <text x={cx} y={base + 21} textAnchor="middle" fontSize={7.5} fontWeight={700} fill={brand.ink}>{(x.konum / 1000).toFixed(2)}</text>
                 </g>
               );
@@ -92,8 +100,8 @@ export function HemzeminAnaliz({ rings, cfg, cevrimSn }: { rings: DurakArasiRing
         </div>
       </div>
       <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs" style={{ color: brand.muted }}>
-        <span><span style={{ color: "#9AA7B2" }}>■</span>{t({ tr: " yavaşlama · ", en: " slowdown · ", de: " Verlangsamung · " })}<span style={{ color: CK.blue }}>■</span>/<span style={{ color: CK.amber }}>■</span>/<span style={{ color: CK.red }}>■</span>{t({ tr: " bekleme (TSP/trafik, artan)", en: " wait (TSP/traffic, increasing)", de: " Wartezeit (ÖPNV-Bevorrechtigung/Verkehr, zunehmend)" })}</span>
-        <span>{t({ tr: "Sinyal önceliği (TSP) iyileştikçe bekleme düşer → tur süresi kısalır, kapasite artar.", en: "As signal priority (TSP) improves, waiting drops → round-trip time shortens, capacity rises.", de: "Mit besserer ÖPNV-Bevorrechtigung (TSP) sinkt die Wartezeit → die Umlaufzeit verkürzt sich, die Kapazität steigt." })}</span>
+        <span><span style={{ color: "#9AA7B2" }}>■</span>{t({ tr: " yavaşlama (fizik) · ", en: " slowdown (physics) · ", de: " Verlangsamung (Physik) · " })}<span style={{ color: CK.blue }}>■</span>/<span style={{ color: CK.amber }}>■</span>/<span style={{ color: CK.red }}>■</span>{t({ tr: " bekleme (girilen durma, artan) · ", en: " wait (entered stop, increasing) · ", de: " Wartezeit (eingegebener Halt, zunehmend) · " })}<span style={{ color: CK.red }}>▼</span>{t({ tr: " en yüksek geçit", en: " highest crossing", de: " höchster Übergang" })}</span>
+        <span>{t({ tr: "Bekleme = Ringler → her karayolu geçidine girdiğin “Bekleme (durma)” süresidir (motorda tren gerçekten durur). Modellenen bir TSP yoktur; sinyal önceliği (TSP) gerçek-dünyada bu beklemeyi azaltan kaldıraçtır → düşürürsen tur kısalır, kapasite artar. Yavaşlama = geçit hızına düşmenin fiziksel ek süresi.", en: "Wait = the “Wait (stop)” time you enter per road crossing in Rings (the train actually stops in the engine). No TSP is modelled; signal priority (TSP) is the real-world lever that reduces this wait → lowering it shortens the round trip and raises capacity. Slowdown = the physical extra time from dropping to the crossing speed.", de: "Wartezeit = die „Wartezeit (Halt)“, die Sie je Straßenübergang in Ringe eingeben (der Zug hält im Modell wirklich an). Es wird keine TSP modelliert; die ÖPNV-Bevorrechtigung (TSP) ist der reale Hebel, der diese Wartezeit senkt → verringert sie, verkürzt sich der Umlauf und steigt die Kapazität. Verlangsamung = die physische Zusatzzeit durch das Absenken auf die Übergangsgeschwindigkeit." })}</span>
       </div>
     </div>
   );
