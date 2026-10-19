@@ -14,17 +14,18 @@ dağıtım.
 
 ---
 
-## Akış — KUR → ANALİZ → BELGELE
+## Akış — KUR → ANALİZ ET → İNCELE → BELGELE → KARŞILAŞTIR
 
 Sayfa sırası bir mühendislik iş akışını izler; üstte faz göstergesi ilerlemeyi
 gösterir.
 
-| Faz | Modül | Kod | İçerik |
-|-----|-------|-----|--------|
-| **KUR** | Durak Arası Ringler | SR-0001 | Duraklar & mesafeler · durak-arası hücreler · makas/hemzemin/tehlike kısıtları · worst/best · loop (çevrim) |
-| **ANALİZ** | Sefer Simülasyonu | SR-0002 | Canlı çift-şerit ağ · fizik · headway · sabit blok sinyalizasyon · gecikme robustluğu |
-| **ANALİZ** | Sistem Merkezi | SR-0003 | Parametreler · canlı durum · Sperrzeitentreppe · blocking-time · teşhis |
-| **BELGELE** | Teknik Belgeler | SR-0004 | Ücretli PDF rapor · düzenlenebilir Word/Excel tasarım el kitabı |
+| Faz | Modül | İçerik |
+|-----|-------|--------|
+| **KUR** | Durak Arası Ringler | Duraklar & mesafeler · durak-arası hücreler · makas/hemzemin/tehlike kısıtları · worst/best · loop (çevrim) |
+| **ANALİZ ET** | Sefer Simülasyonu | Canlı çift-şerit ağ · fizik · headway · ters işletme · tarife · sabit blok sinyalizasyon · gecikme robustluğu |
+| **İNCELE** | Sistem Merkezi | Sperrzeitentreppe · blocking-time · UIC 406 · kapasite · filo kararı · doğrulama · teşhis |
+| **BELGELE** | Teknik Belgeler | Ücretli PDF rapor · düzenlenebilir Word/Excel tasarım el kitabı |
+| **KARŞILAŞTIR** | Karşılaştırma | Senaryo/proje yan yana kıyas · what-if · objektif karar desteği |
 
 ## Hesap modeli — anonim, çok-kiracılı
 

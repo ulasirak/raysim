@@ -3,7 +3,7 @@
 // raysim — DURAK ARASI RİNG editörü.
 // Her durak-arası hücrenin ZORUNLU şartları girilir/düzenlenir (mesafe, makas
 // bölgeleri, hemzemin, tehlike noktaları). Her değişiklikte worst/best köşeleri,
-// headway (240 s) uygunluğu, durak-çiftleri arası denge ve tren-sayısı
+// headway (cfg.headway) uygunluğu, durak-çiftleri arası denge ve tren-sayısı
 // darboğazı anında yeniden hesaplanır. Hücreler bir loop (kapalı hat) oluşturur.
 
 import { useEffect, useMemo, useRef, useState } from "react";

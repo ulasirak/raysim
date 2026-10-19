@@ -1,10 +1,10 @@
 "use client";
 
 // raysim — SİSTEM MERKEZİ.
-// (1) Paylaşılan simülasyon parametreleri — buradan değiştir, tüm modüllere canlı
-//     yansır (localStorage'da kalıcı). (2) Canlı sistem durumu — mevcut config +
-//     örnek seed'le ring loop anlık çözülür. (3) Bilgi /
-//     challenge referansı — sistemin karşıladığı gerçek-hayat durumları.
+// Dört sekme: ① Kapasite & Kısıt (blocking-time / UIC 406 / belirleyici blok),
+// ② Terminal & Yol, ③ Filo Kararı (KararDestek + Robust + ortak kapasite kutusu),
+// ④ Doğrulama & Duyarlılık. Parametre girişi header'a taşındı (burada yalnız
+// yönlendirme). Gerçek proje ringleri (useProje) üzerinde çalışır — örnek seed yok.
 
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";

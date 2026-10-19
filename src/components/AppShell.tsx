@@ -44,19 +44,17 @@ interface Modul {
   slug: BolumSlug;
   ad: Ceviri;
   rol: Ceviri;
-  kod: string;
-  rota: string;
 }
 
 // Boru hattı sırası TEK SAYFA bölüm sırasıyla birebir aynı (BOLUM_SLUG) — veri
 // akışı: KUR (Ringler) → ANALİZ (Sefer·Sistem) → BELGELE.
 // Numaralı metro istasyonları bu akışı görselleştirir. (Guard aşağıda sırayı zorlar.)
 const MODULLER: Modul[] = [
-  { href: "/ringler", slug: "ringler", ad: { tr: "Durak Arası Ringler", en: "Inter-Stop Cells", de: "Streckenabschnitte" }, rol: { tr: "İşletim hücreleri · worst/best (en kötü/en iyi) · loop (çevrim)", en: "Operating cells · worst/best · loop (cycle)", de: "Betriebszellen · Worst/Best · Umlauf" }, kod: "SR-0001", rota: "Durak Arası Ring Şartları" },
-  { href: "/", slug: "sefer", ad: { tr: "Sefer Simülasyonu", en: "Service Simulation", de: "Betriebssimulation" }, rol: { tr: "Canlı ağ · fizik · headway (sefer aralığı) · talep", en: "Live network · physics · headway · demand", de: "Live-Netz · Physik · Zugfolgezeit · Nachfrage" }, kod: "SR-0002", rota: "Ana Hat Sefer Analizi" },
-  { href: "/sistem", slug: "sistem", ad: { tr: "Sistem Merkezi", en: "System Center", de: "Systemzentrale" }, rol: { tr: "Kapasite · blocking-time · teşhis", en: "Capacity · blocking-time · diagnosis", de: "Kapazität · Sperrzeit · Diagnose" }, kod: "SR-0003", rota: "Kapasite Analizi & Durum" },
-  { href: "/belgeler", slug: "belgeler", ad: { tr: "Teknik Belgeler", en: "Technical Documents", de: "Technische Dokumente" }, rol: { tr: "Ücretli PDF rapor · tasarım el kitabı", en: "PDF report · design handbook", de: "PDF-Bericht · Planungshandbuch" }, kod: "SR-0005", rota: "Teknik Dokümantasyon Üretimi" },
-  { href: "/karsilastirma", slug: "karsilastirma", ad: { tr: "Karşılaştırma", en: "Comparison", de: "Vergleich" }, rol: { tr: "Senaryo/proje kıyas · karar desteği", en: "Scenario/project comparison · decision support", de: "Szenarien-/Projektvergleich · Entscheidungshilfe" }, kod: "SR-0006", rota: "Senaryo Karşılaştırma & Karar" },
+  { href: "/ringler", slug: "ringler", ad: { tr: "Durak Arası Ringler", en: "Inter-Stop Cells", de: "Streckenabschnitte" }, rol: { tr: "İşletim hücreleri · worst/best (en kötü/en iyi) · loop (çevrim)", en: "Operating cells · worst/best · loop (cycle)", de: "Betriebszellen · Worst/Best · Umlauf" } },
+  { href: "/", slug: "sefer", ad: { tr: "Sefer Simülasyonu", en: "Service Simulation", de: "Betriebssimulation" }, rol: { tr: "Canlı ağ · fizik · headway (sefer aralığı) · talep", en: "Live network · physics · headway · demand", de: "Live-Netz · Physik · Zugfolgezeit · Nachfrage" } },
+  { href: "/sistem", slug: "sistem", ad: { tr: "Sistem Merkezi", en: "System Center", de: "Systemzentrale" }, rol: { tr: "Kapasite · blocking-time · teşhis", en: "Capacity · blocking-time · diagnosis", de: "Kapazität · Sperrzeit · Diagnose" } },
+  { href: "/belgeler", slug: "belgeler", ad: { tr: "Teknik Belgeler", en: "Technical Documents", de: "Technische Dokumente" }, rol: { tr: "Ücretli PDF rapor · tasarım el kitabı", en: "PDF report · design handbook", de: "PDF-Bericht · Planungshandbuch" } },
+  { href: "/karsilastirma", slug: "karsilastirma", ad: { tr: "Karşılaştırma", en: "Comparison", de: "Vergleich" }, rol: { tr: "Senaryo/proje kıyas · karar desteği", en: "Scenario/project comparison · decision support", de: "Szenarien-/Projektvergleich · Entscheidungshilfe" } },
 ];
 
 // slug sırası ile BOLUM_SLUG'ın kaymadığını derleme anında yakalar.
@@ -157,6 +155,8 @@ function useKaydirmaIlerlemesi(aktifMi: boolean): number {
 function useKompaktNav(aktifMi: boolean, esik = 64): boolean {
   const [kompakt, setKompakt] = useState(false);
   useEffect(() => {
+    // Pasifken türetilmiş state'i sıfırla (senkronizasyon — kaskad render değil).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!aktifMi) { setKompakt(false); return; }
     let bekliyor = false;
     const hesapla = () => {
