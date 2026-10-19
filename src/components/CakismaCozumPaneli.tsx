@@ -60,8 +60,7 @@ export function CakismaCozumPaneli() {
   const kart = (icerik: ReactNode) => (
     <div className="ds-card">
       <div className="border-b px-5 py-4" style={{ borderColor: brand.border }}>
-        <div className="field-label">{t({ tr: "Çakışma Çözücüsü (Tek-Hat Meet/Pass)", en: "Conflict Resolver (Single-Track Meet/Pass)", de: "Konfliktlöser (Eingleis · Begegnung)" })}</div>
-        <h3 className="font-brand mt-0.5 text-lg font-semibold" style={{ color: brand.ink }}>{t({ tr: "Kalkış-offset ile çakışmasız çizelge", en: "Conflict-free schedule via departure offset", de: "Konfliktfreier Fahrplan durch Abfahrtsversatz" })}</h3>
+        <h3 className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{t({ tr: "Kalkış-offset ile çakışmasız çizelge", en: "Conflict-free schedule via departure offset", de: "Konfliktfreier Fahrplan durch Abfahrtsversatz" })}</h3>
         <p className="mt-1 max-w-2xl text-xs" style={{ color: brand.inkSoft }}>
           {t({ tr: "Tek-hat kesimlerde zıt yönlü trenler aynı anda giremez. Çözücü, kalkış offset’lerini eşit-aralıktan küçük sapmalarla arayıp bu çakışmayı gideren", en: "On single-track sections, trains in opposite directions cannot enter at once. The solver searches departure offsets with small deviations from even spacing and derives the", de: "Auf eingleisigen Abschnitten können gegenläufige Züge nicht gleichzeitig einfahren. Der Löser sucht Abfahrtsversätze mit kleinen Abweichungen vom gleichmäßigen Takt und leitet das" })} <b>{t({ tr: "somut retiming", en: "concrete retiming", de: "konkrete Retiming" })}</b>{t({ tr: "i (meet/pass zamanlaması) türetir.", en: " (meet/pass timing) that removes this conflict.", de: " (Begegnungs-Timing) ab, das diesen Konflikt beseitigt." })}
         </p>

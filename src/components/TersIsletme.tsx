@@ -279,29 +279,32 @@ export function TersIsletme() {
       {/* YOLCU YÜK PROFİLİ */}
       <Cekmece baslik={t({ tr: "Yolcu Yük Profili (hat boyu)", en: "Passenger Load Profile (along the line)", de: "Fahrgastlastprofil (entlang der Linie)" })} acik={acik.profil} onToggle={() => topla("profil")}
         ozet={<span>{t({ tr: "tepe", en: "peak", de: "Spitze" })} {rapor.tepeYuk} @ {rapor.tepeDurak}</span>}>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs" style={{ color: brand.inkSoft }}>
-            <thead><tr style={{ color: brand.muted }}>
-              <th className="px-1 py-1 text-left">{t({ tr: "Durak", en: "Station", de: "Haltestelle" })}</th><th className="px-1 py-1 text-right">{t({ tr: "Binen", en: "Boarding", de: "Einstieg" })}</th><th className="px-1 py-1 text-right">{t({ tr: "İnen", en: "Alighting", de: "Ausstieg" })}</th><th className="px-1 py-1 text-right">{t({ tr: "Gidiş yük", en: "Outbound load", de: "Last Hinfahrt" })}</th><th className="px-1 py-1 text-right">{t({ tr: "Dönüş yük", en: "Return load", de: "Last Rückfahrt" })}</th><th className="px-1 py-1 text-right">{t({ tr: "Doluluk", en: "Occupancy", de: "Auslastung" })}</th>
-            </tr></thead>
-            <tbody>
-              {rapor.duraklar.map((d, i) => {
-                const tik = d.doluluk > hedef;
-                return (
-                  <tr key={i} style={{ background: d.ad === rapor.tepeDurak ? "#FEF2F2" : i % 2 ? "#FBFCFD" : "transparent" }}>
-                    <td className="px-1 py-0.5 text-left">{d.makasVar ? "◆ " : ""}{d.terminal ? "⊚ " : ""}{d.ad}</td>
-                    <td className="px-1 py-0.5 text-right tabular-nums">{d.binen}</td>
-                    <td className="px-1 py-0.5 text-right tabular-nums">{d.inen}</td>
-                    <td className="px-1 py-0.5 text-right tabular-nums">{d.yukGidis}</td>
-                    <td className="px-1 py-0.5 text-right tabular-nums">{d.yukDonus}</td>
-                    <td className="px-1 py-0.5 text-right tabular-nums font-semibold" style={{ color: tik ? CK.red : brand.inkSoft }}>%{Math.round(d.doluluk * 100)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <p className="mt-1 text-xs" style={{ color: brand.muted }}>{t({ tr: "◆ makaslı durak · ⊚ terminal · kırmızı = tıkanan kesim.", en: "◆ station with switch · ⊚ terminal · red = congested segment.", de: "◆ Haltestelle mit Weiche · ⊚ Endstelle · rot = überlasteter Abschnitt." })}</p>
+        {(() => {
+          const tikananN = rapor.duraklar.filter((d) => d.doluluk > hedef).length;
+          const pikDol = Math.round(Math.max(0, ...rapor.duraklar.map((d) => d.doluluk)) * 100);
+          const KUTU = [
+            { deger: `${rapor.tepeYuk}`, ad: t({ tr: `tepe yük (yolcu/sa) @ ${rapor.tepeDurak}`, en: `peak load (pax/h) @ ${rapor.tepeDurak}`, de: `Spitzenlast (Fahrg./h) @ ${rapor.tepeDurak}` }), renk: brand.ink },
+            { deger: `${tikananN} / ${rapor.duraklar.length}`, ad: t({ tr: "tıkanan kesim / durak", en: "congested segments / stops", de: "überlastete Abschnitte / Halte" }), renk: tikananN > 0 ? CK.red : brand.ink },
+            { deger: `%${pikDol}`, ad: t({ tr: "pik doluluk", en: "peak occupancy", de: "Spitzenauslastung" }), renk: pikDol > Math.round(hedef * 100) ? CK.red : brand.ink },
+          ];
+          return (
+            <>
+              <div className="grid grid-cols-3 gap-3">
+                {KUTU.map((k, i) => (
+                  <div key={i} className="rounded-lg border px-2 py-2.5 text-center" style={{ borderColor: brand.border, background: "#F9FAFB" }}>
+                    <div className="text-xl font-bold tabular-nums" style={{ color: k.renk }}>{k.deger}</div>
+                    <div className="mt-0.5 text-[0.65rem] font-medium leading-tight" style={{ color: brand.muted }}>{k.ad}</div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-xs leading-relaxed" style={{ color: brand.muted }}>
+                {t({ tr: "Yük profili, her durakta girilen inen/binen'den hat boyunca yük biriktirilerek türetilir; doluluk = araç yükü ÷ araç kapasitesi, hedef doluluku (%", en: "The load profile is derived by accumulating load along the line from the alightings/boardings entered at each stop; occupancy = vehicle load ÷ vehicle capacity, and a segment exceeding the occupancy target (", de: "Das Lastprofil ergibt sich, indem die Last entlang der Linie aus den je Haltestelle eingegebenen Aus-/Einstiegen akkumuliert wird; Auslastung = Fahrzeuglast ÷ Fahrzeugkapazität, und ein Abschnitt über dem Auslastungsziel (" })}{Math.round(hedef * 100)}{t({ tr: ") aşan kesim tıkanan sayılır. Her durağın yönlü (gidiş/dönüş) tam dökümü ", en: "%) counts as congested. The full directional (outbound/return) breakdown per stop is in ", de: " %) gilt als überlastet. Die vollständige richtungsbezogene (Hin-/Rückfahrt) Aufschlüsselung je Haltestelle steht in " })}
+                <Link href="/#belgeler" className="font-semibold underline" style={{ color: brand.red }}>{t({ tr: "Teknik Belgeler → PDF raporu (5.1 Yolcu Yük Profilleri)", en: "Technical Documents → PDF report (5.1 Passenger Load Profiles)", de: "Technische Dokumente → PDF-Bericht (5.1 Fahrgastlastprofile)" })}</Link>
+                {t({ tr: " içinde. İnen/binen değerlerini üstteki Talep Girdileri'nden düzenle.", en: ". Edit alightings/boardings in Demand Inputs above.", de: ". Aus-/Einstiege oben unter Nachfrage-Eingaben bearbeiten." })}
+              </p>
+            </>
+          );
+        })()}
       </Cekmece>
     </div>
   );

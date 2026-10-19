@@ -319,6 +319,9 @@ export function Karsilastirma() {
             <CubukKart baslik={t({ tr: "İşletme kapasitesi (tren/sa)", en: "Operating capacity (trains/h)", de: "Betriebskapazität (Züge/h)" })} ms={metrikler} al={(m) => m.isletmeKap} renk={CK.good} />
             <CubukKart baslik={t({ tr: "Gereken filo (talep)", en: "Required fleet (demand)", de: "Benötigte Flotte (Nachfrage)" })} ms={metrikler} al={(m) => m.gerekenFilo} renk={CK.orange} />
           </div>
+          <p className="mt-2 text-[0.7rem]" style={{ color: brand.muted }}>
+            {t({ tr: "Not: çubuklar GÖRELİ ölçeklidir (en düşük senaryo = kısa taban, en yüksek = tam) — çubuk boyu oranı mutlak oran değildir; gerçek değer her çubuğun sağında yazılıdır. Mutlak ölçekli grafikler PDF raporunun Grafikler bölümündedir.", en: "Note: bars are RELATIVELY scaled (lowest scenario = short base, highest = full) — bar-length ratio is not the absolute ratio; the actual value is shown to the right of each bar. Absolute-scaled charts are in the PDF report's Charts section.", de: "Hinweis: Balken sind RELATIV skaliert (niedrigstes Szenario = kurze Basis, höchstes = voll) — das Balkenlängenverhältnis ist nicht das absolute Verhältnis; der tatsächliche Wert steht rechts neben jedem Balken. Absolut skalierte Diagramme stehen im Abschnitt Diagramme des PDF-Berichts." })}
+          </p>
 
           {/* PDF butonu EN SONDA: önce öneri/tablo/çubuklar incelenir, sonra dışa aktarılır. */}
           <div className="mt-6 flex flex-wrap items-center gap-3">

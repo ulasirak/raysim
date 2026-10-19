@@ -13,6 +13,7 @@ import {
 } from "@/lib/anaray/config";
 import { terminalHeadway } from "@/lib/anaray/kapasite";
 import { useDil } from "@/components/DilProvider";
+import Link from "next/link";
 
 function terminalOlc(t: TerminalConfig, cfg: SimConfig) {
   const mk = terminalMakasSayilari(t);
@@ -25,7 +26,13 @@ function terminalOlc(t: TerminalConfig, cfg: SimConfig) {
   return { mk, peron, paralel, hw, peronBasi, bogaz, kap, bagAlt: peronBasi >= bogaz ? "peron" : "boğaz" as "peron" | "boğaz", seri: terminalSeriDonus(t) };
 }
 
-const TIP_AD: Record<string, string> = { korTerminal: "kör terminal", ciftPeron: "çift peron", dongu: "balon loop", makasliGecis: "makaslı geçiş" };
+// Terminal tipi etiketleri — i18n (önceden yalnız TR sabitti → EN/DE'de de Türkçe basıyordu).
+const TIP_AD: Record<string, { tr: string; en: string; de: string }> = {
+  korTerminal: { tr: "kör terminal", en: "stub terminal", de: "Kopfendstelle" },
+  ciftPeron: { tr: "çift peron", en: "double platform", de: "Doppelbahnsteig" },
+  dongu: { tr: "balon loop", en: "balloon loop", de: "Gleisschleife" },
+  makasliGecis: { tr: "makaslı geçiş", en: "crossover", de: "Gleiswechsel" },
+};
 
 export function TurnbackKapasite({ terminalBas, terminalSon, cfg }: { terminalBas: TerminalConfig; terminalSon: TerminalConfig; cfg: SimConfig }) {
   const { t } = useDil();
@@ -39,7 +46,7 @@ export function TurnbackKapasite({ terminalBas, terminalSon, cfg }: { terminalBa
       <div className="rounded-lg border p-3" style={{ borderColor: bag ? CK.red : brand.border, background: bag ? "#FDF3F4" : "#fff" }}>
         <div className="flex items-baseline justify-between">
           <div className="font-semibold" style={{ color: brand.ink }}>{ad}</div>
-          <div className="text-xs" style={{ color: brand.muted }}>{TIP_AD[tc.tip] || tc.tip}</div>
+          <div className="text-xs" style={{ color: brand.muted }}>{TIP_AD[tc.tip] ? t(TIP_AD[tc.tip]) : tc.tip}</div>
         </div>
         <div className="mt-1 text-2xl font-bold tabular-nums" style={{ color: bag ? CK.red : brand.ink }}>
           {o.kap === Infinity ? "∞" : Math.round(o.kap)} <span className="text-sm font-medium" style={{ color: brand.muted }}>{t({ tr: "tramvay/saat", en: "trams/hour", de: "Tram/Std" })}</span>
@@ -56,14 +63,31 @@ export function TurnbackKapasite({ terminalBas, terminalSon, cfg }: { terminalBa
     );
   };
 
+  // Özet: hattı bağlayan (daha düşük kapasiteli) uç + baskın alt-etken — tek bakışta sonuç.
+  const bagO = bagBas ? bas : son;
+  const bagAd = bagBas ? t({ tr: "Başlangıç terminali", en: "Start terminal", de: "Startendstelle" }) : t({ tr: "Bitiş terminali", en: "End terminal", de: "Zielendstelle" });
+  const bagKap = bagO.kap === Infinity ? "∞" : `${Math.round(bagO.kap)}`;
+  const bagAltMetin = bagO.bagAlt === "peron"
+    ? t({ tr: "peron işgali", en: "platform occupancy", de: "Bahnsteigbelegung" })
+    : t({ tr: "boğaz (makas) geçişi", en: "throat (switch) transit", de: "Halsbereich-(Weichen-)Durchfahrt" });
+
   return (
     <div>
+      {/* Özet şeridi — hattı bağlayan uç + kapasitesi + baskın alt-etken */}
+      <div className="mb-3 rounded-md border-l-4 px-3 py-2 text-sm" style={{ borderColor: CK.red, background: "#FDF3F4", color: brand.inkSoft }}>
+        <b style={{ color: brand.ink }}>{t({ tr: "Hattı bağlayan uç:", en: "Governing end:", de: "Maßgebendes Ende:" })}</b> {bagAd} · <b style={{ color: CK.red }}>{bagKap} {t({ tr: "tramvay/saat", en: "trams/hour", de: "Tram/Std" })}</b>{bagO.hw > 0 ? <> · {t({ tr: "baskın alt-etken", en: "dominant sub-factor", de: "maßgebender Teilfaktor" })}: <b>{bagAltMetin}</b></> : ""}
+      </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {kart(t({ tr: "Başlangıç terminali", en: "Start terminal", de: "Startendstelle" }), terminalBas, bas, bagBas)}
         {kart(t({ tr: "Bitiş terminali", en: "End terminal", de: "Zielendstelle" }), terminalSon, son, !bagBas && son.hw > 0)}
       </div>
       <div className="mt-2 text-xs" style={{ color: brand.muted }}>
         {t({ tr: "Turnback kapasitesi = 3600 ÷ dönüş headway. Headway = max(peron başı işgali, boğaz/makas geçişi). ", en: "Turnback capacity = 3600 ÷ turnback headway. Headway = max(platform occupancy, throat/switch transit). ", de: "Wendekapazität = 3600 ÷ Wende-Zugfolgezeit. Zugfolgezeit = max(Bahnsteigbelegung, Halsbereich-/Weichendurchfahrt). " })}<b>S-makas</b>{t({ tr: "ta varış+kalkış aynı boğazı seri kullanır (2×); ", en: ": arrival+departure use the same throat in series (2×); ", de: ": Ankunft+Abfahrt nutzen denselben Halsbereich seriell (2×); " })}<b>X-makas</b>{t({ tr: "/çift peronda ayrı bacak (1×) → daha yüksek kapasite. Boğaz baskınsa X-makas ekle; peron baskınsa peron/çift-peron ekle. Bağlayan uç hattın terminal kapasitesini belirler.", en: "/double platform use a separate leg (1×) → higher capacity. If the throat governs, add an X-switch; if the platform governs, add a platform/second platform. The governing end sets the line's terminal capacity.", de: "/Doppelbahnsteig nutzen einen separaten Schenkel (1×) → höhere Kapazität. Bestimmt der Halsbereich, füge eine X-Weiche hinzu; bestimmt der Bahnsteig, füge einen (zweiten) Bahnsteig hinzu. Das maßgebende Ende bestimmt die Endstellenkapazität der Linie." })}
+      </div>
+      <div className="mt-2 text-xs" style={{ color: brand.muted }}>
+        {t({ tr: "Her iki ucun tam dökümü (terminal · makas · peron · dönüş headway · kapasite · baskın alt-etken) tablo olarak ", en: "The full breakdown of both ends (terminal · switch · platform · turnback headway · capacity · dominant sub-factor) is produced as a table in ", de: "Die vollständige Aufschlüsselung beider Enden (Endstelle · Weiche · Bahnsteig · Wende-Zugfolgezeit · Kapazität · maßgebender Teilfaktor) wird als Tabelle erzeugt in " })}
+        <Link href="/#belgeler" className="font-semibold underline" style={{ color: brand.red }}>{t({ tr: "Teknik Belgeler → PDF raporu (Kapasite bölümü)", en: "Technical Documents → PDF report (Capacity section)", de: "Technische Dokumente → PDF-Bericht (Kapazitätsabschnitt)" })}</Link>
+        {t({ tr: " içinde üretilir.", en: ".", de: "." })}
       </div>
     </div>
   );
