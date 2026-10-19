@@ -133,6 +133,12 @@ export function RingEditor() {
   };
 
   const oneriler = useMemo(() => dengeOnerisi(rings, stock, cfg), [rings, stock, cfg]);
+  // Dengeleme önerisi → ilgili ring kartı. Taşıma YERİNE çapraz-ref: paneli yerinde bırak,
+  // satırı o ringe köprüle (kartı aç + kaydır). Ring kartları `ring-<id>` ankoru taşır.
+  const oneriyeGit = (ringId: string) => {
+    setAcik((a) => ({ ...a, [ringId]: true }));
+    requestAnimationFrame(() => document.getElementById(`ring-${ringId}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
   const tumEksik = useMemo(() => rings.flatMap((r) => ringDogrula(r, cfg)), [rings, cfg]);
   // Durak zinciri (ring uçlarından türer) — üstteki hızlı durak editörü için.
   const duraklar = useMemo(() => ringDuraklari(rings), [rings]);
@@ -777,14 +783,18 @@ export function RingEditor() {
           gör/kur, sonra iyileştirme tavsiyesi (dolu hatta sayfa artık öneriyle açılmaz). */}
       {oneriler.length > 0 && (
         <div className="mt-6">
-          <Panel katlanir ozet={t({ tr: "durak-çiftleri denge önerileri", en: "stop-pair balancing suggestions", de: "Ausgleichsvorschläge für Haltestellenpaare" })} baslik={t({ tr: "Eşit Şartlar — Dengeleme Önerileri", en: "Equal Conditions — Balancing Suggestions", de: "Gleiche Bedingungen — Ausgleichsvorschläge" })} aciklama={t({ tr: "Best-case yakın-mesafe hedefi: durak-çiftleri arası worst-case süreler eşitlendikçe headway kararlı olur. Ortalamadan sapan ringler ve öneriler:", en: "Best-case short-distance target: as the worst-case times between stop pairs are equalized, the headway becomes stable. Sections deviating from the average and suggestions:", de: "Best-Case-Kurzstreckenziel: je mehr die Worst-Case-Zeiten zwischen Haltestellenpaaren angeglichen werden, desto stabiler wird die Zugfolgezeit. Vom Durchschnitt abweichende Abschnitte und Vorschläge:" })}>
+          <Panel katlanir ozet={t({ tr: "durak-çiftleri denge önerileri", en: "stop-pair balancing suggestions", de: "Ausgleichsvorschläge für Haltestellenpaare" })} baslik={t({ tr: "Eşit Şartlar — Dengeleme Önerileri", en: "Equal Conditions — Balancing Suggestions", de: "Gleiche Bedingungen — Ausgleichsvorschläge" })} aciklama={t({ tr: "Best-case yakın-mesafe hedefi: durak-çiftleri arası worst-case süreler eşitlendikçe headway kararlı olur. Ortalamadan sapan ringler ve öneriler — bir satıra tıkla, ilgili ring kartına gider:", en: "Best-case short-distance target: as the worst-case times between stop pairs are equalized, the headway becomes stable. Sections deviating from the average and suggestions — click a row to jump to that section's card:", de: "Best-Case-Kurzstreckenziel: je mehr die Worst-Case-Zeiten zwischen Haltestellenpaaren angeglichen werden, desto stabiler wird die Zugfolgezeit. Vom Durchschnitt abweichende Abschnitte und Vorschläge — auf eine Zeile klicken, um zur Karte des Abschnitts zu springen:" })}>
             <div className="flex flex-col gap-1.5">
               {oneriler.map((o) => (
-                <div key={o.ringId} className="flex items-start gap-2 rounded border px-3 py-2 text-sm" style={{ borderColor: o.fark > 0 ? brand.red + "55" : OK + "55", background: o.fark > 0 ? CK.badBgSoft : CK.goodBgSoft }}>
+                <button key={o.ringId} type="button" onClick={() => oneriyeGit(o.ringId)}
+                  title={t({ tr: "Bu ringin kartına git (açılır + kaydırılır)", en: "Go to this section's card (opens + scrolls)", de: "Zur Karte dieses Abschnitts (öffnet + scrollt)" })}
+                  className="flex w-full items-start gap-2 rounded border px-3 py-2 text-left text-sm transition hover:brightness-95"
+                  style={{ borderColor: o.fark > 0 ? brand.red + "55" : OK + "55", background: o.fark > 0 ? CK.badBgSoft : CK.goodBgSoft }}>
                   <span className="shrink-0 font-mono text-xs" style={{ color: o.fark > 0 ? brand.red : OK }}>{o.fark > 0 ? "+" : ""}{Math.round(o.fark)} s</span>
                   <span className="font-medium" style={{ color: brand.ink }}>{o.ad}:</span>
                   <span style={{ color: brand.inkSoft }}>{o.oneri}</span>
-                </div>
+                  <span className="ml-auto shrink-0 text-xs" style={{ color: brand.muted }} aria-hidden="true">⤵</span>
+                </button>
               ))}
             </div>
           </Panel>
