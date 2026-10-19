@@ -98,6 +98,9 @@ function normHemzemin(raw: unknown): Hemzemin {
     hiz: num(r.hiz, varsayilanConfig.vHemzemin),
   };
   if (typeof r.bekleme === "number") out.bekleme = r.bekleme;
+  if (r.tsp === "yok" || r.tsp === "pasif" || r.tsp === "aktif" || r.tsp === "elle") out.tsp = r.tsp;
+  if (typeof r.sinyalDevri === "number") out.sinyalDevri = r.sinyalDevri;
+  if (typeof r.yesilSure === "number") out.yesilSure = r.yesilSure;
   return out;
 }
 

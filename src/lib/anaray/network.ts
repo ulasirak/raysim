@@ -14,7 +14,7 @@ import type {
   TrackSegment,
 } from "./types";
 import type { SimConfig } from "./config";
-import { BELGE, ringToLine, yeniMakas, type DurakArasiRing, type Sube } from "./ring";
+import { BELGE, ringToLine, yeniMakas, hemzeminBeklemeSn, type DurakArasiRing, type Sube } from "./ring";
 
 export function flattenRoute(net: RailNetwork, route: Route): Line {
   const nodeById = new Map(net.nodes.map((n) => [n.id, n]));
@@ -278,7 +278,7 @@ export function hemzeminDuruslari(
   for (const r of rings) {
     const L = ringToLine(r, "nominal", cfg).length;
     for (const h of r.hemzeminler) {
-      const b = Math.max(0, h.bekleme ?? 0);
+      const b = hemzeminBeklemeSn(h); // TEK kaynak: elle bekleme ya da TSP sinyal modelinden türetilen
       if (b > 0 && (h.tip === "karayolu" || h.tip === undefined)) {
         const k = Math.max(0, Math.min(r.uzunluk, h.konum));
         out.push({ pos: offset + k * (L / Math.max(1, r.uzunluk)), dwell: b, name: h.ad || "Geçit" });
@@ -374,7 +374,7 @@ export function hatOzellikleri(
     for (const h of r.hemzeminler) {
       const pos = offset + Math.max(0, Math.min(r.uzunluk, h.konum)) * scale;
       const yaya = h.tip === "yaya";
-      out.push({ pos, kind: yaya ? "yaya" : "karayolu", ad: h.ad || (yaya ? "Yaya geçidi" : "Karayolu geçidi"), bekleme: Math.max(0, h.bekleme ?? 0) });
+      out.push({ pos, kind: yaya ? "yaya" : "karayolu", ad: h.ad || (yaya ? "Yaya geçidi" : "Karayolu geçidi"), bekleme: hemzeminBeklemeSn(h) });
     }
     for (const m of r.makaslar) {
       const pos = offset + Math.max(0, Math.min(r.uzunluk, m.konum)) * scale;

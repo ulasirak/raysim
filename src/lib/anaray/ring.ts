@@ -62,15 +62,43 @@ export interface MakasBolgesi {
   crossover?: "s" | "x";
 }
 
+/** Karayolu geçidinde sinyal önceliği (TSP) modu:
+ *  "elle"  = bekleme doğrudan girilir (model yok, geriye-uyumlu varsayılan);
+ *  "yok"   = sinyal var ama tram önceliği YOK → tam Webster gecikmesi;
+ *  "pasif" = pasif öncelik (yeşil uzatma/erken) → etkin kırmızı ~%50 kısalır;
+ *  "aktif" = aktif öncelik (talep üzerine yeşil) → etkin kırmızı ~%95 kısalır. */
+export type TspSeviye = "elle" | "yok" | "pasif" | "aktif";
+
 export interface Hemzemin {
   id: string;
   ad: string;
   tip: HemzeminTip;
   konum: number; // m
   hiz: number; // m/s (varsayılan 25 km/h)
-  /** Karayolu geçidinde trafik/öncelik kaynaklı beklenen bekleme süresi (s).
+  /** Karayolu geçidinde beklenen DURMA süresi (s) — "elle" modda doğrudan girilir.
    *  Çevrime (ve gecikmeye) eklenir; hız düşümünden ayrı, gerçek durma payı. */
   bekleme?: number;
+  /** Sinyal önceliği (TSP) modu — sinyal modunda bekleme devirden TÜRETİLİR (bkz. hemzeminBeklemeSn). */
+  tsp?: TspSeviye;
+  sinyalDevri?: number; // s — karayolu sinyal devri (C), sinyal modunda
+  yesilSure?: number;   // s — devirde tram yönüne yeşil süre (g ≤ C)
+}
+
+/** Karayolu geçidinde beklenen DURMA süresi (s). TEK KAYNAK — hem motor (sim/çevrim) hem
+ *  panel bunu kullanır. "elle" → girilen bekleme; sinyal modu → Webster ÜNİFORM gecikmesi
+ *  d = kırmızı²/(2·devir); TSP önceliği etkin kırmızıyı kısar (pasif ~%50, aktif ~%95).
+ *  Veri yoksa 0 — uydurma yok. Yaya geçidinde her zaman 0 (durma yok). */
+export function hemzeminBeklemeSn(h: Hemzemin): number {
+  if (h.tip === "yaya") return 0;
+  const mod: TspSeviye = h.tsp ?? "elle";
+  if (mod === "elle") return Math.max(0, h.bekleme ?? 0);
+  const C = h.sinyalDevri ?? 0;
+  if (C <= 0) return Math.max(0, h.bekleme ?? 0); // sinyal devri girilmemiş → elle değere düş
+  const g = Math.max(0, Math.min(C, h.yesilSure ?? 0));
+  const kirmizi = C - g;
+  const p = mod === "aktif" ? 0.95 : mod === "pasif" ? 0.5 : 0; // öncelik etkin kırmızıyı kısar
+  const kirmiziEtkin = kirmizi * (1 - p);
+  return Math.round((kirmiziEtkin * kirmiziEtkin) / (2 * C));
 }
 
 export interface TehlikeNoktasi {

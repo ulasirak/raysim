@@ -16,7 +16,7 @@ import { brand } from "@/lib/anaray/brand";
 import { CK, SERI } from "@/lib/anaray/chartkit";
 import { kmh, sure } from "@/lib/anaray/format";
 
-import { MAKAS_TIP_AD, ringChallenge, ringDogrula, ringKisitDizisi, ringSenaryo, tccGerekli, kurpHizi, kurpKonforAnaliz, type KurpKonforSatir, type DurakArasiRing, type SinyalLambasi, type HemzeminTip, type KisitTur, type MakasTip, type Kurp } from "@/lib/anaray/ring";
+import { MAKAS_TIP_AD, ringChallenge, ringDogrula, ringKisitDizisi, ringSenaryo, tccGerekli, kurpHizi, kurpKonforAnaliz, hemzeminBeklemeSn, type KurpKonforSatir, type DurakArasiRing, type SinyalLambasi, type HemzeminTip, type TspSeviye, type KisitTur, type MakasTip, type Kurp } from "@/lib/anaray/ring";
 import { Num, Rozet, SubBaslik } from "@/components/RingUI";
 import { MiniStat } from "@/components/Kpi";
 import { KisitSeridi, EkleFormu, SeritEkleBtn, KisitRozet, MakasEkleMenu, type EkleTur } from "@/components/RingSerit";
@@ -312,9 +312,32 @@ export function RingKart(p: KartProps) {
                     <div className="w-20"><Num label={t({ tr: "Konum", en: "Position", de: "Position" })} suffix="m" step={10} value={h.konum} onChange={(v) => p.onHzPatch(h.id, { konum: v })} hata={h.konum < 0 || h.konum > ring.uzunluk} /></div>
                     <div className="w-20"><Num label={t({ tr: "Süre (≈)", en: "Time (≈)", de: "Zeit (≈)" })} suffix="s" step={1} value={Math.round(konumSuresi(h.konum))} onChange={(v) => p.onHzPatch(h.id, { konum: Math.round(sureKonumu(v)) })} /></div>
                     <div className="w-20"><Num label={t({ tr: "Hız", en: "Speed", de: "Geschwindigkeit" })} suffix="km/h" step={1} value={Math.round(kmh(h.hiz))} onChange={(v) => p.onHzPatch(h.id, { hiz: v * KMH })} /></div>
-                    {h.tip === "karayolu" && (
-                      <div className="w-24"><Num label={t({ tr: "Bekleme (durma)", en: "Wait (stop)", de: "Wartezeit (Halt)" })} suffix="s" step={1} value={Math.round(h.bekleme ?? 0)} onChange={(v) => p.onHzPatch(h.id, { bekleme: Math.max(0, Math.round(v)) })} /></div>
-                    )}
+                    {h.tip === "karayolu" && (() => {
+                      const mod: TspSeviye = h.tsp ?? "elle";
+                      return (
+                        <>
+                          <label className="flex flex-col text-[0.58rem]" style={{ color: brand.faint }}>
+                            <span>{t({ tr: "Sinyal önceliği", en: "Signal priority", de: "Signalpriorität" })}</span>
+                            <select value={mod} onChange={(e) => { const v = e.target.value as TspSeviye; const patch: Partial<DurakArasiRing["hemzeminler"][number]> = { tsp: v }; if (v !== "elle" && !h.sinyalDevri) { patch.sinyalDevri = 90; patch.yesilSure = 45; } p.onHzPatch(h.id, patch); }}
+                              className="mt-0.5 rounded border px-1 py-1 text-xs" style={{ borderColor: brand.border, color: brand.ink }}>
+                              <option value="elle">{t({ tr: "elle (süre gir)", en: "manual (enter time)", de: "manuell (Zeit)" })}</option>
+                              <option value="yok">{t({ tr: "sinyal · öncelik yok", en: "signal · no priority", de: "Signal · keine Priorität" })}</option>
+                              <option value="pasif">{t({ tr: "pasif TSP", en: "passive TSP", de: "passive TSP" })}</option>
+                              <option value="aktif">{t({ tr: "aktif TSP", en: "active TSP", de: "aktive TSP" })}</option>
+                            </select>
+                          </label>
+                          {mod === "elle" ? (
+                            <div className="w-20"><Num label={t({ tr: "Bekleme", en: "Wait", de: "Wartezeit" })} suffix="s" step={1} value={Math.round(h.bekleme ?? 0)} onChange={(v) => p.onHzPatch(h.id, { bekleme: Math.max(0, Math.round(v)) })} /></div>
+                          ) : (
+                            <>
+                              <div className="w-16"><Num label={t({ tr: "Devir C", en: "Cycle C", de: "Umlauf C" })} suffix="s" step={5} value={Math.round(h.sinyalDevri ?? 90)} onChange={(v) => p.onHzPatch(h.id, { sinyalDevri: Math.max(1, Math.round(v)) })} /></div>
+                              <div className="w-16"><Num label={t({ tr: "Yeşil (tram)", en: "Green (tram)", de: "Grün (Tram)" })} suffix="s" step={5} value={Math.round(h.yesilSure ?? 45)} onChange={(v) => p.onHzPatch(h.id, { yesilSure: Math.max(0, Math.round(v)) })} /></div>
+                              <span className="self-end pb-1 text-[0.68rem]" style={{ color: brand.inkSoft }}>→ <b>{hemzeminBeklemeSn(h)} s</b> {t({ tr: "bekleme", en: "wait", de: "Wartezeit" })}</span>
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
                     <button onClick={() => p.onHzSil(h.id)} className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}><Ikon ad="cop" size={14} /></button>
                   </div>
                 ))}
