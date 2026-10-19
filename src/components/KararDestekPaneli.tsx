@@ -129,7 +129,7 @@ export function KararDestekPaneli() {
                 : `${t({ tr: "KAPASİTE AŞILDI:", en: "CAPACITY EXCEEDED:", de: "KAPAZITÄT ÜBERSCHRITTEN:" })} ${hedef.filo} > ${t({ tr: "duvar", en: "wall", de: "Grenze" })} ${hedef.kapasiteFilo}. ${t({ tr: "Bu aralık fiziksel olarak sağlanamaz.", en: "This interval is physically unachievable.", de: "Dieses Intervall ist physikalisch nicht erreichbar." })}`} />
             {hedef.uygun && (
               <div className="mt-2 flex items-center gap-2 border-t pt-2 text-[0.7rem]" style={{ borderColor: `${CK.good}44` }}>
-                <span style={{ color: brand.muted }}>{t({ tr: "UIC 406 kapasite kullanımı", en: "UIC 406 capacity utilisation", de: "UIC-406-Kapazitätsauslastung" })}</span>
+                <span style={{ color: brand.muted }}>{t({ tr: "UIC 406 kapasite kullanımı (seçilen filo)", en: "UIC 406 capacity utilisation (selected fleet)", de: "UIC-406-Kapazitätsauslastung (gewählte Flotte)" })}</span>
                 <div className="h-1.5 flex-1 overflow-hidden rounded-full" style={{ background: CK.track }}>
                   <div style={{ width: `${uicDol}%`, height: "100%", background: uicDol > 85 ? CK.amber : CK.good }} />
                 </div>

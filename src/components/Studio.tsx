@@ -670,7 +670,7 @@ function StudioIc() {
                 className="w-14 rounded border px-2 py-1 text-sm" style={{ borderColor: CK.amber, color: brand.ink }} />
               <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "dk", en: "min", de: "Min" })}</span>
             </div>
-            <span className="mt-0.5 block text-[0.6rem]" style={{ color: CK.amberInk }}>{t({ tr: "önerilen tramvayı DOĞRUDAN belirler (240 s tasarım kuralı)", en: "DIRECTLY sets the recommended trams (240 s design rule)", de: "bestimmt DIREKT die empfohlenen Bahnen (240-s-Auslegungsregel)" })}</span>
+            <span className="mt-0.5 block text-[0.6rem]" style={{ color: CK.amberInk }}>{t({ tr: `önerilen tramvayı DOĞRUDAN belirler (şu an ${Math.round(hedefHeadwaySn)} s)`, en: `DIRECTLY sets the recommended trams (now ${Math.round(hedefHeadwaySn)} s)`, de: `bestimmt DIREKT die empfohlenen Bahnen (jetzt ${Math.round(hedefHeadwaySn)} s)` })}</span>
           </div>
           {/* Terminal dönüş beklemesi — uçta bekleme; çevrim süresini (RTT) ve gereken filoyu besler */}
           <div>

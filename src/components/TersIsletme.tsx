@@ -182,6 +182,10 @@ export function TersIsletme() {
               <div style={{ color: brand.muted }}>{t({ tr: "sürdürülebilir tavan", en: "sustainable ceiling", de: "nachhaltige Obergrenze" })}</div>
             </div>
           </div>
+          {/* Çapraz-ref: bu kart ≠ Sefer filo kartı (farklı headway tabanı → rakamlar ayrışabilir) */}
+          <p className="mt-2 rounded border-l-2 px-2 py-1 text-[0.7rem]" style={{ borderColor: brand.border, background: "#F4F6F8", color: brand.muted }}>
+            {t({ tr: "Bu kart yolcu talebi (OD-lite) odaklıdır. Sefer-aralığı odaklı birincil filo önerisi", en: "This card is passenger-demand driven (OD-lite). The dispatch-interval-driven primary fleet recommendation is in", de: "Diese Karte ist nachfragegetrieben (OD-lite). Die auf dem Taktintervall basierende primäre Flottenempfehlung steht in" })} <b style={{ color: brand.ink }}>{t({ tr: "① Kurulum & Filo → Filo & Öneri", en: "① Setup & Fleet → Fleet & Recommendation", de: "① Einrichtung & Flotte → Flotte & Empfehlung" })}</b>{t({ tr: " kartındadır; farklı headway tabanı kullandıkları için iki rakam ayrışabilir.", en: "; the two figures may differ because they use different headway bases.", de: "; die beiden Werte können abweichen, da sie unterschiedliche Zugfolgezeit-Grundlagen verwenden." })}
+          </p>
           {/* Alt-döküm — eski "Filo Önerisi" kartından taşınan benzersiz bilgiler */}
           <p className="mt-2 text-xs" style={{ color: brand.muted }}>{t({ tr: "Tepe yük:", en: "Peak load:", de: "Spitzenlast:" })} <b>{rapor.tepeDurak}</b> {rapor.tepeYuk} {t({ tr: "yolcu/saat", en: "pax/h", de: "Fahrgäste/h" })} · {t({ tr: "çevrim", en: "cycle", de: "Umlauf" })} {Math.round(rapor.cevrimSn / 60)} dk · {t({ tr: "frekans", en: "frequency", de: "Frequenz" })} {rapor.mevcutFrekans.toFixed(1)} {t({ tr: "tren/sa", en: "trains/h", de: "Züge/h" })} · {t({ tr: "araç", en: "vehicle", de: "Fahrzeug" })} {rapor.aracKapasite} {t({ tr: "kişi", en: "pax", de: "Pers." })}.</p>
           {f.kisaDonusTasarruf > 0 && (
@@ -194,7 +198,11 @@ export function TersIsletme() {
           )}
           {tavsiye.kurpAdet > 0 && (
             <p className="mt-2 text-xs" style={{ color: tavsiye.kurpUyariTavsiye < tavsiye.kurpUyariMevcut ? "#2E7D32" : brand.muted }}>
-              🛤 Kurp konforu: {tavsiye.kurpAdet} kurptan {tavsiye.kurpUyariMevcut}'inde ayakta-yolcu uyarısı vardı; bu filoda <b>{tavsiye.kurpUyariTavsiye}</b>'e iniyor{tavsiye.kurpUyariTavsiye < tavsiye.kurpUyariMevcut ? " (düşük doluluk → kurplarda konfor düzeliyor)" : ""}.
+              🛤 {t({
+                tr: `Kurp konforu: ${tavsiye.kurpAdet} kurptan ${tavsiye.kurpUyariMevcut}'inde ayakta-yolcu uyarısı vardı; bu filoda ${tavsiye.kurpUyariTavsiye}'e iniyor${tavsiye.kurpUyariTavsiye < tavsiye.kurpUyariMevcut ? " (düşük doluluk → kurplarda konfor düzeliyor)" : ""}.`,
+                en: `Curve comfort: ${tavsiye.kurpUyariMevcut} of ${tavsiye.kurpAdet} curves had a standing-passenger warning; with this fleet it drops to ${tavsiye.kurpUyariTavsiye}${tavsiye.kurpUyariTavsiye < tavsiye.kurpUyariMevcut ? " (lower occupancy → comfort improves on curves)" : ""}.`,
+                de: `Bogenkomfort: Bei ${tavsiye.kurpUyariMevcut} von ${tavsiye.kurpAdet} Bögen gab es eine Stehplatz-Warnung; mit dieser Flotte sinkt sie auf ${tavsiye.kurpUyariTavsiye}${tavsiye.kurpUyariTavsiye < tavsiye.kurpUyariMevcut ? " (geringere Auslastung → Komfort in Bögen verbessert sich)" : ""}.`,
+              })}
             </p>
           )}
           <p className="mt-1 text-sm" style={{ color: brand.inkSoft }}>{tavsiye.gerekce}</p>

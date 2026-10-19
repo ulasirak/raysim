@@ -40,9 +40,9 @@ import { getAuthInstance } from "@/lib/firebase";
 // Rapor sekmesi açılır açılmaz gösterilen ŞIK yükleme ekranı (about:blank yerine).
 // Kendi kendine yeten tam HTML: markalı, CSS spinner + ilerleme çubuğu. Rapor hazır
 // olunca sekme blob URL'ine yönlendirilir ve bu ekran otomatik yerini rapora bırakır.
-const YUKLEME_EKRANI = `<!doctype html><html lang="tr"><head><meta charset="utf-8">
+const YUKLEME_EKRANI = (lang: string, baslik: string, alt: string, ariaYukleniyor: string) => `<!doctype html><html lang="${lang}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rapor hazırlanıyor…</title>
+<title>${baslik}</title>
 <style>
   :root { color-scheme: light; }
   * { box-sizing: border-box; }
@@ -69,14 +69,14 @@ const YUKLEME_EKRANI = `<!doctype html><html lang="tr"><head><meta charset="utf-
 </style></head>
 <body><div class="card">
   <div class="brand">Ray<span class="r">Sim</span></div>
-  <div class="spin" role="status" aria-label="Yükleniyor"></div>
-  <div class="msg">Rapor hazırlanıyor…</div>
-  <div class="sub">Simülasyon çalışıyor · birkaç saniye sürebilir</div>
+  <div class="spin" role="status" aria-label="${ariaYukleniyor}"></div>
+  <div class="msg">${baslik}</div>
+  <div class="sub">${alt}</div>
   <div class="bar"><i></i></div>
 </div></body></html>`;
 
 export function Belgeler() {
-  const { t } = useDil();
+  const { t, dil: uiDil } = useDil();
   const { cfg } = useSimConfig();
   const { rings: ringsHam, meta, patchMeta, yazilabilir, subeler } = useProje();
   const { yenile } = useCuzdan();
@@ -178,7 +178,16 @@ export function Belgeler() {
     }
     // Şık yükleme ekranı — boş (about:blank) sekme yerine markalı spinner. Hazır olunca
     // blob'a yönlendirilince bu ekran otomatik yerini rapora bırakır.
-    try { w.document.open(); w.document.write(YUKLEME_EKRANI); w.document.close(); } catch { /* garantiye al */ }
+    try {
+      w.document.open();
+      w.document.write(YUKLEME_EKRANI(
+        uiDil,
+        t({ tr: "Rapor hazırlanıyor…", en: "Preparing report…", de: "Bericht wird vorbereitet…" }),
+        t({ tr: "Simülasyon çalışıyor · birkaç saniye sürebilir", en: "Simulation running · may take a few seconds", de: "Simulation läuft · kann einige Sekunden dauern" }),
+        t({ tr: "Yükleniyor", en: "Loading", de: "Wird geladen" }),
+      ));
+      w.document.close();
+    } catch { /* garantiye al */ }
     try {
       const html = await raporAl();
       if (!html) { w.close(); return; }

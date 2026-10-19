@@ -11,7 +11,7 @@ import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
 import { maksimumTren } from "@/lib/anaray/kapasite";
-import { ringlerdenSebeke, flattenRoute, duruslariEkle, kalkisEkle, hemzeminDuruslari, hatOzellikleri } from "@/lib/anaray/network";
+import { ringlerdenSebeke, flattenRoute, duruslariEkle, kalkisEkle, hemzeminDuruslari, hatOzellikleri, kavsakliRingler } from "@/lib/anaray/network";
 import { monteCarlo } from "@/lib/anaray/signalling";
 import { etkinArac } from "@/lib/anaray/config";
 import { robustFiloPenceresi, type RobustSonuc } from "@/lib/anaray/robustFilo";
@@ -32,7 +32,7 @@ const MC_DT = 1.0;         // sim adımı (s) — tarama için kaba (Studio 0,5)
 export function RobustFiloPaneli() {
   const { t } = useDil();
   const { cfg } = useSimConfig();
-  const { rings } = useProje();
+  const { rings, subeler } = useProje();
   const { arac: stock } = useArac();
   const { isletme } = useIsletme();
 
@@ -43,7 +43,10 @@ export function RobustFiloPaneli() {
   // (effect'le state sıfırlamaya gerek yok; imza uyuşmazsa gösterilmez).
   const [hesap, setHesap] = useState<{ sig: string; data: RobustSonuc } | null>(null);
 
-  const maks = useMemo(() => maksimumTren(rings, stock, cfg, isletme), [rings, stock, cfg, isletme]);
+  // Kapasite TEK KAYNAK: KararDestekPaneli ile birebir aynı girdi — kavşak (şube) turnout'ları
+  // dahil (kavsakliRingler). Şubesiz hatta no-op; şubeli hatta "aynı temel kapasite" tutar.
+  const ringlerK = useMemo(() => kavsakliRingler(rings, subeler), [rings, subeler]);
+  const maks = useMemo(() => maksimumTren(ringlerK, stock, cfg, isletme), [ringlerK, stock, cfg, isletme]);
   const stockSim = useMemo(() => etkinArac(stock, cfg), [stock, cfg]);
 
   // Sim hattı (Studio ile aynı kurulum): ring zinciri → şebeke → düz hat + geçit duruşları + kalkış.

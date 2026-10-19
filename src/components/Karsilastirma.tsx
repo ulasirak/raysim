@@ -32,8 +32,8 @@ import { useDil } from "@/components/DilProvider";
 // NOT: Blok yapısı artık gerçek sinyal lambalarından türer (yapay "blok uzunluğu"
 // parametresi kaldırıldı) → what-if'te elle blok uzunluğu ayarı yoktur.
 const WHATIF = {
-  dolulukTavani: { ad: "Doluluk tavanı", suffix: "%", varsayilan: [70, 80, 90], min: 40, max: 95, not: "UIC 406 doluluk tavanı — her hatta sürdürülebilir ve işletme kapasitesini doğrudan belirler (teorik tavan sabit). Geçerli 40–95%.", etkin: (v: number) => Math.round(Math.max(40, Math.min(95, v))), uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, dolulukTavani: Math.max(0.4, Math.min(0.95, v / 100)) }) },
-  headway: { ad: "Hedef headway", suffix: "s", varsayilan: [240, 180, 120], min: 30, max: 600, not: "Sefer sıklığı hedefi — fiziksel kapasiteyi DEĞİL, yalnız UIC doluluk ve gereken tren sayısını etkiler. Geçerli 30–600 s.", etkin: (v: number) => Math.max(30, Math.min(600, Math.round(v))), uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, headway: Math.max(30, Math.min(600, v)) }) },
+  dolulukTavani: { ad: { tr: "Doluluk tavanı", en: "Occupancy cap", de: "Auslastungsgrenze" }, suffix: "%", varsayilan: [70, 80, 90], min: 40, max: 95, not: { tr: "UIC 406 doluluk tavanı — her hatta sürdürülebilir ve işletme kapasitesini doğrudan belirler (teorik tavan sabit). Geçerli 40–95%.", en: "UIC 406 occupancy cap — directly sets sustainable and operating capacity on every line (the theoretical ceiling is fixed). Valid 40–95%.", de: "UIC-406-Auslastungsgrenze — bestimmt direkt die nachhaltige und die Betriebskapazität jeder Strecke (theoretische Obergrenze fest). Gültig 40–95 %." }, etkin: (v: number) => Math.round(Math.max(40, Math.min(95, v))), uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, dolulukTavani: Math.max(0.4, Math.min(0.95, v / 100)) }) },
+  headway: { ad: { tr: "Hedef headway", en: "Target headway", de: "Ziel-Zugfolgezeit" }, suffix: "s", varsayilan: [240, 180, 120], min: 30, max: 600, not: { tr: "Sefer sıklığı hedefi — fiziksel kapasiteyi DEĞİL, yalnız UIC doluluk ve gereken tren sayısını etkiler. Geçerli 30–600 s.", en: "Service frequency target — does NOT affect physical capacity, only UIC occupancy and the number of trains required. Valid 30–600 s.", de: "Taktdichte-Ziel — beeinflusst NICHT die physische Kapazität, nur die UIC-Auslastung und die Anzahl benötigter Züge. Gültig 30–600 s." }, etkin: (v: number) => Math.max(30, Math.min(600, Math.round(v))), uygula: (c: SimConfig, v: number): SimConfig => ({ ...c, headway: Math.max(30, Math.min(600, v)) }) },
 } as const;
 type WhatifKey = keyof typeof WHATIF;
 
@@ -142,7 +142,7 @@ export function Karsilastirma() {
       if (!token) { w?.close(); setPdfDurum({ tip: "err", metin: t({ tr: "Oturum bulunamadı — yeniden giriş yapın.", en: "Session not found — please sign in again.", de: "Sitzung nicht gefunden — bitte erneut anmelden." }) }); return; }
       const altBaslik = mod === "projeler"
         ? `${senaryolar.length} ${t({ tr: "proje karşılaştırması", en: "project comparison", de: "Projektvergleich" })}`
-        : `${meta.hatAdi || t({ tr: "Aktif hat", en: "Active line", de: "Aktive Strecke" })} · ${WHATIF[wparam].ad} ${t({ tr: "varyasyonu", en: "variation", de: "Variation" })}`;
+        : `${meta.hatAdi || t({ tr: "Aktif hat", en: "Active line", de: "Aktive Strecke" })} · ${t(WHATIF[wparam].ad)} ${t({ tr: "varyasyonu", en: "variation", de: "Variation" })}`;
       const yanit = await fetch("/api/karsilastirma", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -217,7 +217,7 @@ export function Karsilastirma() {
               <span className="field-label">{t({ tr: "Parametre", en: "Parameter", de: "Parameter" })}</span>
               <select value={wparam} onChange={(e) => paramDegis(e.target.value as WhatifKey)}
                 className="mt-1 block rounded border px-2 py-1.5 text-sm" style={{ borderColor: brand.border, color: brand.ink }}>
-                {(Object.keys(WHATIF) as WhatifKey[]).map((k) => <option key={k} value={k}>{WHATIF[k].ad} ({WHATIF[k].suffix})</option>)}
+                {(Object.keys(WHATIF) as WhatifKey[]).map((k) => <option key={k} value={k}>{t(WHATIF[k].ad)} ({WHATIF[k].suffix})</option>)}
               </select>
             </label>
             <div>
@@ -240,7 +240,7 @@ export function Karsilastirma() {
             </div>
           </div>
           <p className="mt-3 rounded border-l-2 pl-2 text-xs" style={{ borderColor: CK.gold, color: brand.inkSoft }}>
-            ℹ️ {WHATIF[wparam].not}
+            ℹ️ {t(WHATIF[wparam].not)}
           </p>
         </Panel>
       )}
@@ -254,7 +254,7 @@ export function Karsilastirma() {
         <>
           {degismedi && (
             <div className="mt-6 rounded-md border-l-4 px-4 py-3 text-sm" style={{ borderColor: CK.amber, background: CK.amberBg, color: CK.amberInk }}>
-              ⚠ “{WHATIF[wparam].ad}” {t({ tr: "değişimi bu hatta metrikleri ", en: "change did not move the metrics on this line — it ", de: "Änderung hat die Metriken auf dieser Strecke nicht bewegt — es " })}<b>{t({ tr: "oynatmadı", en: "did nothing", de: "bewirkte nichts" })}</b>{t({ tr: " — bu hattın belirleyici kısıtı bu parametre değil (tablodaki ", en: " — this line’s governing constraint is not this parameter (see the ", de: " — die maßgebende Beschränkung dieser Strecke ist nicht dieser Parameter (siehe Zeile " })}<b>{t({ tr: "Belirleyici kısıt", en: "Governing constraint", de: "Maßgebende Beschränkung" })}</b>{t({ tr: " satırına bak). ", en: " row in the table). ", de: " in der Tabelle). " })}<b>{t({ tr: "Doluluk tavanı", en: "Occupancy ceiling", de: "Auslastungsgrenze" })}</b>{t({ tr: " her hatta kapasiteyi değiştirir; ", en: " changes capacity on every line; ", de: " ändert die Kapazität auf jeder Strecke; " })}<b>{t({ tr: "Headway", en: "Headway", de: "Zugfolgezeit" })}</b>{t({ tr: " ise UIC doluluk / gereken tren'i etkiler.", en: " affects UIC occupancy / trains required.", de: " beeinflusst UIC-Auslastung / benötigte Züge." })}
+              ⚠ “{t(WHATIF[wparam].ad)}” {t({ tr: "değişimi bu hatta metrikleri ", en: "change did not move the metrics on this line — it ", de: "Änderung hat die Metriken auf dieser Strecke nicht bewegt — es " })}<b>{t({ tr: "oynatmadı", en: "did nothing", de: "bewirkte nichts" })}</b>{t({ tr: " — bu hattın belirleyici kısıtı bu parametre değil (tablodaki ", en: " — this line’s governing constraint is not this parameter (see the ", de: " — die maßgebende Beschränkung dieser Strecke ist nicht dieser Parameter (siehe Zeile " })}<b>{t({ tr: "Belirleyici kısıt", en: "Governing constraint", de: "Maßgebende Beschränkung" })}</b>{t({ tr: " satırına bak). ", en: " row in the table). ", de: " in der Tabelle). " })}<b>{t({ tr: "Doluluk tavanı", en: "Occupancy ceiling", de: "Auslastungsgrenze" })}</b>{t({ tr: " her hatta kapasiteyi değiştirir; ", en: " changes capacity on every line; ", de: " ändert die Kapazität auf jeder Strecke; " })}<b>{t({ tr: "Headway", en: "Headway", de: "Zugfolgezeit" })}</b>{t({ tr: " ise UIC doluluk / gereken tren'i etkiler.", en: " affects UIC occupancy / trains required.", de: " beeinflusst UIC-Auslastung / benötigte Züge." })}
             </div>
           )}
 

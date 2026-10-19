@@ -25,6 +25,7 @@ import { Kaynak } from "@/components/Kaynak";
 import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import { blockingTimeRing, type BlokSperr } from "@/lib/anaray/blockingtime";
 import { maksimumTren } from "@/lib/anaray/kapasite";
+import { kavsakliRingler } from "@/lib/anaray/network";
 import { loopToHat } from "@/lib/anaray/hatsim";
 import { BlockingStairChart } from "@/components/BlockingStairChart";
 import { KisitKarsilastirma } from "@/components/KisitKarsilastirma";
@@ -84,13 +85,15 @@ export function SistemMerkezi() {
   const { t } = useDil();
   const tt = t; // teshis.map((t)=>…) yerel gölgelemesi için alias (o blokta tt kullan)
   const { cfg } = useSimConfig();
-  const { rings: ringsHam } = useProje();
+  const { rings: ringsHam, subeler } = useProje();
   const { arac: stock } = useArac();
   const { isletme } = useIsletme();
   // Yolcu dinamiği: dwell OTO ringlerin dwell'i hesaplanır → blocking-time / teşhis
   // panelleri de hesaplı dwell'i kullanır (kapasite ile tutarlı).
   const rings = useMemo(() => dwellUygulanmisRings(ringsHam, stock, isletme), [ringsHam, stock, isletme]);
-  const maks = useMemo(() => (rings.length ? maksimumTren(rings, stock, cfg, isletme) : null), [rings, stock, cfg, isletme]);
+  // Kapasite TEK KAYNAK: KararDestek/Robust ile birebir aynı girdi — kavşak (şube) turnout'ları
+  // dahil (kavsakliRingler). Şubesiz hatta no-op; maksimumTren dwell'i içeride uygular.
+  const maks = useMemo(() => (ringsHam.length ? maksimumTren(kavsakliRingler(ringsHam, subeler), stock, cfg, isletme) : null), [ringsHam, subeler, stock, cfg, isletme]);
   // Ekran HER ZAMAN gerçek değerleri gösterir (mod yok): İHLAL/aşım işaretleri ve
   // min headway'i belirleyen "KRİTİK" blok kırmızıyla açıkça gösterilir. Müşteriye
   // "onaylı tasarım" olarak sunma (greenwashing) yalnız PDF dışa-aktarımına özgüdür
@@ -195,7 +198,7 @@ export function SistemMerkezi() {
           <MiniStat etiket={t({ tr: "Blok min headway (Sperrzeit)", en: "Block min headway (Sperrzeit)", de: "Block-Zugfolgezeit (Sperrzeit)" })} deger={sure(bt.minHeadway)} alt={`${kritikAd} · ${t({ tr: "blok #", en: "block #", de: "Block #" })}${bt.kritikBlok}${bt.bloklar[bt.kritikBlok]?.makasBlok ? t({ tr: " (makas)", en: " (switch)", de: " (Weiche)" }) : ""} · ${t({ tr: "bağlayan hMin ↑ Belirleyici Kısıt", en: "governing hMin ↑ Governing Constraint", de: "maßgebende hMin ↑ Maßg. Engpass" })}`} vurgu={kritikRenk} />
           <MiniStat etiket={t({ tr: "Teorik kapasite", en: "Theoretical capacity", de: "Theoretische Kapazität" })} deger={`${bt.teorikKapasite.toFixed(0)}/sa`} alt={t({ tr: "tren/saat üst sınır", en: "trains/hour upper bound", de: "Züge/Stunde Obergrenze" })} />
           <MiniStat etiket={t({ tr: "İşletme kapasitesi", en: "Operating capacity", de: "Betriebskapazität" })} deger={`${bt.pratikKapasite.toFixed(0)}/sa`} alt={`UIC 406 ${t({ tr: "%", en: "", de: "" })}${(bt.dolulukTavani * 100).toFixed(0)}${t({ tr: " tavan", en: "% cap", de: " % Obergrenze" })}`} vurgu={OK} />
-          <MiniStat etiket={t({ tr: "UIC 406 doluluk", en: "UIC 406 utilization", de: "UIC 406 Auslastung" })} deger={`%${bt.dolulukHedef.toFixed(0)}`} alt={`${t({ tr: "hedef ", en: "target ", de: "Ziel " })}${bt.hedefHeadway} s`} vurgu={bt.dolulukHedef > 80 ? CK.red : bt.dolulukHedef > 60 ? CK.amber : OK} />
+          <MiniStat etiket={t({ tr: "UIC 406 doluluk (hedef aralık)", en: "UIC 406 utilization (target headway)", de: "UIC 406 Auslastung (Ziel-Zugfolgezeit)" })} deger={`%${bt.dolulukHedef.toFixed(0)}`} alt={`${t({ tr: "hedef ", en: "target ", de: "Ziel " })}${bt.hedefHeadway} s`} vurgu={bt.dolulukHedef > 80 ? CK.red : bt.dolulukHedef > 60 ? CK.amber : OK} />
           <MiniStat etiket={t({ tr: "Hedef headway", en: "Target headway", de: "Ziel-Zugfolgezeit" })} deger={<Durum tip={bt.hedefUygun ? "uygun" : "ihlal"} />} />
         </div>
 
