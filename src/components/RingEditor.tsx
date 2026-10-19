@@ -26,6 +26,7 @@ import { gtfsIhrac, type GtfsDurakZaman } from "@/lib/anaray/gtfs";
 import { ringDogrula, ringSenaryo, dengeOnerisi, yeniHemzemin, yeniMakas, yeniTehlike, yeniKurp, yeniSinyal, ringDuraklari, durakAdiDegistir, durakEkleBas, durakEkleSon, durakBol, durakSil, duraklardanHat, type DurakArasiRing, type SinyalLambasi, type HemzeminTip, type MakasTip, type Kurp } from "@/lib/anaray/ring";
 import { parkAnahtar, durakKonumu } from "@/lib/anaray/parklanma";
 import { Num, SubBaslik, Panel } from "@/components/RingUI";
+import { HemzeminAnaliz } from "@/components/HemzeminAnaliz";
 import { Ikon } from "@/components/Ikon";
 
 
@@ -797,6 +798,17 @@ export function RingEditor() {
                 </button>
               ))}
             </div>
+          </Panel>
+        </div>
+      )}
+
+      {/* HEMZEMİN GEÇİT GECİKMESİ & SİNYAL ÖNCELİĞİ (TSP) — tam grafik + ayar girdinin yanında.
+          Geçit "Sinyal önceliği" alanlarını yukarıdaki ring kartlarından girersin; sonucu burada
+          canlı gör. (Sistem Merkezi yalnız özet tanı + buraya çapraz-ref taşır.) */}
+      {rings.some((r) => r.hemzeminler.length > 0) && (
+        <div className="mt-6">
+          <Panel katlanir acik ozet={t({ tr: "geçit gecikmesi + TSP sinyal önceliği", en: "crossing delay + TSP signal priority", de: "Übergangsverzögerung + TSP-Signalpriorität" })} baslik={t({ tr: "Hemzemin Geçit & Sinyal Önceliği (TSP)", en: "Level Crossing & Signal Priority (TSP)", de: "Bahnübergang & Signalpriorität (TSP)" })} aciklama={t({ tr: "Her karayolu geçidinin tur süresine katkısı: yavaşlama (geçit hızına düşme) + bekleme. Beklemeyi yukarıdaki ring kartında geçidin “Sinyal önceliği” alanından ayarlarsın — “elle” süre ya da sinyal modeli (devir C + yeşil g → Webster kırmızı²/2C; pasif/aktif TSP etkin kırmızıyı kısar). Türeyen bekleme motora bağlıdır (çevrim/kapasiteyi besler).", en: "Each road crossing's contribution to round-trip time: slowdown (dropping to the crossing speed) + wait. You set the wait in the ring card above via the crossing's “Signal priority” field — a “manual” time or a signal model (cycle C + green g → Webster red²/2C; passive/active TSP cuts the effective red). The derived wait is engine-connected (feeds cycle/capacity).", de: "Beitrag jedes Straßenübergangs zur Umlaufzeit: Verlangsamung (Absenken auf die Übergangsgeschwindigkeit) + Wartezeit. Die Wartezeit stellen Sie in der Ringkarte oben über das Feld „Signalpriorität“ des Übergangs ein — eine „manuelle“ Zeit oder ein Signalmodell (Umlauf C + Grün g → Webster Rot²/2C; passive/aktive TSP senkt das effektive Rot). Die abgeleitete Wartezeit ist motorgebunden (speist Umlauf/Kapazität)." })}>
+            <HemzeminAnaliz rings={rings} cfg={cfg} cevrimSn={maks.gecerli ? maks.cevrimSuresi : 0} />
           </Panel>
         </div>
       )}
