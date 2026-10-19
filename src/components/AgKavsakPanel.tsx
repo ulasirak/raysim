@@ -10,6 +10,7 @@
 //      ötelemesi + "kavşak zaman şeridi" (occupation) görseli.
 // Yalnız bir şubeye servisTren>0 girilince anlamlıdır (opt-in; tahmin yok).
 
+import Link from "next/link";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { Panel } from "@/components/RingUI";
@@ -99,6 +100,11 @@ export function AgKavsakPanel({ subeler, ortak, kavsak }: {
               </tbody>
             </table>
             <div className="mt-2 text-xs" style={{ color: brand.muted }}>{ortak.ozet}</div>
+            <div className="mt-1 text-xs" style={{ color: brand.muted }}>
+              {t({ tr: "Bu tablonun tam dökümü (her kavşağın uzunluk · ana/şube/birleşik frekans · headway · sonuç) PDF raporu ", en: "The full breakdown of this table (each junction's length · main/branch/combined frequency · headway · result) is produced in the PDF report ", de: "Die vollständige Aufschlüsselung dieser Tabelle (Länge · Haupt-/Zweig-/kombinierte Frequenz · Zugfolgezeit · Ergebnis je Verzweigung) wird im PDF-Bericht erzeugt " })}
+              <Link href="/#belgeler" className="font-semibold underline" style={{ color: brand.red }}>{t({ tr: "(4.5 Ortak Kesim Yükü)", en: "(4.5 Shared-Section Load)", de: "(4.5 Last des gemeinsamen Abschnitts)" })}</Link>
+              {t({ tr: "'nde üretilir.", en: ".", de: "." })}
+            </div>
           </div>
         )}
       </Panel>

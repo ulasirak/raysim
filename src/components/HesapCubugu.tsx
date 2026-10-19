@@ -198,10 +198,10 @@ export function HesapKontrolleri() {
               <div className="field-label" style={{ color: brand.faint }}>{t({ tr: "HESAP", en: "ACCOUNT", de: "KONTO" })}</div>
               <div style={{ color: brand.ink }}>{user.email}</div>
               <div className="mt-0.5 text-[0.7rem]" style={{ color: kotaDoldu ? brand.red : brand.muted }}>
-                {kota === null ? `${projeler.length} hat · sınırsız` : `${projeler.length}/${kota} hat`}
+                {kota === null ? `${projeler.length} ${t({ tr: "hat", en: "lines", de: "Linien" })} · ${t({ tr: "sınırsız", en: "unlimited", de: "unbegrenzt" })}` : `${projeler.length}/${kota} ${t({ tr: "hat", en: "lines", de: "Linien" })}`}
                 {"  ·  "}
                 <span style={{ color: bakiye === 0 ? brand.red : brand.muted }}>
-                  {bakiye === null ? "kredi —" : `${bakiye} kredi`}
+                  {bakiye === null ? `${t({ tr: "kredi", en: "Credits", de: "Credits" })} —` : `${bakiye} ${t({ tr: "kredi", en: "Credits", de: "Credits" })}`}
                 </span>
               </div>
             </div>

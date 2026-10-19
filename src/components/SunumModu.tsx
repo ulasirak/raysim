@@ -27,10 +27,10 @@ type Adim = {
 const DILLER: Dil[] = ["tr", "en", "de"];
 
 // Kontrol/etiket sözlüğü (dile göre).
-const UI: Record<Dil, { basla: string; ileri: string; geri: string; bitir: string; bastan: string; oynat: string; duraklat: string; cik: string }> = {
-  tr: { basla: "Başla", ileri: "İleri", geri: "Geri", bitir: "Bitir", bastan: "Baştan", oynat: "Otomatik ilerlet", duraklat: "Duraklat", cik: "Sunumdan çık" },
-  en: { basla: "Start", ileri: "Next", geri: "Back", bitir: "Finish", bastan: "Restart", oynat: "Auto-play", duraklat: "Pause", cik: "Exit" },
-  de: { basla: "Starten", ileri: "Weiter", geri: "Zurück", bitir: "Beenden", bastan: "Neustart", oynat: "Autoplay", duraklat: "Pause", cik: "Schließen" },
+const UI: Record<Dil, { basla: string; ileri: string; geri: string; bitir: string; bastan: string; oynat: string; duraklat: string; cik: string; ac: string; acTitle: string }> = {
+  tr: { basla: "Başla", ileri: "İleri", geri: "Geri", bitir: "Bitir", bastan: "Baştan", oynat: "Otomatik ilerlet", duraklat: "Duraklat", cik: "Sunumdan çık", ac: "Sunum Modu", acTitle: "Sistemin her parçasını sırayla gezdiren kapsamlı rehberli sunum (TR · EN · DE)" },
+  en: { basla: "Start", ileri: "Next", geri: "Back", bitir: "Finish", bastan: "Restart", oynat: "Auto-play", duraklat: "Pause", cik: "Exit", ac: "Presentation Mode", acTitle: "A comprehensive guided tour through every part of the system (TR · EN · DE)" },
+  de: { basla: "Starten", ileri: "Weiter", geri: "Zurück", bitir: "Beenden", bastan: "Neustart", oynat: "Autoplay", duraklat: "Pause", cik: "Schließen", ac: "Präsentationsmodus", acTitle: "Eine umfassende geführte Tour durch jeden Teil des Systems (TR · EN · DE)" },
 };
 
 const ADIMLAR: Adim[] = [
@@ -239,9 +239,9 @@ export function SunumModu() {
         onClick={() => { setI(0); setOto(false); setAktif(true); }}
         className="fixed bottom-6 left-6 z-40 flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold shadow-lg transition-transform hover:scale-105"
         style={{ background: "#0C2233", borderColor: "#A8842C", color: "#fff" }}
-        title="Sistemin her parçasını sırayla gezdiren kapsamlı rehberli sunum (TR · EN · DE)"
+        title={UI[dil].acTitle}
       >
-        <span aria-hidden="true">▷</span> Sunum Modu
+        <span aria-hidden="true">▷</span> {UI[dil].ac}
       </button>
     );
   }

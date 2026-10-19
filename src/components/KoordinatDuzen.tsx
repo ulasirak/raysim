@@ -2,9 +2,9 @@
 
 // raysim — İSTASYON KOORDİNAT GİRİŞİ (Büyük sıçrama D — koordinat-duyarlı harita).
 // Kullanıcı hattın istasyonlarına gerçek lat/lon girer → Canlı Ağ "Harita" modunda
-// gerçek konumda çizilir. Girmezse yatay şematik kalır. Tek-tıkla "Konya gerçek
-// koordinatları" preset'i (OSM kaynaklı 41 istasyon) ad eşleştirmesiyle doldurur.
-// Koordinatlar Isletme.istasyonKoordinat'ta KALICI saklanır.
+// gerçek konumda çizilir. Girmezse yatay şematik kalır. Koordinatlar: OSM'den çek
+// (durak adıyla eşleştirme), elle gir, ya da temizle. Herhangi bir şehre/hatta özel
+// gömülü preset YOKTUR (sahte koordinat üretilmez). Isletme.istasyonKoordinat'ta KALICI.
 
 import { useState } from "react";
 import { brand } from "@/lib/anaray/brand";

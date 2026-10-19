@@ -1287,7 +1287,6 @@ function StudioIc() {
 
       {agVar && (
         <div className="sf-panel" data-t="5">
-          <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>{t({ tr: "Dallı ağda ortak kesim yükü (ortalama) ve kavşak zaman-çakışması (merge/diverge) — ana hat + şube servislerinin kavşakta nasıl saplandığı, çakışma ve çözüm ötelemesi.", en: "In a branched network: shared-section load (average) and junction time-conflict (merge/diverge) — how main + branch services interleave at the junction, the conflict and the resolving offset.", de: "Im verzweigten Netz: Last des gemeinsamen Abschnitts (Mittel) und Verzweigungs-Zeitkonflikt (merge/diverge) — wie Haupt- + Zweigverkehr an der Verzweigung ineinandergreifen, der Konflikt und der lösende Versatz." })}</p>
           <AgKavsakPanel subeler={subeler} ortak={ortakKesim} kavsak={kavsakCakisma} />
         </div>
       )}
