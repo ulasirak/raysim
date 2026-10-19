@@ -1,11 +1,13 @@
 "use client";
 
-// raysim — DOĞRULAMA & GEÇERLEME paneli (Sistem Merkezi).
-// Motorun çıktılarını bağımsız analitik referanslara karşı sınayan V&V tablosunu gösterir.
-// Amaç: "sayılar doğru mu?" sorusuna kanıtlı cevap — aracı oyuncaktan mühendislik aracına
-// ayıran güvenilirlik katmanı. Dürüst çerçeve: bağımsız analitik vs iç tutarlılık ayrımı.
+// raysim — DOĞRULAMA & GEÇERLEME (V&V) — EKRAN ÖZETİ (Sistem Merkezi).
+// Tam V&V tablosu (her kontrol: referans · hesaplanan · sapma · sonuç) PDF raporunun
+// 09. bölümünde üretilir — denetlenebilir resmi çıktının doğal yeri orası. Ekranda yalnız
+// CANLI ÖZET gösterilir (girdi değişince anlık) + rapora yönlendirme. Çekirdek
+// (dogrulamaCalistir) rapor ile TEK KAYNAK. Dürüst çerçeve: analitik vs iç tutarlılık ayrımı.
 
 import { useMemo } from "react";
+import Link from "next/link";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
@@ -13,11 +15,6 @@ import { dwellUygulanmisRings } from "@/lib/anaray/yolcu";
 import { dogrulamaCalistir } from "@/lib/anaray/dogrulama";
 import { kavsakliRingler } from "@/lib/anaray/network";
 import { useDil } from "@/components/DilProvider";
-
-const say = (v: number, birim: string) => {
-  const d = Math.abs(v) >= 100 ? 0 : Math.abs(v) >= 10 ? 1 : 2;
-  return `${v.toFixed(d)}${birim ? " " + birim : ""}`;
-};
 
 export function DogrulamaPaneli() {
   const { t } = useDil();
@@ -28,83 +25,54 @@ export function DogrulamaPaneli() {
 
   const rapor = useMemo(() => {
     // UIC 406 kapasite kimliği aktif hatta koşar; şube varsa kavşak turnout'ları dâhil
-    // (Sefer/KUR kapasitesiyle aynı taban → doğrulanan sayı ekranda görünenle birebir).
-    // Şubesizse kavsakliRingler rings'i aynen döndürür (eski davranış korunur).
+    // (Sefer/KUR kapasitesiyle aynı taban). Şubesizse kavsakliRingler rings'i aynen döndürür.
     const rings = dwellUygulanmisRings(kavsakliRingler(ringsHam, subeler), stock, isletme);
     return dogrulamaCalistir(rings, stock, cfg, isletme);
   }, [ringsHam, subeler, stock, cfg, isletme]);
 
   const hepGecti = rapor.gecen === rapor.toplam;
   const bagimsizN = rapor.sonuclar.filter((s) => s.bagimsiz).length;
+  const tutarlilikN = rapor.toplam - bagimsizN;
+
+  const KUTU = [
+    { deger: `${rapor.gecen}/${rapor.toplam}`, ad: t({ tr: "kontrol geçti", en: "checks passed", de: "Prüfungen bestanden" }), renk: hepGecti ? CK.good : brand.red },
+    { deger: `%${rapor.maxSapma.toFixed(2)}`, ad: t({ tr: "maks sapma", en: "max deviation", de: "max. Abweichung" }), renk: rapor.maxSapma > 2 ? brand.red : brand.ink },
+    { deger: `${bagimsizN} / ${tutarlilikN}`, ad: t({ tr: "analitik / tutarlılık", en: "analytic / consistency", de: "analytisch / Konsistenz" }), renk: brand.ink },
+  ];
 
   return (
     <div className="ds-card">
-      {/* Başlık + özet */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4" style={{ borderColor: brand.border }}>
-        <div>
-          <div className="field-label">{t({ tr: "Doğrulama & Geçerleme (V&V)", en: "Verification & Validation (V&V)", de: "Verifizierung & Validierung (V&V)" })}</div>
-          <h3 className="font-brand mt-0.5 text-lg font-semibold" style={{ color: brand.ink }}>{t({ tr: "Motor doğruluk sertifikasyonu", en: "Engine accuracy certification", de: "Motor-Genauigkeitszertifizierung" })}</h3>
-          <p className="mt-1 max-w-2xl text-xs" style={{ color: brand.inkSoft }}>
-            {t({ tr: "Simülasyon çıktıları bağımsız kapalı-form (analitik) referanslara karşı sınanır — mühendislik yazılımı V&V yöntemi. Dış araç ya da veriye gerek yok; fizik kapalı-formda bilindiği için motorun sayısal entegrasyonu doğrudan doğrulanır.", en: "Simulation outputs are tested against independent closed-form (analytic) references — the V&V method of engineering software. No external tool or data is needed; because the physics is known in closed form, the engine's numerical integration is verified directly.", de: "Die Simulationsausgaben werden gegen unabhängige geschlossene (analytische) Referenzen geprüft — die V&V-Methode technischer Software. Kein externes Werkzeug oder Daten nötig; da die Physik in geschlossener Form bekannt ist, wird die numerische Integration des Motors direkt verifiziert." })}
-          </p>
-        </div>
-        <div className="text-right">
-          <div className="text-2xl font-bold tabular-nums" style={{ color: hepGecti ? CK.good : brand.red }}>
-            {rapor.gecen}/{rapor.toplam}
-          </div>
-          <div className="text-xs font-medium" style={{ color: hepGecti ? CK.good : brand.red }}>
-            {hepGecti ? t({ tr: "kontrol geçti", en: "checks passed", de: "Prüfungen bestanden" }) : t({ tr: "kontrol — sapma var", en: "checks — deviation found", de: "Prüfungen — Abweichung" })}
-          </div>
-          <div className="mt-0.5 text-[0.7rem]" style={{ color: brand.muted }}>{t({ tr: "maks sapma", en: "max deviation", de: "max. Abweichung" })} %{rapor.maxSapma.toFixed(2)}</div>
-        </div>
+      <div className="border-b px-5 py-4" style={{ borderColor: brand.border }}>
+        <h3 className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{t({ tr: "Özet — tam tablo PDF raporunda", en: "Summary — full table in the PDF report", de: "Zusammenfassung — vollständige Tabelle im PDF-Bericht" })}</h3>
+        <p className="mt-1 max-w-2xl text-xs" style={{ color: brand.inkSoft }}>
+          {t({ tr: "Simülasyon çıktıları bağımsız kapalı-form (analitik) referanslara karşı sınanır — mühendislik yazılımı V&V yöntemi. Dış araç ya da veriye gerek yok; fizik kapalı-formda bilindiği için motorun sayısal entegrasyonu doğrudan doğrulanır. Her kontrolün tam dökümü, ekranı yormaması için PDF raporunda tutulur; burada canlı özet gösterilir.", en: "Simulation outputs are tested against independent closed-form (analytic) references — the V&V method of engineering software. No external tool or data is needed; because the physics is known in closed form, the engine's numerical integration is verified directly. The full per-check breakdown lives in the PDF report to keep the screen uncluttered; a live summary is shown here.", de: "Die Simulationsausgaben werden gegen unabhängige geschlossene (analytische) Referenzen geprüft — die V&V-Methode technischer Software. Kein externes Werkzeug oder Daten nötig; da die Physik in geschlossener Form bekannt ist, wird die numerische Integration des Motors direkt verifiziert. Die vollständige Aufschlüsselung je Prüfung steht im PDF-Bericht; hier wird eine Live-Zusammenfassung gezeigt." })}
+        </p>
       </div>
 
-      {/* Tablo */}
-      <div className="overflow-x-auto px-2 py-1">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr style={{ color: brand.muted }} className="text-left text-[0.7rem] uppercase tracking-wide">
-              <th className="px-3 py-2 font-medium">{t({ tr: "Kontrol", en: "Check", de: "Prüfung" })}</th>
-              <th className="px-3 py-2 text-right font-medium">{t({ tr: "Referans", en: "Reference", de: "Referenz" })}</th>
-              <th className="px-3 py-2 text-right font-medium">{t({ tr: "Hesaplanan", en: "Computed", de: "Berechnet" })}</th>
-              <th className="px-3 py-2 text-right font-medium">{t({ tr: "Sapma", en: "Deviation", de: "Abweichung" })}</th>
-              <th className="px-3 py-2 text-right font-medium">{t({ tr: "Sonuç", en: "Result", de: "Ergebnis" })}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rapor.sonuclar.map((s, i) => (
-              <tr key={i} className="border-t align-top" style={{ borderColor: brand.border }}>
-                <td className="px-3 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium" style={{ color: brand.ink }}>{s.ad}</span>
-                    <span className="rounded px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase"
-                      style={s.bagimsiz
-                        ? { background: "rgba(46,125,87,0.12)", color: CK.good }
-                        : { background: CK.track, color: brand.muted }}>
-                      {s.bagimsiz ? t({ tr: "analitik", en: "analytic", de: "analytisch" }) : t({ tr: "tutarlılık", en: "consistency", de: "Konsistenz" })}
-                    </span>
-                    <span className="text-[0.65rem]" style={{ color: brand.muted }}>· {s.kategori}</span>
-                  </div>
-                  <div className="mt-0.5 text-[0.7rem] leading-snug" style={{ color: brand.muted }}>{s.yontem}</div>
-                </td>
-                <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums" style={{ color: brand.inkSoft }}>{say(s.referans, s.birim)}</td>
-                <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums" style={{ color: brand.ink }}>{say(s.hesaplanan, s.birim)}</td>
-                <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums" style={{ color: brand.inkSoft }}>%{s.sapmaYuzde.toFixed(2)}</td>
-                <td className="whitespace-nowrap px-3 py-2.5 text-right font-semibold" style={{ color: s.gecti ? CK.good : brand.red }}>
-                  {s.gecti ? t({ tr: "Geçti", en: "Passed", de: "Bestanden" }) : t({ tr: "Kaldı", en: "Failed", de: "Nicht bestanden" })}
-                  <span className="ml-1 text-[0.65rem] font-normal" style={{ color: brand.muted }}>(≤%{s.tolerans})</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="grid grid-cols-3 gap-3 p-5">
+        {KUTU.map((k, i) => (
+          <div key={i} className="rounded-lg border px-3 py-3 text-center" style={{ borderColor: brand.border, background: "#F9FAFB" }}>
+            <div className="text-2xl font-bold tabular-nums" style={{ color: k.renk }}>{k.deger}</div>
+            <div className="mt-0.5 text-[0.7rem] font-medium" style={{ color: brand.muted }}>{k.ad}</div>
+          </div>
+        ))}
       </div>
 
-      {/* Dürüstlük notu */}
-      <div className="border-t px-5 py-3 text-[0.72rem] leading-relaxed" style={{ borderColor: brand.border, color: brand.muted }}>
-        <b style={{ color: brand.inkSoft }}>{t({ tr: "analitik", en: "analytic", de: "analytisch" })}</b> {t({ tr: "= motordan bağımsız kapalı-form referans (gerçek doğrulama;", en: "= engine-independent closed-form reference (true verification;", de: "= engine-unabhängige geschlossene Referenz (echte Verifizierung;" })} {bagimsizN} {t({ tr: "kontrol).", en: "checks).", de: "Prüfungen)." })}{" "}
-        <b style={{ color: brand.inkSoft }}>{t({ tr: "tutarlılık", en: "consistency", de: "Konsistenz" })}</b> {t({ tr: "= motorun kendi tanımıyla/tasarım değişmezleriyle uyumu (güvenilirlik göstergesi).", en: "= agreement with the engine's own definition / design invariants (a reliability indicator).", de: "= Übereinstimmung mit der eigenen Definition / den Entwurfsinvarianten des Motors (Zuverlässigkeitsindikator)." })}
-        {t({ tr: "Kinematik ve direnç kontrolleri hat-bağımsızdır; UIC 406 kapasite kimliği aktif hatta koşar.", en: "Kinematics and resistance checks are line-independent; the UIC 406 capacity identity runs on the active line.", de: "Kinematik- und Widerstandsprüfungen sind streckenunabhängig; die UIC-406-Kapazitätsidentität läuft auf der aktiven Strecke." })}
+      <div className="mx-5 mb-4 rounded-md border-l-4 px-4 py-3 text-[0.78rem] leading-relaxed" style={{ borderColor: brand.ink, background: "#F4F6F8", color: brand.inkSoft }}>
+        {t({ tr: "Tam V&V tablosu — her kontrolün referansı, hesaplanan değeri, sapması ve sonucuyla — ", en: "The full V&V table — every check with its reference, computed value, deviation and result — is produced in ", de: "Die vollständige V&V-Tabelle — jede Prüfung mit Referenz, berechnetem Wert, Abweichung und Ergebnis — wird erzeugt in " })}
+        <Link href="/#belgeler" className="font-semibold underline" style={{ color: brand.red }}>{t({ tr: "Teknik Belgeler → PDF raporu (bölüm 09)", en: "Technical Documents → PDF report (section 09)", de: "Technische Dokumente → PDF-Bericht (Abschnitt 09)" })}</Link>
+        {t({ tr: " içinde üretilir.", en: ".", de: "." })}
+        <ul className="mt-2 list-disc space-y-1 pl-4" style={{ color: brand.muted }}>
+          <li>
+            <b style={{ color: brand.inkSoft }}>{t({ tr: "analitik", en: "analytic", de: "analytisch" })}</b> {t({ tr: `= motordan BAĞIMSIZ kapalı-form referans (gerçek doğrulama) — ${bagimsizN} kontrol. Sonuç = geçti ancak sapma ≤ tolerans.`, en: `= engine-INDEPENDENT closed-form reference (true verification) — ${bagimsizN} checks. Result = passed only if deviation ≤ tolerance.`, de: `= engine-UNABHÄNGIGE geschlossene Referenz (echte Verifizierung) — ${bagimsizN} Prüfungen. Ergebnis = bestanden nur wenn Abweichung ≤ Toleranz.` })}
+          </li>
+          <li>
+            <b style={{ color: brand.inkSoft }}>{t({ tr: "tutarlılık", en: "consistency", de: "Konsistenz" })}</b> {t({ tr: `= motorun kendi tanımı / tasarım değişmezleriyle uyumu (güvenilirlik göstergesi) — ${tutarlilikN} kontrol.`, en: `= agreement with the engine's own definition / design invariants (reliability indicator) — ${tutarlilikN} checks.`, de: `= Übereinstimmung mit der eigenen Definition / den Entwurfsinvarianten (Zuverlässigkeitsindikator) — ${tutarlilikN} Prüfungen.` })}
+          </li>
+          <li>
+            <b style={{ color: brand.inkSoft }}>{t({ tr: "Maks sapma", en: "Max deviation", de: "Max. Abweichung" })}</b> {t({ tr: "= tüm kontroller içindeki en yüksek yüzde sapma; her kontrolün kendi toleransıyla kıyaslanır. Kinematik/direnç kontrolleri hat-bağımsız, UIC 406 kapasite kimliği aktif hatta koşar.", en: "= the largest percentage deviation across all checks; each is compared against its own tolerance. Kinematics/resistance checks are line-independent; the UIC 406 capacity identity runs on the active line.", de: "= die größte prozentuale Abweichung über alle Prüfungen; jede wird gegen ihre eigene Toleranz verglichen. Kinematik-/Widerstandsprüfungen sind streckenunabhängig; die UIC-406-Kapazitätsidentität läuft auf der aktiven Strecke." })}
+          </li>
+        </ul>
       </div>
     </div>
   );

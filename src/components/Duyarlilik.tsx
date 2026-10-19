@@ -22,7 +22,6 @@ export function Duyarlilik({ ringsHam, stock, cfg, isletme }: { ringsHam: DurakA
   if (ringsHam.length < 1 || s.taban <= 0) {
     return (
       <div className="mt-6 ds-card p-5">
-        <PanelBaslik ad={t({ tr: "Duyarlılık (Tornado)", en: "Sensitivity (Tornado)", de: "Sensitivität (Tornado)" })} not={t({ tr: "hangi parametre kapasiteyi en çok oynatıyor", en: "which parameter moves capacity the most", de: "welcher Parameter die Kapazität am stärksten bewegt" })} />
         <p className="text-sm" style={{ color: brand.muted }}>{t({ tr: "Analiz için kurulu bir hat gerekir (Ringler).", en: "Analysis needs a built line (Ringler).", de: "Für die Analyse ist eine eingerichtete Strecke nötig (Ringler)." })}</p>
       </div>
     );
@@ -35,7 +34,7 @@ export function Duyarlilik({ ringsHam, stock, cfg, isletme }: { ringsHam: DurakA
 
   return (
     <div className="mt-6 ds-card p-5">
-      <PanelBaslik ad={t({ tr: "Duyarlılık (Tornado)", en: "Sensitivity (Tornado)", de: "Sensitivität (Tornado)" })} not={t({ tr: "hangi parametre hedef metriği en çok oynatıyor — en güçlü kaldıraç tepede", en: "which parameter moves the target metric the most — strongest lever on top", de: "welcher Parameter die Zielmetrik am stärksten bewegt — stärkster Hebel oben" })} />
+      <p className="mb-4 text-xs" style={{ color: brand.muted }}>{t({ tr: "Hangi parametre hedef metriği en çok oynatıyor — en güçlü kaldıraç tepede.", en: "Which parameter moves the target metric the most — strongest lever on top.", de: "Welcher Parameter die Zielmetrik am stärksten bewegt — stärkster Hebel oben." })}</p>
 
       <div className="mb-4 flex flex-wrap items-end gap-4">
         <label>
@@ -90,16 +89,6 @@ export function Duyarlilik({ ringsHam, stock, cfg, isletme }: { ringsHam: DurakA
       <p className="mt-3 text-xs" style={{ color: brand.muted }}>
         {t({ tr: "Her parametre tek başına", en: "Each parameter is varied alone by", de: "Jeder Parameter wird einzeln um" })} ±%{s.deltaYuzde} {t({ tr: "oynatıldı (diğerleri sabit). Çubuk uzunluğu =", en: "(others fixed). Bar length =", de: "variiert (andere fest). Balkenlänge =" })} <b>{t({ tr: "salınım (Δ)", en: "swing (Δ)", de: "Schwankung (Δ)" })}</b> {t({ tr: "= o parametrenin metrik üzerindeki etkisi; en uzun çubuk en güçlü kaldıraçtır. Değerler simülasyonun aynı çekirdeğinden gelir.", en: "= that parameter's effect on the metric; the longest bar is the strongest lever. Values come from the simulation's own core.", de: "= die Wirkung dieses Parameters auf die Metrik; der längste Balken ist der stärkste Hebel. Die Werte stammen aus dem eigenen Kern der Simulation." })}
       </p>
-    </div>
-  );
-}
-
-function PanelBaslik({ ad, not }: { ad: string; not: string }) {
-  return (
-    <div className="mb-4 flex items-baseline gap-2">
-      <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
-      <h2 className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{ad}</h2>
-      <span className="text-xs" style={{ color: brand.muted }}>{not}</span>
     </div>
   );
 }

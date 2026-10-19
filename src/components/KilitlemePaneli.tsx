@@ -42,8 +42,7 @@ export function KilitlemePaneli() {
   return (
     <div className="ds-card">
       <div className="border-b px-5 py-4" style={{ borderColor: brand.border }}>
-        <div className="field-label">{t({ tr: "Kilitleme (Interlocking) Kontrol Tablosu", en: "Interlocking Control Table", de: "Verschluss-Kontrolltabelle (Interlocking)" })}</div>
-        <h3 className="font-brand mt-0.5 text-lg font-semibold" style={{ color: brand.ink }}>{t({ tr: "Özet — tam tablo PDF raporunda", en: "Summary — full table in the PDF report", de: "Zusammenfassung — vollständige Tabelle im PDF-Bericht" })}</h3>
+        <h3 className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{t({ tr: "Özet — tam tablo PDF raporunda", en: "Summary — full table in the PDF report", de: "Zusammenfassung — vollständige Tabelle im PDF-Bericht" })}</h3>
         <p className="mt-1 max-w-2xl text-xs" style={{ color: brand.inkSoft }}>
           {t({ tr: "Hattın makaslarından sinyalizasyon mühendisliğinin klasik kontrol tablosu türetilir: her rota için makas konumu (Normal/Ters), kilitlenen çakışan hareketler, yan koruma / emniyet payı ve tanzim/serbest süreleri. Bu tam tablo, ekranı yormaması için PDF raporunda tutulur; burada canlı özet gösterilir.", en: "The line's switches derive signalling engineering's classic control table: per route the switch position (Normal/Reverse), the conflicting moves locked out, flank/overlap protection and setting/release times. That full table lives in the PDF report to keep the screen uncluttered; a live summary is shown here.", de: "Aus den Weichen der Strecke wird die klassische Verschluss-Kontrolltabelle abgeleitet: je Fahrstraße die Weichenlage (Normal/Umgestellt), die verschlossenen gegenläufigen Fahrten, Flank-/Overlap-Schutz sowie Einstell-/Auflösezeiten. Diese vollständige Tabelle steht im PDF-Bericht; hier wird eine Live-Zusammenfassung gezeigt." })}
         </p>

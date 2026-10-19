@@ -1182,6 +1182,7 @@ function StudioIc() {
       {simHazir && (
         <Panel katlanir ozet={t({ tr: "v(x) hız zarfı + limitler", en: "v(x) speed envelope + limits", de: "v(x) Geschwindigkeitshüllkurve + Grenzen" })} baslik={t({ tr: "Hız Profili — v(x)", en: "Speed Profile — v(x)", de: "Geschwindigkeitsprofil — v(x)" })} aciklama={t({ tr: "Hat boyunca (gidiş yönünde) tramvayın gerçek hızı ile hız-limiti zarfı. Mavi eğri gerçek hız (canlı sim ile aynı yörüngeden, ds/dt), gri kesikli çizgi segment hız limiti. Dip noktaları istasyon duruşlarıdır; limitin altındaki kısımlar hızlanma/frenleme bölgeleridir. Nerede hangi kısıtın (istasyon, makas, viraj) hızı bağladığı görünür.", en: "The tram's actual speed along the line (outbound) against the speed-limit envelope. The blue curve is actual speed (from the same trajectory as the live sim, ds/dt), the grey dashed line the segment speed limit. Dips are station dwells; sections below the limit are acceleration/braking zones. It shows where and which constraint (station, turnout, curve) binds the speed.", de: "Die tatsächliche Geschwindigkeit der Straßenbahn entlang der Linie (Hinfahrt) gegen die Geschwindigkeitshüllkurve. Die blaue Kurve ist die tatsächliche Geschwindigkeit (aus derselben Trajektorie wie die Live-Simulation, ds/dt), die graue gestrichelte Linie die Segment-Geschwindigkeitsbegrenzung. Tiefpunkte sind Stationshalte; Abschnitte unter der Grenze sind Beschleunigungs-/Bremszonen. Es zeigt, wo und welche Einschränkung (Station, Weiche, Bogen) die Geschwindigkeit begrenzt." })}>
           <GrafikCerceve baslik={t({ tr: "Hız Profili — v(x)", en: "Speed Profile — v(x)", de: "Geschwindigkeitsprofil — v(x)" })}><HizProfili loop={loopVeri} line={line} /></GrafikCerceve>
+          <HizProfiliKaynak />
         </Panel>
       )}
 
@@ -1189,6 +1190,7 @@ function StudioIc() {
       {tersRapor && tersRapor.duraklar.length > 1 && (
         <Panel katlanir ozet={t({ tr: "yük profili + dwell dökümü", en: "load profile + dwell breakdown", de: "Lastprofil + Haltezeit-Aufschlüsselung" })} baslik={t({ tr: "Yük & Duruş Analizi", en: "Load & Dwell Analysis", de: "Last- & Haltezeit-Analyse" })} aciklama={t({ tr: "Hat boyunca (ortak mesafe ekseninde) iki grafik: üstte YÜK PROFİLİ — her durakta tepe araç yükü (yolcu/saat), doluluğa göre renkli (yeşil<%50 · sarı %50–85 · kırmızı>%85), tepe durak işaretli; altta DURUŞ (dwell) DÖKÜMÜ — her durakta sürenin kapı-açma / yolcu-değişimi / kapı-kapama kırılımı. Tramvay dwell-baskın olduğundan zamanın nereye gittiğini ve hattın en kalabalık kesimini bir bakışta gösterir.", en: "Two charts on a shared distance axis: on top the LOAD PROFILE — peak vehicle load at each stop (pax/hour), coloured by occupancy (green <50% · yellow 50–85% · red >85%), with the peak stop marked; below the DWELL BREAKDOWN — the split of each stop's time into door-opening / passenger-exchange / door-closing. Since trams are dwell-dominated, it shows at a glance where the time goes and the busiest section of the line.", de: "Zwei Diagramme auf gemeinsamer Wegachse: oben das LASTPROFIL — Spitzenfahrzeuglast an jeder Haltestelle (Fahrg./Stunde), nach Auslastung eingefärbt (grün <50 % · gelb 50–85 % · rot >85 %), mit markierter Spitzenhaltestelle; unten die HALTEZEIT-AUFSCHLÜSSELUNG — die Aufteilung der Zeit jeder Haltestelle in Türöffnen / Fahrgastwechsel / Türschließen. Da Straßenbahnen haltezeitdominiert sind, zeigt es auf einen Blick, wohin die Zeit geht und den am stärksten ausgelasteten Abschnitt der Linie." })}>
           <GrafikCerceve baslik={t({ tr: "Yük & Duruş Analizi", en: "Load & Dwell Analysis", de: "Last- & Haltezeit-Analyse" })}><YukDwellAnaliz duraklar={tersRapor.duraklar} rings={rings} /></GrafikCerceve>
+          <YukDwellKaynak />
         </Panel>
       )}
 
@@ -1450,6 +1452,42 @@ function VeriKaynaklari() {
         <li>• {t({ tr: "Çizgi sayısı & aralık (headway = çevrim ÷ filo)", en: "Line count & spacing (headway = cycle ÷ fleet)", de: "Linienanzahl & Abstand (Zugfolgezeit = Umlauf ÷ Flotte)" })} → <a href="#filo-paneli" onClick={kaydir("filo-paneli")} className="underline" style={link}>{t({ tr: "Filo & Öneri", en: "Fleet & Recommendation", de: "Flotte & Empfehlung" })}</a></li>
         <li>• {t({ tr: "Uçtaki dönüş (turnback)", en: "End turnback", de: "Wende am Ende (Turnback)" })} → <Link href="/#ringler" className="underline" style={link}>{t({ tr: "Ringler → dönüş tipi", en: "Rings → turnback type", de: "Ringe → Wendetyp" })}</Link></li>
         <li>• {t({ tr: "Hızlanma / frenleme dinamiği", en: "Acceleration / braking dynamics", de: "Beschleunigungs-/Bremsdynamik" })} → <a href="#ceken-arac" onClick={kaydir("ceken-arac")} className="underline" style={link}>{t({ tr: "Çeken Araç", en: "Traction Vehicle", de: "Triebfahrzeug" })}</a></li>
+      </ul>
+    </div>
+  );
+}
+
+/** Hız Profili grafiğinin altında: v(x) eğrisini belirleyen girdilerin NEREDE girildiği. */
+function HizProfiliKaynak() {
+  const { t } = useDil();
+  const kaydir = (id: string) => (e: React.MouseEvent) => { e.preventDefault(); panelAcVeGit(id); };
+  const link = { color: brand.ink } as const;
+  return (
+    <div className="mt-3 rounded-md border p-3 text-xs" style={{ borderColor: brand.border, background: CK.track, color: brand.inkSoft }}>
+      <b style={{ color: brand.ink }}>{t({ tr: "Bu grafiği ne belirliyor?", en: "What determines this chart?", de: "Was bestimmt dieses Diagramm?" })}</b> {t({ tr: "Hız profili tamamen aşağıdaki girdilerden türer — değiştirmek için:", en: "The speed profile derives entirely from the inputs below — to change it:", de: "Das Geschwindigkeitsprofil leitet sich vollständig aus den folgenden Eingaben ab — zum Ändern:" })}
+      <ul className="mt-1.5 grid grid-cols-1 gap-1 sm:grid-cols-2">
+        <li>• {t({ tr: "Hız limiti · makas geçiş hızı · viraj (kurp)", en: "Speed limit · turnout transit speed · curve", de: "Geschwindigkeitsbegrenzung · Weichendurchfahrtsgeschwindigkeit · Bogen" })} → <Link href="/#ringler" className="underline" style={link}>{t({ tr: "Ringler (KUR)", en: "Rings (BUILD)", de: "Ringe (BAUEN)" })}</Link></li>
+        <li>• {t({ tr: "İstasyon konumları & mesafe (eksen)", en: "Station positions & distance (axis)", de: "Stationspositionen & Distanz (Achse)" })} → <Link href="/#ringler" className="underline" style={link}>{t({ tr: "Ringler", en: "Rings", de: "Ringe" })}</Link></li>
+        <li>• {t({ tr: "Hızlanma / frenleme (eğrinin dikliği)", en: "Acceleration / braking (curve steepness)", de: "Beschleunigung / Bremsen (Kurvensteilheit)" })} → <a href="#ceken-arac" onClick={kaydir("ceken-arac")} className="underline" style={link}>{t({ tr: "Çeken Araç", en: "Traction Vehicle", de: "Triebfahrzeug" })}</a></li>
+        <li>• {t({ tr: "İstasyon duruşları (dip noktaları)", en: "Station dwells (the dips)", de: "Stationshalte (die Tiefpunkte)" })} → <Link href="/#ringler" className="underline" style={link}>{t({ tr: "Ringler → durak yolcu", en: "Rings → stop passengers", de: "Ringe → Haltestellen-Fahrgäste" })}</Link></li>
+      </ul>
+    </div>
+  );
+}
+
+/** Yük & Duruş grafiğinin altında: yük profili + dwell dökümünü belirleyen girdiler. */
+function YukDwellKaynak() {
+  const { t } = useDil();
+  const kaydir = (id: string) => (e: React.MouseEvent) => { e.preventDefault(); panelAcVeGit(id); };
+  const link = { color: brand.ink } as const;
+  return (
+    <div className="mt-3 rounded-md border p-3 text-xs" style={{ borderColor: brand.border, background: CK.track, color: brand.inkSoft }}>
+      <b style={{ color: brand.ink }}>{t({ tr: "Bu grafiği ne belirliyor?", en: "What determines this chart?", de: "Was bestimmt dieses Diagramm?" })}</b> {t({ tr: "Yük & duruş grafiği tamamen aşağıdaki girdilerden türer — değiştirmek için:", en: "The load & dwell chart derives entirely from the inputs below — to change it:", de: "Das Last- & Haltezeit-Diagramm leitet sich vollständig aus den folgenden Eingaben ab — zum Ändern:" })}
+      <ul className="mt-1.5 grid grid-cols-1 gap-1 sm:grid-cols-2">
+        <li>• {t({ tr: "Durak inen/binen (yük profili)", en: "Stop alightings/boardings (load profile)", de: "Aus-/Einstiege je Haltestelle (Lastprofil)" })} → <Link href="/#ringler" className="underline" style={link}>{t({ tr: "Ringler → durak yolcu", en: "Rings → stop passengers", de: "Ringe → Haltestellen-Fahrgäste" })}</Link></li>
+        <li>• {t({ tr: "Dwell bileşenleri (kapı açma/kapama · konfor)", en: "Dwell components (door open/close · comfort)", de: "Haltezeit-Komponenten (Tür auf/zu · Komfort)" })} → <a href="#ceken-arac" onClick={kaydir("ceken-arac")} className="underline" style={link}>{t({ tr: "Çeken Araç", en: "Traction Vehicle", de: "Triebfahrzeug" })}</a></li>
+        <li>• {t({ tr: "Araç yolcu kapasitesi (doluluk rengi)", en: "Vehicle passenger capacity (occupancy colour)", de: "Fahrgastkapazität (Auslastungsfarbe)" })} → <a href="#ceken-arac" onClick={kaydir("ceken-arac")} className="underline" style={link}>{t({ tr: "Çeken Araç", en: "Traction Vehicle", de: "Triebfahrzeug" })}</a></li>
+        <li>• {t({ tr: "Tepe talep (yük ölçeği)", en: "Peak demand (load scale)", de: "Spitzennachfrage (Lastskala)" })} → <Link href="/#ringler" className="underline" style={link}>{t({ tr: "Ringler → durak yolcu", en: "Rings → stop passengers", de: "Ringe → Haltestellen-Fahrgäste" })}</Link></li>
       </ul>
     </div>
   );
