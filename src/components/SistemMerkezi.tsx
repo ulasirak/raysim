@@ -30,7 +30,6 @@ import { loopToHat } from "@/lib/anaray/hatsim";
 import { BlockingStairChart } from "@/components/BlockingStairChart";
 import { KisitKarsilastirma } from "@/components/KisitKarsilastirma";
 import { TurnbackKapasite } from "@/components/TurnbackKapasite";
-import { HemzeminAnaliz } from "@/components/HemzeminAnaliz";
 import { CK, RAMP_BLUE, SERI } from "@/lib/anaray/chartkit";
 import { useDil } from "@/components/DilProvider";
 
@@ -299,12 +298,8 @@ export function SistemMerkezi() {
         <TurnbackKapasite terminalBas={isletme.terminalBas} terminalSon={isletme.terminalSon} cfg={cfg} />
         <Kaynak etiket={t({ tr: "Terminal girdileri", en: "Terminal inputs", de: "Endstellen-Eingaben" })} yerler={[{ ad: t({ tr: "Makas/peron → Ringler (Maksimum Tramvay)", en: "Switch/platform → Ringler (Maximum Tram)", de: "Weiche/Bahnsteig → Ringler (Maximale Straßenbahn)" }), href: "/#ringler" }, "parametreler"]} />
       </Panel>
-
-      {/* HEMZEMİN GEÇİT GECİKMESİ — ÖZET. Etki zaten kapasitede; tam grafik + TSP ayarı
-          girdinin yanında (Ringler) olduğundan burada yalnız tek-satır tanı + çapraz-ref. */}
-      <Panel ozet={t({ tr: "geçit gecikmesinin çevrime katkısı (özet)", en: "crossing delay's contribution to the cycle (summary)", de: "Beitrag der Übergangsverzögerung zum Umlauf (Zusammenfassung)" })} baslik={t({ tr: "Hemzemin Geçit Gecikmesi (özet)", en: "Level Crossing Delay (summary)", de: "Bahnübergang-Verzögerung (Zusammenfassung)" })} aciklama={t({ tr: "Geçitlerin tur süresine katkısı. Tam sıralı grafik ve sinyal önceliği (TSP) ayarı, geçit girdilerinin yanında — Ringler'de.", en: "The crossings' contribution to round-trip time. The full ranked chart and signal-priority (TSP) tuning live next to the crossing inputs — in Rings.", de: "Der Beitrag der Übergänge zur Umlaufzeit. Das vollständige Ranking-Diagramm und die Signalprioritäts-(TSP-)Einstellung stehen neben den Übergangs-Eingaben — in Ringe." })}>
-        <HemzeminAnaliz rings={rings} cfg={cfg} cevrimSn={maks?.gecerli ? maks.cevrimSuresi : 0} kompakt />
-      </Panel>
+      {/* Hemzemin geçit gecikmesi burada GÖSTERİLMEZ: tam grafik + TSP ayarı Ringler'de (girdinin
+          yanında, canlı), resmi döküm PDF raporunda (Şekil 2e). Kullanıcıyı her yerde tekrarla boğmamak için. */}
       </>)}
       </section>
 

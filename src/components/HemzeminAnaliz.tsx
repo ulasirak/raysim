@@ -10,7 +10,6 @@
 // Model motora bağlıdır: türeyen bekleme hemzeminDuruslari ile sim/çevrim/kapasiteyi besler.
 
 import { useMemo } from "react";
-import Link from "next/link";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { hemzeminBeklemeSn, type DurakArasiRing, type TspSeviye } from "@/lib/anaray/ring";
@@ -20,9 +19,7 @@ import { useDil } from "@/components/DilProvider";
 
 const TSP_RENK: Record<TspSeviye, string> = { aktif: CK.good, pasif: CK.amber, yok: CK.red, elle: CK.blue };
 
-// kompakt=true → yalnız tek satır tanı + "tam grafik Ringler'de" çapraz-ref (Sistem Merkezi).
-// kompakt=false (varsayılan) → tam yatay sıralı çubuk grafik + TSP açıklaması (Ringler).
-export function HemzeminAnaliz({ rings, cfg, cevrimSn, kompakt = false }: { rings: DurakArasiRing[]; cfg: SimConfig; cevrimSn: number; kompakt?: boolean }) {
+export function HemzeminAnaliz({ rings, cfg, cevrimSn }: { rings: DurakArasiRing[]; cfg: SimConfig; cevrimSn: number }) {
   const { t } = useDil();
   const veri = useMemo(() => {
     const W = cfg.kisitGenisligi || 40;
@@ -52,17 +49,6 @@ export function HemzeminAnaliz({ rings, cfg, cevrimSn, kompakt = false }: { ring
   }
   const { sirali, karayolu, yaya, toplamTur, toplamBekle, maxTot } = veri;
   const yuzde = cevrimSn > 0 ? (toplamTur / cevrimSn) * 100 : 0;
-  const worst = sirali[0];
-
-  // KOMPAKT (Sistem Merkezi): tek satır tanı + tam grafik/TSP ayarı için Ringler'e çapraz-ref.
-  if (kompakt) {
-    return (
-      <div className="text-xs leading-relaxed" style={{ color: brand.inkSoft }}>
-        <b>{veri.g.length}</b> {t({ tr: "geçit", en: "crossings", de: "Übergänge" })} ({karayolu} {t({ tr: "karayolu", en: "road", de: "Straße" })} · {yaya} {t({ tr: "yaya", en: "pedestrian", de: "Fußgänger" })}) · {t({ tr: "tur gecikmesi", en: "round-trip delay", de: "Umlaufverzögerung" })} <b style={{ color: yuzde > 8 ? CK.red : brand.ink }}>{sure(Math.round(toplamTur))}</b>{cevrimSn > 0 ? ` (${t({ tr: "çevrimin %", en: "", de: "" })}${yuzde.toFixed(1)}${t({ tr: "'i)", en: "% of cycle)", de: " % des Umlaufs)" })}` : ""}{worst && worst.yavas + worst.bekle > 0 ? <> · {t({ tr: "en yoğun", en: "busiest", de: "stärkste" })}: <b>{worst.ad}</b> ({Math.round(worst.yavas + worst.bekle)} s)</> : ""}.{" "}
-        <Link href="/#ringler" className="font-semibold underline" style={{ color: brand.ink }}>{t({ tr: "Tam grafik & TSP ayarı → Ringler", en: "Full chart & TSP tuning → Rings", de: "Vollständiges Diagramm & TSP → Ringe" })}</Link>
-      </div>
-    );
-  }
   const TSP_AD: Record<TspSeviye, string> = {
     elle: t({ tr: "elle", en: "manual", de: "manuell" }),
     yok: t({ tr: "öncelik yok", en: "no priority", de: "keine Priorität" }),
