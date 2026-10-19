@@ -819,11 +819,13 @@ export function RingEditor() {
           <summary className="flex cursor-pointer select-none items-center gap-2 p-4">
             <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
             <span className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{t({ tr: "Dışa Aktar", en: "Export", de: "Export" })}</span>
-            <span className="ml-2 text-xs" style={{ color: brand.muted }}>{t({ tr: "railML 2.2 (altyapı + araç + çizelge) · GTFS (çift yön + servis)", en: "railML 2.2 (infrastructure + rolling stock + timetable) · GTFS (both directions + service)", de: "railML 2.2 (Infrastruktur + Fahrzeuge + Fahrplan) · GTFS (beide Richtungen + Betrieb)" })}</span>
+            <span className="ml-2 text-xs" style={{ color: brand.muted }}>{t({ tr: "hattı başka yazılımlarda açmak için dosya indir — opsiyonel", en: "download the line as a file to open in other software — optional", de: "die Strecke als Datei für andere Software herunterladen — optional" })}</span>
           </summary>
           <div className="border-t px-4 pb-4 pt-3" style={{ borderColor: brand.border }}>
             <p className="mb-3 text-xs" style={{ color: brand.muted }}>
-              Hattı standart formatlara indir. <b>railML 2.2</b> = altyapı (istasyon · kilometraj · <b>makas · sinyal · eğim</b>) + <b>araç (rollingstock)</b> + <b>çizelge (timetable, çift yön)</b> → OpenTrack/RailSys köprüsü. <b>GTFS</b> = duraklar + <b>çift yön çizelge</b> + <b>frequencies (servis penceresi)</b> + shapes (transit araçları).
+              {t({ tr: "Kurduğun hattı standart bir dosya olarak indirir — yalnızca RaySim DIŞINDA kullanmak içindir (gerekmiyorsa atlayabilirsin; RaySim'deki hattın değişmez).", en: "Downloads the line you built as a standard file — only for use OUTSIDE RaySim (skip it if you don't need it; your line in RaySim stays the same).", de: "Lädt die aufgebaute Strecke als Standarddatei herunter — nur zur Nutzung AUSSERHALB von RaySim (überspringbar, wenn nicht benötigt; Ihre Strecke in RaySim bleibt gleich)." })}
+              {" "}<b>railML 2.2</b> {t({ tr: "→ profesyonel demiryolu simülatörleri (OpenTrack / RailSys): altyapı + araç + çift-yön çizelge.", en: "→ professional railway simulators (OpenTrack / RailSys): infrastructure + rolling stock + two-way timetable.", de: "→ professionelle Eisenbahnsimulatoren (OpenTrack / RailSys): Infrastruktur + Fahrzeuge + Zwei-Wege-Fahrplan." })}
+              {" "}<b>GTFS</b> {t({ tr: "→ harita / toplu-taşıma uygulamaları (Google Maps vb.): duraklar + çift-yön çizelge + servis penceresi.", en: "→ map / transit apps (Google Maps etc.): stops + two-way timetable + service window.", de: "→ Karten-/ÖPNV-Apps (Google Maps usw.): Haltestellen + Zwei-Wege-Fahrplan + Betriebsfenster." })}
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <button type="button"
