@@ -10,7 +10,7 @@ import { useMemo } from "react";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { useProje, useSimConfig } from "@/components/SimConfigProvider";
-import { kilitlemeTablosu, kilitlemeOzet, kilitlemeMetin } from "@/lib/anaray/kilitleme";
+import { kilitlemeTablosu, kilitlemeOzet, kilitlemeMetin, type KilitlemeRota } from "@/lib/anaray/kilitleme";
 import { BosDurum } from "@/components/BosDurum";
 import { useDil } from "@/components/DilProvider";
 
@@ -21,6 +21,23 @@ export function KilitlemePaneli() {
 
   const tablo = useMemo(() => kilitlemeTablosu(rings, cfg), [rings, cfg]);
   const ozet = useMemo(() => kilitlemeOzet(tablo), [tablo]);
+
+  // TEK SATIR/MAKAS: her makas bölgesini bir kez göster — manevra (Ters) varsa birincil
+  // odur (asıl kısıt), yoksa yalnız düz geçiş. Düz geçiş kilitsiz olduğundan ayrı seyrek
+  // satır olarak tekrarlanmaz (rapor tam listeyi korur; bu yalnız panel sadeleştirmesi).
+  const satirlar = useMemo(() => {
+    const grup = new Map<string, KilitlemeRota[]>();
+    for (const r of tablo) { const k = `${r.makasAd}@${r.km}`; const a = grup.get(k); if (a) a.push(r); else grup.set(k, [r]); }
+    return [...grup.values()].map((rs) => rs.find((r) => r.makasKonum === "Ters") ?? rs[0]);
+  }, [tablo]);
+
+  // Makasın bulunduğu BLOK (durak-arası) = "fromAd → toAd" — gerçek referans, ring modelinden.
+  const segmentAd = useMemo(() => {
+    const seg: { son: number; ad: string }[] = [];
+    let off = 0;
+    for (const r of rings) { off += r.uzunluk; seg.push({ son: off, ad: `${r.fromAd} → ${r.toAd}` }); }
+    return (km: number) => seg.find((s) => km <= s.son + 1e-6)?.ad ?? seg[seg.length - 1]?.ad ?? "";
+  }, [rings]);
 
   const kmFmt = (m: number) => `${Math.floor(m / 1000)}+${String(Math.round(m % 1000)).padStart(3, "0")}`;
 
@@ -36,7 +53,7 @@ export function KilitlemePaneli() {
         </div>
         <div className="text-right">
           <div className="text-2xl font-bold tabular-nums" style={{ color: brand.ink }}>{ozet.makas}</div>
-          <div className="text-xs font-medium" style={{ color: brand.muted }}>{t({ tr: "makas bölgesi", en: "switch zones", de: "Weichenbereiche" })} · {ozet.rota} {t({ tr: "rota", en: "routes", de: "Fahrstraßen" })}</div>
+          <div className="text-xs font-medium" style={{ color: brand.muted }}>{t({ tr: "makas bölgesi", en: "switch zones", de: "Weichenbereiche" })}</div>
           <div className="mt-0.5 text-[0.7rem]" style={{ color: brand.muted }}>{ozet.manevra} {t({ tr: "manevra", en: "shunts", de: "Rangierfahrten" })} · {ozet.tccli} TCC · {t({ tr: "maks kilit", en: "max lock", de: "max. Verschluss" })} {ozet.maxKilit} s</div>
         </div>
       </div>
@@ -50,18 +67,15 @@ export function KilitlemePaneli() {
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr style={{ color: brand.muted }} className="text-left text-[0.68rem] uppercase tracking-wide">
-                <th className="px-3 py-2 font-medium">{t({ tr: "Makas / Konum", en: "Switch / Position", de: "Weiche / Lage" })}</th>
-                <th className="px-3 py-2 font-medium">{t({ tr: "Rota", en: "Route", de: "Fahrstraße" })}</th>
-                <th className="px-3 py-2 font-medium">{t({ tr: "Makas konumu", en: "Switch position", de: "Weichenlage" })}</th>
+                <th className="px-3 py-2 font-medium">{t({ tr: "Makas", en: "Switch", de: "Weiche" })}</th>
+                <th className="px-3 py-2 font-medium">{t({ tr: "Blok · Rota · Konum", en: "Block · Route · Position", de: "Block · Fahrstraße · Lage" })}</th>
                 <th className="px-3 py-2 font-medium">{t({ tr: "Kilitlenen (çakışan)", en: "Locked out (conflicting)", de: "Verschlossen (gegenläufig)" })}</th>
                 <th className="px-3 py-2 font-medium">{t({ tr: "Yan koruma / Emniyet payı", en: "Flank / Overlap", de: "Flanke / Durchrutschweg" })}</th>
-                <th className="px-3 py-2 text-right font-medium">{t({ tr: "Tanzim", en: "Setting", de: "Einstellung" })}</th>
-                <th className="px-3 py-2 text-right font-medium">{t({ tr: "Serbest", en: "Release", de: "Auflösung" })}</th>
                 <th className="px-3 py-2 text-right font-medium">{t({ tr: "Kilit", en: "Lock", de: "Verschluss" })}</th>
               </tr>
             </thead>
             <tbody>
-              {tablo.map((r, i) => {
+              {satirlar.map((r, i) => {
                 const x = kilitlemeMetin(r, t);
                 return (
                 <tr key={i} className="border-t align-top" style={{ borderColor: brand.border }}>
@@ -69,20 +83,24 @@ export function KilitlemePaneli() {
                     <div className="font-medium" style={{ color: brand.ink }}>{r.makasAd}</div>
                     <div className="text-[0.68rem] tabular-nums" style={{ color: brand.muted }}>k{kmFmt(r.km)} · {x.tipAd}{r.tcc ? " · TCC" : ""}</div>
                   </td>
-                  <td className="px-3 py-2.5" style={{ color: brand.inkSoft }}>{x.rota}</td>
                   <td className="px-3 py-2.5">
-                    <span className="rounded px-1.5 py-0.5 text-[0.62rem] font-semibold uppercase"
-                      style={r.makasKonum === "Ters"
-                        ? { background: "rgba(168,132,44,0.15)", color: CK.gold }
-                        : { background: CK.track, color: brand.muted }}>
-                      {x.konum}
-                    </span>
+                    <div className="mb-0.5 text-[0.68rem]" style={{ color: brand.muted }}>{segmentAd(r.km)}</div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span style={{ color: brand.inkSoft }}>{x.rota}</span>
+                      <span className="rounded px-1.5 py-0.5 text-[0.62rem] font-semibold uppercase"
+                        style={r.makasKonum === "Ters"
+                          ? { background: "rgba(168,132,44,0.15)", color: CK.gold }
+                          : { background: CK.track, color: brand.muted }}>
+                        {x.konum}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-3 py-2.5 text-[0.8rem]" style={{ color: r.rotaKod === "duz" ? brand.muted : brand.inkSoft }}>{x.cakisan}</td>
                   <td className="px-3 py-2.5 text-[0.75rem]" style={{ color: brand.muted }}>{x.koruma}</td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums" style={{ color: brand.inkSoft }}>{r.tanzimSn ? `${r.tanzimSn} s` : "—"}</td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums" style={{ color: brand.inkSoft }}>{r.serbestSn} s</td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-right font-semibold tabular-nums" style={{ color: brand.ink }}>{r.kilitSn} s</td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums" style={{ color: brand.ink }}>
+                    <div className="font-semibold">{r.kilitSn} s</div>
+                    <div className="text-[0.62rem]" style={{ color: brand.muted }}>{r.tanzimSn ? `${t({ tr: "tanzim", en: "set", de: "Einst." })} ${r.tanzimSn} + ` : ""}{t({ tr: "serbest", en: "rel.", de: "Aufl." })} {r.serbestSn}</div>
+                  </td>
                 </tr>
                 );
               })}
@@ -92,6 +110,7 @@ export function KilitlemePaneli() {
       )}
 
       <div className="border-t px-5 py-3 text-[0.72rem] leading-relaxed" style={{ borderColor: brand.border, color: brand.muted }}>
+        {t({ tr: "Makas başına asıl kısıt gösterilir — manevra (Ters) varsa o, yoksa düz geçiş. Her makas düz konumda ayrıca kilitsiz geçiş verir (tam liste PDF raporda).", en: "One row per switch shows the governing route — the maneuver (Reverse) if any, else the straight move. Every switch also allows a lock-free straight passage (full list in the PDF report).", de: "Je Weiche wird die maßgebende Fahrstraße gezeigt — die Rangierfahrt (Umgestellt), sonst die Durchfahrt. Jede Weiche erlaubt zudem eine verschlussfreie Gerade­fahrt (vollständige Liste im PDF-Bericht)." })}{" "}
         <b style={{ color: brand.inkSoft }}>Normal</b> {t({ tr: "= makas düz (ana hat geçişi) ·", en: "= switch straight (main-line move) ·", de: "= Weiche gerade (Hauptgleisfahrt) ·" })} <b style={{ color: brand.inkSoft }}>Ters</b> {t({ tr: "= makas dönük (crossover/manevra).", en: "= switch reversed (crossover/shunt).", de: "= Weiche umgestellt (Kreuzung/Rangierfahrt)." })}
         <b style={{ color: brand.inkSoft }}> TCC</b> {t({ tr: "= her geçişte trafik kontrol onayı zorunlu (karşılaşmalı/barınma/depo). Emniyet payı = tehlike noktasını aşan trenin servis freniyle duracağı koruma mesafesi (sonraki blok sınırıyla sınırlı). Kilit = tanzim (makas hareketi × adet) + rota serbest bırakma; blocking-time (Sperrzeit) tanzim/serbest bileşenleriyle tutarlıdır.", en: "= traffic-control approval required at every move (meets/stabling/depot). Overlap = the protective distance beyond the switch a train would need to stop under service braking if it overran the danger point (limited by the next block boundary). Lock = setting (switch move × count) + route release; the blocking time (Sperrzeit) is consistent with the setting/release components.", de: "= bei jeder Fahrt ist eine betriebliche Freigabe erforderlich (Begegnung/Abstellung/Depot). Durchrutschweg = der Schutzabstand hinter der Weiche, den ein Zug bei Betriebsbremsung zum Anhalten benötigt, falls er den Gefahrpunkt überfährt (durch die nächste Blockgrenze begrenzt). Verschluss = Einstellung (Weichenumstellung × Anzahl) + Fahrstraßenauflösung; die Sperrzeit (blocking time) ist mit den Einstell-/Auflöse-Komponenten konsistent." })}
       </div>
