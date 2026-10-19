@@ -27,10 +27,12 @@ import { HataSiniri } from "@/components/HataSiniri";
 import { brand } from "@/lib/anaray/brand";
 
 /** Bölüm ankorları — AppShell navigasyonu ve scroll-spy ile ORTAK kaynak. */
-// SIRA = veri akışı (girdi → analiz → çıktı). Kullanıcı yukarıdan aşağı:
-//   KUR:     Ringler (hattı kur) · Coğrafi (koordinattan üret/gör)
-//   ANALİZ:  Sefer (canlı ağ) · Sistem (kapasite/blocking-time)
-//   BELGELE: Teknik Belgeler (ücretli PDF rapor) — doğal iş akışının son adımı.
+// SIRA = veri akışı (girdi → analiz → çıktı). Kullanıcı yukarıdan aşağı, 5 faz:
+//   KUR:        Ringler (hattı/makasları kur + içe-aktar; hemzemin TSP)
+//   ANALİZ ET:  Sefer (canlı ağ · fizik · filo · ters işletme · grafikler)
+//   İNCELE:     Sistem Merkezi (kapasite · blocking-time · filo kararı · doğrulama)
+//   BELGELE:    Teknik Belgeler (ücretli PDF rapor + railML/GTFS dışa aktar) — çıktı adımı
+//   KARŞILAŞTIR: Karşılaştırma (senaryo/proje yan yana karar desteği)
 // Önce girdi, sonra çıktı: yeni kullanıcı hattı KURDUĞU yerden başlar, boş bir
 // simülasyona bakmaz.
 export const BOLUM_SLUG = [

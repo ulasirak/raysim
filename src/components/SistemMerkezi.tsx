@@ -303,19 +303,6 @@ export function SistemMerkezi() {
       </>)}
       </section>
 
-      <section className="sm-panel" data-t="4">
-      <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>{t({ tr: "Sonuçların hangi girdiye ne kadar duyarlı olduğu (tornado) ve motorun analitik referanslara karşı doğrulanması (V&V). Derin analiz — açılır bloklarda.", en: "How sensitive the results are to each input (tornado) and validation of the engine against analytical references (V&V). Deep analysis — in the expandable blocks.", de: "Wie empfindlich die Ergebnisse auf jede Eingabe reagieren (Tornado) und die Verifikation der Engine gegen analytische Referenzen (V&V). Tiefenanalyse — in den aufklappbaren Blöcken." })}</p>
-
-        {/* Duyarlılık (tornado) — hangi parametre kapasiteyi en çok oynatıyor. */}
-        <Kapanir baslik={t({ tr: "Duyarlılık (Tornado)", en: "Sensitivity (Tornado)", de: "Empfindlichkeit (Tornado)" })} ozet={t({ tr: "hangi girdi kapasiteyi en çok oynatıyor", en: "which input moves capacity the most", de: "welche Eingabe die Kapazität am stärksten bewegt" })}>
-          <Duyarlilik ringsHam={ringsHam} stock={stock} cfg={cfg} isletme={isletme} />
-        </Kapanir>
-
-        {/* Doğrulama & Geçerleme — motorun analitik referanslara karşı doğruluk sertifikasyonu. */}
-        <Kapanir baslik={t({ tr: "Doğrulama & Geçerleme (V&V)", en: "Verification & Validation (V&V)", de: "Verifikation & Validierung (V&V)" })} ozet={t({ tr: "motor analitik referanslara karşı sertifikasyon", en: "engine certification against analytical references", de: "Engine-Zertifizierung gegen analytische Referenzen" })}><DogrulamaPaneli /></Kapanir>
-
-      </section>
-
       <section className="sm-panel" data-t="3">
       <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>{t({ tr: "Aynı temel kapasiteden iki karar: operasyonel (istenen aralık) ve risk (dayanıklılık) — ve tek-hat çakışma çözümü.", en: "Two decisions from the same base capacity: operational (desired headway) and risk (robustness) — plus single-track conflict resolution.", de: "Zwei Entscheidungen aus derselben Grundkapazität: betrieblich (gewünschte Zugfolgezeit) und Risiko (Robustheit) — sowie Eingleis-Konfliktauflösung." })}</p>
 
@@ -346,6 +333,19 @@ export function SistemMerkezi() {
 
       {/* Çakışma Çözücüsü — tek-hat meet/pass; kalkış-offset optimizasyonuyla çakışmasız çizelge. */}
       <Kapanir baslik={t({ tr: "Çakışma Çözücüsü (tek hat)", en: "Conflict Resolver (single track)", de: "Konfliktlöser (Eingleis)" })} ozet={t({ tr: "kalkış-offset ile çakışmasız çizelge", en: "conflict-free schedule via departure offset", de: "konfliktfreier Fahrplan über Abfahrts-Offset" })}><CakismaCozumPaneli /></Kapanir>
+      </section>
+
+      <section className="sm-panel" data-t="4">
+      <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>{t({ tr: "Sonuçların hangi girdiye ne kadar duyarlı olduğu (tornado) ve motorun analitik referanslara karşı doğrulanması (V&V). Derin analiz — açılır bloklarda.", en: "How sensitive the results are to each input (tornado) and validation of the engine against analytical references (V&V). Deep analysis — in the expandable blocks.", de: "Wie empfindlich die Ergebnisse auf jede Eingabe reagieren (Tornado) und die Verifikation der Engine gegen analytische Referenzen (V&V). Tiefenanalyse — in den aufklappbaren Blöcken." })}</p>
+
+        {/* Duyarlılık (tornado) — hangi parametre kapasiteyi en çok oynatıyor. */}
+        <Kapanir baslik={t({ tr: "Duyarlılık (Tornado)", en: "Sensitivity (Tornado)", de: "Empfindlichkeit (Tornado)" })} ozet={t({ tr: "hangi girdi kapasiteyi en çok oynatıyor", en: "which input moves capacity the most", de: "welche Eingabe die Kapazität am stärksten bewegt" })}>
+          <Duyarlilik ringsHam={ringsHam} stock={stock} cfg={cfg} isletme={isletme} />
+        </Kapanir>
+
+        {/* Doğrulama & Geçerleme — motorun analitik referanslara karşı doğruluk sertifikasyonu. */}
+        <Kapanir baslik={t({ tr: "Doğrulama & Geçerleme (V&V)", en: "Verification & Validation (V&V)", de: "Verifikation & Validierung (V&V)" })} ozet={t({ tr: "motor analitik referanslara karşı sertifikasyon", en: "engine certification against analytical references", de: "Engine-Zertifizierung gegen analytische Referenzen" })}><DogrulamaPaneli /></Kapanir>
+
       </section>
       </>)}
 
