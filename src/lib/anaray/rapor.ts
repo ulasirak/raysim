@@ -19,7 +19,7 @@ import { maksimumTren } from "./kapasite";
 import { tarifeUret } from "./tarife";
 import { duyarlilikAnaliz } from "./duyarlilik";
 import type { RollingStock, Line } from "./types";
-import { ringSenaryo, ringChallenge, ringKisitDizisi, loopDenge, kurpKonforAnaliz, type DurakArasiRing, type Sube } from "./ring";
+import { ringSenaryo, ringChallenge, ringKisitDizisi, loopDenge, kurpKonforAnaliz, KALABALIK_YANAL, type DurakArasiRing, type Sube } from "./ring";
 import { blockingTimeRing } from "./blockingtime";
 import { loopToHat } from "./hatsim";
 import { loopYorunge, monteCarlo, type LoopYorunge, type MonteCarloResult } from "./signalling";
@@ -163,7 +163,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   const sinyalListe = ozellikler.filter((f) => f.kind === "sinyal");
   const sinyalSayisi = sinyalListe.length;
   const tersSinyalSayisi = sinyalListe.filter((f) => f.tersIsletme).length;
-  const filoIstenen = filo > 0 ? Math.round(filo) : (siganTren || maks.nSurdurulebilir || 4);
+  const filoIstenen = filo > 0 ? Math.round(filo) : (siganTren || maks.nSurdurulebilir || 1);
   const filoGercek = (maks.gecerli && maks.nSurdurulebilir > 0)
     ? Math.min(filoIstenen, maks.nSurdurulebilir)
     : filoIstenen;
@@ -180,7 +180,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   const hz = rings.length ? hemzeminSvg(rings, cfg) : { svg: "", adet: 0, karayolu: 0, toplamTur: 0 };
   const hemCevrim = maks.gecerli ? maks.cevrimSuresi : 0;
   const hemYuzde = hemCevrim > 0 ? (hz.toplamTur / hemCevrim) * 100 : 0;
-  const hemzeminFig = (g && hz.svg) ? `<div class="fig">${hz.svg}<div class="cap">${en ? `Figure 2e — Level-crossing & TSP delay: per-crossing slowdown (grey) + road-crossing wait (priority). ${hz.adet} crossings (${hz.karayolu} road); ${Math.round(hz.toplamTur)} s/round-trip (${hemYuzde.toFixed(1)}% of cycle).` : `Şekil 2e — Hemzemin geçit & TSP gecikmesi: geçit başına yavaşlama (gri) + karayolu bekleme (öncelik). ${hz.adet} geçit (${hz.karayolu} karayolu); ${Math.round(hz.toplamTur)} s/tur (çevrimin %${hemYuzde.toFixed(1)}'i).`}</div></div>` : "";
+  const hemzeminFig = (g && hz.svg) ? `<div class="fig">${hz.svg}<div class="cap">${en ? `Figure 2e — Level-crossing & TSP delay: per-crossing slowdown (grey, ≈ excl. accel/brake ramp) + road-crossing wait (priority, exact). Wait derives from the TSP model (manual, or Webster red²/2C with passive/active priority). ${hz.adet} crossings (${hz.karayolu} road); ≈${Math.round(hz.toplamTur)} s/round-trip (~${hemYuzde.toFixed(1)}% of cycle). The true slowdown is already included in the engine cycle; this breakdown is an estimate.` : `Şekil 2e — Hemzemin geçit & TSP gecikmesi: geçit başına yavaşlama (gri, ≈ hızlanma/frenleme rampası hariç) + karayolu bekleme (öncelik, kesin). Bekleme TSP modelinden gelir (elle, ya da Webster kırmızı²/2C + pasif/aktif öncelik). ${hz.adet} geçit (${hz.karayolu} karayolu); ≈${Math.round(hz.toplamTur)} s/tur (çevrimin ~%${hemYuzde.toFixed(1)}'i). Gerçek yavaşlama zaten motor çevrimine dâhildir; bu döküm bir tahmindir.`}</div></div>` : "";
   const kisitFig = (g && maks.gecerli && maks.kisitlar.length) ? `<div class="fig">${kisitBarSvg(maks.kisitlar, kritikRenk, en)}<div class="cap">${en ? "Figure 2c — Determining constraint: competing headway limits (block / terminal turnback / single track / junction / signal); the longest binds (hMin)." : "Şekil 2c — Belirleyici kısıt: rakip headway limitleri (blok / terminal turnback / tek hat / kavşak / sinyal); en uzunu bağlar (hMin)."}</div></div>` : "";
   const hizFig = (g && line && loopYbf) ? `<div class="fig">${hizProfilSvg(loopYbf, line, en)}<div class="cap">${en ? "Figure 3b — Speed profile v(x): actual speed (blue) vs. segment speed limit (dashed), outbound leg. Dips = station stops; below-limit = acceleration/braking." : "Şekil 3b — Hız profili v(x): gerçek hız (mavi) ile segment hız limiti (kesikli), gidiş legi. Dipler = istasyon duruşları; limit altı = hızlanma/frenleme."}</div></div>` : "";
 
@@ -594,7 +594,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
     const not = sunum
       ? (en ? `Curve speeds are derived from the radius (v = √(R·(a + g·cant/gauge))), lateral acceleration held at the comfort ceiling ${cfg.aYanalKonfor.toFixed(2)} m/s².` : `Kurp hızları yarıçaptan türetilir (v = √(R·(a + g·dever/ekartman))); yanal ivme konfor tavanı ${cfg.aYanalKonfor.toFixed(2)} m/s²'de tutulur.`)
       : oneriler.length
-        ? (en ? `${oneriler.length} curve(s) flagged — over-speed (lateral acceleration above the ${cfg.aYanalKonfor.toFixed(2)} m/s² comfort ceiling) or, at high occupancy, tight for standing passengers; recommended speeds are given. Lateral acceleration is independent of passenger count — occupancy only tightens the standing-passenger comfort threshold (${(0.65).toFixed(2)} m/s²).` : `${oneriler.length} kurp işaretlendi — hız fazlası (yanal ivme ${cfg.aYanalKonfor.toFixed(2)} m/s² konfor tavanı üstü) ya da yüksek dolulukta ayakta yolcu için sıkı; önerilen hızlar verildi. Yanal ivme yolcu sayısından bağımsızdır — doluluk yalnız ayakta-yolcu konfor eşiğini (${(0.65).toFixed(2)} m/s²) devreye alır.`)
+        ? (en ? `${oneriler.length} curve(s) flagged — over-speed (lateral acceleration above the ${cfg.aYanalKonfor.toFixed(2)} m/s² comfort ceiling) or, at high occupancy, tight for standing passengers; recommended speeds are given. Lateral acceleration is independent of passenger count — occupancy only tightens the standing-passenger comfort threshold (${KALABALIK_YANAL.toFixed(2)} m/s²).` : `${oneriler.length} kurp işaretlendi — hız fazlası (yanal ivme ${cfg.aYanalKonfor.toFixed(2)} m/s² konfor tavanı üstü) ya da yüksek dolulukta ayakta yolcu için sıkı; önerilen hızlar verildi. Yanal ivme yolcu sayısından bağımsızdır — doluluk yalnız ayakta-yolcu konfor eşiğini (${KALABALIK_YANAL.toFixed(2)} m/s²) devreye alır.`)
         : (en ? `All ${kurpSatir.length} curve(s) are within the comfort ceiling (${cfg.aYanalKonfor.toFixed(2)} m/s²).` : `${kurpSatir.length} kurpun tamamı konfor tavanı (${cfg.aYanalKonfor.toFixed(2)} m/s²) içinde.`);
     const baslik = en ? "2.2 Curve Geometry & Lateral Comfort" : "2.2 Kurp Geometrisi ve Yanal Konfor";
     return `<h3 class="sub">${baslik}</h3>${tbl(th, rows, { first: true })}<div class="gs" style="font-size:9.5pt">${not}</div>`;

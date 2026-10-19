@@ -88,7 +88,7 @@ export function HemzeminAnaliz({ rings, cfg, cevrimSn }: { rings: DurakArasiRing
       {/* Açıklama + lejant */}
       <div className="mt-3 flex flex-col gap-1 text-[0.72rem]" style={{ color: brand.muted }}>
         <span>
-          <span style={{ color: "#9AA7B2" }}>■</span> {t({ tr: "yavaşlama (fizik)", en: "slowdown (physics)", de: "Verlangsamung (Physik)" })} · {t({ tr: "bekleme rengi = TSP modu:", en: "wait colour = TSP mode:", de: "Wartezeitfarbe = TSP-Modus:" })}
+          <span style={{ color: "#9AA7B2" }}>■</span> {t({ tr: "yavaşlama (≈ rampa hariç; gerçeği motor çevriminde)", en: "slowdown (≈ excl. ramp; true value in engine cycle)", de: "Verlangsamung (≈ ohne Rampe; echter Wert im Umlauf)" })} · {t({ tr: "bekleme rengi = TSP modu:", en: "wait colour = TSP mode:", de: "Wartezeitfarbe = TSP-Modus:" })}
           {" "}<span style={{ color: CK.blue }}>■</span> {TSP_AD.elle} · <span style={{ color: CK.red }}>■</span> {TSP_AD.yok} · <span style={{ color: CK.amber }}>■</span> {TSP_AD.pasif} · <span style={{ color: CK.good }}>■</span> {TSP_AD.aktif}
         </span>
         <span>{t({
