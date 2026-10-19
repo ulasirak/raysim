@@ -92,7 +92,15 @@ function hatKur(
       }
       for (const h of ek.hemzemin ?? []) {
         const konum = Math.round(Math.min(uz, Math.max(0, uz * h.konumOran)));
-        r.hemzeminler.push(yeniHemzemin(h.tip, konum));
+        const hz = yeniHemzemin(h.tip, konum);
+        // Karayolu kavşaklarına PASİF TSP başlangıcı: sinyal devri C=90 s, tram yeşili g=45 s
+        // → Webster üniform gecikmesi ~3 s bekleme (kullanıcının Ringler → geçit "Sinyal
+        // önceliği" alanlarıyla girdiği değerlerin AYNISI). NOT: bu C/yeşil değerleri
+        // MANTIKSAL-YAKLAŞIK örneklerdir (ölçülmüş CAD sinyal zamanlaması DEĞİL) — gerçek
+        // kavşak zamanlaması girilince Ringler'den güncellenmelidir. "0 bekleme" bırakmak
+        // (sinyalsiz kavşak) daha yanlış olacağından muhafazakâr pasif öncelik varsayıldı.
+        if (h.tip === "karayolu") { hz.tsp = "pasif"; hz.sinyalDevri = 90; hz.yesilSure = 45; }
+        r.hemzeminler.push(hz);
       }
     }
     rings.push(r);
