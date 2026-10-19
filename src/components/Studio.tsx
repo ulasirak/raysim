@@ -616,7 +616,8 @@ function StudioIc() {
         <div className="rounded-lg border-2 p-4" style={{ borderColor: brand.ink, background: CK.goodBgSoft }}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-xs font-bold uppercase tracking-wide" style={{ color: brand.inkSoft }}>{t({ tr: "Önerilen tramvay", en: "Recommended trams", de: "Empfohlene Straßenbahnen" })}</div>
+              <div className="text-xs font-bold uppercase tracking-wide" style={{ color: brand.inkSoft }}>{t({ tr: "Önerilen tramvay (ihtiyaç)", en: "Recommended trams (need)", de: "Empfohlene Straßenbahnen (Bedarf)" })}</div>
+              <div className="text-[0.62rem]" style={{ color: brand.muted }}>{t({ tr: "hedef sefer aralığın için gereken filo", en: "fleet needed for your target headway", de: "für Ihre Ziel-Zugfolgezeit benötigte Flotte" })}</div>
               <div className="flex items-baseline gap-2">
                 <span className="text-4xl font-bold tabular-nums" style={{ color: brand.ink }}>{oneriTramvay}</span>
                 <span className="text-sm" style={{ color: brand.inkSoft }}>{t({ tr: "araç", en: "vehicles", de: "Fahrzeuge" })} · ⌈{t({ tr: "çevrim", en: "cycle", de: "Umlauf" })} {sure(maks.cevrimSuresi)} ÷ {t({ tr: "hedef", en: "target", de: "Ziel" })} {Math.round(hedefHeadwaySn)} s⌉{talepFilosu > 0 && talepFilosu >= oneriTramvay ? t({ tr: " · talep de bunu gerektiriyor", en: " · demand also requires this", de: " · auch die Nachfrage erfordert dies" }) : ""}</span>
@@ -629,6 +630,12 @@ function StudioIc() {
             {yolcuVeriVar
               ? t({ tr: "✓ Yolcu verisi girili — öneri talebe göre de kontrol edildi (tıkanma/dönüş ihtiyacı aşağıda).", en: "✓ Passenger data entered — the recommendation was also checked against demand (congestion/short-turn need below).", de: "✓ Fahrgastdaten eingegeben — die Empfehlung wurde auch gegen die Nachfrage geprüft (Überlastung/Kehrbedarf unten)." })
               : <>{t({ tr: "Öneri hedef headway kuralından", en: "Recommendation from the target headway rule", de: "Empfehlung aus der Ziel-Zugfolgezeit-Regel" })} ({Math.round(hedefHeadwaySn)} s = {t({ tr: "tasarım", en: "design", de: "Auslegung" })}). {t({ tr: "Talebe göre (tıkanma/dönüş ihtiyacı) kontrol için", en: "To check against demand (congestion/short-turn need)", de: "Zur Prüfung gegen die Nachfrage (Überlastung/Kehrbedarf)" })} <button type="button" className="font-semibold underline" style={{ color: brand.ink }} onClick={() => setTalepPopup(true)}>{t({ tr: "yolcu verisi gir", en: "enter passenger data", de: "Fahrgastdaten eingeben" })}</button>.</>}
+          </div>
+          {/* Çapraz-ref: bu sayı İHTİYAÇ; hattın SÜRDÜRÜLEBİLİR tavanı ayrı karar (Sistem Merkezi) */}
+          <div className="mt-2 text-[0.7rem] leading-relaxed" style={{ color: brand.muted }}>
+            {t({ tr: "Bu sayı, hedef sıklığın için GEREKEN filodur (ihtiyaç). Hattın her gün rahat çalışabileceği en çok araç (SÜRDÜRÜLEBİLİR kapasite — UIC 406) ayrı bir karardır ve ", en: "This number is the fleet NEEDED for your target frequency (demand). The most trams the line can run comfortably every day (SUSTAINABLE capacity — UIC 406) is a separate decision and ", de: "Diese Zahl ist die für Ihre Zieltaktung BENÖTIGTE Flotte (Bedarf). Die meisten Straßenbahnen, die die Linie täglich komfortabel fahren kann (NACHHALTIGE Kapazität — UIC 406), sind eine separate Entscheidung und " })}
+            <Link href="/#sistem" className="font-semibold underline" style={{ color: brand.ink }}>{t({ tr: "Sistem Merkezi → Filo Kararı", en: "System Center → Fleet Decision", de: "Systemzentrale → Flottenentscheidung" })}</Link>
+            {t({ tr: "’nda “Önerilen filo (sürdürülebilir)” olarak görünür — bu yüzden iki sayı farklı olabilir.", en: "’s “Recommended fleet (sustainable)” — so the two numbers may differ.", de: " zeigt sie als „Empfohlene Flotte (nachhaltig)“ — daher können sich die beiden Zahlen unterscheiden." })}
           </div>
           {/* Önerilen (ihtiyaç) vs sürdürülebilir vs fiziksel tavan — ÜÇ ayrı kavram */}
           <div className="mt-2 rounded border-l-2 pl-2 text-[0.7rem] leading-relaxed" style={{ borderColor: CK.good, color: brand.muted }}>
