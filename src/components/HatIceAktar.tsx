@@ -199,7 +199,7 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
     setEsle((e) => ({ ...e, [alan]: e[alan].includes(k) ? e[alan].filter((x) => x !== k) : [...e[alan], k] }));
 
   const modAd: Record<IceAktarMod, string> = {
-    degistir: t({ tr: "Mevcut hattın ÜZERİNE YAZILIR (geri alınabilir)", en: "OVERWRITES the current line (undoable)", de: "ÜBERSCHREIBT die aktuelle Strecke (rückgängig machbar)" }),
+    degistir: t({ tr: "Mevcut ağ SİLİNİR — makaslar/sinyaller/duraklar dâhil üzerine yazılır (filo + ayarlar kalır; 15 sn geri alınabilir)", en: "Current network is ERASED — overwritten incl. switches/signals/stops (fleet + settings kept; undoable for 15 s)", de: "Aktuelles Netz wird GELÖSCHT — überschrieben inkl. Weichen/Signale/Haltestellen (Flotte + Einstellungen bleiben; 15 s widerrufbar)" }),
     ekle: t({ tr: "Mevcut hattın SONUNA eklenir (mevcut ringlere dokunulmaz)", en: "Appended to the END of the current line (existing rings untouched)", de: "Wird an das ENDE der aktuellen Strecke angehängt (bestehende Ringe unberührt)" }),
     yeniHat: t({ tr: "AYRI yeni hatta iner (mevcut hatta hiç dokunulmaz, kredi düşer)", en: "Lands on a SEPARATE new line (current line untouched, credit deducted)", de: "Landet auf einer SEPARATEN neuen Strecke (aktuelle Strecke unberührt, Guthaben wird abgezogen)" }),
   };
@@ -369,6 +369,13 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
                 ))}
               </div>
             </div>
+            )}
+
+            {/* "Değiştir" uyarısı — mevcut ağın tamamen silineceğini açıkça söyle (gömülü mod = daima yeni hat, uyarı gerekmez) */}
+            {!gomulu && mod === "degistir" && (
+              <div className="mt-2 rounded-md border-l-4 px-3 py-2 text-xs" style={{ borderColor: CK.red, background: "#FDF2F4", color: brand.inkSoft }}>
+                <b style={{ color: CK.red }}>{t({ tr: "⚠ Mevcut ağ silinecek.", en: "⚠ The current network will be erased.", de: "⚠ Das aktuelle Netz wird gelöscht." })}</b> {t({ tr: "“Değiştir”, mevcut hattın TÜM ringlerini — makaslar, sinyaller, tehlike noktaları, kurplar ve duraklar dâhil — içe aktarılan ağla değiştirir. Filo ve ayarlar korunur; işlem 15 sn içinde geri alınabilir. Mevcut ağı korumak için", en: "“Replace” swaps ALL rings of the current line — including switches, signals, hazard points, curves and stops — with the imported network. Fleet and settings are kept; undoable within 15 s. To keep the current network, use", de: "„Ersetzen“ tauscht ALLE Ringe der aktuellen Strecke — einschließlich Weichen, Signale, Gefahrenpunkte, Bögen und Haltestellen — gegen das importierte Netz. Flotte und Einstellungen bleiben erhalten; innerhalb von 15 s widerrufbar. Um das aktuelle Netz zu behalten," })} <b>{t({ tr: "Ekle", en: "Append", de: "Anhängen" })}</b> {t({ tr: "ya da", en: "or", de: "oder" })} <b>{t({ tr: "Yeni hat", en: "New line", de: "Neue Strecke" })}</b> {t({ tr: "seç.", en: ".", de: "verwenden." })}
+              </div>
             )}
 
             {/* "Ekle" süreklilik uyarısı — eklenecek hattın başı mevcut hattın sonundan çok uzaksa */}
