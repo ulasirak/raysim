@@ -379,13 +379,13 @@ export function RingKart(p: KartProps) {
                 <button type="button" onClick={() => setKurpBilgi((v) => !v)}
                   className="rounded-full border px-1.5 text-xs font-bold leading-5"
                   style={kurpBilgi ? { background: brand.ink, color: "#fff", borderColor: brand.ink } : { borderColor: brand.border, color: brand.inkSoft }}
-                  title={t({ tr: "Kurp hızı ile fren/ivme nasıl bağlanır?", en: "How is curve speed linked to braking/acceleration?", de: "Wie hängt die Bogengeschwindigkeit mit Bremsung/Beschleunigung zusammen?" })}>{t({ tr: "ⓘ nasıl çalışır?", en: "ⓘ how does it work?", de: "ⓘ wie funktioniert es?" })}</button>
+                  title={t({ tr: "Kurp hızı ile fren/ivme nasıl bağlanır?", en: "How is curve speed linked to braking/acceleration?", de: "Wie hängt die Bogengeschwindigkeit mit Bremsung/Beschleunigung zusammen?" })}>{t({ tr: "nasıl çalışır?", en: "how does it work?", de: "wie funktioniert es?" })}</button>
               </div>
               <button onClick={() => p.onKurpEkle()} title={HIZLI_EKLE_IPUCU} className="rounded px-2 py-1 text-xs font-medium" style={{ background: CK.track, color: brand.inkSoft }}>{t({ tr: "＋ ekle", en: "＋ add", de: "＋ hinzufügen" })}</button>
             </div>
             {kurpBilgi && (
-              <div className="mb-2 rounded-md border p-3 text-xs leading-relaxed" style={{ borderColor: brand.ink, background: "#F7F9FB", color: brand.ink }}>
-                <b>{t({ tr: "Kurp hızı ↔ fren (b) ↔ ivme (a) birbirine bağlıdır:", en: "Curve speed ↔ braking (b) ↔ acceleration (a) are interlinked:", de: "Bogengeschwindigkeit ↔ Bremsung (b) ↔ Beschleunigung (a) sind miteinander verknüpft:" })}</b>
+              <div className="mb-2 rounded-r-sm border-l-2 py-1.5 pl-3 pr-2 text-sm leading-relaxed" style={{ borderColor: brand.border, color: brand.inkSoft }}>
+                <b>{t({ tr: "Kurp hızı, fren (b) ve ivme (a) birbirine bağlıdır:", en: "Curve speed, braking (b) and acceleration (a) are interlinked:", de: "Bogengeschwindigkeit, Bremsung (b) und Beschleunigung (a) sind miteinander verknüpft:" })}</b>
                 <ol className="mt-1 list-decimal pl-4">
                   {dil === "en" ? (
                     <>
@@ -439,7 +439,7 @@ export function RingKart(p: KartProps) {
                   return (
                     <div key={k.id} className="rounded border p-2" style={{ borderColor: brand.border }}>
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded px-1.5 py-0.5 text-xs font-medium" style={{ background: "#F0EBF7", color: "#5B4184" }}>{t({ tr: "kurp", en: "curve", de: "Bogen" })}</span>
+                        <span className="rounded px-1.5 py-0.5 text-xs font-medium" style={{ background: CK.track, color: brand.inkSoft }}>{t({ tr: "kurp", en: "curve", de: "Bogen" })}</span>
                         <input value={k.ad} placeholder={t({ tr: "ad", en: "name", de: "Name" })} onChange={(e) => p.onKurpPatch(k.id, { ad: e.target.value })}
                           className="w-24 rounded border px-1.5 py-1 text-xs" style={{ borderColor: brand.border, color: brand.ink }} />
                         <div className="w-20"><Num label={t({ tr: "Konum", en: "Position", de: "Position" })} suffix="m" step={10} value={k.konum} onChange={(v) => p.onKurpPatch(k.id, { konum: v })} hata={k.konum < 0 || k.konum > ring.uzunluk} /></div>
@@ -447,7 +447,7 @@ export function RingKart(p: KartProps) {
                           const mutlak = (p.ringBasiKm ?? 0) + Math.max(0, Math.min(ring.uzunluk, k.konum));
                           const kmStr = `${Math.floor(mutlak / 1000)}+${String(Math.round(mutlak % 1000)).padStart(3, "0")}`;
                           return (
-                            <span className="rounded px-2 py-1 text-xs leading-tight" style={{ background: "#EEF1F6", color: brand.inkSoft }}
+                            <span className="rounded px-2 py-1 text-xs leading-tight" style={{ background: CK.track, color: brand.inkSoft }}
                               title={t({ tr: "Kurbun hat başından mutlak kilometrajı ve üst duraktan mesafesi — iki istasyon ARASINDAKİ konum", en: "The curve's absolute chainage from the line start and its distance from the upper stop — position BETWEEN two stations", de: "Die absolute Kilometrierung des Bogens ab Streckenanfang und seine Entfernung zur oberen Haltestelle — Position ZWISCHEN zwei Stationen" })}>
                               <Ikon ad="konum" size={12} className="mr-0.5 inline-block align-[-1px]" />km {kmStr} · <b>{ring.fromAd}</b>+{Math.round(k.konum)}m
                             </span>
@@ -459,9 +459,9 @@ export function RingKart(p: KartProps) {
                         {manuel && (
                           <div className="w-20"><Num label={t({ tr: "Hız (elle)", en: "Speed (manual)", de: "Geschwindigkeit (manuell)" })} suffix="km/h" step={1} value={Math.round(kmh(k.hizManuel ?? 0))} onChange={(v) => p.onKurpPatch(k.id, { hizManuel: Math.max(0, v) * KMH })} hata={!(k.hizManuel! > 0)} /></div>
                         )}
-                        <span className="rounded px-2 py-1 text-xs font-semibold" style={{ background: "#EEF6EE", color: "#2E7D32" }}>≈ {Math.round(kmh(vHesap))} km/h</span>
+                        <span className="rounded px-2 py-1 text-xs font-semibold" style={{ background: CK.track, color: brand.ink }}>≈ {Math.round(kmh(vHesap))} km/h</span>
                         <span title={t({ tr: "dengelenmemiş yanal ivme = v²/R − g·dever/ekartman", en: "unbalanced lateral acceleration = v²/R − g·cant/gauge", de: "unausgeglichene Querbeschleunigung = v²/R − g·Überhöhung/Spurweite" })} className="rounded px-2 py-1 text-xs font-semibold"
-                          style={asim ? { background: "#FBEAEA", color: brand.red } : { background: "#EEF1F6", color: brand.inkSoft }}>
+                          style={asim ? { background: CK.badBg, color: brand.red } : { background: CK.track, color: brand.inkSoft }}>
                           {t({ tr: "yanal", en: "lateral", de: "quer" })} {aYanal.toFixed(2)} m/s²{asim ? " ⚠" : kalabalik ? ` · ${t({ tr: "kalabalıkta", en: "when crowded", de: "bei Andrang" })} ≤ ${vKalabalik} km/h${dolText}` : ""}
                         </span>
                         <button type="button" onClick={() => setKurpOlcu((s) => (s[k.id] ? (() => { const n = { ...s }; delete n[k.id]; return n; })() : { ...s, [k.id]: { C: 0, M: 0 } }))}
@@ -477,7 +477,7 @@ export function RingKart(p: KartProps) {
                           <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "Pafta/harita ölçüsü → R = C²/(8·M):", en: "Plan/map measurement → R = C²/(8·M):", de: "Plan-/Kartenmessung → R = C²/(8·M):" })}</span>
                           <div className="w-24"><Num label={t({ tr: "Kiriş C", en: "Chord C", de: "Sehne C" })} suffix="m" step={1} value={olcu.C} onChange={(v) => setKurpOlcu((s) => ({ ...s, [k.id]: { ...s[k.id], C: Math.max(0, v) } }))} /></div>
                           <div className="w-24"><Num label={t({ tr: "Orta dikme M", en: "Mid-ordinate M", de: "Pfeilhöhe M" })} suffix="m" step={0.1} value={olcu.M} onChange={(v) => setKurpOlcu((s) => ({ ...s, [k.id]: { ...s[k.id], M: Math.max(0, v) } }))} /></div>
-                          <span className="rounded px-2 py-1 text-xs font-semibold" style={{ background: "#EEF1F6", color: brand.ink }}>R ≈ {olcu.C > 0 && olcu.M > 0 ? Math.round(yaricapKirisVersine(olcu.C, olcu.M)) : "—"} m</span>
+                          <span className="rounded px-2 py-1 text-xs font-semibold" style={{ background: CK.track, color: brand.ink }}>R ≈ {olcu.C > 0 && olcu.M > 0 ? Math.round(yaricapKirisVersine(olcu.C, olcu.M)) : "—"} m</span>
                           <button type="button" disabled={!(olcu.C > 0 && olcu.M > 0)}
                             onClick={() => { p.onKurpPatch(k.id, { yaricap: Math.round(yaricapKirisVersine(olcu.C, olcu.M)) }); setKurpOlcu((s) => { const n = { ...s }; delete n[k.id]; return n; }); }}
                             className="rounded px-2 py-1 text-xs font-semibold text-white disabled:opacity-40" style={{ background: brand.ink }}>{t({ tr: "uygula", en: "apply", de: "anwenden" })}</button>
@@ -507,7 +507,7 @@ export function RingKart(p: KartProps) {
               )}
             </p>
             {p.duzenlenebilir && (
-              <div className="rounded border p-2" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
+              <div className="rounded border p-2" style={{ borderColor: brand.border, background: brand.paper }}>
                 <div className="flex flex-wrap items-end gap-3">
                   <label className="block">
                     <span className="field-label">{t({ tr: "Yön (kimin göreceği)", en: "Direction (who sees it)", de: "Richtung (wer es sieht)" })}</span>

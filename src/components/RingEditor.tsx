@@ -384,7 +384,7 @@ export function RingEditor() {
             ) : (
             <>
             {/* Ekleme mesafesi + başa/sona ekle — yeni durak SEÇTİĞİN mesafeyle eklenir. */}
-            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border px-3 py-2" style={{ borderColor: brand.border, background: brand.paper }}>
               <span className="text-xs font-medium" style={{ color: brand.inkSoft }}>{t({ tr: "Yeni durak mesafesi", en: "New stop distance", de: "Entfernung neue Haltestelle" })}</span>
               <input type="number" min={50} step={50} value={ekMesafe} onChange={(e) => setEkMesafe(Math.max(50, parseFloat(e.target.value) || 0))}
                 className="w-24 rounded border px-2 py-1 text-right text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
@@ -400,7 +400,7 @@ export function RingEditor() {
               {duraklar.map((d, i) => (
                 <div key={`durak-${i}`}>
                   {/* Durak satırı */}
-                  <div className="flex items-center gap-2 rounded border px-2 py-1.5" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
+                  <div className="flex items-center gap-2 rounded border px-2 py-1.5" style={{ borderColor: brand.border, background: brand.paper }}>
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white" style={{ background: brand.ink }}>{i + 1}</span>
                     <input value={d.ad} onChange={(e) => setRings((rs) => durakAdiDegistir(rs, i, e.target.value))}
                       className="min-w-0 flex-1 rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
@@ -684,7 +684,7 @@ export function RingEditor() {
                       </div>
                     </div>
                     {/* Peron işgal süresi — bileşenli (ince model), toplam yetkili */}
-                    <div className="mt-2 rounded border p-2" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
+                    <div className="mt-2 rounded border p-2" style={{ borderColor: brand.border, background: brand.paper }}>
                       <div className="mb-1 flex items-baseline justify-between">
                         <span className="field-label">{tt({ tr: "Peron işgal süresi", en: "Platform occupation time", de: "Bahnsteigbelegungszeit" })}</span>
                         <span className="text-sm font-semibold" style={{ color: brand.ink }}>{Math.round(t.peronIsgali)} s</span>
@@ -706,7 +706,7 @@ export function RingEditor() {
                       </p>
                     </div>
                     {/* Boğaz (throat) işgali — oto (makastan) veya elle */}
-                    <div className="mt-2 rounded border p-2" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
+                    <div className="mt-2 rounded border p-2" style={{ borderColor: brand.border, background: brand.paper }}>
                       <div className="mb-1 flex items-baseline justify-between">
                         <span className="field-label">{tt({ tr: "Boğaz işgali", en: "Throat occupation", de: "Weichenbereichsbelegung" })}</span>
                         <span className="text-sm font-semibold" style={{ color: brand.ink }}>{etkinBogazIsgali(t, cfg)} s</span>
