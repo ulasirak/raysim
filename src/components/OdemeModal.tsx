@@ -11,8 +11,10 @@ import { useEffect, useRef } from "react";
 import { useCuzdan } from "@/components/CuzdanProvider";
 import { brand } from "@/lib/anaray/brand";
 import { Ikon } from "@/components/Ikon";
+import { useDil } from "@/components/DilProvider";
 
 export function OdemeModal() {
+  const { t } = useDil();
   const { odemeIcerik, odemeUrlYedek, odemeKapat } = useCuzdan();
   const scriptHost = useRef<HTMLDivElement>(null);
 
@@ -43,13 +45,13 @@ export function OdemeModal() {
   if (odemeIcerik == null) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:p-8" role="dialog" aria-modal="true" aria-label="Güvenli ödeme">
+    <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:p-8" role="dialog" aria-modal="true" aria-label={t({ tr: "Güvenli ödeme", en: "Secure payment", de: "Sichere Zahlung" })}>
       <div className="relative w-full max-w-xl rounded-lg bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: brand.border }}>
-          <span className="font-brand text-sm font-semibold" style={{ color: brand.ink }}><Ikon ad="kilit" size={13} className="mr-1 inline-block align-[-2px]" />Güvenli Ödeme — iyzico</span>
-          <button onClick={odemeKapat} title="Ödemeden vazgeç ve geri dön"
+          <span className="font-brand text-sm font-semibold" style={{ color: brand.ink }}><Ikon ad="kilit" size={13} className="mr-1 inline-block align-[-2px]" />{t({ tr: "Güvenli Ödeme · iyzico", en: "Secure Payment · iyzico", de: "Sichere Zahlung · iyzico" })}</span>
+          <button onClick={odemeKapat} title={t({ tr: "Ödemeden vazgeç ve geri dön", en: "Cancel payment and go back", de: "Zahlung abbrechen und zurück" })}
             className="rounded-md border px-3 py-1 text-xs font-medium transition hover:bg-slate-50" style={{ borderColor: brand.borderStrong, color: brand.inkSoft }}>
-            ✕ Vazgeç
+            {t({ tr: "Vazgeç", en: "Cancel", de: "Abbrechen" })}
           </button>
         </div>
         <div className="p-4">
@@ -59,13 +61,12 @@ export function OdemeModal() {
           <div ref={scriptHost} />
           {!odemeIcerik && odemeUrlYedek && (
             <div className="py-6 text-center text-sm" style={{ color: brand.muted }}>
-              Ödeme formu yüklenemedi.{" "}
-              <a href={odemeUrlYedek} target="_blank" rel="noopener noreferrer" className="underline" style={{ color: brand.red }}>Yeni sekmede aç →</a>
+              {t({ tr: "Ödeme formu yüklenemedi.", en: "The payment form could not load.", de: "Das Zahlungsformular konnte nicht geladen werden." })}{" "}
+              <a href={odemeUrlYedek} target="_blank" rel="noopener noreferrer" className="underline" style={{ color: brand.red }}>{t({ tr: "Yeni sekmede aç", en: "Open in a new tab", de: "In neuem Tab öffnen" })}</a>
             </div>
           )}
-          <p className="mt-3 text-center text-xs leading-relaxed" style={{ color: brand.faint }}>
-            Kart bilgileri doğrudan iyzico&apos;da işlenir; RaySim kart bilgisi görmez.
-            Vazgeçmek için “Vazgeç”e basın (ya da ESC) — sitede kalırsınız.
+          <p className="mt-3 text-center text-xs leading-relaxed" style={{ color: brand.muted }}>
+            {t({ tr: "Kart bilgileri doğrudan iyzico’da işlenir; RaySim kart bilgisi görmez. Vazgeçmek için “Vazgeç”e ya da ESC’e bas; sitede kalırsın.", en: "Card details are processed directly by iyzico; RaySim never sees them. To cancel, press “Cancel” or ESC; you stay on the site.", de: "Kartendaten werden direkt von iyzico verarbeitet; RaySim sieht sie nie. Zum Abbrechen „Abbrechen“ oder ESC drücken; Sie bleiben auf der Seite." })}
           </p>
         </div>
       </div>

@@ -35,8 +35,12 @@ export function Tarife({ cevrimSn, headwaySn }: { cevrimSn: number; headwaySn: n
           <h2 className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{tt({ tr: "Tarife (Zaman Çizelgesi)", en: "Timetable (Schedule)", de: "Fahrplan (Zeitplan)" })}</h2>
           <span className="text-xs" style={{ color: brand.muted }}>{tt({ tr: "çevrim + sefer aralığından kalkış saatleri ve araç diyagramı", en: "departure times and vehicle diagram from cycle + headway", de: "Abfahrtszeiten und Umlaufplan aus Umlauf + Zugfolgezeit" })}</span>
         </div>
-        <p className="mb-4 text-xs" style={{ color: brand.muted }}>
-          Servis penceresi boyunca ulaşılan sefer aralığında (≈{(headwaySn / 60).toFixed(1)} dk) kalkışlar üretilir; her araç bir tam turu (çevrim {Math.round(cevrimSn / 60)} dk){molaDk > 0 ? ` + ${molaDk} dk mola` : ""} tamamlayıp sıraya döner.
+        <p className="mb-4 text-sm leading-relaxed" style={{ color: brand.inkSoft }}>
+          {tt({
+            tr: `Servis penceresi boyunca ulaşılan sefer aralığında (≈${(headwaySn / 60).toFixed(1)} dk) kalkışlar üretilir; her araç bir tam turu (çevrim ${Math.round(cevrimSn / 60)} dk)${molaDk > 0 ? ` + ${molaDk} dk mola` : ""} tamamlayıp sıraya döner.`,
+            en: `Departures are produced at the headway reached within the service window (≈${(headwaySn / 60).toFixed(1)} min); each vehicle completes one full round-trip (cycle ${Math.round(cevrimSn / 60)} min)${molaDk > 0 ? ` + ${molaDk} min layover` : ""} and returns to the queue.`,
+            de: `Abfahrten werden mit der im Betriebsfenster erreichten Zugfolgezeit erzeugt (≈${(headwaySn / 60).toFixed(1)} min); jedes Fahrzeug absolviert einen vollen Umlauf (Umlauf ${Math.round(cevrimSn / 60)} min)${molaDk > 0 ? ` + ${molaDk} min Pause` : ""} und reiht sich wieder ein.`,
+          })}
         </p>
 
         <div className="mb-4 flex flex-wrap items-end gap-4">

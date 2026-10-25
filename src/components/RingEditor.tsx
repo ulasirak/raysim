@@ -443,9 +443,15 @@ export function RingEditor() {
                                 <input type="number" min={0} step={5} value={Math.round(r.binenYolcu ?? 0)}
                                   onChange={(e) => patch(r.id, { binenYolcu: Math.max(0, parseFloat(e.target.value) || 0) })}
                                   className="w-12 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
-                              <span title={t({ tr: "Yolcu akışından hesaplanan bölüm", en: "Portion computed from passenger flow", de: "Aus dem Fahrgastfluss berechneter Anteil" })} style={{ color: CK.good }}>{t({ tr: "yolcu", en: "passengers", de: "Fahrgäste" })} {Math.round(yolcuHesap)}s ✓</span>
-                              <span className="basis-full rounded border-l-2 py-0.5 pl-2 text-xs leading-snug" style={{ borderColor: CK.good, background: CK.goodBgSoft, color: brand.inkSoft }}>
-                                <b>oto dwell</b>: bekleme yolcudan hesaplanır → kapı aç {Math.round(dwellBilesen(r).ac)}s + yolcu [(inen+binen) ÷ (kapı {stock.kapiSayisi ?? 4} × genişlik {stock.kapiGenisligi ?? 1.3}m × akış {isletme.yolcuAkisHizi})] + kapı kapa {Math.round(dwellBilesen(r).kapa)}s; en az {isletme.minDurusSuresi}s. Şu an yolcu {Math.round(yolcuHesap)}s → toplam <b>{Math.round(etkinDwell(r))}s</b>.
+                              <span title={t({ tr: "Yolcu akışından hesaplanan bölüm", en: "Portion computed from passenger flow", de: "Aus dem Fahrgastfluss berechneter Anteil" })} style={{ color: brand.muted }}>{t({ tr: "yolcu", en: "passengers", de: "Fahrgäste" })} {Math.round(yolcuHesap)}s</span>
+                              <span className="basis-full rounded border-l-2 py-0.5 pl-2 text-xs leading-snug" style={{ borderColor: brand.border, color: brand.inkSoft }}>
+                                {dil === "en" ? (
+                                  <><b>auto dwell</b>: the dwell is computed from passengers. Door open {Math.round(dwellBilesen(r).ac)}s + passengers [(alight+board) ÷ (doors {stock.kapiSayisi ?? 4} × width {stock.kapiGenisligi ?? 1.3}m × flow {isletme.yolcuAkisHizi})] + door close {Math.round(dwellBilesen(r).kapa)}s; at least {isletme.minDurusSuresi}s. Currently passengers {Math.round(yolcuHesap)}s, total <b>{Math.round(etkinDwell(r))}s</b>.</>
+                                ) : dil === "de" ? (
+                                  <><b>Auto-Haltezeit</b>: die Haltezeit wird aus den Fahrgästen berechnet. Tür auf {Math.round(dwellBilesen(r).ac)}s + Fahrgäste [(Aus+Ein) ÷ (Türen {stock.kapiSayisi ?? 4} × Breite {stock.kapiGenisligi ?? 1.3}m × Fluss {isletme.yolcuAkisHizi})] + Tür zu {Math.round(dwellBilesen(r).kapa)}s; mindestens {isletme.minDurusSuresi}s. Aktuell Fahrgäste {Math.round(yolcuHesap)}s, gesamt <b>{Math.round(etkinDwell(r))}s</b>.</>
+                                ) : (
+                                  <><b>oto dwell</b>: bekleme yolcudan hesaplanır. Kapı aç {Math.round(dwellBilesen(r).ac)}s + yolcu [(inen+binen) ÷ (kapı {stock.kapiSayisi ?? 4} × genişlik {stock.kapiGenisligi ?? 1.3}m × akış {isletme.yolcuAkisHizi})] + kapı kapa {Math.round(dwellBilesen(r).kapa)}s; en az {isletme.minDurusSuresi}s. Şu an yolcu {Math.round(yolcuHesap)}s, toplam <b>{Math.round(etkinDwell(r))}s</b>.</>
+                                )}
                               </span>
                             </>
                           ) : (

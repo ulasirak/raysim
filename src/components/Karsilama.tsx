@@ -76,7 +76,7 @@ export function Karsilama() {
                 </span>
                 <span className="min-w-0 text-sm leading-tight">
                   <span className="font-medium" style={{ color: brand.ink }}>{s.ad}</span>
-                  <span className="block text-[0.78rem]" style={{ color: brand.muted }}>{s.not}</span>
+                  <span className="block text-sm" style={{ color: brand.muted }}>{s.not}</span>
                 </span>
               </li>
             ))}
@@ -102,11 +102,14 @@ export function Karsilama() {
                 <span className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: brand.red }}>{n}</span>
                 <span className="min-w-0">
                   <span className="font-medium" style={{ color: brand.ink }}>{b}</span>
-                  <span className="block text-[0.82rem]" style={{ color: brand.muted }}>{a}</span>
+                  <span className="block text-sm" style={{ color: brand.muted }}>{a}</span>
                 </span>
               </li>
             ))}
           </ol>
+          <p className="mt-1 border-t pt-3 text-sm" style={{ borderColor: brand.border, color: brand.muted }}>
+            {t({ tr: "İki şeyi bilmen yeter: simülasyon parametrelerini (hız, ivme, sefer aralığı…) üst çubuktaki ", en: "Two things to know: you set the simulation parameters (speed, acceleration, headway…) from the ", de: "Zwei Dinge solltest du wissen: Die Simulationsparameter (Geschwindigkeit, Beschleunigung, Zugfolgezeit…) stellst du über die Schaltfläche " })}<strong style={{ color: brand.ink }}>{t({ tr: "Parametreler", en: "Parameters", de: "Parameter" })}</strong>{t({ tr: " butonundan ayarlarsın (tek kaynak, her sayfadan erişilir). PDF rapor üretmek ", en: " button in the top bar (a single source, reachable from every page). Producing a PDF report uses ", de: "-Schaltfläche in der oberen Leiste ein (eine Quelle, von jeder Seite erreichbar). Das Erstellen eines PDF-Berichts verbraucht " })}<strong style={{ color: brand.ink }}>{t({ tr: "kredi", en: "credits", de: "Credits" })}</strong>{t({ tr: " kullanır; krediyi hesabından (üst çubuk) alabilirsin.", en: "; you can buy them from your account (top bar).", de: "; du kannst sie über dein Konto (obere Leiste) kaufen." })}
+          </p>
         </div>
       ),
     },

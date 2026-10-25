@@ -294,13 +294,13 @@ export function Belgeler() {
           <span className="field-label">{t({ tr: "Rapor dili", en: "Report language", de: "Berichtssprache" })}</span>
           <div className="inline-flex overflow-hidden rounded-md border" style={{ borderColor: brand.borderStrong }}>
             {(["tr", "en"] as RaporDil[]).map((d) => (
-              <button key={d} onClick={() => setDil(d)} className="px-3 py-1 text-xs font-semibold uppercase transition"
+              <button key={d} onClick={() => setDil(d)} className="px-3 py-1 text-xs font-semibold transition"
                 style={dil === d ? { background: brand.ink, color: "#fff" } : { background: "#fff", color: brand.inkSoft }}>
                 {d === "tr" ? t({ tr: "Türkçe", en: "Turkish", de: "Türkisch" }) : t({ tr: "English", en: "English", de: "Englisch" })}
               </button>
             ))}
           </div>
-          <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "PDF rapor bu dilde üretilir (yapısal metinler; proje verisi/adlar kaynak dilde kalır).", en: "The PDF report is produced in this language (structural text; project data/names stay in their source language).", de: "Der PDF-Bericht wird in dieser Sprache erstellt (strukturelle Texte; Projektdaten/-namen bleiben in der Ausgangssprache)." })}</span>
+          <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "PDF rapor bu dilde üretilir (yapısal metinler; proje verisi/adlar kaynak dilde kalır).", en: "The PDF report is produced in this language (structural text; project data/names stay in their source language).", de: "Der PDF-Bericht wird in dieser Sprache erstellt (strukturelle Texte; Projektdaten/-namen bleiben in der Ausgangssprache). Ein deutschsprachiger Bericht ist noch nicht verfügbar." })}</span>
         </div>
 
         {/* QR DEEP-LINK anahtarı — rapordaki kare kodun bu hattın canlı simülasyonuna
@@ -354,8 +354,8 @@ export function Belgeler() {
                 <button key={b} type="button" onClick={() => secBolum(b)}
                   className="rounded-md border px-2.5 py-1.5 text-xs font-medium transition"
                   style={on ? { background: brand.ink, color: "#fff", borderColor: brand.ink } : { background: "#fff", color: brand.inkSoft, borderColor: brand.border }}
-                  title={on ? t({ tr: "Dâhil — çıkarmak için tıkla", en: "Included — click to remove", de: "Enthalten — zum Entfernen klicken" }) : t({ tr: "Hariç — eklemek için tıkla", en: "Excluded — click to add", de: "Ausgeschlossen — zum Hinzufügen klicken" })}>
-                  <span>{on ? "✓ " : "＋ "}{dil === "en" ? RAPOR_BOLUM_AD[b].en : RAPOR_BOLUM_AD[b].tr}</span>
+                  title={on ? t({ tr: "Dâhil, çıkarmak için tıkla", en: "Included, click to remove", de: "Enthalten, zum Entfernen klicken" }) : t({ tr: "Hariç, eklemek için tıkla", en: "Excluded, click to add", de: "Ausgeschlossen, zum Hinzufügen klicken" })}>
+                  <span>{on ? "✓ " : "＋ "}{uiDil === "en" ? RAPOR_BOLUM_AD[b].en : uiDil === "de" ? RAPOR_BOLUM_AD[b].de : RAPOR_BOLUM_AD[b].tr}</span>
                   <span className="ml-1.5 rounded px-1 py-0.5 text-xs font-bold" style={{ background: on ? "rgba(255,255,255,0.22)" : CK.track, color: on ? "#fff" : brand.muted }}>+{RAPOR_BOLUM_KREDI[b]} kr</span>
                 </button>
               );

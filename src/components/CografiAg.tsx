@@ -499,7 +499,7 @@ export function CografiAg({
               <g key={`ters${i}`}>
                 <circle cx={p.x} cy={p.y} r={6.5} fill="#fff" stroke={CK.amber} strokeWidth={1.8} />
                 <text x={p.x} y={p.y + 3} textAnchor="middle" fontSize={9} fontWeight={700} fill={CK.amberInk}>↺</text>
-                <title>{m.ad} — kısa dönüş önerilir (sessiz taraf %{Math.round(m.kisaDonusYuzde)})</title>
+                <title>{`${m.ad}: ${tt({ tr: "kısa dönüş önerilir", en: "short-turn recommended", de: "Kurzwende empfohlen" })} (${tt({ tr: "sessiz taraf", en: "quiet side", de: "ruhige Seite" })} %${Math.round(m.kisaDonusYuzde)})`}</title>
               </g>
             );
           })}
@@ -522,7 +522,7 @@ export function CografiAg({
                 <circle cx={p.x} cy={p.y} r={6} fill="#fff" stroke={renk} strokeWidth={sec ? 2.2 : 1.6} />
                 <text x={p.x} y={p.y + 2.8} textAnchor="middle" fontSize={7.5} fontWeight={800} fill={renk}>{ikon}</text>
                 <text x={p.x} y={p.y - 8} textAnchor="middle" fontSize={7} fontWeight={800} fill={renk}>{gHiz}</text>
-                <title>{`${k.ad}: ${k.detay}${k.tur === "kurp" && k.konforMesaj ? " — " + k.konforMesaj : ""} · tıkla → detay`}</title>
+                <title>{`${k.ad}: ${k.detay}${k.tur === "kurp" && k.konforMesaj ? " · " + k.konforMesaj : ""} · ${tt({ tr: "tıkla (detay)", en: "click (detail)", de: "klicken (Detail)" })}`}</title>
               </g>
             );
           })}

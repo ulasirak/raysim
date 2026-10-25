@@ -208,7 +208,7 @@ export function SistemMerkezi() {
           </div>
           <p className="mt-1.5 text-xs" style={{ color: brand.muted }}>
             {t({ tr: "Her dikdörtgen bir sinyal bloğunun rezerve süresi (blocking-time); dikey = blok uzunluğu, yatay = süre. İki merdiven ", en: "Each rectangle is a signal block's reserved time (blocking-time); vertical = block length, horizontal = duration. Two staircases ", de: "Jedes Rechteck ist die Sperrzeit eines Signalblocks; vertikal = Blocklänge, horizontal = Dauer. Zwei Treppen " })}
-            <span style={{ color: kritikRenk }}>{kritikAd}{t({ tr: " blokta", en: " block", de: " Block" })}</span>{t({ tr: " tam değer → o an sürdürülebilir min headway.", en: " touch fully → the sustainable min headway at that point.", de: " berühren sich vollständig → die dort nachhaltige Zugfolgezeit." })}
+            <span style={{ color: kritikRenk }}>{kritikAd}{t({ tr: " blokta", en: " block", de: " Block" })}</span>{t({ tr: " tam buluşur; o an sürdürülebilir min headway budur. Kalın çizgi 1. treni, soluk çizgi 2. treni (1. + min headway) gösterir.", en: " touch fully; that is the sustainable min headway there. The solid line is the 1st train, the faint line the 2nd (1st + min headway).", de: " berühren sich vollständig; das ist dort die nachhaltige Zugfolgezeit. Die durchgezogene Linie ist der 1. Zug, die blasse der 2. (1. + Zugfolgezeit)." })}
             <span style={{ color: SERI.duzBlok }}> ■</span>{t({ tr: " düz blok · ", en: " plain block · ", de: " Block · " })}<span style={{ color: SERI.makasBlok }}>■</span>{t({ tr: " makas bloğu.", en: " switch block.", de: " Weichenblock." })}
           </p>
         </BlokCekmece>

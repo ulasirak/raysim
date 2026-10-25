@@ -215,10 +215,10 @@ export function HesapKontrolleri() {
                   return (
                     <button key={p.id}
                       onClick={async () => { setOdemeHata(null); const r = await krediSatinAl(p.id); if (r.hata) setOdemeHata(r.hata); }}
-                      title={`${p.ad} — ${p.kredi} kredi, ${p.tl}₺ (KDV dâhil)${indirimYuzde > 0 ? ` · %${indirimYuzde} avantajlı` : ""}`}
+                      title={`${p.ad} · ${p.kredi} ${t({ tr: "kredi", en: "credits", de: "Credits" })}, ${p.tl}₺ ${t({ tr: "(KDV dâhil)", en: "(VAT incl.)", de: "(inkl. MwSt.)" })}${indirimYuzde > 0 ? ` · %${indirimYuzde} ${t({ tr: "avantajlı", en: "off", de: "günstiger" })}` : ""}`}
                       className="relative rounded border px-2 py-1 text-xs font-medium transition hover:bg-slate-50"
                       style={{ borderColor: brand.border, color: brand.ink }}>
-                      <span style={{ color: brand.faint }}>{p.ad}</span> · {p.kredi} kredi<span style={{ color: brand.muted }}> · {p.tl}₺</span>
+                      <span style={{ color: brand.muted }}>{p.ad}</span> · {p.kredi} {t({ tr: "kredi", en: "credits", de: "Credits" })}<span style={{ color: brand.muted }}> · {p.tl}₺</span>
                       {indirimYuzde > 0 && <span className="ml-1 rounded px-1 text-xs font-semibold" style={{ background: CK.goodBg, color: CK.good }}>%{indirimYuzde}</span>}
                     </button>
                   );

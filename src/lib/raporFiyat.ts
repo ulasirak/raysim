@@ -44,16 +44,16 @@ export function raporKredi(secim?: RaporSecim): number {
   return k;
 }
 
-/** Bölüm etiketleri (UI seçici + rapor için). */
-export const RAPOR_BOLUM_AD: Record<RaporBolum, { tr: string; en: string }> = {
-  ozet: { tr: "Yönetici Özeti", en: "Executive Summary" },
-  hat: { tr: "Hat & Kısıt Analizi", en: "Line & Constraint Analysis" },
-  kurpKonfor: { tr: "Kurp & Yanal Konfor", en: "Curve & Lateral Comfort" },
-  kapasite: { tr: "Kapasite Analizi", en: "Capacity Analysis" },
-  isletme: { tr: "İşletme & Talep + Tavsiye Filo", en: "Operations & Demand + Fleet" },
-  tarife: { tr: "Tarife", en: "Timetable" },
-  kilitleme: { tr: "Kilitleme Kontrol Tablosu (Interlocking)", en: "Interlocking Control Table" },
-  dogrulama: { tr: "Doğrulama & Geçerleme (V&V)", en: "Verification & Validation" },
-  izlenebilirlik: { tr: "İzlenebilirlik & Tekrar-Üretilebilirlik", en: "Traceability & Reproducibility" },
-  grafikler: { tr: "Grafikler (Görsel Analiz)", en: "Charts (Visual Analysis)" },
+/** Bölüm etiketleri (UI seçici + rapor için) — TR·EN·DE. */
+export const RAPOR_BOLUM_AD: Record<RaporBolum, { tr: string; en: string; de: string }> = {
+  ozet: { tr: "Yönetici Özeti", en: "Executive Summary", de: "Zusammenfassung" },
+  hat: { tr: "Hat & Kısıt Analizi", en: "Line & Constraint Analysis", de: "Strecken- & Engpassanalyse" },
+  kurpKonfor: { tr: "Kurp & Yanal Konfor", en: "Curve & Lateral Comfort", de: "Bogen & Querkomfort" },
+  kapasite: { tr: "Kapasite Analizi", en: "Capacity Analysis", de: "Kapazitätsanalyse" },
+  isletme: { tr: "İşletme & Talep + Tavsiye Filo", en: "Operations & Demand + Fleet", de: "Betrieb & Nachfrage + Flotte" },
+  tarife: { tr: "Tarife", en: "Timetable", de: "Fahrplan" },
+  kilitleme: { tr: "Kilitleme Kontrol Tablosu (Interlocking)", en: "Interlocking Control Table", de: "Verschluss-Kontrolltabelle" },
+  dogrulama: { tr: "Doğrulama & Geçerleme (V&V)", en: "Verification & Validation", de: "Verifizierung & Validierung" },
+  izlenebilirlik: { tr: "İzlenebilirlik & Tekrar-Üretilebilirlik", en: "Traceability & Reproducibility", de: "Nachvollziehbarkeit & Reproduzierbarkeit" },
+  grafikler: { tr: "Grafikler (Görsel Analiz)", en: "Charts (Visual Analysis)", de: "Diagramme (Visuelle Analyse)" },
 };
