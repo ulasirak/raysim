@@ -465,7 +465,7 @@ export function RingKart(p: KartProps) {
                           {t({ tr: "yanal", en: "lateral", de: "quer" })} {aYanal.toFixed(2)} m/s²{asim ? " ⚠" : kalabalik ? ` · ${t({ tr: "kalabalıkta", en: "when crowded", de: "bei Andrang" })} ≤ ${vKalabalik} km/h${dolText}` : ""}
                         </span>
                         <button type="button" onClick={() => setKurpOlcu((s) => (s[k.id] ? (() => { const n = { ...s }; delete n[k.id]; return n; })() : { ...s, [k.id]: { C: 0, M: 0 } }))}
-                          className="rounded border px-2 py-1 text-xs font-medium" style={{ borderColor: brand.border, color: brand.inkSoft }} title={t({ tr: "Pafta/haritadan ölçüyle yarıçap hesapla", en: "Compute radius from a plan/map measurement", de: "Radius aus einer Plan-/Kartenmessung berechnen" })}>{t({ tr: "◠ ölçüden R", en: "◠ R from measurement", de: "◠ R aus Messung" })}</button>
+                          className="rounded border px-2 py-1 text-xs font-medium" style={{ borderColor: brand.border, color: brand.inkSoft }} title={t({ tr: "Pafta/haritadan ölçüyle yarıçap hesapla", en: "Compute radius from a plan/map measurement", de: "Radius aus einer Plan-/Kartenmessung berechnen" })}>{t({ tr: "ölçüden R", en: "R from measurement", de: "R aus Messung" })}</button>
                         <button onClick={() => p.onKurpPatch(k.id, manuel ? { hizManuel: undefined } : { hizManuel: vHesap })}
                           className="rounded border px-2 py-1 text-xs font-medium" style={{ borderColor: brand.border, color: brand.inkSoft }}>
                           {manuel ? t({ tr: "↺ yarıçaptan", en: "↺ from radius", de: "↺ aus Radius" }) : t({ tr: "✎ hızı elle gir", en: "✎ enter speed manually", de: "✎ Geschwindigkeit manuell eingeben" })}

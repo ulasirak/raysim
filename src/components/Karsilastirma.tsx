@@ -24,6 +24,7 @@ import { useCuzdan } from "@/components/CuzdanProvider";
 import { BosDurum } from "@/components/BosDurum";
 import { Kart } from "@/components/Kart";
 import { useDil } from "@/components/DilProvider";
+import { Not } from "@/components/Not";
 
 // —— What-if parametreleri (doluluk İLK: HER hatta sürdürülebilir/işletme kapasitesini
 // KESİN değiştirir → dinamikliği garanti eder) ——
@@ -239,9 +240,7 @@ export function Karsilastirma() {
               </div>
             </div>
           </div>
-          <p className="mt-3 rounded border-l-2 pl-2 text-xs" style={{ borderColor: CK.gold, color: brand.inkSoft }}>
-            ℹ️ {t(WHATIF[wparam].not)}
-          </p>
+          <Not className="mt-3">{t(WHATIF[wparam].not)}</Not>
         </Panel>
       )}
 

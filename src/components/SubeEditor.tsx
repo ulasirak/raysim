@@ -16,6 +16,7 @@ import { useProje, useArac, useSimConfig, useIsletme } from "@/components/SimCon
 import { useDil } from "@/components/DilProvider";
 import { brand } from "@/lib/anaray/brand";
 import { BosDurum } from "@/components/BosDurum";
+import { Not } from "@/components/Not";
 import { ringDuraklari, yeniSube, yeniRing, type Sube } from "@/lib/anaray/ring";
 import { subeOzeti, ortakKesimAnaliz, type SubeOzet } from "@/lib/anaray/ortakKesim";
 
@@ -149,9 +150,9 @@ export function SubeEditor() {
               {/* Keşfedilebilirlik: servisTren 0 iken kolun analizleri UYKUDA — belirgin nudge.
                   (0 varsayılanı korunur: dürüstlük = tahmin yok; ama ne kazanacağı açıkça söylenir.) */}
               {(s.servisTren ?? 0) === 0 && (
-                <p className="mt-2 rounded border-l-2 px-2.5 py-1.5 text-xs leading-snug" style={{ borderColor: brand.red, background: "#FEF5F5", color: brand.inkSoft }}>
-                  ◆ {t({ tr: "Servis treni 0 — kol şu an yalnız kendi başına analiz ediliyor. Bir sayı girersen", en: "Service trains 0 — the branch is analyzed on its own for now. Enter a number and", de: "Betriebszüge 0 — der Zweig wird vorerst allein analysiert. Geben Sie eine Zahl ein, dann" })} <b style={{ color: brand.ink }}>{t({ tr: "ortak kesim yükü + kavşak zaman-çakışması + canlı mekik treni + gecikme yayılımı", en: "shared-section load + junction time-conflict + live shuttle train + delay propagation", de: "gemeinsame Abschnittslast + Knoten-Zeitkonflikt + Live-Pendelzug + Verspätungsausbreitung" })}</b> {t({ tr: "aktifleşir. (0 = kapalı, tahmin yok.)", en: "activate. (0 = off, no estimate.)", de: "werden aktiv. (0 = aus, keine Schätzung.)" })}
-                </p>
+                <Not className="mt-2">
+                  {t({ tr: "Servis treni 0: kol şu an yalnız kendi başına analiz ediliyor. Bir sayı girersen", en: "Service trains 0: the branch is analyzed on its own for now. Enter a number and", de: "Betriebszüge 0: der Zweig wird vorerst allein analysiert. Geben Sie eine Zahl ein, dann" })} <b style={{ color: brand.ink }}>{t({ tr: "ortak kesim yükü, kavşak zaman-çakışması, canlı mekik treni ve gecikme yayılımı", en: "shared-section load, junction time-conflict, live shuttle train and delay propagation", de: "gemeinsame Abschnittslast, Knoten-Zeitkonflikt, Live-Pendelzug und Verspätungsausbreitung" })}</b> {t({ tr: "aktifleşir. (0 = kapalı, tahmin yok.)", en: "activate. (0 = off, no estimate.)", de: "werden aktiv. (0 = aus, keine Schätzung.)" })}
+                </Not>
               )}
 
               {/* Otomatik özet: nereden / ne kadar / ne işe yarar */}

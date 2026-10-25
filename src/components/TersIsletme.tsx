@@ -14,6 +14,7 @@ import { brand } from "@/lib/anaray/brand";
 import { Kart } from "@/components/Kart";
 import { CK } from "@/lib/anaray/chartkit";
 import { useDil } from "@/components/DilProvider";
+import { Not } from "@/components/Not";
 
 function Kucuk({ children }: { children: React.ReactNode }) {
   return <span className="mt-1 block text-xs leading-snug" style={{ color: brand.muted }}>{children}</span>;
@@ -117,8 +118,8 @@ export function TersIsletme() {
           <div><Num label={t({ tr: "Doluluk hedefi", en: "Occupancy target", de: "Auslastungsziel" })} suffix="%" step={5} value={Math.round(hedef * 100)}
             onChange={(v) => patchIsletme({ dolulukHedefi: Math.min(1, Math.max(0.3, v / 100)) })} /><Kucuk>{t({ tr: 'bu oranın üstü "tıkanma"', en: 'above this ratio is "crowding"', de: 'über diesem Wert "Überfüllung"' })}</Kucuk></div>
         </div>
-        <p className="mt-2 text-xs" style={{ color: brand.muted }}>
-          ℹ️ <b>{t({ tr: "İki görünüm de AYNI modeli besler", en: "Both views feed the SAME model", de: "Beide Ansichten speisen DASSELBE Modell" })}</b> {t({ tr: "— sekme değiştirmek sonucu değiştirmez.", en: "— switching tabs does not change the result.", de: "— ein Wechsel des Tabs ändert das Ergebnis nicht." })} <b>{t({ tr: "Toplam Talep", en: "Total demand", de: "Gesamtnachfrage" })}</b>: {t({ tr: "tek sayı girersin, rolden (hastane/aktarma/stadyum/merkez=yoğun) duraklara dağıtılır.", en: "you enter a single number; it is distributed to stations by role (hospital/interchange/stadium/center=busy).", de: "Sie geben eine einzige Zahl ein; sie wird nach Rolle auf die Haltestellen verteilt (Krankenhaus/Umstieg/Stadion/Zentrum=voll)." })} <b>{t({ tr: "Her İstasyon", en: "Each station", de: "Jede Station" })}</b>: {t({ tr: "durak-başı gerçek iniş/biniş girersin (girilenler tahmini EZER). Girdiğin durak-başı değerler her iki görünümde de geçerlidir.", en: "you enter real per-station alighting/boarding (entries OVERRIDE the estimate). The per-station values you enter apply in both views.", de: "Sie geben reale Ausstiege/Einstiege je Haltestelle ein (Eingaben ÜBERSCHREIBEN die Schätzung). Die von Ihnen eingegebenen Werte je Haltestelle gelten in beiden Ansichten." })}
+        <p className="mt-2 text-sm leading-relaxed" style={{ color: brand.inkSoft }}>
+          <b>{t({ tr: "Her iki görünüm de aynı modeli besler", en: "Both views feed the same model", de: "Beide Ansichten speisen dasselbe Modell" })}</b>{t({ tr: "; sekme değiştirmek sonucu değiştirmez. ", en: "; switching tabs does not change the result. ", de: "; ein Wechsel des Tabs ändert das Ergebnis nicht. " })}<b>{t({ tr: "Toplam Talep", en: "Total demand", de: "Gesamtnachfrage" })}</b>: {t({ tr: "tek sayı girersin, rolden (hastane/aktarma/stadyum/merkez=yoğun) duraklara dağıtılır.", en: "you enter a single number, distributed to stations by role (hospital/interchange/stadium/center=busy).", de: "Sie geben eine einzige Zahl ein, die nach Rolle auf die Haltestellen verteilt wird (Krankenhaus/Umstieg/Stadion/Zentrum=voll)." })} <b>{t({ tr: "Her İstasyon", en: "Each station", de: "Jede Station" })}</b>: {t({ tr: "durak-başı gerçek iniş/biniş girersin (girilenler tahmini ezer). Girdiğin durak-başı değerler her iki görünümde de geçerlidir.", en: "you enter real per-station alighting/boarding (entries override the estimate). The per-station values you enter apply in both views.", de: "Sie geben reale Ausstiege/Einstiege je Haltestelle ein (Eingaben überschreiben die Schätzung). Die eingegebenen Werte je Haltestelle gelten in beiden Ansichten." })}
         </p>
         {mod === "istasyon" && (
           <div className="mt-2">
@@ -192,9 +193,9 @@ export function TersIsletme() {
             <p className="mt-1 text-xs" style={{ color: brand.muted }}>{t({ tr: "Kısa dönüşle dış kolda boş sefer azalır →", en: "Short-turning cuts empty runs on the outer leg →", de: "Kehren reduziert Leerfahrten auf dem Außenast →" })} ~{f.kisaDonusTasarruf} {t({ tr: "araç tasarruf", en: "vehicles saved", de: "Fahrzeuge gespart" })} ({f.gerekenAracKisaDonusle} {t({ tr: "araç", en: "vehicles", de: "Fahrzeuge" })}). {t({ tr: "Sürdürülebilir tavan", en: "Sustainable ceiling", de: "Nachhaltige Obergrenze" })} {rapor.maksSurdurulebilir} {t({ tr: "tramvay", en: "trams", de: "Straßenbahnen" })}.</p>
           )}
           {subeFilo > 0 && (
-            <p className="mt-2 rounded border-l-2 px-2 py-1 text-xs" style={{ borderColor: brand.red, background: CK.badBgSoft, color: brand.inkSoft }}>
-              ◆ {t({ tr: "Bu tavsiye ANA HATTA aittir. Tali hat mekikleri ayrıca", en: "This recommendation is for the MAIN LINE. Branch shuttles additionally run", de: "Diese Empfehlung gilt für die HAUPTSTRECKE. Abzweig-Pendelzüge fahren zusätzlich" })} <b style={{ color: brand.ink }}>{subeFilo} {t({ tr: "araç", en: "vehicle(s)", de: "Fahrzeug(e)" })}</b> {t({ tr: "işletir (Σ servis treni) →", en: "(Σ service trains) →", de: "(Σ Betriebszüge) →" })} <b style={{ color: brand.ink }}>{t({ tr: "ağ filosu", en: "network fleet", de: "Netzflotte" })} {tavsiye.tavsiye + subeFilo}</b>.
-            </p>
+            <Not className="mt-2">
+              {t({ tr: "Bu tavsiye ana hatta aittir. Tali hat mekikleri ayrıca", en: "This recommendation is for the main line. Branch shuttles additionally run", de: "Diese Empfehlung gilt für die Hauptstrecke. Abzweig-Pendelzüge fahren zusätzlich" })} <b style={{ color: brand.ink }}>{subeFilo} {t({ tr: "araç", en: "vehicle(s)", de: "Fahrzeug(e)" })}</b> {t({ tr: "işletir (Σ servis treni); ağ filosu", en: "(Σ service trains), so the network fleet is", de: "(Σ Betriebszüge), die Netzflotte ist also" })} <b style={{ color: brand.ink }}>{tavsiye.tavsiye + subeFilo}</b>{t({ tr: " olur.", en: ".", de: "." })}
+            </Not>
           )}
           {tavsiye.kurpAdet > 0 && (
             <p className="mt-2 text-xs" style={{ color: tavsiye.kurpUyariTavsiye < tavsiye.kurpUyariMevcut ? "#2E7D32" : brand.muted }}>

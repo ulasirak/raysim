@@ -173,7 +173,7 @@ export function CanliAgSayfa() {
         </div>
         <button type="button" onClick={() => setAcikLegend((v) => !v)}
           className="shrink-0 rounded-md px-3 py-1.5 text-xs font-semibold text-white" style={{ background: brand.ink }}>
-          {acikLegend ? t({ tr: "İşaretleri gizle", en: "Hide markers", de: "Markierungen ausblenden" }) : t({ tr: "İşaretler ℹ️", en: "Markers ℹ️", de: "Markierungen ℹ️" })}
+          {acikLegend ? t({ tr: "İşaretleri gizle", en: "Hide markers", de: "Markierungen ausblenden" }) : t({ tr: "İşaretler", en: "Markers", de: "Markierungen" })}
         </button>
       </header>
 

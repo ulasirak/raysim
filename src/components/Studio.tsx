@@ -582,8 +582,8 @@ function StudioIc() {
         </div>
         {/* AĞ TOPLAMI (#7) — künye tek rota (ana hat) içindir; şube varsa ağ bütünü burada. */}
         {agToplam && (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t px-4 py-2 text-xs" style={{ borderColor: brand.border, background: CK.badBgSoft, color: brand.inkSoft }}>
-            <span style={{ color: brand.red }}>◆ {t({ tr: "Künye ana hattı gösterir.", en: "The summary shows the main line.", de: "Die Übersicht zeigt die Hauptstrecke." })} {agToplam.adet} {t({ tr: "tali hat ile ağ:", en: "with branch line(s), the network:", de: "mit Abzweigung(en) ergibt das Netz:" })}</span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t px-4 py-2 text-sm" style={{ borderColor: brand.border, color: brand.inkSoft }}>
+            <span style={{ color: brand.inkSoft }}>{t({ tr: "Künye ana hattı gösterir.", en: "The summary shows the main line.", de: "Die Übersicht zeigt die Hauptstrecke." })} {agToplam.adet} {t({ tr: "tali hat ile ağ:", en: "with branch line(s), the network:", de: "mit Abzweigung(en) ergibt das Netz:" })}</span>
             <span><b style={{ color: brand.ink }}>{km(line.length + agToplam.subeUzunlukM)} km</b> {t({ tr: "toplam hat", en: "total track", de: "Gleis gesamt" })} <span style={{ color: brand.muted }}>(+{km(agToplam.subeUzunlukM)})</span></span>
             <span><b style={{ color: brand.ink }}>{result.stationEvents.length + agToplam.subeDurak}</b> {t({ tr: "durak", en: "stops", de: "Haltestellen" })} <span style={{ color: brand.muted }}>(+{agToplam.subeDurak})</span></span>
             <span style={{ color: brand.muted }}>{t({ tr: "her şubeyi ayrı analiz için yukarıdan seç", en: "select each branch above to analyze it separately", de: "oben jede Abzweigung zur separaten Analyse auswählen" })}</span>
@@ -867,10 +867,10 @@ function StudioIc() {
               <Num label={t({ tr: "Min duruş süresi", en: "Min dwell time", de: "Min. Haltezeit" })} suffix="s" step={1} value={isletme.minDurusSuresi}
               onChange={(v) => patchIsletme({ minDurusSuresi: Math.max(0, Math.round(v)) })} /><span className="text-xs" style={{ color: brand.faint }}>{t({ tr: "tüm duraklara uygulanır — oto dwell alt sınırı", en: "applied to all stops — auto dwell lower bound", de: "gilt für alle Haltestellen — Untergrenze der Auto-Haltezeit" })}</span></div>
           </div>
-          <div className="rounded border-l-4 px-3 py-2 text-xs" style={{ background: CK.goodBgSoft, borderColor: brand.ink, color: brand.inkSoft }}>
+          <div className="rounded-r-sm border-l-2 px-3 py-2 text-sm leading-relaxed" style={{ borderColor: brand.border, color: brand.inkSoft }}>
             {t({ tr: "Net taban alanı", en: "Net floor area", de: "Netto-Bodenfläche" })} <b>{netTabanAlani(stock).toFixed(1)} m²</b> · {t({ tr: "maksimum yolcu kapasitesi", en: "maximum passenger capacity", de: "maximale Fahrgastkapazität" })} <b>{maxYolcuKapasitesi(stock, isletme.konforIndeksi)} {t({ tr: "yolcu", en: "passengers", de: "Fahrgäste" })}</b>.
-            <br />{t({ tr: "Dwell = max(", en: "Dwell = max(", de: "Haltezeit = max(" })}<b>{t({ tr: "min duruş", en: "min dwell", de: "min. Haltezeit" })}</b>, <i>{t({ tr: "(inen+binen) ÷ (kapı×genişlik×akış)", en: "(alight+board) ÷ (door×width×flow)", de: "(Aus+Ein) ÷ (Tür×Breite×Fluss)" })}</i>) + {t({ tr: "kapı aç + kapı kapa. Her durakta ayrı → RTT'ye kümülatif.", en: "door open + door close. Separate per stop → cumulative into RTT.", de: "Tür auf + Tür zu. Je Haltestelle separat → kumulativ in die RTT." })}
-            <br />ℹ️ {t({ tr: "Dwell", en: "Dwell", de: "Haltezeit" })} <b>{t({ tr: "otomatik", en: "automatic", de: "automatisch" })}</b> {t({ tr: "(yolcu akışından) gelir ama zorunlu değil — istersen her durakta", en: "(from passenger flow) but not mandatory — you can also enter it", de: "(aus dem Fahrgastfluss), aber nicht zwingend — Sie können sie auch je Haltestelle" })} <b>{t({ tr: "elle", en: "by hand", de: "manuell" })}</b> {t({ tr: "de girebilirsin:", en: "at each stop:", de: "eingeben:" })} <Link href="/#ringler" className="underline">{t({ tr: "Ringler → Duraklar & Mesafeler", en: "Rings → Stops & Distances", de: "Ringe → Haltestellen & Distanzen" })}</Link>{t({ tr: "’de o durağın", en: ": turn off that stop's", de: ": schalten Sie das" })} <b>{t({ tr: "“oto dwell”", en: "“auto dwell”", de: "„Auto-Haltezeit“" })}</b> {t({ tr: "kutusunu kapatıp değeri yaz. Oto açıkken alt sınır yukarıdaki", en: "box for that stop and type the value. When auto is on, the lower bound is the", de: "-Kästchen der Haltestelle aus und tippen Sie den Wert. Bei aktivierter Automatik ist die Untergrenze die obige" })} <b>{t({ tr: "min duruş süresi", en: "min dwell time", de: "min. Haltezeit" })}</b>{t({ tr: "dir.", en: " above.", de: "." })}
+            <br />{t({ tr: "Dwell = max(", en: "Dwell = max(", de: "Haltezeit = max(" })}<b>{t({ tr: "min duruş", en: "min dwell", de: "min. Haltezeit" })}</b>, <i>{t({ tr: "(inen+binen) ÷ (kapı×genişlik×akış)", en: "(alight+board) ÷ (door×width×flow)", de: "(Aus+Ein) ÷ (Tür×Breite×Fluss)" })}</i>) + {t({ tr: "kapı aç + kapı kapa. Her durakta ayrı hesaplanır ve RTT'ye kümülatif eklenir.", en: "door open + door close. Computed separately per stop and added cumulatively to the RTT.", de: "Tür auf + Tür zu. Je Haltestelle separat berechnet und kumulativ zur RTT addiert." })}
+            <br />{t({ tr: "Dwell", en: "Dwell", de: "Haltezeit" })} <b>{t({ tr: "otomatik", en: "automatic", de: "automatisch" })}</b> {t({ tr: "(yolcu akışından) gelir ama zorunlu değil; istersen her durakta", en: "(from passenger flow) but not mandatory; you can also enter it", de: "(aus dem Fahrgastfluss), aber nicht zwingend; Sie können sie auch je Haltestelle" })} <b>{t({ tr: "elle", en: "by hand", de: "manuell" })}</b> {t({ tr: "de girebilirsin:", en: "at each stop:", de: "eingeben:" })} <Link href="/#ringler" className="underline">{t({ tr: "Ringler’deki Duraklar & Mesafeler", en: "Stops & Distances in Rings", de: "Haltestellen & Distanzen in Ringe" })}</Link>{t({ tr: "’de o durağın", en: ": turn off that stop's", de: ": schalten Sie das" })} <b>{t({ tr: "“oto dwell”", en: "“auto dwell”", de: "„Auto-Haltezeit“" })}</b> {t({ tr: "kutusunu kapatıp değeri yaz. Oto açıkken alt sınır yukarıdaki", en: "box for that stop and type the value. When auto is on, the lower bound is the", de: "-Kästchen der Haltestelle aus und tippen Sie den Wert. Bei aktivierter Automatik ist die Untergrenze die obige" })} <b>{t({ tr: "min duruş süresi", en: "min dwell time", de: "min. Haltezeit" })}</b>{t({ tr: "dir.", en: " above.", de: "." })}
           </div>
           <Kaynak etiket={t({ tr: "Bu panelde OLMAYAN girdiler", en: "Inputs NOT on this panel", de: "Eingaben, die NICHT auf diesem Panel sind" })} yerler={[{ ad: t({ tr: "İniş/biniş → Ringler", en: "Alight/board → Rings", de: "Aus-/Einstieg → Ringe" }), href: "/#ringler" }, { ad: t({ tr: "Araç kapıları → Çeken Araç", en: "Vehicle doors → Traction Vehicle", de: "Fahrzeugtüren → Triebfahrzeug" }), href: "/#ceken-arac" }]} />
         </Panel>
@@ -983,9 +983,9 @@ function StudioIc() {
           </div>
         )}
         {agGorunum === "harita" && (
-          <div className="mb-3 rounded-lg border-l-4 px-3 py-2.5 text-xs leading-relaxed" style={{ borderColor: brand.ink, background: CK.goodBgSoft, color: brand.inkSoft }}>
+          <div className="mb-3 rounded-r-sm border-l-2 px-3 py-2.5 text-sm leading-relaxed" style={{ borderColor: brand.border, color: brand.inkSoft }}>
             <div className="flex items-center justify-between gap-2">
-              <span className="font-semibold" style={{ color: brand.ink }}>ℹ️ {t({ tr: "Var olan hat → OSM · yeni / inşaat hattı → CAD", en: "Existing line → OSM · new / under-construction line → CAD", de: "Bestehende Linie → OSM · neue / im Bau befindliche Linie → CAD" })}</span>
+              <span className="font-semibold" style={{ color: brand.ink }}>{t({ tr: "Var olan hat için OSM, yeni ya da inşaat hâlindeki hat için CAD", en: "OSM for an existing line, CAD for a new or under-construction line", de: "OSM für eine bestehende Linie, CAD für eine neue oder im Bau befindliche Linie" })}</span>
               <button type="button" onClick={() => setHaritaBilgi((o) => !o)} className="shrink-0 text-xs underline" style={{ color: brand.muted }}>{haritaBilgi ? t({ tr: "gizle", en: "hide", de: "ausblenden" }) : t({ tr: "detay", en: "detail", de: "Detail" })}</button>
             </div>
             {haritaBilgi && (
@@ -1167,9 +1167,9 @@ function StudioIc() {
               zincir işletir. Böylece şube gecikme yayılımı burada da görünür (önce yalnız
               şube elle seçilince görünüyordu). Aynı birincil gecikme (koGecikme) ilk mekiğe. */}
           {subeKnockOn.length > 0 && (
-            <div className="mt-3 rounded-lg border px-4 py-3" style={{ borderColor: brand.red + "55", background: CK.badBgSoft }}>
-              <div className="mb-1.5 text-xs font-semibold" style={{ color: brand.red }}>
-                ◆ {t({ tr: "Tali hat mekikleri — kendi knock-on zincirleri", en: "Branch shuttles — their own knock-on chains", de: "Abzweig-Pendelzüge — eigene Folgeverspätungsketten" })}
+            <div className="mt-3 rounded-lg border px-4 py-3" style={{ borderColor: brand.border }}>
+              <div className="mb-1.5 text-sm font-semibold" style={{ color: brand.ink }}>
+                {t({ tr: "Tali hat mekikleri, kendi knock-on zincirleri", en: "Branch shuttles, their own knock-on chains", de: "Abzweig-Pendelzüge, eigene Folgeverspätungsketten" })}
                 <span className="ml-1 font-normal" style={{ color: brand.muted }}>({t({ tr: "ilk mekiğe", en: "first shuttle gets", de: "erster Pendelzug erhält" })} {koGecikme} s)</span>
               </div>
               <div className="flex flex-col gap-1.5">

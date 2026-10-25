@@ -85,7 +85,7 @@ export function SeferTersEntegre({ rings, stock, cfg, isletme, headwayDk, onHead
                 <g key={i}>
                   <line x1={x} y1={midY - 9} x2={x} y2={midY + 9} stroke={renk} strokeWidth={m.onerilir ? 2 : 1.2} />
                   <rect x={x - 3} y={midY - 3} width={6} height={6} transform={`rotate(45 ${x} ${midY})`} fill={renk} />
-                  <text x={x} y={ly} textAnchor="middle" fontSize={7.5} fontWeight={m.onerilir ? 700 : 500} fill={renk}>{m.onerilir ? "🔄 " : ""}{m.km.toFixed(2)}</text>
+                  <text x={x} y={ly} textAnchor="middle" fontSize={7.5} fontWeight={m.onerilir ? 700 : 500} fill={renk}>{m.km.toFixed(2)}</text>
                   <title>{`${m.ad} (${m.crossover === "x" ? "X" : "S"}-${t({ tr: "makas", en: "switch", de: "Weiche" })}) · ${m.km.toFixed(2)} km${m.onerilir ? ` · ${t({ tr: "kısa dönüş adayı", en: "short-turn candidate", de: "Kehr-Kandidat" })}` : ` · ${t({ tr: "ters işletme mümkün", en: "reverse running possible", de: "Kehrbetrieb möglich" })}`}`}</title>
                 </g>
               );
@@ -113,7 +113,7 @@ export function SeferTersEntegre({ rings, stock, cfg, isletme, headwayDk, onHead
         </div>
       </div>
       <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 px-1 text-xs" style={{ color: brand.muted }}>
-        <span><span style={{ color: CK.blue }}>▲</span> {t({ tr: "gidiş", en: "outbound", de: "Hinfahrt" })} · <span style={{ color: CK.orange }}>▼</span> {t({ tr: "dönüş", en: "return", de: "Rückfahrt" })} · <span style={{ color: CK.red }}>🔄</span> {t({ tr: "kısa dönüş adayı / bağlanan araç", en: "short-turn candidate / bound vehicle", de: "Kehr-Kandidat / gebundenes Fahrzeug" })}</span>
+        <span><span style={{ color: CK.blue }}>▲</span> {t({ tr: "gidiş", en: "outbound", de: "Hinfahrt" })} · <span style={{ color: CK.orange }}>▼</span> {t({ tr: "dönüş", en: "return", de: "Rückfahrt" })} · <span style={{ color: CK.red }}>◆</span> {t({ tr: "kısa dönüş adayı / bağlanan araç", en: "short-turn candidate / bound vehicle", de: "Kehr-Kandidat / gebundenes Fahrzeug" })}</span>
         <span><span style={{ color: brand.inkSoft }}>◆</span> {t({ tr: "ters işletme yapılabilen makas (tümü km ile işaretli)", en: "switch where reverse running is possible (all marked with km)", de: "Weiche mit möglichem Kehrbetrieb (alle mit km markiert)" })}</span>
       </div>
 
@@ -169,7 +169,7 @@ export function SeferTersEntegre({ rings, stock, cfg, isletme, headwayDk, onHead
           {s.oneriler.map((o, i) => (
             <div key={i} className="rounded-lg border-l-4 px-3 py-2 text-sm" style={{ borderColor: CK.red, background: "#FDF3F4", color: brand.inkSoft }}>
               <div className="font-semibold" style={{ color: brand.ink }}>
-                🔄 {t({ tr: "Araç", en: "Vehicle", de: "Fahrzeug" })} {o.aracNo} → {o.makasAd} ({o.crossover === "x" ? "X" : "S"}-{t({ tr: "makas", en: "switch", de: "Weiche" })} · {o.makasKm.toFixed(2)} km)
+                {t({ tr: "Araç", en: "Vehicle", de: "Fahrzeug" })} {o.aracNo} · {o.makasAd} ({o.crossover === "x" ? "X" : "S"}-{t({ tr: "makas", en: "switch", de: "Weiche" })} · {o.makasKm.toFixed(2)} km)
                 <span className="ml-2 text-xs font-normal" style={{ color: brand.muted }}>{t({ tr: "makasa", en: "reaches switch in", de: "erreicht Weiche in" })} ~{sure(o.ulasimSn)} {t({ tr: "sonra ulaşır · yoğun/sessiz", en: "· busy/quiet", de: "· voll/leer" })} {Math.round(o.oran * 10) / 10}× · ≈{sure(o.kazancSn)} {t({ tr: "daha sık", en: "more frequent", de: "häufiger" })}</span>
               </div>
               <div className="mt-0.5 text-xs">{o.gerekce}</div>

@@ -25,6 +25,7 @@ import { ringDogrula, dengeOnerisi, yeniHemzemin, yeniMakas, yeniTehlike, yeniKu
 import { parkAnahtar, durakKonumu } from "@/lib/anaray/parklanma";
 import { Num, SubBaslik, Panel } from "@/components/RingUI";
 import { NedenDetay } from "@/components/NedenDetay";
+import { Not } from "@/components/Not";
 import { HemzeminAnaliz } from "@/components/HemzeminAnaliz";
 import { Ikon } from "@/components/Ikon";
 
@@ -631,7 +632,7 @@ export function RingEditor() {
             {/* Bilgilendirme: neden makaslı turnback hesabı — kademeli açılım (uzun eğitim
                 metni varsayılan kapalı; panel girdilerle açılır, bilgiyle boğmaz). */}
             <details className="mb-2 rounded border-l-4 px-3 py-2 text-xs leading-relaxed" style={{ background: CK.goodBgSoft, borderColor: brand.ink, color: brand.inkSoft }}>
-              <summary className="cursor-pointer select-none font-semibold" style={{ color: brand.ink }}>ℹ️ {tt({ tr: "Neden makaslı turnback hesabı?", en: "Why a switch-based turnback calculation?", de: "Warum eine weichenbasierte Wendeberechnung?" })} <span className="font-normal" style={{ color: brand.muted }}>({tt({ tr: "nasıl hesaplanır — aç", en: "how it is computed — open", de: "wie berechnet — öffnen" })})</span></summary>
+              <summary className="cursor-pointer select-none font-semibold" style={{ color: brand.ink }}>{tt({ tr: "Neden makaslı turnback hesabı?", en: "Why a switch-based turnback calculation?", de: "Warum eine weichenbasierte Wendeberechnung?" })} <span className="font-normal" style={{ color: brand.muted }}>({tt({ tr: "nasıl hesaplanır", en: "how it is computed", de: "wie berechnet" })})</span></summary>
               <div className="mt-1.5">
               {tt({ tr: "Tramvay uçta dönmek için", en: "To turn back at the end, the tram must cross to the opposite track via a", de: "Um am Endpunkt zu wenden, muss die Straßenbahn über eine" })} {dil === "tr" ? <><b>makasla (crossover)</b> geçmek zorundadır</> : dil === "de" ? <><b>Weichenverbindung (Crossover)</b> auf das Gegengleis wechseln</> : <><b>crossover switch</b></>} — {tt({ tr: "yoksa gelen hatla", en: "otherwise it would collide", de: "sonst würde sie" })} <b>{tt({ tr: "kafa kafaya çarpışır", en: "head-on with oncoming traffic", de: "frontal mit dem Gegenverkehr kollidieren" })}</b>. {tt({ tr: "Terminalin en fazla kaç tramvay çevirebileceğini asıl bu makasın tipi belirler:", en: "The type of this switch is what mainly determines how many trams the terminal can turn back:", de: "Der Typ dieser Weiche bestimmt maßgeblich, wie viele Straßenbahnen die Endstelle wenden kann:" })}
               <br />• <b>{tt({ tr: "S-makas:", en: "S switch:", de: "S-Weiche:" })}</b> {tt({ tr: "dönüşler", en: "turnbacks are", de: "Wenden sind" })} <b>{tt({ tr: "seri, tek tek", en: "serial, one by one", de: "seriell, nacheinander" })}</b> — {tt({ tr: "bir tramvay dönüp boğazı boşaltmadan öbürü giremez → terminal aralığı =", en: "a second tram cannot enter until the first turns and clears the throat → terminal interval =", de: "eine zweite Straßenbahn kann erst einfahren, wenn die erste gewendet und den Hals geräumt hat → Endstellen-Intervall =" })} <b>{tt({ tr: "tam peron işgali", en: "full platform occupancy", de: "volle Bahnsteigbelegung" })}</b> {tt({ tr: "(peron çok olsa da hızlanmaz).", en: "(more platforms do not speed it up).", de: "(mehr Bahnsteige beschleunigen es nicht)." })}
@@ -781,9 +782,9 @@ export function RingEditor() {
                   <span style={{ color: brand.faint }}> · {t({ tr: "aynı sayı Sefer'de de görünür (tek kaynak); tam kısıt & blocking-time dökümü ", en: "the same number also appears under Service (single source); full constraint & blocking-time breakdown in ", de: "dieselbe Zahl erscheint auch unter Betrieb (eine Quelle); vollständige Einschränkungs- & Blocking-Time-Aufschlüsselung in " })}<Link href="/#sistem" className="underline">{t({ tr: "Sistem Merkezi", en: "System Center", de: "Systemzentrale" })}</Link>{t({ tr: "'nde.", en: ".", de: "." })}</span>
                 </p>
                 {subeler.length > 0 && (
-                  <p className="mt-1.5 rounded border-l-2 px-2 py-1 text-xs" style={{ borderColor: brand.red, background: CK.badBgSoft, color: brand.inkSoft }}>
-                    ◆ {t({ tr: "Bu değer ANA HATTA aittir — her şube ayrımındaki kavşak makası (turnout) darboğaza KATILIR. Bir şubenin kendi rota kapasitesi için ", en: "This value is for the MAIN LINE — the junction turnout at each branch divergence IS included in the bottleneck. For a branch's own route capacity, ", de: "Dieser Wert gilt für die HAUPTSTRECKE — die Weiche an jeder Abzweigung IST im Engpass enthalten. Für die Routenkapazität einer Abzweigung " })}<Link href="/#sefer" className="underline">{t({ tr: "Sefer'de şubeyi seç", en: "select the branch under Service", de: "wählen Sie die Abzweigung unter Betrieb" })}</Link>{t({ tr: ".", en: ".", de: "." })}
-                  </p>
+                  <Not className="mt-1.5">
+                    {t({ tr: "Bu değer ana hatta aittir; her şube ayrımındaki kavşak makası (turnout) darboğaza katılır. Bir şubenin kendi rota kapasitesi için ", en: "This value is for the main line; the junction turnout at each branch divergence is included in the bottleneck. For a branch's own route capacity, ", de: "Dieser Wert gilt für die Hauptstrecke; die Weiche an jeder Abzweigung ist im Engpass enthalten. Für die Routenkapazität einer Abzweigung " })}<Link href="/#sefer" className="underline">{t({ tr: "Sefer'de şubeyi seç", en: "select the branch under Service", de: "wählen Sie die Abzweigung unter Betrieb" })}</Link>{t({ tr: ".", en: ".", de: "." })}
+                  </Not>
                 )}
                 <div className="mt-2 flex flex-wrap gap-2">
                   {maks.kisitlar.map((k) => (
@@ -816,7 +817,6 @@ export function RingEditor() {
                   <span className="shrink-0 font-mono text-xs" style={{ color: o.fark > 0 ? brand.red : OK }}>{o.fark > 0 ? "+" : ""}{Math.round(o.fark)} s</span>
                   <span className="font-medium" style={{ color: brand.ink }}>{o.ad}:</span>
                   <span style={{ color: brand.inkSoft }}>{o.oneri}</span>
-                  <span className="ml-auto shrink-0 text-xs" style={{ color: brand.muted }} aria-hidden="true">⤵</span>
                 </button>
               ))}
             </div>
