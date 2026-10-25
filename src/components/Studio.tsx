@@ -618,7 +618,7 @@ function StudioIc() {
         <div className="rounded-lg border-2 p-4" style={{ borderColor: brand.ink, background: CK.goodBgSoft }}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-xs font-bold uppercase tracking-wide" style={{ color: brand.inkSoft }}>{t({ tr: "Önerilen tramvay (ihtiyaç)", en: "Recommended trams (need)", de: "Empfohlene Straßenbahnen (Bedarf)" })}</div>
+              <div className="text-xs font-bold" style={{ color: brand.inkSoft }}>{t({ tr: "Önerilen tramvay (ihtiyaç)", en: "Recommended trams (need)", de: "Empfohlene Straßenbahnen (Bedarf)" })}</div>
               <div className="text-xs" style={{ color: brand.muted }}>{t({ tr: "hedef sefer aralığın için gereken filo", en: "fleet needed for your target headway", de: "für Ihre Ziel-Zugfolgezeit benötigte Flotte" })}</div>
               <div className="flex items-baseline gap-2">
                 <span className="text-4xl font-bold tabular-nums" style={{ color: brand.ink }}>{oneriTramvay}</span>
@@ -1246,7 +1246,7 @@ function StudioIc() {
         {yolcuVeriVar && tersRapor && (tersRapor.donusIhtiyaclari.length > 0 || tersRapor.makaslar.some((m) => m.kisaDonusOnerilir)) && (
           <div className="mt-3 space-y-1 text-xs">
             {tersRapor.donusIhtiyaclari.slice(0, 4).map((d, i) => (
-              <div key={i} style={{ color: brand.inkSoft }}>🔴 <b>{d.durak}</b> {t({ tr: "doluluk", en: "occupancy", de: "Auslastung" })} %{Math.round(d.doluluk * 100)} → <b>{d.oneriMakas}</b> {t({ tr: "makasından kısa dönüş gerekir.", en: "turnout requires a short-turn.", de: "Weiche erfordert eine Kehre." })}</div>
+              <div key={i} style={{ color: brand.inkSoft }}><b>{d.durak}</b> {t({ tr: "doluluk", en: "occupancy", de: "Auslastung" })} %{Math.round(d.doluluk * 100)}; <b>{d.oneriMakas}</b> {t({ tr: "makasından kısa dönüş gerekir.", en: "turnout requires a short-turn.", de: "Weiche erfordert eine Kehre." })}</div>
             ))}
             {tersRapor.makaslar.filter((m) => m.kisaDonusOnerilir).slice(0, 3).map((m, i) => (
               <div key={`m${i}`} style={{ color: brand.muted }}>⟲ <b>{m.ad}</b> {t({ tr: "kısa dönüş adayı", en: "short-turn candidate", de: "Kehre-Kandidat" })} (%{m.kisaDonusYuzde}).{m.crossover === "x" ? "" : t({ tr: " S makas — ters işletme sinyali gerekebilir.", en: " S turnout — a reverse-running signal may be needed.", de: " S-Weiche — ein Kehrbetriebssignal kann nötig sein." })}</div>

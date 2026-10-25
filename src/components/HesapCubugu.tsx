@@ -97,7 +97,7 @@ export function HesapKontrolleri() {
     <div className="relative flex flex-wrap items-center justify-end gap-x-2.5 gap-y-1.5 text-xs">
       {/* ── Hat grubu: etiket + seçici + yeni hat (birlikte hizalı durur) ── */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="hidden font-semibold uppercase tracking-[0.14em] sm:inline"
+        <span className="hidden font-semibold sm:inline"
           style={{ color: koyu.etiket, fontSize: "0.6rem" }}>{t({ tr: "AKTİF HAT", en: "ACTIVE LINE", de: "AKTIVE LINIE" })}</span>
 
         {/* Hat seçici + yanındaki ✎ ile proje adı doğrudan düzenlenir. */}

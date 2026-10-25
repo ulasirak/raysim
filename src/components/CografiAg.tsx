@@ -418,7 +418,7 @@ export function CografiAg({
         const kritik = asim > 0;
         return (
           <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border px-3 py-2 text-xs" style={{ background: kritik ? CK.badBg : "transparent", borderColor: kritik ? CK.red : brand.border, color: kritik ? CK.red : brand.inkSoft }}>
-            <span className="font-semibold" style={{ color: brand.ink }}>{tt({ tr: "⏱ Hız sınırı önerileri:", en: "⏱ Speed limit suggestions:", de: "⏱ Geschwindigkeitsvorschläge:" })}</span>
+            <span className="font-semibold" style={{ color: brand.ink }}>{tt({ tr: "Hız sınırı önerileri:", en: "Speed limit suggestions:", de: "Geschwindigkeitsvorschläge:" })}</span>
             <span><b>{hizKisitlari.length}</b> {tt({ tr: "kısıt haritada işaretli (km/h —", en: "constraints marked on the map (km/h —", de: "Einschränkungen auf der Karte markiert (km/h —" })} <b>{tt({ tr: "tıkla", en: "click", de: "klicken" })}</b> {tt({ tr: "→ detay)", en: "→ detail)", de: "→ Detail)" })}{konforlu.length > 0 ? ` · ${konforlu.length} ${tt({ tr: "kurpta konfor önerisi", en: "curves with comfort advice", de: "Bögen mit Komfortempfehlung" })}` : ""}{asim > 0 ? ` (${asim} ${tt({ tr: "aşım", en: "exceedances", de: "Überschreitungen" })})` : ""}</span>
             {konforlu.length > 0 && <span style={{ color: brand.muted }}>{yolcuVeriVar ? tt({ tr: "kurplar istasyon yolcu sayısına eşli", en: "curves matched to station passenger counts", de: "Bögen an Haltestellen-Fahrgastzahlen gekoppelt" }) : tt({ tr: "kurplar talep doluluğuna eşli", en: "curves matched to demand occupancy", de: "Bögen an Nachfrage-Auslastung gekoppelt" })}</span>}
           </div>
@@ -606,7 +606,7 @@ export function CografiAg({
         return (
           <div className="mt-2 rounded-lg border-l-4 px-3 py-2.5 text-[0.75rem]" style={{ borderColor: renk, background: "#fff", boxShadow: "0 2px 12px rgba(0,0,0,0.10)" }}>
             <div className="flex items-center justify-between gap-2">
-              <span className="font-bold" style={{ color: renk }}>⏱ {k.ad} — {turAd}</span>
+              <span className="font-bold" style={{ color: renk }}>{k.ad} · {turAd}</span>
               <button type="button" onClick={() => setSeciliKisit(null)} className="text-xs underline" style={{ color: brand.muted }}>{tt({ tr: "kapat ✕", en: "close ✕", de: "schließen ✕" })}</button>
             </div>
             <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5" style={{ color: brand.inkSoft }}>

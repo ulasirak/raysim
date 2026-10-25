@@ -157,7 +157,7 @@ export function TersIsletme() {
       {tavsiye && (
         <div className="rounded-lg border-2 p-4" style={{ borderColor: brand.ink, background: "#F7F9FB" }}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wide" style={{ color: brand.ink }}>{t({ tr: "Tavsiye Edilen Tramvay Sayısı", en: "Recommended Number of Trams", de: "Empfohlene Anzahl Straßenbahnen" })}</span>
+            <span className="text-xs font-bold" style={{ color: brand.ink }}>{t({ tr: "Tavsiye Edilen Tramvay Sayısı", en: "Recommended Number of Trams", de: "Empfohlene Anzahl Straßenbahnen" })}</span>
             <span className="text-xs" style={{ color: brand.muted }}>
               {t({ tr: "belirleyen:", en: "driven by:", de: "bestimmt durch:" })} {tavsiye.surucu === "talep" ? t({ tr: "yolcu talebi", en: "passenger demand", de: "Fahrgastnachfrage" }) : tavsiye.surucu === "frekans" ? t({ tr: "hedef sefer aralığı", en: "target headway", de: "Ziel-Zugfolgezeit" }) : t({ tr: "kapasite tavanı", en: "capacity ceiling", de: "Kapazitätsgrenze" })}
             </span>
@@ -198,24 +198,24 @@ export function TersIsletme() {
             </Not>
           )}
           {tavsiye.kurpAdet > 0 && (
-            <p className="mt-2 text-xs" style={{ color: tavsiye.kurpUyariTavsiye < tavsiye.kurpUyariMevcut ? "#2E7D32" : brand.muted }}>
-              🛤 {t({
-                tr: `Kurp konforu: ${tavsiye.kurpAdet} kurptan ${tavsiye.kurpUyariMevcut}'inde ayakta-yolcu uyarısı vardı; bu filoda ${tavsiye.kurpUyariTavsiye}'e iniyor${tavsiye.kurpUyariTavsiye < tavsiye.kurpUyariMevcut ? " (düşük doluluk → kurplarda konfor düzeliyor)" : ""}.`,
-                en: `Curve comfort: ${tavsiye.kurpUyariMevcut} of ${tavsiye.kurpAdet} curves had a standing-passenger warning; with this fleet it drops to ${tavsiye.kurpUyariTavsiye}${tavsiye.kurpUyariTavsiye < tavsiye.kurpUyariMevcut ? " (lower occupancy → comfort improves on curves)" : ""}.`,
-                de: `Bogenkomfort: Bei ${tavsiye.kurpUyariMevcut} von ${tavsiye.kurpAdet} Bögen gab es eine Stehplatz-Warnung; mit dieser Flotte sinkt sie auf ${tavsiye.kurpUyariTavsiye}${tavsiye.kurpUyariTavsiye < tavsiye.kurpUyariMevcut ? " (geringere Auslastung → Komfort in Bögen verbessert sich)" : ""}.`,
+            <p className="mt-2 text-xs" style={{ color: brand.inkSoft }}>
+              {t({
+                tr: `Kurp konforu: ${tavsiye.kurpAdet} kurptan ${tavsiye.kurpUyariMevcut}'inde ayakta-yolcu uyarısı vardı; bu filoda ${tavsiye.kurpUyariTavsiye}'e iniyor${tavsiye.kurpUyariTavsiye < tavsiye.kurpUyariMevcut ? " (düşük doluluk, kurplarda konfor düzeliyor)" : ""}.`,
+                en: `Curve comfort: ${tavsiye.kurpUyariMevcut} of ${tavsiye.kurpAdet} curves had a standing-passenger warning; with this fleet it drops to ${tavsiye.kurpUyariTavsiye}${tavsiye.kurpUyariTavsiye < tavsiye.kurpUyariMevcut ? " (lower occupancy, comfort improves on curves)" : ""}.`,
+                de: `Bogenkomfort: Bei ${tavsiye.kurpUyariMevcut} von ${tavsiye.kurpAdet} Bögen gab es eine Stehplatz-Warnung; mit dieser Flotte sinkt sie auf ${tavsiye.kurpUyariTavsiye}${tavsiye.kurpUyariTavsiye < tavsiye.kurpUyariMevcut ? " (geringere Auslastung, Komfort in Bögen verbessert sich)" : ""}.`,
               })}
             </p>
           )}
           <p className="mt-1 text-sm" style={{ color: brand.inkSoft }}>{tavsiye.gerekce}</p>
           {/* Etkileyen girdilere yönlendirme */}
           <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t pt-2 text-xs" style={{ borderColor: brand.border }}>
-            <span style={{ color: brand.muted }}>{t({ tr: "Etkileyen girdiler →", en: "Influencing inputs →", de: "Einflussgrößen →" })}</span>
+            <span style={{ color: brand.muted }}>{t({ tr: "Etkileyen girdiler:", en: "Influencing inputs:", de: "Einflussgrößen:" })}</span>
             <button type="button" onClick={acGirdi} className="rounded border px-2 py-0.5 font-medium" style={{ borderColor: brand.border, color: brand.ink }}
-              title={t({ tr: "Durak yolcu talebi + araç kapasitesi + doluluk hedefi (bu sayfada)", en: "Station passenger demand + vehicle capacity + occupancy target (on this page)", de: "Fahrgastnachfrage der Haltestelle + Fahrzeugkapazität + Auslastungsziel (auf dieser Seite)" })}>{t({ tr: "📊 Talep · kapasite · doluluk", en: "📊 Demand · capacity · occupancy", de: "📊 Nachfrage · Kapazität · Auslastung" })}</button>
+              title={t({ tr: "Durak yolcu talebi + araç kapasitesi + doluluk hedefi (bu sayfada)", en: "Station passenger demand + vehicle capacity + occupancy target (on this page)", de: "Fahrgastnachfrage der Haltestelle + Fahrzeugkapazität + Auslastungsziel (auf dieser Seite)" })}>{t({ tr: "Talep · kapasite · doluluk", en: "Demand · capacity · occupancy", de: "Nachfrage · Kapazität · Auslastung" })}</button>
             <Link href="/#ringler" className="rounded border px-2 py-0.5 font-medium" style={{ borderColor: brand.border, color: brand.ink }}
-              title={t({ tr: "Kurplar (çevrimi ve konforu etkiler) + sahasal hız — Ringler", en: "Curves (affect cycle and comfort) + field speed — Rings", de: "Kurven (beeinflussen Umlauf und Komfort) + Feldgeschwindigkeit — Ringe" })}>{t({ tr: "🛤 Kurplar & hız", en: "🛤 Curves & speed", de: "🛤 Kurven & Geschwindigkeit" })}</Link>
+              title={t({ tr: "Kurplar (çevrimi ve konforu etkiler) + sahasal hız (Ringler)", en: "Curves (affect cycle and comfort) + field speed (Rings)", de: "Kurven (beeinflussen Umlauf und Komfort) + Feldgeschwindigkeit (Ringe)" })}>{t({ tr: "Kurplar & hız", en: "Curves & speed", de: "Kurven & Geschwindigkeit" })}</Link>
             <Link href="/#sistem" className="rounded border px-2 py-0.5 font-medium" style={{ borderColor: brand.border, color: brand.ink }}
-              title={t({ tr: "Hedef sefer aralığı (headway) + yanal ivme/konfor tavanı + ivme/fren — Sistem Merkezi", en: "Target headway + lateral acceleration/comfort ceiling + acceleration/braking — System Center", de: "Ziel-Zugfolgezeit + Querbeschleunigung/Komfortgrenze + Beschleunigung/Bremsung — Systemzentrum" })}>{t({ tr: "⚙ Hedef aralık · konfor", en: "⚙ Target headway · comfort", de: "⚙ Ziel-Zugfolgezeit · Komfort" })}</Link>
+              title={t({ tr: "Hedef sefer aralığı (headway) + yanal ivme/konfor tavanı + ivme/fren — Sistem Merkezi", en: "Target headway + lateral acceleration/comfort ceiling + acceleration/braking — System Center", de: "Ziel-Zugfolgezeit + Querbeschleunigung/Komfortgrenze + Beschleunigung/Bremsung — Systemzentrum" })}>{t({ tr: "Hedef aralık · konfor", en: "Target headway · comfort", de: "Ziel-Zugfolgezeit · Komfort" })}</Link>
           </div>
         </div>
       )}

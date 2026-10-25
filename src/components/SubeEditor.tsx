@@ -89,7 +89,7 @@ export function SubeEditor() {
   // Küçük etiketli bilgi kutusu
   const Chip = ({ etiket, deger, vurgu }: { etiket: string; deger: string; vurgu?: string }) => (
     <span className="inline-flex flex-col rounded-md border px-2.5 py-1" style={{ borderColor: brand.border, background: "#F7F9FA" }}>
-      <span className="text-xs uppercase tracking-wide" style={{ color: brand.muted }}>{etiket}</span>
+      <span className="text-xs" style={{ color: brand.muted }}>{etiket}</span>
       <span className="text-sm font-semibold tabular-nums" style={{ color: vurgu || brand.ink }}>{deger}</span>
     </span>
   );

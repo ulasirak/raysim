@@ -325,7 +325,7 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
             <div className="mb-2 font-semibold" style={{ color: brand.ink }}>{t({ tr: "Katman eşleme — hangi katman ne?", en: "Layer mapping — which layer is what?", de: "Ebenenzuordnung — welche Ebene ist was?" })} ({geo.katmanlar.length} {t({ tr: "katman", en: "layers", de: "Ebenen" })} · {geo.polylines.length} {t({ tr: "çizgi", en: "lines", de: "Linien" })} · {geo.points.length} {t({ tr: "nokta", en: "points", de: "Punkte" })} · {geo.labels.length} {t({ tr: "metin", en: "texts", de: "Texte" })})</div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <div className="mb-1 font-medium" style={{ color: brand.inkSoft }}>🛤 {t({ tr: "Güzergâh (ray çizgileri)", en: "Alignment (rail lines)", de: "Trasse (Schienenlinien)" })}</div>
+                <div className="mb-1 font-medium" style={{ color: brand.inkSoft }}>{t({ tr: "Güzergâh (ray çizgileri)", en: "Alignment (rail lines)", de: "Trasse (Schienenlinien)" })}</div>
                 <div className="flex flex-wrap gap-1.5">
                   {geo.katmanlar.map((k) => {
                     const secili = esle.guzergahKatman.includes(k);

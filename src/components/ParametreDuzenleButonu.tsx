@@ -48,7 +48,6 @@ export function ParametreDuzenleButonu() {
         className="inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition hover:bg-white/10"
         style={{ background: "rgba(255,255,255,0.06)", borderColor: "rgba(255,255,255,0.22)", color: "#E7ECF1" }}
       >
-        <span aria-hidden="true">⚙</span>
         <span className="hidden sm:inline">{t({ tr: "Parametreler", en: "Parameters", de: "Parameter" })}</span>
       </button>
 

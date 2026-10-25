@@ -71,18 +71,18 @@ export type BolumSlug = (typeof BOLUM_SLUG)[number];
 
 /** Faz başlığı olan bölümler yeni bir boru-hattı aşaması açar (KUR/ANALİZ/BELGELE). */
 const BOLUMLER: { slug: BolumSlug; el: React.ReactNode; faz?: { ad: string; modul: string; not: string } }[] = [
-  { slug: "ringler", el: <RingEditor />, faz: { ad: "KUR", modul: "Durak Arası Ringler", not: "Hattı ve makas bölgelerini tanımla — buradaki her veri kalıcıdır." } },
-  { slug: "sefer", el: <Studio />, faz: { ad: "ANALİZ ET", modul: "Sefer Simülasyonu", not: "Kurduğun hattı simüle et — canlı ağ, ters işletme, tarife, kapasite ve darboğazlar." } },
-  { slug: "sistem", el: <SistemMerkezi />, faz: { ad: "İNCELE", modul: "Sistem Merkezi", not: "Kapasite, darboğaz, motor doğruluğu ve filo kararını derinlemesine incele." } },
-  { slug: "belgeler", el: <Belgeler />, faz: { ad: "BELGELE", modul: "Teknik Belgeler", not: "Analizden profesyonel tasarım dokümantasyonu üret." } },
-  { slug: "karsilastirma", el: <Karsilastirma />, faz: { ad: "KARŞILAŞTIR", modul: "Karşılaştırma", not: "Senaryoları/projeleri yan yana koy — objektif karar desteği." } },
+  { slug: "ringler", el: <RingEditor />, faz: { ad: "Kur", modul: "Durak Arası Ringler", not: "Hattı ve makas bölgelerini tanımla; buradaki her veri kalıcıdır." } },
+  { slug: "sefer", el: <Studio />, faz: { ad: "Analiz et", modul: "Sefer Simülasyonu", not: "Kurduğun hattı simüle et: canlı ağ, ters işletme, tarife, kapasite ve darboğazlar." } },
+  { slug: "sistem", el: <SistemMerkezi />, faz: { ad: "İncele", modul: "Sistem Merkezi", not: "Kapasite, darboğaz, motor doğruluğu ve filo kararını derinlemesine incele." } },
+  { slug: "belgeler", el: <Belgeler />, faz: { ad: "Belgele", modul: "Teknik Belgeler", not: "Analizden tasarım dokümantasyonu üret." } },
+  { slug: "karsilastirma", el: <Karsilastirma />, faz: { ad: "Karşılaştır", modul: "Karşılaştırma", not: "Senaryoları/projeleri yan yana koy; objektif karar desteği." } },
 ];
 
 function FazBasligi({ ad, modul, not }: { ad: string; modul: string; not: string }) {
   return (
     <div className="mx-auto max-w-6xl px-6 pt-12">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b pb-2" style={{ borderColor: brand.borderStrong }}>
-        <span className="font-brand text-sm font-bold tracking-[0.22em]" style={{ color: brand.red }}>{ad}</span>
+        <span className="font-brand text-sm font-bold" style={{ color: brand.red }}>{ad}</span>
         {/* Nav istasyon adıyla hizalı — "ANALİZ ET" ↔ "Sefer Simülasyonu" göz eşleşmesi */}
         <span className="font-brand text-sm font-semibold" style={{ color: brand.ink }}>{modul}</span>
         <span className="text-xs" style={{ color: brand.muted }}>{not}</span>

@@ -304,7 +304,7 @@ export function RingEditor() {
       {/* Başlık */}
       <div className="mb-6 flex items-end justify-between border-b pb-4" style={{ borderColor: brand.border }}>
         <div>
-          <div className="field-label">{t({ tr: "Durak Arası Ring Editörü — Gerçek-Hayat İşletim Hücreleri", en: "Inter-Stop Section Editor — Real-Life Operating Cells", de: "Editor für Streckenabschnitte — Betriebszellen aus der Praxis" })}</div>
+          <div className="field-label">{t({ tr: "Durak Arası Ring Editörü (gerçek-hayat işletim hücreleri)", en: "Inter-Stop Section Editor (real-life operating cells)", de: "Editor für Streckenabschnitte (Betriebszellen aus der Praxis)" })}</div>
           <h1 className="font-brand mt-1 text-2xl font-semibold" style={{ color: brand.ink }}>{hatAdiTemiz(meta.hatAdi || t({ tr: "Adsız Hat", en: "Untitled Line", de: "Unbenannte Strecke" }))} · {t({ tr: "Loop (Çevrim) Şartları", en: "Loop (Cycle) Conditions", de: "Umlauf-Bedingungen" })}</h1>
         </div>
         <button

@@ -136,7 +136,7 @@ export function SistemMerkezi() {
 
       {bosHat && (
         <div className="mb-6 rounded border-l-4 px-4 py-3 text-sm" style={{ borderColor: CK.amber, background: CK.amberBg, color: CK.amberInk }}>
-          {t({ tr: "▲ Bu hatta henüz ring (durak arası hücre) yok — canlı durum ve kapasite panelleri gizlendi. Parametreleri header'daki (üst çubuk) ", en: "▲ This line has no rings (inter-stop cells) yet — live status and capacity panels are hidden. Set the parameters from the ", de: "▲ Diese Linie hat noch keine Ringe (Zwischenhaltstellen-Zellen) — Live-Status- und Kapazitätspanels sind ausgeblendet. Stellen Sie die Parameter über die Schaltfläche " })}<b>⚙ {t({ tr: "Parametreler", en: "Parameters", de: "Parameter" })}</b>{t({ tr: " butonundan, hattı ", en: " in the header (top bar), and build the line from the ", de: " in der Kopfzeile (obere Leiste) ein und bauen Sie die Linie über das " })}
+          {t({ tr: "Bu hatta henüz ring (durak arası hücre) yok; canlı durum ve kapasite panelleri gizlendi. Parametreleri header'daki (üst çubuk) ", en: "This line has no rings (inter-stop cells) yet; live status and capacity panels are hidden. Set the parameters from the ", de: "Diese Linie hat noch keine Ringe (Zwischenhaltstellen-Zellen); Live-Status- und Kapazitätspanels sind ausgeblendet. Stellen Sie die Parameter über die Schaltfläche " })}<b>{t({ tr: "Parametreler", en: "Parameters", de: "Parameter" })}</b>{t({ tr: " butonundan, hattı ", en: " in the header (top bar), and build the line from the ", de: " in der Kopfzeile (obere Leiste) ein und bauen Sie die Linie über das " })}
           <Link href="/#ringler" className="underline">{t({ tr: "Ringler modülünden", en: "Ringler module", de: "Ringler-Modul" })}</Link>{t({ tr: " kurabilirsiniz.", en: ".", de: " auf." })}
         </div>
       )}
@@ -201,7 +201,7 @@ export function SistemMerkezi() {
         </div>
 
         {/* Sperrzeitentreppe — GERÇEK zaman-mesafe merdiveni (kanonik) */}
-        <BlokCekmece baslik={t({ tr: "Sperrzeitentreppe — zaman-mesafe merdiveni (iki ardışık tren)", en: "Sperrzeitentreppe — time-distance staircase (two consecutive trains)", de: "Sperrzeitentreppe — Zeit-Weg-Treppe (zwei aufeinanderfolgende Züge)" })} acik={blokAcik.merdiven} onToggle={() => blokTopla("merdiven")}
+        <BlokCekmece baslik={t({ tr: "Sperrzeitentreppe (zaman-mesafe merdiveni, iki ardışık tren)", en: "Sperrzeitentreppe (time-distance staircase, two consecutive trains)", de: "Sperrzeitentreppe (Zeit-Weg-Treppe, zwei aufeinanderfolgende Züge)" })} acik={blokAcik.merdiven} onToggle={() => blokTopla("merdiven")}
           ozet={<span>{t({ tr: "min headway ", en: "min headway ", de: "Zugfolgezeit " })}{sure(bt.minHeadway)}</span>}>
           <div className="rounded border p-2" style={{ borderColor: brand.border }}>
             <BlockingStairChart bloklar={bt.bloklar} L={bt.toplamUzunluk} minHeadway={bt.minHeadway} kritikBlok={bt.kritikBlok} yorunge={bt.yorunge} kritikRenk={kritikRenk} kritikAd={kritikAd} />
@@ -247,7 +247,7 @@ export function SistemMerkezi() {
 
         {/* Blok teşhisi & çözüm — her blok hangi durak-arasına düşüyor, darboğazın
             nedeni ne ve nereden düzeltilir; buton doğrudan o ring'e/bölüme götürür. */}
-        <BlokCekmece baslik={t({ tr: "🔧 Blok Teşhisi & Çözüm", en: "🔧 Block Diagnosis & Fix", de: "🔧 Blockdiagnose & Lösung" })} acik={blokAcik.teshis} onToggle={() => blokTopla("teshis")}
+        <BlokCekmece baslik={t({ tr: "Blok Teşhisi & Çözüm", en: "Block Diagnosis & Fix", de: "Blockdiagnose & Lösung" })} acik={blokAcik.teshis} onToggle={() => blokTopla("teshis")}
           ozet={<span>{teshis.length}{t({ tr: " blok", en: " blocks", de: " Blöcke" })}{bt && teshis.some((t) => t.b.toplam > bt.hedefHeadway) ? t({ tr: " · aşım", en: " · exceeded", de: " · Überschreitung" }) : ""}</span>}>
           <p className="mb-2.5 text-xs" style={{ color: brand.muted }}>
             {t({ tr: "Her blok, düştüğü ", en: "Each block is named by the ", de: "Jeder Block wird nach dem " })}<b>{t({ tr: "durak-arası (ring)", en: "inter-stop (ring)", de: "Zwischenhaltstellen-Abschnitt (Ring)" })}</b>{t({ tr: " ile adlandırılır; en kritik blok en üstte. Darboğazın nedeni ve nereden düzelteceğin yanında — ", en: " it falls into; the most critical block is at the top. The bottleneck's cause and where to fix it are shown alongside — ", de: ", in den er fällt, benannt; der kritischste Block steht oben. Ursache des Engpasses und wo er zu beheben ist stehen daneben — " })}<b>{t({ tr: "buton doğrudan o ring'e/bölüme götürür", en: "the button takes you straight to that ring/section", de: "die Schaltfläche führt direkt zu diesem Ring/Abschnitt" })}</b>.
@@ -349,7 +349,7 @@ export function SistemMerkezi() {
       {/* Parametre düzenleme TEK yerde: header'daki ⚙ Parametreler. Burada tekrar
           gösterilmez (çift giriş kafa karıştırıyordu) — yalnız yönlendirme. */}
       <div className="mt-6 rounded-lg border border-dashed px-4 py-3 text-sm" style={{ borderColor: brand.borderStrong, color: brand.muted }}>
-        {t({ tr: "⚙ Simülasyon parametreleri header'daki ", en: "⚙ Simulation parameters are edited from the ", de: "⚙ Simulationsparameter werden über die " })}<b style={{ color: brand.ink }}>{t({ tr: "“⚙ Parametreler”", en: "“⚙ Parameters”", de: "„⚙ Parameter“" })}</b>{t({ tr: " butonundan düzenlenir — tek kaynak, her sayfadan erişilir. Yukarıdaki canlı durum ve kapasite panelleri bu değerlerle anlık çözülür.", en: " button in the header — a single source, reachable from every page. The live status and capacity panels above resolve instantly from these values.", de: " Schaltfläche in der Kopfzeile bearbeitet — eine einzige Quelle, von jeder Seite erreichbar. Die Live-Status- und Kapazitätspanels oben lösen sich sofort aus diesen Werten auf." })}
+        {t({ tr: "Simülasyon parametreleri header'daki ", en: "Simulation parameters are edited from the ", de: "Simulationsparameter werden über die " })}<b style={{ color: brand.ink }}>{t({ tr: "“Parametreler”", en: "“Parameters”", de: "„Parameter“" })}</b>{t({ tr: " butonundan düzenlenir — tek kaynak, her sayfadan erişilir. Yukarıdaki canlı durum ve kapasite panelleri bu değerlerle anlık çözülür.", en: " button in the header — a single source, reachable from every page. The live status and capacity panels above resolve instantly from these values.", de: " Schaltfläche in der Kopfzeile bearbeitet — eine einzige Quelle, von jeder Seite erreichbar. Die Live-Status- und Kapazitätspanels oben lösen sich sofort aus diesen Werten auf." })}
       </div>
 
       <footer className="mt-10 border-t pt-4 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>

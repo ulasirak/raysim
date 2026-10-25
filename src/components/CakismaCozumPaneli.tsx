@@ -105,7 +105,7 @@ export function CakismaCozumPaneli() {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr style={{ color: brand.muted }} className="text-left text-xs uppercase tracking-wide">
+              <tr style={{ color: brand.muted }} className="text-left text-xs">
                 <th className="px-3 py-2 font-medium">{t({ tr: "Tren", en: "Train", de: "Zug" })}</th>
                 <th className="px-3 py-2 text-right font-medium">{t({ tr: "Eşit-aralık kalkış", en: "Even-spacing departure", de: "Gleichtakt-Abfahrt" })}</th>
                 <th className="px-3 py-2 text-right font-medium">{t({ tr: "Önerilen kalkış", en: "Suggested departure", de: "Empfohlene Abfahrt" })}</th>

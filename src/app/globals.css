@@ -183,12 +183,11 @@ html::-webkit-scrollbar {
   font-weight: 600;
 }
 
-/* Resmî künye / alan etiketi: küçük, harf aralıklı, versal */
+/* Alan / künye etiketi: küçük, hafif, normal düzen (CAPS-LOCK değil). */
 .field-label,
 .ds-label {
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  font-size: 0.6875rem;
+  letter-spacing: 0.01em;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--ds-muted);
 }
