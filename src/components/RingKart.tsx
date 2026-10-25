@@ -128,7 +128,7 @@ export function RingKart(p: KartProps) {
     <div className="overflow-hidden rounded-lg border bg-white" style={{ borderColor: tam ? brand.border : brand.red, borderLeftWidth: 4, borderLeftColor: tam ? brand.gold : brand.red }}>
       {/* Başlık satırı — üstteki durak satırlarından AYRIK: kare "R#" rozet + altın kenar. */}
       <div className="flex items-center gap-3 px-4 py-3" style={{ background: tam ? "#FBFCFD" : "#FDF2F4" }}>
-        <span className="flex shrink-0 items-center justify-center rounded-md px-1.5 py-0.5 font-mono text-xs font-bold" style={{ background: CK.badBgSoft, color: brand.red }}>R{index + 1}</span>
+        <span className="flex shrink-0 items-center justify-center rounded-md px-1.5 py-0.5 font-mono text-xs font-bold" style={{ background: CK.track, color: brand.inkSoft }}>R{index + 1}</span>
         <button onClick={p.onToggle} className="min-w-0 flex-1 text-left">
           <div className="truncate font-brand text-sm font-semibold" style={{ color: brand.ink }}>{ring.fromAd} → {ring.toAd}</div>
           <div className="text-xs" style={{ color: brand.muted }}>
@@ -398,7 +398,7 @@ export function RingKart(p: KartProps) {
               </div>
             )}
             <p className="mb-2 text-xs" style={{ color: brand.muted }}>
-              Yatay kavis. <b>Yarıçap (R)</b> girince hız otomatik: <b>v = √(R·(a<sub>yanal</sub> + g·dever/ekartman))</b> — a<sub>yanal</sub>={cfg.aYanalKonfor} m/s², ekartman={Math.round(cfg.ekartman * 1000)} mm (Sistem Merkezi). Dilersen <b>hızı elle</b> gir. Düşey eğimden (ring eğimi) bağımsızdır.
+              Yatay kavis. <b>Yarıçap (R)</b> girince güvenli hız otomatik hesaplanır (a<sub>yanal</sub>={cfg.aYanalKonfor} m/s², ekartman={Math.round(cfg.ekartman * 1000)} mm); dilersen <b>hızı elle</b> girebilirsin. Hesabın formülü için üstteki <b>ⓘ nasıl çalışır?</b>.
             </p>
             {(ring.kurplar ?? []).length === 0 ? (
               <p className="text-xs" style={{ color: brand.faint }}>{t({ tr: "Kurp yok.", en: "No curve.", de: "Kein Bogen." })}</p>

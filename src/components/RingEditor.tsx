@@ -24,6 +24,7 @@ import { kmh, km, sure } from "@/lib/anaray/format";
 import { ringDogrula, dengeOnerisi, yeniHemzemin, yeniMakas, yeniTehlike, yeniKurp, yeniSinyal, ringDuraklari, durakAdiDegistir, durakEkleBas, durakEkleSon, durakBol, durakSil, duraklardanHat, type DurakArasiRing, type SinyalLambasi, type HemzeminTip, type MakasTip, type Kurp } from "@/lib/anaray/ring";
 import { parkAnahtar, durakKonumu } from "@/lib/anaray/parklanma";
 import { Num, SubBaslik, Panel } from "@/components/RingUI";
+import { NedenDetay } from "@/components/NedenDetay";
 import { HemzeminAnaliz } from "@/components/HemzeminAnaliz";
 import { Ikon } from "@/components/Ikon";
 
@@ -641,9 +642,11 @@ export function RingEditor() {
                       </select>
                       <Kucuk>{tt({ tr: "terminalin fiziksel dönüş biçimi", en: "the terminal's physical turnback form", de: "die physische Wendeform der Endstelle" })}</Kucuk>
                     </label>
-                    <p className="mt-1 rounded border-l-2 py-1 pl-2 text-[0.68rem] leading-relaxed" style={{ borderColor: t.tip === "dongu" ? CK.good : CK.amber, background: t.tip === "dongu" ? CK.goodBg : CK.amberBg, color: brand.inkSoft }}>
-                      {DONUS_TIP_ACIKLAMA[t.tip]}
-                    </p>
+                    <NedenDetay ozet={tt({ tr: "seçilen dönüş tipi ne demek?", en: "what does the selected turnback type mean?", de: "Was bedeutet der gewählte Wendetyp?" })}>
+                      <p className="rounded border-l-2 py-1 pl-2 text-[0.68rem] leading-relaxed" style={{ borderColor: t.tip === "dongu" ? CK.good : CK.amber, background: t.tip === "dongu" ? CK.goodBg : CK.amberBg, color: brand.inkSoft }}>
+                        {DONUS_TIP_ACIKLAMA[t.tip]}
+                      </p>
+                    </NedenDetay>
                     <div className="mt-2 grid grid-cols-2 gap-3">
                       <div>
                         <Num label={tt({ tr: "Peron sayısı", en: "Platform count", de: "Bahnsteiganzahl" })} suffix={tt({ tr: "peron", en: "platforms", de: "Bahnsteige" })} step={1} max={6} value={t.peronSayisi}
@@ -751,9 +754,11 @@ export function RingEditor() {
                     <span className="ml-1 text-xs" style={{ color: brand.muted }}>{t({ tr: "sürdürülebilir (UIC 406 tamponlu)", en: "sustainable (UIC 406 buffered)", de: "nachhaltig (UIC 406 gepuffert)" })}</span>
                   </div>
                 </div>
-                <p className="mt-1 text-[0.7rem]" style={{ color: brand.muted }}>
-                  <b>{t({ tr: "Teorik maksimum", en: "Theoretical maximum", de: "Theoretisches Maximum" })}</b>{t({ tr: ": darboğazın izin verdiği fiziksel tavan (sıfır pay). ", en: ": the physical ceiling the bottleneck allows (zero margin). ", de: ": die physische Obergrenze, die der Engpass zulässt (kein Spielraum). " })}<b>{t({ tr: "Sürdürülebilir", en: "Sustainable", de: "Nachhaltig" })}</b>{t({ tr: ": UIC 406 doluluk tavanıyla (blok başına ~%60–75 kullanım) her gün güvenle çalıştırılabilen sayı — küçük gecikmeler zincirlemesin, toparlanma payı kalsın diye teorikten düşüktür (gerçek işletme bunu hedefler).", en: ": the number that can be run safely every day under the UIC 406 occupancy ceiling (~60–75% utilization per block) — lower than the theoretical value so that small delays don't cascade and a recovery margin remains (real operation targets this).", de: ": die Zahl, die unter der UIC-406-Belegungsgrenze (~60–75 % Auslastung pro Block) täglich sicher gefahren werden kann — niedriger als der theoretische Wert, damit kleine Verspätungen sich nicht fortpflanzen und eine Erholungsreserve bleibt (der reale Betrieb strebt dies an)." })}
-                </p>
+                <NedenDetay ozet={t({ tr: "teorik ↔ sürdürülebilir farkı nedir?", en: "theoretical ↔ sustainable — what differs?", de: "theoretisch ↔ nachhaltig — Unterschied?" })}>
+                  <p className="text-[0.7rem]" style={{ color: brand.muted }}>
+                    <b>{t({ tr: "Teorik maksimum", en: "Theoretical maximum", de: "Theoretisches Maximum" })}</b>{t({ tr: ": darboğazın izin verdiği fiziksel tavan (sıfır pay). ", en: ": the physical ceiling the bottleneck allows (zero margin). ", de: ": die physische Obergrenze, die der Engpass zulässt (kein Spielraum). " })}<b>{t({ tr: "Sürdürülebilir", en: "Sustainable", de: "Nachhaltig" })}</b>{t({ tr: ": UIC 406 doluluk tavanıyla (blok başına ~%60–75 kullanım) her gün güvenle çalıştırılabilen sayı — küçük gecikmeler zincirlemesin, toparlanma payı kalsın diye teorikten düşüktür (gerçek işletme bunu hedefler).", en: ": the number that can be run safely every day under the UIC 406 occupancy ceiling (~60–75% utilization per block) — lower than the theoretical value so that small delays don't cascade and a recovery margin remains (real operation targets this).", de: ": die Zahl, die unter der UIC-406-Belegungsgrenze (~60–75 % Auslastung pro Block) täglich sicher gefahren werden kann — niedriger als der theoretische Wert, damit kleine Verspätungen sich nicht fortpflanzen und eine Erholungsreserve bleibt (der reale Betrieb strebt dies an)." })}
+                  </p>
+                </NedenDetay>
                 <p className="mt-1 text-xs" style={{ color: brand.inkSoft }}>
                   {t({ tr: "Darboğaz:", en: "Bottleneck:", de: "Engpass:" })} <b>{maks.baglayanAd}</b> · {t({ tr: "min. aralık", en: "min. interval", de: "min. Intervall" })} {sure(maks.hMin)} · {t({ tr: "çevrim", en: "cycle", de: "Umlauf" })} {sure(maks.cevrimSuresi)}
                   <span style={{ color: brand.faint }}> · {t({ tr: "aynı sayı Sefer'de de görünür (tek kaynak); tam kısıt & blocking-time dökümü ", en: "the same number also appears under Service (single source); full constraint & blocking-time breakdown in ", de: "dieselbe Zahl erscheint auch unter Betrieb (eine Quelle); vollständige Einschränkungs- & Blocking-Time-Aufschlüsselung in " })}<Link href="/#sistem" className="underline">{t({ tr: "Sistem Merkezi", en: "System Center", de: "Systemzentrale" })}</Link>{t({ tr: "'nde.", en: ".", de: "." })}</span>
