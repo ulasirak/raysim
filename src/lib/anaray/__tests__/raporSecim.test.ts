@@ -72,7 +72,7 @@ describe("Rapor bölüm seçimi — her varyasyon kusursuz", () => {
     const secim = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, b === "grafikler"])) as RaporSecim;
     const html = uret(secim);
     saglamHtml(html);
-    expect(html).toContain('<span class="no">08</span>'); // Görsel Analiz bölüm başlığı
+    expect(html).toContain('<span class="no">07</span>'); // Görsel Analiz bölüm başlığı
     expect(html).toContain("GÖRSEL ANALİZ (GRAFİKLER)");
     expect(html).toContain('<div class="fig">');
     expect(html).toContain("Şekil 3"); // Bildfahrplan
@@ -87,7 +87,7 @@ describe("Rapor bölüm seçimi — her varyasyon kusursuz", () => {
     const html = uret(secim);
     saglamHtml(html);
     expect(html).toContain('<span class="no">04</span>'); // kapasite bölümü (metin/tablo)
-    expect(html).toContain('<span class="no">08</span>'); // grafikler bölümü ayrı
+    expect(html).toContain('<span class="no">07</span>'); // grafikler bölümü ayrı
     expect(html).toContain('<div class="fig">');
   }, TO);
 
@@ -117,9 +117,9 @@ describe("Rapor bölüm seçimi — her varyasyon kusursuz", () => {
     expect(raporKredi(secim)).toBe(15);
   });
 
-  // İZLENEBİLİRLİK (Büyük sıçrama B) — motor sürümü DAİMA kapakta; seçilince bölüm 10
+  // İZLENEBİLİRLİK (Büyük sıçrama B) — motor sürümü DAİMA kapakta; seçilince bölüm 09
   // motor künyesi + girdi digest'i + "sayı → yöntem" izleme tablosuyla render olur.
-  it("izlenebilirlik seçilince bölüm 10 (motor sürümü + izleme tablosu) render olur", () => {
+  it("izlenebilirlik seçilince bölüm 09 (motor sürümü + izleme tablosu) render olur", () => {
     const secim = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, b === "izlenebilirlik"])) as RaporSecim;
     const html = uret(secim);
     saglamHtml(html);
@@ -145,6 +145,6 @@ describe("Rapor bölüm seçimi — her varyasyon kusursuz", () => {
     const html = uret(secim);
     expect(html).toContain("Motor sürümü");
     expect(html).toContain(`v${MOTOR_SURUMU}`);
-    expect(html).not.toContain("İZLENEBİLİRLİK"); // bölüm 10 kapalı → banner yok
+    expect(html).not.toContain("İZLENEBİLİRLİK"); // bölüm 09 kapalı → banner yok
   }, TO);
 });

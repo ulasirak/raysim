@@ -209,7 +209,7 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
     [L.kunye.tarih, meta.tarih || "—"], [L.kunye.idare, meta.idare], [L.kunye.yuk, meta.yuklenici], [L.kunye.mus, meta.musavir],
     [L.kunye.firma, meta.sinyalizasyonFirmasi],
     // İzlenebilirlik (Büyük sıçrama B): motor sürümü DAİMA kapakta — her rapor deterministik
-    // motorla üretilir ve künyesinden yeniden üretilebilir (ayrıntı: bölüm 10, seçiliyse).
+    // motorla üretilir ve künyesinden yeniden üretilebilir (ayrıntı: bölüm 09, seçiliyse).
     [en ? "Engine version" : "Motor sürümü", `v${MOTOR_SURUMU}`],
   ];
 
@@ -832,13 +832,13 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
   </div>
   <div class="antet-alt"><span>${esc(meta.sinyalizasyonFirmasi || "RaySim")} · ${esc(meta.projeAdi)}</span><span>${bugun ? esc(bugun) + " · " : ""}${esc(meta.dokumanNo)}</span></div>`;
 
-  // ——— DOĞRULAMA & GEÇERLEME (V&V) — bölüm 09 ———
+  // ——— DOĞRULAMA & GEÇERLEME (V&V) — bölüm 08 ———
   // Motorun çıktısı BAĞIMSIZ kapalı-form analitik referanslara karşı sertifikalanır.
   // Dürüst çerçeve: [analitik] = bağımsız referans (gerçek doğrulama), [tutarlılık] =
   // motorun kendi tanımı/tasarım değişmezleriyle uyum. Resmi teslimatta güven katmanı.
   const dogrulamaBolum = dahil("dogrulama") ? bolumDogrulama(rings, stock, cfg, isletme, en) : "";
 
-  // ——— İZLENEBİLİRLİK & TEKRAR-ÜRETİLEBİLİRLİK — bölüm 10 (Büyük sıçrama B) ———
+  // ——— İZLENEBİLİRLİK & TEKRAR-ÜRETİLEBİLİRLİK — bölüm 09 (Büyük sıçrama B) ———
   // Motor DETERMİNİSTİK: aynı girdi + aynı motor sürümü → AYNI sayı. Bu bölüm raporun
   // her ana sayısını künyeler — hangi girdilerden, hangi yöntemle, hangi bölümde üretildi —
   // ve girdi digest'i + motor sürümünü verir, böylece herhangi bir sayı tam olarak yeniden
@@ -847,32 +847,32 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
     ? bolumIzlenebilirlik({ en, meta, rings, line, stock, isletme, cfg, filoGercek, maks, bfHeadway, bt, uicDoluluk, siganTren })
     : "";
 
-  // ——— GRAFİKLER (Görsel Analiz) — bölüm 08 ———
+  // ——— GRAFİKLER (Görsel Analiz) — bölüm 07 ———
   // TÜM şekiller burada toplanır; yalnız "grafikler" seçiliyken (g) üretilir. Böylece
   // kullanıcı sadece grafikleri seçtiğinde dahi dolu, tek başına anlamlı bir görsel bölüm
   // alır (şekiller artık içerik bölümlerine gömülü değil). Her altyazı kendi başına açıklar.
-  const grafik08: string[] = [];
+  const grafik07: string[] = [];
   if (g) {
-    if (line) grafik08.push(`<div class="fig">${ringSemaSvg(rings, subeler)}<div class="cap">${L.fig1}${subeler.length ? (en ? ` — with ${subeler.length} branch(es) diverging at junctions (red)` : ` — kavşaklardan ayrılan ${subeler.length} şube (kırmızı) dâhil`) : ""}</div></div>`);
-    if (kisitFig) grafik08.push(kisitFig);
-    if (hemzeminFig) grafik08.push(hemzeminFig);
-    if (bfFig) grafik08.push(bfFig);
-    if (hizFig) grafik08.push(hizFig);
-    if (line) grafik08.push(`<div class="fig">${sperrzeitSvg(bt, line.length, kritikRenk, en)}<div class="cap">${sunum ? (lang === "en" ? `Figure 4 — Sperrzeitentreppe: block occupation (blocking-time) windows; min headway ${Math.round(bt.minHeadway)}s.` : `Şekil 4 — Sperrzeitentreppe: blok işgal (blocking-time) pencereleri; min headway ${Math.round(bt.minHeadway)} s.`) : L.fig4(Math.round(bt.minHeadway))}</div></div>`);
-    grafik08.push(`<div class="fig">${blockingBarSvg(bt.bloklar, bt.kritikBlok, kritikRenk, en)}<div class="cap">${sunum ? (lang === "en" ? "Figure 5 — Per-block blocking-time component distribution (determining block highlighted)." : "Şekil 5 — Blok başına blocking-time bileşen dağılımı (belirleyici blok vurgulu).") : L.fig5}${bt.bloklar.length > 16 ? (lang === "en" ? ` (highest 16 of ${bt.bloklar.length} blocks; full list in the table below)` : ` (${bt.bloklar.length} bloktan en yüksek 16'sı; tümü aşağıdaki tabloda)`) : ""}</div></div>`);
-    if (tia) grafik08.push(`<div class="fig">${yukDwellSvg(tia.duraklar, rings, en)}<div class="cap">${en ? "Figure 5b — Load profile (per-stop peak load, coloured by occupancy; peak marked) and dwell breakdown (door-open / passenger exchange / door-close), along the line." : "Şekil 5b — Yük profili (durak başına tepe yük, doluluğa göre renkli; tepe işaretli) ve duruş dökümü (kapı açma / yolcu değişimi / kapı kapama), hat boyunca."}</div></div>`);
-    if (seferTersFig) grafik08.push(seferTersFig);
-    if (mc) grafik08.push(
+    if (line) grafik07.push(`<div class="fig">${ringSemaSvg(rings, subeler)}<div class="cap">${L.fig1}${subeler.length ? (en ? ` — with ${subeler.length} branch(es) diverging at junctions (red)` : ` — kavşaklardan ayrılan ${subeler.length} şube (kırmızı) dâhil`) : ""}</div></div>`);
+    if (kisitFig) grafik07.push(kisitFig);
+    if (hemzeminFig) grafik07.push(hemzeminFig);
+    if (bfFig) grafik07.push(bfFig);
+    if (hizFig) grafik07.push(hizFig);
+    if (line) grafik07.push(`<div class="fig">${sperrzeitSvg(bt, line.length, kritikRenk, en)}<div class="cap">${sunum ? (lang === "en" ? `Figure 4 — Sperrzeitentreppe: block occupation (blocking-time) windows; min headway ${Math.round(bt.minHeadway)}s.` : `Şekil 4 — Sperrzeitentreppe: blok işgal (blocking-time) pencereleri; min headway ${Math.round(bt.minHeadway)} s.`) : L.fig4(Math.round(bt.minHeadway))}</div></div>`);
+    grafik07.push(`<div class="fig">${blockingBarSvg(bt.bloklar, bt.kritikBlok, kritikRenk, en)}<div class="cap">${sunum ? (lang === "en" ? "Figure 5 — Per-block blocking-time component distribution (determining block highlighted)." : "Şekil 5 — Blok başına blocking-time bileşen dağılımı (belirleyici blok vurgulu).") : L.fig5}${bt.bloklar.length > 16 ? (lang === "en" ? ` (highest 16 of ${bt.bloklar.length} blocks; full list in the table below)` : ` (${bt.bloklar.length} bloktan en yüksek 16'sı; tümü aşağıdaki tabloda)`) : ""}</div></div>`);
+    if (tia) grafik07.push(`<div class="fig">${yukDwellSvg(tia.duraklar, rings, en)}<div class="cap">${en ? "Figure 5b — Load profile (per-stop peak load, coloured by occupancy; peak marked) and dwell breakdown (door-open / passenger exchange / door-close), along the line." : "Şekil 5b — Yük profili (durak başına tepe yük, doluluğa göre renkli; tepe işaretli) ve duruş dökümü (kapı açma / yolcu değişimi / kapı kapama), hat boyunca."}</div></div>`);
+    if (seferTersFig) grafik07.push(seferTersFig);
+    if (mc) grafik07.push(
       `<div class="fig">${mcHistSvg(mc, en)}<div class="cap">${en ? `Figure 6 — Delay distribution: ${mc.trials} services × ${mc.perTren.length} trains; blue = on-time (below threshold), red = late. Vertical marks: mean · threshold · P90.` : `Şekil 6 — Gecikme dağılımı: ${mc.trials} sefer × ${mc.perTren.length} tren; mavi = dakik (eşik altı), kırmızı = geç. Dikey işaretler: ortalama · eşik · P90.`}</div></div>`,
       `<div class="fig">${mcYayilimSvg(mc, en)}<div class="cap">${en ? "Figure 7 — Propagation by service order: median (dot + line) with P90 whisker per train. A rising trend = delay cascading to later trains." : "Şekil 7 — Sefer sırasına göre yayılım: tren başına medyan (nokta + çizgi) ve P90 bıyığı. Yükselen eğilim = gecikmenin sonraki trenlere kademelenmesi."}</div></div>`,
     );
-    if (knockOnFig) grafik08.push(knockOnFig);
+    if (knockOnFig) grafik07.push(knockOnFig);
   }
   const grafikBaslik = en ? "VISUAL ANALYSIS (CHARTS)" : "GÖRSEL ANALİZ (GRAFİKLER)";
   const grafikGiris = en
     ? "This section consolidates all analytical charts derived from your line — line schematic, determining constraint, level-crossing delay, time-distance diagram (Bildfahrplan), speed profile, blocking-time (Sperrzeitentreppe), load/dwell profile, integrated reverse-running snapshot and delay-robustness charts. Each figure caption is self-contained; the corresponding numeric analysis is in its own section."
     : "Bu bölüm hattınızdan türetilen tüm analitik grafikleri tek yerde toplar — hat şeması, belirleyici kısıt, hemzemin geçit gecikmesi, zaman-mesafe diyagramı (Bildfahrplan), hız profili, blocking-time (Sperrzeitentreppe), yük/duruş profili, entegre ters işletme anlık görüntüsü ve gecikme-robustluk grafikleri. Her şeklin altyazısı kendi başına açıklayıcıdır; sayısal analizler ilgili bölümlerdedir.";
-  const grafiklerBolum = (g && grafik08.length) ? `<div class="banner breakbefore"><span class="no">08</span>${grafikBaslik}</div><p>${grafikGiris}</p>${grafik08.join("\n")}` : "";
+  const grafiklerBolum = (g && grafik07.length) ? `<div class="banner breakbefore"><span class="no">07</span>${grafikBaslik}</div><p>${grafikGiris}</p>${grafik07.join("\n")}` : "";
 
   return `<!doctype html><html lang="${L.htmlLang}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -927,9 +927,9 @@ ${raporStil(INK, RED, GOLD)}</head>
         <li>5.4 ${en ? "Reverse-Running Variations" : "Ters İşletme Varyasyonları"}</li>
         <li>5.5 ${en ? "Fleet & Recommendation" : "Filo & Öneri"}</li></ul></li>` : ""}
       ${dahil("tarife") ? `<li><b>06</b>${en ? "Timetable (Service Schedule)" : "Tarife (Zaman Çizelgesi)"}<ul><li>6.1 ${en ? "First Departures" : "İlk Kalkışlar"}</li></ul></li>` : ""}
-      ${g ? `<li><b>08</b>${en ? "Visual Analysis (Charts)" : "Görsel Analiz (Grafikler)"}</li>` : ""}
-      ${dahil("dogrulama") ? `<li><b>09</b>${en ? "Verification & Validation" : "Doğrulama & Geçerleme"}</li>` : ""}
-      ${dahil("izlenebilirlik") ? `<li><b>10</b>${en ? "Traceability & Reproducibility" : "İzlenebilirlik & Tekrar-Üretilebilirlik"}</li>` : ""}
+      ${g ? `<li><b>07</b>${en ? "Visual Analysis (Charts)" : "Görsel Analiz (Grafikler)"}</li>` : ""}
+      ${dahil("dogrulama") ? `<li><b>08</b>${en ? "Verification & Validation" : "Doğrulama & Geçerleme"}</li>` : ""}
+      ${dahil("izlenebilirlik") ? `<li><b>09</b>${en ? "Traceability & Reproducibility" : "İzlenebilirlik & Tekrar-Üretilebilirlik"}</li>` : ""}
     </ol>
     ${g ? `<div class="toc-fig">${en ? "Figures" : "Şekiller"}<ul>
       <li>${en ? "Fig. 1 — Line schematic" : "Şekil 1 — Hat şeması"}</li>
@@ -986,13 +986,13 @@ ${raporStil(INK, RED, GOLD)}</head>
 
   ${dahil("tarife") ? tarifeBolum : ""}
 
-  <!-- 8: Grafikler (Görsel Analiz) — tüm şekiller; yalnız "grafikler" seçilince -->
+  <!-- 7: Grafikler (Görsel Analiz) — tüm şekiller; yalnız "grafikler" seçilince -->
   ${grafiklerBolum}
 
-  <!-- 9: Doğrulama & Geçerleme (V&V) — motor sertifikasyonu -->
+  <!-- 8: Doğrulama & Geçerleme (V&V) — motor sertifikasyonu -->
   ${dogrulamaBolum}
 
-  <!-- 10: İzlenebilirlik & Tekrar-Üretilebilirlik — motor sürümü + girdi künyesi + sayı→yöntem izi -->
+  <!-- 9: İzlenebilirlik & Tekrar-Üretilebilirlik — motor sürümü + girdi künyesi + sayı→yöntem izi -->
   ${izlenebilirlikBolum}
 
   ${cekirdekNot}

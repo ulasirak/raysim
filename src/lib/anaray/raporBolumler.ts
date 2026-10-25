@@ -46,7 +46,7 @@ export function bolumKilitleme(rings: DurakArasiRing[], en: boolean, cfg?: SimCo
   <div class="gs" style="font-size:9pt">${not}</div>`;
 }
 
-/** 09 Doğrulama & Geçerleme (V&V). */
+/** 08 Doğrulama & Geçerleme (V&V). */
 export function bolumDogrulama(rings: DurakArasiRing[], stock: RollingStock, cfg: SimConfig, isletme: Isletme, en: boolean): string {
   const vv = dogrulamaCalistir(rings, stock, cfg, isletme);
   const YESIL = "#2E7D57";
@@ -60,13 +60,13 @@ export function bolumDogrulama(rings: DurakArasiRing[], stock: RollingStock, cfg
   const giris = en
     ? "Engine outputs are checked against independent closed-form (analytical) references — the standard verification method for engineering software. No external tool or dataset is required: because the physics is known in closed form, the numerical integration is validated directly. Checks tagged [analytical] are independent references (true validation); [consistency] checks confirm agreement with the engine's own definitions and design invariants."
     : "Motor çıktıları bağımsız kapalı-form (analitik) referanslara karşı sınanır — mühendislik yazılımı doğrulamasının standart yöntemi. Dış araç ya da veriye gerek yoktur: fizik kapalı-formda bilindiği için sayısal entegrasyon doğrudan doğrulanır. [analitik] etiketli kontroller bağımsız referanstır (gerçek doğrulama); [tutarlılık] kontrolleri motorun kendi tanımı ve tasarım değişmezleriyle uyumu gösterir.";
-  return `<div class="banner breakbefore"><span class="no">09</span>${en ? "VERIFICATION & VALIDATION" : "DOĞRULAMA & GEÇERLEME"}</div>
+  return `<div class="banner breakbefore"><span class="no">08</span>${en ? "VERIFICATION & VALIDATION" : "DOĞRULAMA & GEÇERLEME"}</div>
   <p>${giris}</p>
   <div class="gs" style="font-size:10pt"><b style="color:${vv.gecen === vv.toplam ? YESIL : RED}">${vv.gecen}/${vv.toplam}</b> ${en ? "checks passed" : "kontrol geçti"} · ${en ? "maximum deviation" : "azami sapma"} %${vv.maxSapma.toFixed(2)}.</div>
   ${tbl([en ? "Check" : "Kontrol", en ? "Reference" : "Referans", en ? "Computed" : "Hesaplanan", en ? "Deviation" : "Sapma", en ? "Result" : "Sonuç"], vvRows, { first: true })}`;
 }
 
-/** 10 İzlenebilirlik & Tekrar-Üretilebilirlik. */
+/** 09 İzlenebilirlik & Tekrar-Üretilebilirlik. */
 export function bolumIzlenebilirlik(p: {
   en: boolean; meta: ProjeMeta; rings: DurakArasiRing[]; line: Line | null; stock: RollingStock;
   isletme: Isletme; cfg: SimConfig; filoGercek: number; maks: MaksTip; bfHeadway: number; bt: BtTip;
@@ -101,10 +101,10 @@ export function bolumIzlenebilirlik(p: {
     [en ? "UIC 406 occupancy" : "UIC 406 doluluk", `%${num(uicDoluluk, 0)}`, en ? "hMin, target headway" : "hMin, hedef headway", en ? "hMin ÷ headway" : "hMin ÷ headway", "04"],
     [en ? "Curve speed limit" : "Kurp hız limiti", "—", en ? "radius, cant, gauge, lateral comfort" : "yarıçap, dever, ekartman, yanal konfor", "v=√(R(a+g·d/e))", "02.2"],
     [en ? "Required fleet (demand)" : "Gereken filo (talep)", maks.gecerli ? `${siganTren}` : "—", en ? "peak demand, occupancy target, vehicle cap." : "pik talep, doluluk hedefi, araç kap.", en ? "demand ÷ capacity ÷ occupancy" : "talep ÷ kapasite ÷ doluluk", "05"],
-    [en ? "Balancing speed" : "Denge hızı", "—", en ? "Davis A/B/C, power" : "Davis A/B/C, güç", "P/v = R(v)", "09"],
+    [en ? "Balancing speed" : "Denge hızı", "—", en ? "Davis A/B/C, power" : "Davis A/B/C, güç", "P/v = R(v)", "08"],
   ];
 
-  return `<div class="banner breakbefore"><span class="no">10</span>${en ? "TRACEABILITY & REPRODUCIBILITY" : "İZLENEBİLİRLİK & TEKRAR-ÜRETİLEBİLİRLİK"}</div>
+  return `<div class="banner breakbefore"><span class="no">09</span>${en ? "TRACEABILITY & REPRODUCIBILITY" : "İZLENEBİLİRLİK & TEKRAR-ÜRETİLEBİLİRLİK"}</div>
   <p>${giris}</p>
   ${kunyeStr}
   <h3 class="sub">${en ? "Input Digest (reproducing inputs)" : "Girdi Künyesi (yeniden üretim girdileri)"}</h3>
