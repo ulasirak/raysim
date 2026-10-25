@@ -246,15 +246,15 @@ export function Karsilastirma() {
 
       {/* — SONUÇ — */}
       {!yeterli ? (
-        <div className="mt-6 rounded-lg border-l-4 px-4 py-3 text-sm" style={{ borderColor: CK.amber, background: CK.amberBg, color: CK.amberInk }}>
+        <Not className="mt-6">
           {t({ tr: "Karşılaştırma için en az ", en: "At least ", de: "Für einen Vergleich sind mindestens " })}<b>{t({ tr: "2 geçerli senaryo", en: "2 valid scenarios", de: "2 gültige Szenarien" })}</b>{t({ tr: " gerekir. ", en: " are required for a comparison. ", de: " erforderlich. " })}{mod === "projeler" ? t({ tr: "Yukarıdan proje seç (hattı kurulu/kaydedilmiş olmalı).", en: "Select projects above (the line must be built/saved).", de: "Wählen Sie oben Projekte aus (die Strecke muss erstellt/gespeichert sein)." }) : t({ tr: "Değer kutularını doldur.", en: "Fill in the value boxes.", de: "Füllen Sie die Wertfelder aus." })}
-        </div>
+        </Not>
       ) : (
         <>
           {degismedi && (
-            <div className="mt-6 rounded-md border-l-4 px-4 py-3 text-sm" style={{ borderColor: CK.amber, background: CK.amberBg, color: CK.amberInk }}>
-              ⚠ “{t(WHATIF[wparam].ad)}” {t({ tr: "değişimi bu hatta metrikleri ", en: "change did not move the metrics on this line — it ", de: "Änderung hat die Metriken auf dieser Strecke nicht bewegt — es " })}<b>{t({ tr: "oynatmadı", en: "did nothing", de: "bewirkte nichts" })}</b>{t({ tr: " — bu hattın belirleyici kısıtı bu parametre değil (tablodaki ", en: " — this line’s governing constraint is not this parameter (see the ", de: " — die maßgebende Beschränkung dieser Strecke ist nicht dieser Parameter (siehe Zeile " })}<b>{t({ tr: "Belirleyici kısıt", en: "Governing constraint", de: "Maßgebende Beschränkung" })}</b>{t({ tr: " satırına bak). ", en: " row in the table). ", de: " in der Tabelle). " })}<b>{t({ tr: "Doluluk tavanı", en: "Occupancy ceiling", de: "Auslastungsgrenze" })}</b>{t({ tr: " her hatta kapasiteyi değiştirir; ", en: " changes capacity on every line; ", de: " ändert die Kapazität auf jeder Strecke; " })}<b>{t({ tr: "Headway", en: "Headway", de: "Zugfolgezeit" })}</b>{t({ tr: " ise UIC doluluk / gereken tren'i etkiler.", en: " affects UIC occupancy / trains required.", de: " beeinflusst UIC-Auslastung / benötigte Züge." })}
-            </div>
+            <Not tonu="uyari" className="mt-6">
+              “{t(WHATIF[wparam].ad)}” {t({ tr: "değişimi bu hatta metrikleri ", en: "change did not move the metrics on this line; it ", de: "Änderung hat die Metriken auf dieser Strecke nicht bewegt; sie " })}<b>{t({ tr: "oynatmadı", en: "did nothing", de: "bewirkte nichts" })}</b>{t({ tr: ". Bu hattın belirleyici kısıtı bu parametre değil (tablodaki ", en: ". This line’s governing constraint is not this parameter (see the ", de: ". Die maßgebende Beschränkung dieser Strecke ist nicht dieser Parameter (siehe Zeile ", })}<b>{t({ tr: "Belirleyici kısıt", en: "Governing constraint", de: "Maßgebende Beschränkung" })}</b>{t({ tr: " satırına bak). ", en: " row in the table). ", de: " in der Tabelle). " })}<b>{t({ tr: "Doluluk tavanı", en: "Occupancy ceiling", de: "Auslastungsgrenze" })}</b>{t({ tr: " her hatta kapasiteyi değiştirir; ", en: " changes capacity on every line; ", de: " ändert die Kapazität auf jeder Strecke; " })}<b>{t({ tr: "Headway", en: "Headway", de: "Zugfolgezeit" })}</b>{t({ tr: " ise UIC doluluk / gereken tren'i etkiler.", en: " affects UIC occupancy / trains required.", de: " beeinflusst UIC-Auslastung / benötigte Züge." })}
+            </Not>
           )}
 
           {/* Öneri özeti */}

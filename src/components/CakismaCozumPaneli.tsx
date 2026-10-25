@@ -77,8 +77,8 @@ export function CakismaCozumPaneli() {
   }
   if (!coz) {
     return kart(
-      <div className="rounded-md p-3 text-sm" style={{ background: CK.goodBgSoft, border: `1px solid ${CK.good}`, color: brand.inkSoft }}>
-        <b style={{ color: CK.good }}>✓ {t({ tr: "Bu filoda", en: "At this fleet", de: "Bei dieser Flotte" })} ({filo}) {t({ tr: "çakışma yok.", en: "there is no conflict.", de: "gibt es keinen Konflikt." })}</b> {cak.spanlar.length} {t({ tr: "tek-hat kesim var ama mevcut çizelge çakışmasız.", en: "single-track sections exist, but the current schedule is conflict-free.", de: "eingleisige Abschnitte vorhanden, aber der aktuelle Fahrplan ist konfliktfrei." })}
+      <div className="rounded-md border p-3 text-sm" style={{ borderColor: brand.border, color: brand.inkSoft }}>
+        <b style={{ color: brand.ink }}>{t({ tr: "Bu filoda", en: "At this fleet", de: "Bei dieser Flotte" })} ({filo}) {t({ tr: "çakışma yok.", en: "there is no conflict.", de: "gibt es keinen Konflikt." })}</b> {cak.spanlar.length} {t({ tr: "tek-hat kesim var ama mevcut çizelge çakışmasız.", en: "single-track sections exist, but the current schedule is conflict-free.", de: "eingleisige Abschnitte vorhanden, aber der aktuelle Fahrplan ist konfliktfrei." })}
         {maxFilo != null && <> {t({ tr: "Çakışmasız maksimum filo:", en: "Conflict-free maximum fleet:", de: "Konfliktfreie Maximalflotte:" })} <b>{maxFilo}</b>.</>}
       </div>,
     );
@@ -87,11 +87,11 @@ export function CakismaCozumPaneli() {
   return kart(
     <div className="flex flex-col gap-4">
       {/* Verdict */}
-      <div className="rounded-md p-3 text-sm" style={{
-        background: coz.cozuldu ? CK.goodBgSoft : CK.amberBg,
-        border: `1px solid ${coz.cozuldu ? CK.good : CK.amber}`, color: brand.inkSoft }}>
+      <div className="rounded-md border p-3 text-sm" style={{
+        background: coz.cozuldu ? "transparent" : CK.amberBg,
+        borderColor: coz.cozuldu ? brand.border : CK.amber, color: brand.inkSoft }}>
         {coz.cozuldu ? (
-          <><b style={{ color: CK.good }}>✓ {t({ tr: "Çözüldü.", en: "Solved.", de: "Gelöst." })}</b> {t({ tr: "Kalkışları aşağıdaki gibi kaydırınca tek-hat çakışması giderilir", en: "Shifting the departures as below removes the single-track conflict", de: "Werden die Abfahrten wie unten verschoben, wird der eingleisige Konflikt beseitigt" })}
+          <><b style={{ color: brand.ink }}>{t({ tr: "Çözüldü.", en: "Solved.", de: "Gelöst." })}</b> {t({ tr: "Kalkışları aşağıdaki gibi kaydırınca tek-hat çakışması giderilir", en: "Shifting the departures as below removes the single-track conflict", de: "Werden die Abfahrten wie unten verschoben, wird der eingleisige Konflikt beseitigt" })}
             (<b>{coz.bazOrtusme}s → 0</b>, {coz.iyilesme}s {t({ tr: "çakışma önlendi).", en: "of conflict avoided).", de: "Konflikt vermieden)." })}</>
         ) : (
           <><b style={{ color: CK.amberInk }}>⚠ {t({ tr: "Bu filoda", en: "At this fleet", de: "Bei dieser Flotte" })} ({filo}) {t({ tr: "tümüyle giderilemiyor.", en: "it cannot be fully removed.", de: "lässt er sich nicht vollständig beseitigen." })}</b> {t({ tr: "Kaydırma çakışmayı", en: "The shift reduces the conflict", de: "Die Verschiebung senkt den Konflikt" })}

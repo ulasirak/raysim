@@ -122,11 +122,11 @@ export function KararDestekPaneli() {
               <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "dakika", en: "minutes", de: "Minuten" })}</span>
             </div>
           </div>
-          <div className="rounded-md p-3" style={{ background: hedef.uygun ? CK.goodBgSoft : "#FBE4E7", border: `1px solid ${hedef.uygun ? CK.good : CK.red}` }}>
+          <div className="rounded-md border p-3" style={{ background: hedef.uygun ? "transparent" : CK.badBg, borderColor: hedef.uygun ? brand.border : CK.red }}>
             <Kpi etiket={t({ tr: "Gereken en az filo", en: "Minimum required fleet", de: "Erforderliche Mindestflotte" })} deger={`${hedef.filo}`} ton={hedef.uygun ? "success" : "danger"} boyut="lg"
               alt={hedef.uygun
                 ? `${t({ tr: "ulaşılan aralık", en: "achieved interval", de: "erreichtes Intervall" })} ${sure(hedef.ulasilanHeadwaySn)} ${t({ tr: "(≤ hedef) · kapasite", en: "(≤ target) · capacity", de: "(≤ Ziel) · Kapazität" })} ${hedef.kapasiteFilo}`
-                : `${t({ tr: "KAPASİTE AŞILDI:", en: "CAPACITY EXCEEDED:", de: "KAPAZITÄT ÜBERSCHRITTEN:" })} ${hedef.filo} > ${t({ tr: "duvar", en: "wall", de: "Grenze" })} ${hedef.kapasiteFilo}. ${t({ tr: "Bu aralık fiziksel olarak sağlanamaz.", en: "This interval is physically unachievable.", de: "Dieses Intervall ist physikalisch nicht erreichbar." })}`} />
+                : `${t({ tr: "Kapasite aşıldı:", en: "Capacity exceeded:", de: "Kapazität überschritten:" })} ${hedef.filo} > ${t({ tr: "duvar", en: "wall", de: "Grenze" })} ${hedef.kapasiteFilo}. ${t({ tr: "Bu aralık fiziksel olarak sağlanamaz.", en: "This interval is physically unachievable.", de: "Dieses Intervall ist physikalisch nicht erreichbar." })}`} />
             {hedef.uygun && (
               <div className="mt-2 flex items-center gap-2 border-t pt-2 text-xs" style={{ borderColor: `${CK.good}44` }}>
                 <span style={{ color: brand.muted }}>{t({ tr: "UIC 406 kapasite kullanımı (seçilen filo)", en: "UIC 406 capacity utilisation (selected fleet)", de: "UIC-406-Kapazitätsauslastung (gewählte Flotte)" })}</span>
