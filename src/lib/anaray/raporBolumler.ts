@@ -48,7 +48,7 @@ export function bolumKilitleme(rings: DurakArasiRing[], en: boolean, cfg?: SimCo
 
 /** 08 Doğrulama & Geçerleme (V&V). */
 export function bolumDogrulama(rings: DurakArasiRing[], stock: RollingStock, cfg: SimConfig, isletme: Isletme, en: boolean): string {
-  const vv = dogrulamaCalistir(rings, stock, cfg, isletme);
+  const vv = dogrulamaCalistir(rings, stock, cfg, isletme, en);
   const YESIL = "#2E7D57";
   const vvSay = (v: number, birim: string) => { const d = Math.abs(v) >= 100 ? 0 : Math.abs(v) >= 10 ? 1 : 2; return `${v.toFixed(d)}${birim ? " " + birim : ""}`; };
   const etiket = (b: boolean) => b ? (en ? "analytical" : "analitik") : (en ? "consistency" : "tutarlılık");

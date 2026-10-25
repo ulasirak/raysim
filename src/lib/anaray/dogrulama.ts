@@ -82,7 +82,10 @@ function dengeHizi(stock: RollingStock): number {
 export function dogrulamaCalistir(
   rings?: DurakArasiRing[], stock: RollingStock = varsayilanArac,
   cfg: SimConfig = varsayilanConfig, isletme: Isletme = varsayilanIsletme,
+  en = false,
 ): { sonuclar: DogrulamaSonuc[]; toplam: number; gecen: number; maxSapma: number } {
+  // yontem (yöntem) metni rapor diline göre; ekran özeti (DogrulamaPaneli) en=false kullanır.
+  const yl = (tr: string, enMetin: string) => (en ? enMetin : tr);
   const sonuclar: DogrulamaSonuc[] = [];
   const ekle = (s: Omit<DogrulamaSonuc, "sapmaYuzde" | "gecti">) => {
     const sapma = s.referans !== 0 ? Math.abs(s.hesaplanan - s.referans) / Math.abs(s.referans) * 100 : Math.abs(s.hesaplanan) * 100;
@@ -99,13 +102,13 @@ export function dogrulamaCalistir(
 
   ekle({ ad: "Kalkış–seyir–fren süresi", kategori: "Kinematik", bagimsiz: true,
     referans: tRef, hesaplanan: p.sure, birim: "s", tolerans: 2,
-    yontem: "Trapez hız profili: t = V/a + (L−V²/2a−V²/2b)/V + V/b (V=72 km/h, a=1,0, b=1,2, L=2000 m)" });
+    yontem: yl("Trapez hız profili: t = V/a + (L−V²/2a−V²/2b)/V + V/b (V=72 km/h, a=1,0, b=1,2, L=2000 m)", "Trapezoidal speed profile: t = V/a + (L−V²/2a−V²/2b)/V + V/b (V=72 km/h, a=1.0, b=1.2, L=2000 m)") });
   ekle({ ad: "Kalkış (hızlanma) mesafesi", kategori: "Kinematik", bagimsiz: true,
     referans: dAcc, hesaplanan: p.hizlanmaMesafe, birim: "m", tolerans: 2,
-    yontem: "d = V² / (2a) — sabit ivmeli hızlanma" });
+    yontem: yl("d = V² / (2a) — sabit ivmeli hızlanma", "d = V² / (2a) — constant-acceleration start") });
   ekle({ ad: "Fren mesafesi", kategori: "Kinematik", bagimsiz: true,
     referans: dBrake, hesaplanan: p.frenMesafe, birim: "m", tolerans: 2,
-    yontem: "d = V² / (2b) — sabit yavaşlamalı fren; motorun ön-görüşlü fren eğrisi (√(2b·d)) ile" });
+    yontem: yl("d = V² / (2b) — sabit yavaşlamalı fren; motorun ön-görüşlü fren eğrisi (√(2b·d)) ile", "d = V² / (2b) — constant-deceleration braking, against the engine's look-ahead brake curve (√(2b·d))") });
 
   // — Direnç denge hızı: gerçekçi araç, sınırsız maxSpeed → oturduğu hız = analitik denge —
   const dArac: RollingStock = { ...stock, maxSpeed: 1000, aCap: undefined };
@@ -121,7 +124,7 @@ export function dogrulamaCalistir(
   }
   ekle({ ad: "Direnç denge (terminal) hızı", kategori: "Direnç", bagimsiz: true,
     referans: vb, hesaplanan: v, birim: "m/s", tolerans: 2,
-    yontem: `Çekiş = direnç dengesi: P/v = davisA + davisB·v + davisC·v² (${dArac.name} Davis katsayıları)` });
+    yontem: yl(`Çekiş = direnç dengesi: P/v = davisA + davisB·v + davisC·v² (${dArac.name} Davis katsayıları)`, `Tractive effort = resistance balance: P/v = davisA + davisB·v + davisC·v² (Davis coefficients of ${dArac.name})`) });
 
   // — UÇTAN-UCA ① (ÇOK-SEGMENT ENTEGRASYON, integrator izolasyonu): ideal araç 2 ardışık
   //   durak-arasını (her biri L) geçer; ara istasyonda TAM durup yeniden kalkar. Motorun
@@ -142,7 +145,7 @@ export function dogrulamaCalistir(
   const eeT = simulate(eeLine, arac, 0.05).totalTime;
   ekle({ ad: "Çok-segment seyir süresi (uçtan-uca)", kategori: "Kinematik", bagimsiz: true,
     referans: 2 * tRef, hesaplanan: eeT, birim: "s", tolerans: 2,
-    yontem: `2 ardışık durak-arası (ideal araç, her biri ${L} m); ara istasyonda tam durup yeniden kalkar. Motorun sayısal entegrasyonu (simulate) kapalı-form 2×trapez ile kıyaslanır — çok-duraklı seyahatin doğru zincirlendiğini bağımsız sınar.` });
+    yontem: yl(`2 ardışık durak-arası (ideal araç, her biri ${L} m); ara istasyonda tam durup yeniden kalkar. Motorun sayısal entegrasyonu (simulate) kapalı-form 2×trapez ile kıyaslanır — çok-duraklı seyahatin doğru zincirlendiğini bağımsız sınar.`, `Two consecutive inter-stop sections (ideal vehicle, each ${L} m); it stops fully at the middle station and restarts. The engine's numerical integration (simulate) is compared with the closed-form 2×trapezoid — an independent check that multi-stop travel is chained correctly.`) });
 
   // — UÇTAN-UCA ② (TAM İŞLETME ÇEVRİMİ): en üst-seviye pipeline. İdeal araçla N ring'lik
   //   bir hattın maksimumTren çevrim süresini (per-ring seyir ×N + ara dwell + iki yön ×2,
@@ -165,13 +168,13 @@ export function dogrulamaCalistir(
   const cCevrimRef = 2 * (cN * cTrap + (cN - 1) * cDwell); // döngü terminal → +0
   ekle({ ad: "Tam işletme çevrimi (uçtan-uca)", kategori: "Kapasite", bagimsiz: true,
     referans: cCevrimRef, hesaplanan: cMaks.cevrimSuresi, birim: "s", tolerans: 3,
-    yontem: `Çevrim = 2 × [${cN} ring × trapez(${cL} m) + ${cN - 1} × dwell(${cDwell} s)]; döngü terminal → 0. İdeal araç + ring.vmax=${Math.round(V * 3.6)} km/h → kapalı-form. Motorun tam çevrim-kurulum aritmetiğini (rings → çevrim) bağımsız sınar; ~%2 sapma = üretim entegrasyonu dt=0,5 doğruluğu.` });
+    yontem: yl(`Çevrim = 2 × [${cN} ring × trapez(${cL} m) + ${cN - 1} × dwell(${cDwell} s)]; döngü terminal → 0. İdeal araç + ring.vmax=${Math.round(V * 3.6)} km/h → kapalı-form. Motorun tam çevrim-kurulum aritmetiğini (rings → çevrim) bağımsız sınar; ~%2 sapma = üretim entegrasyonu dt=0,5 doğruluğu.`, `Cycle = 2 × [${cN} sections × trapezoid(${cL} m) + ${cN - 1} × dwell(${cDwell} s)]; loop terminal → 0. Ideal vehicle + ring.vmax=${Math.round(V * 3.6)} km/h → closed-form. Independently checks the engine's full cycle-setup arithmetic (rings → cycle); ~2% deviation = production integration dt=0.5 accuracy.`) });
 
   // — Kurp: yarıçaptan türeyen hızda yanal ivme = konfor tavanı (tasarım değişmezi) —
   const k = { ...yeniKurp(0), yaricap: 300, dever: 0, uzunluk: 60 };
   ekle({ ad: "Kurp yanal ivmesi = konfor tavanı", kategori: "Kurp", bagimsiz: false,
     referans: cfg.aYanalKonfor, hesaplanan: kurpYanalIvme(k, cfg), birim: "m/s²", tolerans: 1,
-    yontem: `v=√(R·a) hızında a_yanal = v²/R = a_konfor (R=300 m, dever=0); tanım gereği eşit. Kurp hızı ${(kurpHizi(k, cfg) * 3.6).toFixed(1)} km/h` });
+    yontem: yl(`v=√(R·a) hızında a_yanal = v²/R = a_konfor (R=300 m, dever=0); tanım gereği eşit. Kurp hızı ${(kurpHizi(k, cfg) * 3.6).toFixed(1)} km/h`, `At the speed v=√(R·a), a_lateral = v²/R = a_comfort (R=300 m, cant=0); equal by definition. Curve speed ${(kurpHizi(k, cfg) * 3.6).toFixed(1)} km/h`) });
 
   // — UIC 406 kapasite kimliği: nTeorik = ⌊çevrim ÷ min headway⌋ (verilen hatta) —
   if (rings && rings.length >= 2) {
@@ -180,7 +183,7 @@ export function dogrulamaCalistir(
       const nRef = Math.floor(m.cevrimSuresi / m.hMin);
       ekle({ ad: "UIC 406 kapasite kimliği (bu hat)", kategori: "Kapasite", bagimsiz: false,
         referans: nRef, hesaplanan: m.nTeorik, birim: "tren", tolerans: 0,
-        yontem: `Teorik tren sayısı = ⌊çevrim (${Math.round(m.cevrimSuresi)} s) ÷ min headway (${Math.round(m.hMin)} s)⌋` });
+        yontem: yl(`Teorik tren sayısı = ⌊çevrim (${Math.round(m.cevrimSuresi)} s) ÷ min headway (${Math.round(m.hMin)} s)⌋`, `Theoretical train count = ⌊cycle (${Math.round(m.cevrimSuresi)} s) ÷ min headway (${Math.round(m.hMin)} s)⌋`) });
     }
   }
 
