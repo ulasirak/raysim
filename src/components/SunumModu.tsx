@@ -1126,8 +1126,8 @@ export function SunumModu() {
             </div>
           </div>
 
-          {/* özet anlatım (üst satırda, kısa) */}
-          <p className="min-w-0 flex-1 text-sm leading-relaxed sm:px-3" style={{ color: "#CBD8E3" }}>{m.anlatim}</p>
+          {/* esnek boşluk — kontrolleri sağda tutar (özet anlatım aşağıdaki rehber kartının başında) */}
+          <div className="hidden flex-1 sm:block" />
 
           {/* Dil + noktalar */}
           <div className="flex items-center gap-2">
@@ -1158,6 +1158,7 @@ export function SunumModu() {
         {/* REHBER KARTI: Amaç · Girdi · Çıktı · paneller/grafikler · butonlar · bağlantılar */}
         {genis && (
           <div className="mt-3 max-h-[42vh] space-y-3 overflow-y-auto border-t pt-3" style={{ borderColor: "#1C3B54" }}>
+            <p className="text-sm leading-relaxed" style={{ color: "#D6E2EC" }}>{m.anlatim}</p>
             {(m.amac || m.girdi || m.cikti) && (
               <div className="grid gap-2 sm:grid-cols-3">
                 <Alan etiket={t.amac} deger={m.amac} />
