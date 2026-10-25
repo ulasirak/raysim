@@ -51,7 +51,7 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
   /** Mevcut ağın TÜM duraklarının geçerli lat/lon'u var mı? "Ekle"de koordinat uyumunu ölçer. */
   mevcutKoordVar?: boolean;
 }) {
-  const { t } = useDil();
+  const { t, dil } = useDil();
   const [kaynak, setKaynak] = useState<"gtfs" | "railml" | "cad" | "osm" | null>(null);
   const [feed, setFeed] = useState<GtfsFeed | null>(null);
   // OSM / Şehir hattı kaynağı
@@ -87,14 +87,14 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
     if (!sehir) return;
     sifirla(); setKaynak("osm"); setOsmDurum("ara"); setOsmMesaj(null);
     try {
-      const r = await fetch("/api/geometri/osm/rota", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mod: "ara", sehir }) });
+      const r = await fetch(`/api/geometri/osm/rota?dil=${dil}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mod: "ara", sehir }) });
       const j = await r.json();
-      if (!r.ok) throw new Error(j.hata || "Aranamadı.");
+      if (!r.ok) throw new Error(j.hata || t({ tr: "Aranamadı.", en: "Search failed.", de: "Suche fehlgeschlagen." }));
       const list: OsmRota[] = Array.isArray(j.rotalar) ? j.rotalar : [];
       setOsmRotalar(list);
-      setOsmMesaj(list.length ? `${list.length} ${t({ tr: "raylı rota bulundu — hattı kur için seç.", en: "rail routes found — select to build the line.", de: "Bahnstrecken gefunden — zum Aufbau der Strecke auswählen." })}` : "Bu bölgede OSM'de tram/hafif-raylı/metro rotası bulunamadı.");
+      setOsmMesaj(list.length ? `${list.length} ${t({ tr: "raylı rota bulundu; hattı kurmak için seç.", en: "rail routes found; select to build the line.", de: "Bahnstrecken gefunden; zum Aufbau der Strecke auswählen." })}` : t({ tr: "Bu bölgede OSM'de tram / hafif-raylı / metro rotası bulunamadı.", en: "No tram / light-rail / metro route found in OSM for this area.", de: "In diesem Gebiet wurde in OSM keine Straßenbahn- / Stadtbahn- / U-Bahn-Strecke gefunden." }));
     } catch (e) {
-      setOsmMesaj(e instanceof Error ? e.message : "Aranamadı.");
+      setOsmMesaj(e instanceof Error ? e.message : t({ tr: "Aranamadı.", en: "Search failed.", de: "Suche fehlgeschlagen." }));
     } finally { setOsmDurum(""); }
   };
   const osmSec = (id: number) => setOsmSecili((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
@@ -102,17 +102,17 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
     if (osmSecili.length === 0) return;
     setOsmDurum("getir"); setOsmMesaj(null); setOsmFull(null);
     try {
-      const r = await fetch("/api/geometri/osm/rota", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mod: "hat", relIds: osmSecili }) });
+      const r = await fetch(`/api/geometri/osm/rota?dil=${dil}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mod: "hat", relIds: osmSecili }) });
       const j = await r.json();
-      if (!r.ok) throw new Error(j.hata || "Getirilemedi.");
+      if (!r.ok) throw new Error(j.hata || t({ tr: "Getirilemedi.", en: "Could not fetch.", de: "Konnte nicht abgerufen werden." }));
       const segs: OsmSegment[] = (Array.isArray(j.segmentler) ? j.segmentler : []).map((s: { ad: string; duraklar: OsmSegment["duraklar"]; geometri: [number, number][] }) => ({ ad: s.ad, duraklar: s.duraklar ?? [], geometri: s.geometri ?? [] }));
       const sec = osmRotalar.filter((x) => osmSecili.includes(x.id));
       const net = sec[0]?.network || "";
-      const hatAd = sec.length === 1 ? sec[0].ad : (net ? `${net} — birleşik hat` : "OSM birleşik hat");
+      const hatAd = sec.length === 1 ? sec[0].ad : (net ? `${net} · ${t({ tr: "birleşik hat", en: "merged line", de: "verbundene Linie" })}` : t({ tr: "OSM birleşik hat", en: "OSM merged line", de: "OSM verbundene Linie" }));
       const full = osmHatKur(segs, hatAd);
       setOsmFull(full);
     } catch (e) {
-      setOsmMesaj(e instanceof Error ? e.message : "Getirilemedi.");
+      setOsmMesaj(e instanceof Error ? e.message : t({ tr: "Getirilemedi.", en: "Could not fetch.", de: "Konnte nicht abgerufen werden." }));
     } finally { setOsmDurum(""); }
   };
 

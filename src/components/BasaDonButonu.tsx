@@ -6,8 +6,10 @@
 // pürüzsüzce döner. Header koyu-mürekkep + altın kenar temasıyla aynı dildedir.
 
 import { useEffect, useState } from "react";
+import { useDil } from "@/components/DilProvider";
 
 export function BasaDonButonu() {
+  const { t } = useDil();
   const [gorunur, setGorunur] = useState(false);
 
   useEffect(() => {
@@ -31,8 +33,8 @@ export function BasaDonButonu() {
     <button
       type="button"
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-      aria-label="Sayfanın başına dön"
-      title="Başa dön"
+      aria-label={t({ tr: "Sayfanın başına dön", en: "Back to top", de: "Nach oben" })}
+      title={t({ tr: "Başa dön", en: "Back to top", de: "Nach oben" })}
       data-noprint
       // Görünürlük opacity + pointer-events ile (transform'u hover'a bıraktık ki
       // çakışmasın); hover'da hafif büyüme + parlaklık.

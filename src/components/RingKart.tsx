@@ -270,7 +270,7 @@ export function RingKart(p: KartProps) {
                         </select>
                         <input value={m.ad} placeholder={t({ tr: "ad (ör. 1. Makas)", en: "name (e.g. Switch 1)", de: "Name (z. B. Weiche 1)" })} onChange={(e) => p.onMakasPatch(m.id, { ad: e.target.value })}
                           className="min-w-0 flex-1 rounded border px-1.5 py-1 text-xs" style={{ borderColor: brand.border, color: brand.ink }} />
-                        <button onClick={() => p.onMakasSil(m.id)} className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}><Ikon ad="cop" size={14} /></button>
+                        <button onClick={() => p.onMakasSil(m.id)} title={t({ tr: "Makası sil", en: "Delete switch", de: "Weiche löschen" })} aria-label={t({ tr: "Makası sil", en: "Delete switch", de: "Weiche löschen" })} className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}><Ikon ad="cop" size={14} /></button>
                       </div>
                       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-6">
                         <Num label={t({ tr: "Konum", en: "Position", de: "Position" })} suffix="m" step={10} value={m.konum} onChange={(v) => p.onMakasPatch(m.id, { konum: v })} hata={konumHatali} />
@@ -338,7 +338,7 @@ export function RingKart(p: KartProps) {
                         </>
                       );
                     })()}
-                    <button onClick={() => p.onHzSil(h.id)} className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}><Ikon ad="cop" size={14} /></button>
+                    <button onClick={() => p.onHzSil(h.id)} title={t({ tr: "Hemzemin geçidini sil", en: "Delete level crossing", de: "Bahnübergang löschen" })} aria-label={t({ tr: "Hemzemin geçidini sil", en: "Delete level crossing", de: "Bahnübergang löschen" })} className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}><Ikon ad="cop" size={14} /></button>
                   </div>
                 ))}
               </div>
@@ -364,7 +364,7 @@ export function RingKart(p: KartProps) {
                     <div className="w-20"><Num label={tt({ tr: "Konum", en: "Position", de: "Position" })} suffix="m" step={10} value={t.konum} onChange={(v) => p.onTnPatch(t.id, { konum: v })} hata={t.konum < 0 || t.konum > ring.uzunluk} /></div>
                     <div className="w-20"><Num label={tt({ tr: "Süre (≈)", en: "Time (≈)", de: "Zeit (≈)" })} suffix="s" step={1} value={Math.round(konumSuresi(t.konum))} onChange={(v) => p.onTnPatch(t.id, { konum: Math.round(sureKonumu(v)) })} /></div>
                     <div className="w-20"><Num label={tt({ tr: "Acil hız", en: "Emergency speed", de: "Notgeschwindigkeit" })} suffix="km/h" step={1} value={Math.round(kmh(t.hiz))} onChange={(v) => p.onTnPatch(t.id, { hiz: v * KMH })} /></div>
-                    <button onClick={() => p.onTnSil(t.id)} className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}><Ikon ad="cop" size={14} /></button>
+                    <button onClick={() => p.onTnSil(t.id)} title={tt({ tr: "Tehlike noktasını sil", en: "Delete danger point", de: "Gefahrenpunkt löschen" })} aria-label={tt({ tr: "Tehlike noktasını sil", en: "Delete danger point", de: "Gefahrenpunkt löschen" })} className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}><Ikon ad="cop" size={14} /></button>
                   </div>
                 ))}
               </div>
@@ -470,7 +470,7 @@ export function RingKart(p: KartProps) {
                           className="rounded border px-2 py-1 text-xs font-medium" style={{ borderColor: brand.border, color: brand.inkSoft }}>
                           {manuel ? t({ tr: "↺ yarıçaptan", en: "↺ from radius", de: "↺ aus Radius" }) : t({ tr: "✎ hızı elle gir", en: "✎ enter speed manually", de: "✎ Geschwindigkeit manuell eingeben" })}
                         </button>
-                        <button onClick={() => p.onKurpSil(k.id)} className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}><Ikon ad="cop" size={14} /></button>
+                        <button onClick={() => p.onKurpSil(k.id)} title={t({ tr: "Kurpu sil", en: "Delete curve", de: "Bogen löschen" })} aria-label={t({ tr: "Kurpu sil", en: "Delete curve", de: "Bogen löschen" })} className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}><Ikon ad="cop" size={14} /></button>
                       </div>
                       {olcu && (
                         <div className="mt-2 flex flex-wrap items-end gap-2 rounded p-2" style={{ background: "#F7F9FA" }}>
@@ -564,7 +564,7 @@ export function RingKart(p: KartProps) {
                           className="min-w-0 flex-1 rounded border px-1.5 py-1 text-xs" style={{ borderColor: brand.border, color: brand.ink }} />
                         <button type="button" onClick={() => p.onSinyalPatch(s.id, { yon: s.yon === "giden" ? "gelen" : "giden" })} className="rounded border px-1.5 py-1 text-xs" style={{ borderColor: brand.border, color: brand.inkSoft }}>{t({ tr: "yön çevir", en: "flip direction", de: "Richtung umkehren" })}</button>
                         <button type="button" onClick={() => p.onSinyalPatch(s.id, { tersIsletme: !s.tersIsletme })} className="rounded border px-1.5 py-1 text-xs" style={{ borderColor: s.tersIsletme ? brand.ink : brand.border, color: brand.inkSoft }}>{t({ tr: "ters işletme amaçlı mı", en: "for reverse running?", de: "für Gegengleisbetrieb?" })}</button>
-                        <button type="button" onClick={() => p.onSinyalSil(s.id)} className="rounded px-1.5 py-1 text-xs" style={{ color: brand.red }}><Ikon ad="cop" size={14} /></button>
+                        <button type="button" onClick={() => p.onSinyalSil(s.id)} title={t({ tr: "Sinyali sil", en: "Delete signal", de: "Signal löschen" })} aria-label={t({ tr: "Sinyali sil", en: "Delete signal", de: "Signal löschen" })} className="rounded px-1.5 py-1 text-xs" style={{ color: brand.red }}><Ikon ad="cop" size={14} /></button>
                       </div>
                       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                         <Num label={t({ tr: "Kilometraj", en: "Chainage", de: "Kilometrierung" })} suffix="m" step={10} value={s.konum} onChange={(v) => p.onSinyalPatch(s.id, { konum: v })} hata={konumHatali} />

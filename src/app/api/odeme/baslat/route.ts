@@ -13,30 +13,34 @@ import { paketBul, guvenliDonusYolu } from "@/lib/cuzdan";
 import crypto from "crypto";
 
 export async function POST(req: Request) {
+  const dq = new URL(req.url).searchParams.get("dil");
+  const dil: "tr" | "en" | "de" = dq === "en" ? "en" : dq === "de" ? "de" : "tr";
+  const m = (tr: string, en: string, de: string) => (dil === "en" ? en : dil === "de" ? de : tr);
+
   if (!isAdminConfigured() || !isIyzicoConfigured()) {
-    return NextResponse.json({ hata: "Ödeme altyapısı henüz yapılandırılmadı (sunucu anahtarları eksik)." }, { status: 503 });
+    return NextResponse.json({ hata: m("Ödeme altyapısı henüz yapılandırılmadı (sunucu anahtarları eksik).", "The payment backend is not configured yet (server keys missing).", "Das Zahlungs-Backend ist noch nicht konfiguriert (Serverschlüssel fehlen).") }, { status: 503 });
   }
 
   let uid: string;
   let eposta = "";
   try { const k = await istekKimlik(req); uid = k.uid; eposta = k.email ?? ""; }
-  catch { return NextResponse.json({ hata: "Kimlik doğrulanamadı." }, { status: 401 }); }
+  catch { return NextResponse.json({ hata: m("Kimlik doğrulanamadı.", "Could not authenticate.", "Authentifizierung fehlgeschlagen.") }, { status: 401 }); }
 
   // Kötüye kullanım freni: ödeme başlatmayı (örhan kayıt üretir) kullanıcı başına sınırla.
   const hiz = await hizSiniri(`odeme:${uid}`, 10, 300, true); // ödeme → fail-closed
   if (!hiz.izin) {
     return NextResponse.json(
-      { hata: "Çok fazla ödeme denemesi — lütfen biraz bekleyin.", sifirlaSn: hiz.sifirlaSn },
+      { hata: m("Çok fazla ödeme denemesi; lütfen biraz bekleyin.", "Too many payment attempts; please wait a moment.", "Zu viele Zahlungsversuche; bitte warten Sie einen Moment."), sifirlaSn: hiz.sifirlaSn },
       { status: 429 },
     );
   }
 
   let govde: { paketId?: string; donusYolu?: string };
   try { govde = await req.json(); }
-  catch { return NextResponse.json({ hata: "Geçersiz istek." }, { status: 400 }); }
+  catch { return NextResponse.json({ hata: m("Geçersiz istek.", "Invalid request.", "Ungültige Anfrage.") }, { status: 400 }); }
 
   const paket = paketBul(govde.paketId ?? "");
-  if (!paket) return NextResponse.json({ hata: "Geçersiz paket." }, { status: 400 });
+  if (!paket) return NextResponse.json({ hata: m("Geçersiz paket.", "Invalid package.", "Ungültiges Paket.") }, { status: 400 });
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
   const conversationId = crypto.randomUUID();

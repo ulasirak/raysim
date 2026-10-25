@@ -167,28 +167,33 @@ async function hatCek(relIds: number[]) {
 }
 
 export async function POST(req: Request) {
+  // Dil (çok-dilli hata mesajları için) query'den; gövde ayrıştırmadan önce okunur.
+  const dq = new URL(req.url).searchParams.get("dil");
+  const dil: "tr" | "en" | "de" = dq === "en" ? "en" : dq === "de" ? "de" : "tr";
+  const m = (tr: string, en: string, de: string) => (dil === "en" ? en : dil === "de" ? de : tr);
+
   const ip = (req.headers.get("x-forwarded-for") || "?").split(",")[0].trim();
   const hiz = await hizSiniri("osmrota:" + ip, 20, 60, false);
-  if (!hiz.izin) return NextResponse.json({ hata: "Çok fazla istek — biraz bekleyin.", sifirlaSn: hiz.sifirlaSn }, { status: 429 });
+  if (!hiz.izin) return NextResponse.json({ hata: m("Çok fazla istek; biraz bekleyin.", "Too many requests; please wait a moment.", "Zu viele Anfragen; bitte warten Sie einen Moment."), sifirlaSn: hiz.sifirlaSn }, { status: 429 });
 
   let body: { mod?: string; sehir?: string; bbox?: [number, number, number, number]; relIds?: number[]; relId?: number };
-  try { body = await req.json(); } catch { return NextResponse.json({ hata: "Geçersiz istek." }, { status: 400 }); }
+  try { body = await req.json(); } catch { return NextResponse.json({ hata: m("Geçersiz istek.", "Invalid request.", "Ungültige Anfrage.") }, { status: 400 }); }
 
   try {
     if (body.mod === "ara") {
       const bbox = Array.isArray(body.bbox) && body.bbox.length === 4 && body.bbox.every((v) => typeof v === "number" && Number.isFinite(v)) ? body.bbox : undefined;
       const sehir = typeof body.sehir === "string" && body.sehir.trim() ? body.sehir.trim().slice(0, 120) : undefined;
-      if (!sehir && !bbox) return NextResponse.json({ hata: "Şehir adı ya da bbox gerekli." }, { status: 400 });
+      if (!sehir && !bbox) return NextResponse.json({ hata: m("Şehir adı ya da bbox gerekli.", "A city name or bbox is required.", "Ein Städtename oder eine Bbox ist erforderlich.") }, { status: 400 });
       return await rotaAra(sehir, bbox);
     }
     if (body.mod === "hat") {
       const relIds = Array.isArray(body.relIds) ? body.relIds : (typeof body.relId === "number" ? [body.relId] : []);
-      if (relIds.length === 0) return NextResponse.json({ hata: "En az bir rota kimliği (relId) gerekli." }, { status: 400 });
+      if (relIds.length === 0) return NextResponse.json({ hata: m("En az bir rota kimliği (relId) gerekli.", "At least one route id (relId) is required.", "Mindestens eine Routen-ID (relId) ist erforderlich.") }, { status: 400 });
       return await hatCek(relIds);
     }
-    return NextResponse.json({ hata: "mod 'ara' ya da 'hat' olmalı." }, { status: 400 });
+    return NextResponse.json({ hata: m("mod 'ara' ya da 'hat' olmalı.", "mode must be 'ara' or 'hat'.", "mod muss 'ara' oder 'hat' sein.") }, { status: 400 });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "OSM'den çekilemedi.";
-    return NextResponse.json({ hata: msg + " (Overpass/Nominatim yoğun olabilir — birazdan tekrar deneyin.)" }, { status: 502 });
+    const detay = e instanceof Error ? e.message : m("OSM'den çekilemedi.", "Could not fetch from OSM.", "Konnte nicht aus OSM abgerufen werden.");
+    return NextResponse.json({ hata: detay + " " + m("(Overpass/Nominatim yoğun olabilir; birazdan tekrar deneyin.)", "(Overpass/Nominatim may be busy; try again shortly.)", "(Overpass/Nominatim ist evtl. ausgelastet; versuchen Sie es bald erneut.)") }, { status: 502 });
   }
 }

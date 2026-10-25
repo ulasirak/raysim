@@ -79,20 +79,24 @@ async function overpassCek(bbox: [number, number, number, number], eps = 0.00025
 }
 
 export async function POST(req: Request) {
+  const dq = new URL(req.url).searchParams.get("dil");
+  const dil: "tr" | "en" | "de" = dq === "en" ? "en" : dq === "de" ? "de" : "tr";
+  const m = (tr: string, en: string, de: string) => (dil === "en" ? en : dil === "de" ? de : tr);
+
   const ip = (req.headers.get("x-forwarded-for") || "?").split(",")[0].trim();
   const hiz = await hizSiniri("osmgeo:" + ip, 20, 60, false); // 20/dk; rate-limit altyapısı yoksa fail-OPEN (convenience uç)
-  if (!hiz.izin) return NextResponse.json({ hata: "Çok fazla istek — biraz bekleyin.", sifirlaSn: hiz.sifirlaSn }, { status: 429 });
+  if (!hiz.izin) return NextResponse.json({ hata: m("Çok fazla istek; biraz bekleyin.", "Too many requests; please wait a moment.", "Zu viele Anfragen; bitte warten Sie einen Moment."), sifirlaSn: hiz.sifirlaSn }, { status: 429 });
 
   let body: { bbox?: [number, number, number, number]; ham?: boolean };
-  try { body = await req.json(); } catch { return NextResponse.json({ hata: "Geçersiz istek." }, { status: 400 }); }
+  try { body = await req.json(); } catch { return NextResponse.json({ hata: m("Geçersiz istek.", "Invalid request.", "Ungültige Anfrage.") }, { status: 400 }); }
   const bbox = body.bbox;
   const eps = body.ham ? 0.00002 : 0.00025; // ham=~2m (kavis analizi), varsayılan ~28m (harita)
   if (!Array.isArray(bbox) || bbox.length !== 4 || !bbox.every((v) => typeof v === "number" && Number.isFinite(v))) {
-    return NextResponse.json({ hata: "Geçerli bbox gerekli [güney,batı,kuzey,doğu]." }, { status: 400 });
+    return NextResponse.json({ hata: m("Geçerli bbox gerekli [güney,batı,kuzey,doğu].", "A valid bbox is required [south,west,north,east].", "Eine gültige Bbox ist erforderlich [Süd,West,Nord,Ost].") }, { status: 400 });
   }
   const [s, w, n, e] = bbox;
   if (n <= s || e <= w || n - s > 0.6 || e - w > 0.6) {
-    return NextResponse.json({ hata: "bbox geçersiz ya da çok büyük (≤0,6°)." }, { status: 400 });
+    return NextResponse.json({ hata: m("bbox geçersiz ya da çok büyük (≤0,6°).", "bbox is invalid or too large (≤0.6°).", "Bbox ungültig oder zu groß (≤0,6°).") }, { status: 400 });
   }
 
   const key = bbox.map((v) => v.toFixed(3)).join(",") + (body.ham ? ":ham" : "");
@@ -107,9 +111,9 @@ export async function POST(req: Request) {
       istasyonlar: veri.istasyonlar,
       kaynak: "osm",
       not: "© OpenStreetMap · ODbL",
-      uyari: veri.geometri.length === 0 && veri.istasyonlar.length === 0 ? "Bu alanda OpenStreetMap'te raylı hat bulunamadı." : undefined,
+      uyari: veri.geometri.length === 0 && veri.istasyonlar.length === 0 ? m("Bu alanda OpenStreetMap'te raylı hat bulunamadı.", "No rail line found in OpenStreetMap for this area.", "In diesem Gebiet wurde in OpenStreetMap keine Bahnstrecke gefunden.") : undefined,
     });
   } catch {
-    return NextResponse.json({ hata: "OpenStreetMap'ten çekilemedi (geçici — Overpass yoğun olabilir). Biraz sonra tekrar deneyin." }, { status: 502 });
+    return NextResponse.json({ hata: m("OpenStreetMap'ten çekilemedi (geçici; Overpass yoğun olabilir). Biraz sonra tekrar deneyin.", "Could not fetch from OpenStreetMap (temporary; Overpass may be busy). Try again shortly.", "Konnte nicht aus OpenStreetMap abgerufen werden (vorübergehend; Overpass evtl. ausgelastet). Versuchen Sie es bald erneut.") }, { status: 502 });
   }
 }

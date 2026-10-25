@@ -24,6 +24,7 @@ import { varsayilanArac } from "@/lib/anaray/vehicles";
 import type { RollingStock } from "@/lib/anaray/types";
 import { yoneticiMi } from "@/lib/anaray/yetki";
 import { useAuth } from "@/components/AuthProvider";
+import { useDil } from "@/components/DilProvider";
 import { getAuthInstance } from "@/lib/firebase";
 import {
   projeleriListele, ilkProjeOlustur, projeGetir, projeKaydet, projeSil,
@@ -144,6 +145,10 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
 
   // Otomatik kayıt kontrolü: yükleme sırasında tetiklenmesin diye son yazılan
   // içeriğin imzası tutulur; yalnız gerçek değişiklikte kaydedilir.
+  // Kayıt/limit mesajları async callback'te üretilir → dil'i taze tutmak için ref.
+  const { dil } = useDil();
+  const dilRef = useRef(dil);
+  useEffect(() => { dilRef.current = dil; }, [dil]);
   const imzaRef = useRef<string>("");
   const zamanlayiciRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -368,7 +373,11 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
       const bayt = veriBoyutu(imza);
       if (bayt > VERI_BAYT_SINIRI) {
         setHataMetni(
-          `Hat verisi çok büyük (${Math.round(bayt / 1024)} KB, sınır ${Math.round(VERI_BAYT_SINIRI / 1024)} KB) — kaydedilmedi. Ring sayısını azaltın veya hattı ikiye bölün.`,
+          dilRef.current === "en"
+            ? `Line data is too large (${Math.round(bayt / 1024)} KB, limit ${Math.round(VERI_BAYT_SINIRI / 1024)} KB); not saved. Reduce the number of rings or split the line in two.`
+            : dilRef.current === "de"
+            ? `Streckendaten sind zu groß (${Math.round(bayt / 1024)} KB, Grenze ${Math.round(VERI_BAYT_SINIRI / 1024)} KB); nicht gespeichert. Reduzieren Sie die Ringanzahl oder teilen Sie die Linie in zwei.`
+            : `Hat verisi çok büyük (${Math.round(bayt / 1024)} KB, sınır ${Math.round(VERI_BAYT_SINIRI / 1024)} KB); kaydedilmedi. Ring sayısını azaltın veya hattı ikiye bölün.`,
         );
         setDurum("hata");
         return;
@@ -382,7 +391,11 @@ export function SimConfigProvider({ children }: { children: React.ReactNode }) {
         // (duvara toslamadan hattı bölme fırsatı). Altındaysa varsa eski uyarı temizlenir.
         setHataMetni(
           bayt > VERI_BAYT_UYARI
-            ? `Uyarı: hat verisi büyüyor (${Math.round(bayt / 1024)} KB / ${Math.round(VERI_BAYT_SINIRI / 1024)} KB). Sınıra yaklaşınca hattı ikiye bölmeyi düşünün.`
+            ? (dilRef.current === "en"
+                ? `Note: line data is growing (${Math.round(bayt / 1024)} KB / ${Math.round(VERI_BAYT_SINIRI / 1024)} KB). Consider splitting the line in two as you approach the limit.`
+                : dilRef.current === "de"
+                ? `Hinweis: Streckendaten wachsen (${Math.round(bayt / 1024)} KB / ${Math.round(VERI_BAYT_SINIRI / 1024)} KB). Erwägen Sie, die Linie zu teilen, wenn Sie sich der Grenze nähern.`
+                : `Uyarı: hat verisi büyüyor (${Math.round(bayt / 1024)} KB / ${Math.round(VERI_BAYT_SINIRI / 1024)} KB). Sınıra yaklaşınca hattı ikiye bölmeyi düşünün.`)
             : null,
         );
         setDurum("kaydedildi");

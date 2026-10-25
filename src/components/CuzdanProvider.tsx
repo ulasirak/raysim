@@ -8,8 +8,9 @@
 // Bakiye OKUMA istemciden güvenli (kurallar sahibi okumaya izin verir); YAZMA
 // yalnız sunucudan olur (bkz. firestore.rules + lib/cuzdanServer.ts).
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
+import { useDil } from "@/components/DilProvider";
 import { getAuthInstance, isFirebaseConfigured } from "@/lib/firebase";
 import { bakiyeGetir } from "@/lib/cuzdan";
 
@@ -33,6 +34,10 @@ const Ctx = createContext<CuzdanCtx | null>(null);
 
 export function CuzdanProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  // Ödeme fetch'i useCallback([])'te → dil'i taze tutmak için ref.
+  const { dil } = useDil();
+  const dilRef = useRef(dil);
+  useEffect(() => { dilRef.current = dil; }, [dil]);
   const [bakiye, setBakiye] = useState<number | null>(null);
   const [odemeSonucu, setOdemeSonucu] = useState<"basarili" | "hata" | null>(null);
   const odemeSonucuTemizle = useCallback(() => setOdemeSonucu(null), []);
@@ -72,7 +77,7 @@ export function CuzdanProvider({ children }: { children: React.ReactNode }) {
     const token = await a.currentUser.getIdToken();
     // Ödemeye başlanan sayfa (pathname + #hash) → dönüşte kullanıcı buraya döner.
     const donusYolu = window.location.pathname + window.location.hash;
-    const yanit = await fetch("/api/odeme/baslat", {
+    const yanit = await fetch(`/api/odeme/baslat?dil=${dilRef.current}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ paketId, donusYolu }),
@@ -85,7 +90,8 @@ export function CuzdanProvider({ children }: { children: React.ReactNode }) {
       setOdemeIcerik(veri.icerik ?? "");
       return {};
     }
-    return { hata: veri.hata ?? `Ödeme başlatılamadı (${yanit.status}).` };
+    const fallback = dilRef.current === "en" ? `Could not start payment (${yanit.status}).` : dilRef.current === "de" ? `Zahlung konnte nicht gestartet werden (${yanit.status}).` : `Ödeme başlatılamadı (${yanit.status}).`;
+    return { hata: veri.hata ?? fallback };
   }, []);
 
   // Ödeme dönüşü: /?odeme=basarili|hata → banner göster; başarılıysa bakiyeyi tazele.

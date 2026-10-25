@@ -79,20 +79,21 @@ export function useAuth(): AuthCtx {
   return c;
 }
 
-/** Firebase Auth hata kodlarını okunur Türkçeye çevirir. */
-export function authHata(e: unknown): string {
+/** Firebase Auth hata kodlarını okunur, çok-dilli (TR·EN·DE) mesaja çevirir. */
+export function authHata(e: unknown, dil: "tr" | "en" | "de" = "tr"): string {
   const kod = (e as { code?: string })?.code ?? "";
+  const m = (tr: string, en: string, de: string) => (dil === "en" ? en : dil === "de" ? de : tr);
   switch (kod) {
-    case "auth/invalid-email": return "E-posta adresi geçersiz.";
-    case "auth/missing-password": return "Şifre girilmedi.";
-    case "auth/weak-password": return "Şifre çok zayıf — en az 6 karakter olmalı.";
-    case "auth/email-already-in-use": return "Bu e-posta ile zaten bir hesap var — giriş yapın.";
+    case "auth/invalid-email": return m("E-posta adresi geçersiz.", "Invalid email address.", "Ungültige E-Mail-Adresse.");
+    case "auth/missing-password": return m("Şifre girilmedi.", "No password entered.", "Kein Passwort eingegeben.");
+    case "auth/weak-password": return m("Şifre çok zayıf; en az 6 karakter olmalı.", "Password is too weak; it must be at least 6 characters.", "Passwort zu schwach; mindestens 6 Zeichen nötig.");
+    case "auth/email-already-in-use": return m("Bu e-posta ile zaten bir hesap var; giriş yapın.", "An account already exists with this email; sign in instead.", "Mit dieser E-Mail existiert bereits ein Konto; melden Sie sich an.");
     case "auth/invalid-credential":
     case "auth/wrong-password":
-    case "auth/user-not-found": return "E-posta veya şifre hatalı.";
-    case "auth/too-many-requests": return "Çok fazla deneme yapıldı — bir süre sonra tekrar deneyin.";
-    case "auth/network-request-failed": return "Ağ hatası — bağlantınızı kontrol edin.";
-    case "auth/operation-not-allowed": return "E-posta/şifre girişi Firebase Console'da etkinleştirilmemiş.";
+    case "auth/user-not-found": return m("E-posta veya şifre hatalı.", "Incorrect email or password.", "E-Mail oder Passwort falsch.");
+    case "auth/too-many-requests": return m("Çok fazla deneme yapıldı; bir süre sonra tekrar deneyin.", "Too many attempts; please try again later.", "Zu viele Versuche; bitte später erneut versuchen.");
+    case "auth/network-request-failed": return m("Ağ hatası; bağlantınızı kontrol edin.", "Network error; check your connection.", "Netzwerkfehler; prüfen Sie Ihre Verbindung.");
+    case "auth/operation-not-allowed": return m("E-posta/şifre girişi Firebase Console'da etkinleştirilmemiş.", "Email/password sign-in is not enabled in the Firebase Console.", "E-Mail/Passwort-Anmeldung ist in der Firebase Console nicht aktiviert.");
     default: return e instanceof Error ? e.message : String(e);
   }
 }

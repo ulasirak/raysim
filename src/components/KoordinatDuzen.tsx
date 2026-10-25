@@ -27,7 +27,7 @@ export function KoordinatDuzen({
    *  geometrisi çekilip (sunucu, cache'li) haritada gerçek hiza olarak kullanılır. */
   onGeometri?: (g: GeoYol[]) => void;
 }) {
-  const { t } = useDil();
+  const { t, dil } = useDil();
   const k = koordinat ?? {};
   const doluSay = istasyonlar.filter((s) => k[s] && Number.isFinite(k[s].lat) && Number.isFinite(k[s].lon)).length;
   const [osmDurum, setOsmDurum] = useState<"bos" | "yukleniyor" | "hata">("bos");
@@ -41,7 +41,7 @@ export function KoordinatDuzen({
     const bbox: [number, number, number, number] = [Math.min(...lats) - m, Math.min(...lons) - m, Math.max(...lats) + m, Math.max(...lons) + m];
     setOsmDurum("yukleniyor"); setOsmMesaj("");
     try {
-      const r = await fetch("/api/geometri/osm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bbox }) });
+      const r = await fetch(`/api/geometri/osm?dil=${dil}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bbox }) });
       const j = await r.json();
       if (!r.ok) { setOsmDurum("hata"); setOsmMesaj(j.hata || t({ tr: "Çekilemedi.", en: "Could not fetch.", de: "Konnte nicht abgerufen werden." })); return; }
       if (!j.geometri || j.geometri.length === 0) { setOsmDurum("hata"); setOsmMesaj(j.uyari || t({ tr: "Bu alanda OSM hattı bulunamadı.", en: "No OSM line found in this area.", de: "In diesem Gebiet wurde keine OSM-Trasse gefunden." })); return; }

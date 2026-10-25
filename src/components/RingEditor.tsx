@@ -413,7 +413,7 @@ export function RingEditor() {
                       </div>
                     )}
                     {duraklar.length > 2 ? (
-                      <button onClick={() => silHatirla((rs) => durakSil(rs, i))} title={t({ tr: "Durağı sil (orta durak → komşu ringleri birleştirir)", en: "Delete stop (middle stop → merges neighboring sections)", de: "Haltestelle löschen (mittlere Haltestelle → verbindet benachbarte Abschnitte)" })}
+                      <button onClick={() => silHatirla((rs) => durakSil(rs, i))} title={t({ tr: "Durağı sil (orta durak: komşu ringleri birleştirir)", en: "Delete stop (middle stop: merges neighboring sections)", de: "Haltestelle löschen (mittlere Haltestelle: verbindet benachbarte Abschnitte)" })} aria-label={t({ tr: "Durağı sil", en: "Delete stop", de: "Haltestelle löschen" })}
                         className="shrink-0 rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}><Ikon ad="cop" size={14} /></button>
                     ) : (<span className="w-6 shrink-0" />)}
                   </div>

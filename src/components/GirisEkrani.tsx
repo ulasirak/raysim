@@ -21,7 +21,7 @@ type Mod = "giris" | "kayit" | "sifre";
  */
 export function GirisEkrani({ kapiModu = false }: { kapiModu?: boolean } = {}) {
   const router = useRouter();
-  const { t } = useDil();
+  const { t, dil } = useDil();
   const { user, hazir, yapilandirildi, girisYap, kayitOl, sifreSifirla } = useAuth();
   const [mod, setMod] = useState<Mod>("giris");
 
@@ -75,7 +75,7 @@ export function GirisEkrani({ kapiModu = false }: { kapiModu?: boolean } = {}) {
         setMesaj({ tip: "ok", metin: t({ tr: "Şifre sıfırlama bağlantısı e-postanıza gönderildi.", en: "A password reset link has been sent to your e-mail.", de: "Ein Link zum Zurücksetzen des Passworts wurde an deine E-Mail gesendet." }) });
       }
     } catch (err) {
-      setMesaj({ tip: "err", metin: authHata(err) });
+      setMesaj({ tip: "err", metin: authHata(err, dil) });
     } finally {
       setMesgul(false);
     }
