@@ -39,7 +39,15 @@ export async function overpassSorgu<T = { elements: unknown[] }>(q: string, ayna
         signal: ctrl.signal,
       });
       if (!r.ok) throw new Error("HTTP " + r.status);
-      return (await r.json()) as T;
+      const veri = (await r.json()) as T & { osm3s?: { timestamp_osm_base?: string } };
+      // SAĞLIK KAPISI: bazı aynalar BOZUK/BOŞ bir DB servis eder — hızlı ama boş cevap
+      // verip paralel yarışı yanlışlıkla kazanır ve "rota yok" gibi görünür. Geçerli bir
+      // Overpass yanıtı taze bir `timestamp_osm_base` (ISO, <30 gün) taşır; aksi halde o
+      // aynayı elenmiş say. Bu, bozuk-boş ile gerçekten-boş'u ayırır; liste kendini temizler.
+      const ts = veri?.osm3s?.timestamp_osm_base;
+      const taze = typeof ts === "string" && /^\d{4}-\d{2}-\d{2}T/.test(ts) && Date.now() - Date.parse(ts) < 30 * 864e5;
+      if (!taze) throw new Error("ayna bayat/bozuk veri (osm_base: " + String(ts) + ")");
+      return veri as T;
     } finally {
       clearTimeout(zaman);
       ust.signal.removeEventListener("abort", ilet);
