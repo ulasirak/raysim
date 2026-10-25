@@ -23,12 +23,12 @@ export function Kaynak({ yerler, etiket }: { yerler: KaynakYer[]; etiket?: strin
   if (!yerler.length) return null;
   const acParametreler = () => { try { window.dispatchEvent(new CustomEvent(PARAMETRELER_AC)); } catch { /* sessiz */ } };
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 border-t pt-2 text-[0.7rem]" style={{ borderColor: brand.border }}>
-      <span className="shrink-0" style={{ color: brand.faint }}>ⓘ {etiketMetin}:</span>
+    <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 border-t pt-2 text-xs" style={{ borderColor: brand.border }}>
+      <span className="shrink-0" style={{ color: brand.muted }}>{etiketMetin}:</span>
       {yerler.map((y, i) => y === "parametreler" ? (
         <button key={i} type="button" onClick={acParametreler}
           className="rounded-full border px-2 py-0.5 font-medium transition hover:bg-slate-50"
-          style={{ borderColor: brand.border, color: brand.inkSoft }}>{t({ tr: "⚙ Parametreler →", en: "⚙ Parameters →", de: "⚙ Parameter →" })}</button>
+          style={{ borderColor: brand.border, color: brand.inkSoft }}>{t({ tr: "Parametreler", en: "Parameters", de: "Parameter" })}</button>
       ) : (
         <Link key={i} href={y.href}
           onClick={(e) => {
@@ -45,7 +45,7 @@ export function Kaynak({ yerler, etiket }: { yerler: KaynakYer[]; etiket?: strin
             else el.scrollIntoView({ behavior: "smooth", block: "start" });
           }}
           className="rounded-full border px-2 py-0.5 font-medium transition hover:bg-slate-50"
-          style={{ borderColor: brand.border, color: brand.inkSoft }}>{y.ad} →</Link>
+          style={{ borderColor: brand.border, color: brand.inkSoft }}>{y.ad}</Link>
       ))}
     </div>
   );

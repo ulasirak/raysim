@@ -32,7 +32,7 @@ export function Not({
   const vurgu = tonu === "hata" ? brand.red : tonu === "uyari" ? ds.status.warn : brand.ink;
   return (
     <div
-      className={`rounded-r-sm border-l-2 py-1.5 pl-3 pr-2 text-[0.8125rem] leading-relaxed ${className}`}
+      className={`rounded-r-sm border-l-2 py-1.5 pl-3 pr-2 text-sm leading-relaxed ${className}`}
       style={{ borderColor: SOL[tonu], color: brand.inkSoft }}
       role={tonu === "hata" ? "alert" : undefined}
     >

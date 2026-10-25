@@ -9,5 +9,5 @@ export const OK = CK.good;
 
 /** Bir alanın altına çok kısa, basit açıklama (kullanıcı anlasın diye). */
 export function Kucuk({ children }: { children: ReactNode }) {
-  return <p className="mt-0.5 text-[0.6rem] leading-tight" style={{ color: brand.faint }}>{children}</p>;
+  return <p className="mt-1 text-xs leading-snug" style={{ color: brand.muted }}>{children}</p>;
 }

@@ -20,11 +20,11 @@ export function NedenDetay({
   return (
     <details className={`nd group mt-1 ${className}`}>
       <summary
-        className="flex w-fit cursor-pointer select-none items-center gap-1 text-[0.7rem] font-semibold [&::-webkit-details-marker]:hidden"
+        className="flex w-fit cursor-pointer select-none items-center gap-1 text-sm font-semibold [&::-webkit-details-marker]:hidden"
         style={{ color: brand.ink }}
       >
         <span className="underline decoration-dotted underline-offset-2">{ozet}</span>
-        <span className="text-[0.6rem] transition-transform duration-150 group-open:rotate-90" style={{ color: brand.muted }} aria-hidden="true">▸</span>
+        <span className="text-xs transition-transform duration-150 group-open:rotate-90" style={{ color: brand.muted }} aria-hidden="true">▸</span>
       </summary>
       <div className="mt-1">{children}</div>
     </details>

@@ -16,7 +16,7 @@ import { CK } from "@/lib/anaray/chartkit";
 import { useDil } from "@/components/DilProvider";
 
 function Kucuk({ children }: { children: React.ReactNode }) {
-  return <span className="mt-0.5 block text-[0.65rem] leading-snug" style={{ color: brand.muted }}>{children}</span>;
+  return <span className="mt-1 block text-xs leading-snug" style={{ color: brand.muted }}>{children}</span>;
 }
 
 /** Çekmece (drawer) — tek tuşla aşağı açılır; kapalıyken yer kaplamaz. */

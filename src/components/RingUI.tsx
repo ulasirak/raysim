@@ -11,7 +11,7 @@ const OK = CK.good;
 
 export function Rozet({ ok, okText, hataText }: { ok: boolean; okText: string; hataText: string }) {
   return (
-    <span className="shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-medium" style={ok ? { background: CK.goodBg, color: OK } : { background: CK.badBg, color: CK.red }}>
+    <span className="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium" style={ok ? { background: CK.goodBg, color: OK } : { background: CK.badBg, color: CK.red }}>
       {ok ? `✓ ${okText}` : `⚠ ${hataText}`}
     </span>
   );
@@ -20,11 +20,11 @@ export function Rozet({ ok, okText, hataText }: { ok: boolean; okText: string; h
 export function Num({ label, value, onChange, step, suffix, hata, allowNeg, max }: { label: string; value: number; onChange: (v: number) => void; step: number; suffix: string; hata?: boolean; allowNeg?: boolean; max?: number }) {
   return (
     <label className="block">
-      <span className="field-label" style={{ fontSize: "0.6rem" }}>{label}</span>
+      <span className="field-label">{label}</span>
       <div className="mt-0.5 flex items-center gap-1">
         <input type="number" value={value} step={step} max={max} onChange={(e) => { let v = parseFloat(e.target.value) || 0; if (!allowNeg) v = Math.max(0, v); if (max != null) v = Math.min(max, v); onChange(v); }}
           className="w-full rounded border px-1.5 py-1 text-right text-sm" style={{ borderColor: hata ? brand.red : brand.border, color: hata ? brand.red : brand.ink }} />
-        <span className="text-[0.65rem]" style={{ color: brand.muted }}>{suffix}</span>
+        <span className="text-xs" style={{ color: brand.muted }}>{suffix}</span>
       </div>
     </label>
   );
@@ -47,7 +47,7 @@ export function Panel({ baslik, aciklama, children, katlanir = false, ozet, acik
           <span className="ml-2 shrink-0 text-xs" style={{ color: brand.muted }}><span className="group-open:hidden">▸</span><span className="hidden group-open:inline">▾</span></span>
         </summary>
         <div className="px-5 pb-5">
-          <AutoAciklama metin={aciklama} className="mb-4 text-xs" style={{ color: brand.muted }} />
+          <AutoAciklama metin={aciklama} className="mb-4 text-sm leading-relaxed" style={{ color: brand.inkSoft }} />
           {children}
         </div>
       </details>
@@ -59,7 +59,7 @@ export function Panel({ baslik, aciklama, children, katlanir = false, ozet, acik
         <span className="h-4 w-[3px]" style={{ background: brand.red }} aria-hidden="true" />
         <h2 className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{baslik}</h2>
       </div>
-      <AutoAciklama metin={aciklama} className="-mt-3 mb-4 pl-[11px] text-xs" style={{ color: brand.muted }} />
+      <AutoAciklama metin={aciklama} className="-mt-3 mb-4 pl-[11px] text-sm leading-relaxed" style={{ color: brand.inkSoft }} />
       {children}
     </div>
   );
