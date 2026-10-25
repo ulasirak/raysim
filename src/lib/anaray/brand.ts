@@ -6,8 +6,8 @@ export const brand = {
   // Kurumsal yüzeyler
   ink: "#0C2233", // koyu mürekkep-lacivert — başlık, masthead, ana veri
   inkSoft: "#3A4A5A", // gövde metni
-  muted: "#6B7A8A", // etiket / ikincil
-  faint: "#9AA7B4",
+  muted: "#5A6975", // etiket / ikincil — AA kontrast (beyazda ~5.7:1, kağıtta ~5.2:1)
+  faint: "#6A7884", // en açık metin kademesi — AA (beyazda ~4.5:1); yalnız en hafif ipuçları
   red: "#C8102E", // resmî kırmızı aksan (ölçülü)
   redSoft: "#E23B52",
   gold: "#A8842C", // nadir "mühür" cetveli
