@@ -49,7 +49,7 @@ export function Karsilama() {
 
   const ADIMLAR: Adim[] = [
     {
-      rozet: t({ tr: "HOŞ GELDİN", en: "WELCOME", de: "WILLKOMMEN" }),
+      rozet: t({ tr: "Hoş geldin", en: "Welcome", de: "Willkommen" }),
       baslik: t({ tr: "RaySim'e hoş geldin", en: "Welcome to RaySim", de: "Willkommen bei RaySim" }),
       govde: (
         <p className="text-sm leading-relaxed" style={{ color: brand.inkSoft }}>
@@ -58,7 +58,7 @@ export function Karsilama() {
       ),
     },
     {
-      rozet: t({ tr: "BORU HATTI", en: "PIPELINE", de: "PIPELINE" }),
+      rozet: t({ tr: "Boru hattı", en: "Pipeline", de: "Pipeline" }),
       baslik: t({ tr: "Beş istasyonluk bir iş akışı", en: "A five-station workflow", de: "Ein Arbeitsablauf mit fünf Stationen" }),
       govde: (
         <div>
@@ -85,7 +85,7 @@ export function Karsilama() {
       ),
     },
     {
-      rozet: t({ tr: "BAŞLARKEN", en: "GETTING STARTED", de: "ERSTE SCHRITTE" }),
+      rozet: t({ tr: "Başlarken", en: "Getting started", de: "Erste Schritte" }),
       baslik: t({ tr: "Kendi hattınla başla", en: "Start with your own line", de: "Beginne mit deiner eigenen Linie" }),
       govde: (
         <div className="flex flex-col gap-3 text-sm leading-relaxed" style={{ color: brand.inkSoft }}>
@@ -176,7 +176,7 @@ export function Karsilama() {
 
         {/* İçerik */}
         <div className="px-5 pb-2 pt-5">
-          <span className="font-brand text-xs font-bold tracking-[0.22em]" style={{ color: brand.red }}>
+          <span className="font-brand text-xs font-semibold" style={{ color: brand.red }}>
             {adim.rozet}
           </span>
           <h2 className="mb-3 mt-1 text-lg font-semibold" style={{ color: brand.ink }}>{adim.baslik}</h2>
