@@ -682,15 +682,6 @@ export function raporStil(INK: string, RED: string, GOLD: string): string {
   .fig { margin: 6px 0 16px; text-align: center; page-break-inside: avoid; }
   .fig .cap { font-size: 8.5pt; color: #6B7A8A; margin-top: 4px; }
 
-  /* Tornado (duyarlılık) — satır içi yatay çubuk: parametre ±%20 oynayınca metriğin
-     aldığı aralık; dikey çizgi = mevcut tasarım değeri. Çubuk hücreye gömülü konumlanır. */
-  .tor-tbl { table-layout: fixed; }
-  .tor-tbl td { vertical-align: middle; }
-  .tor-tbl td.trk-td { padding: 4px 8px; }
-  .tor .trk { position: relative; height: 13px; background: #EEF2F5; border-radius: 2px; }
-  .tor .barr { position: absolute; top: 2px; height: 9px; background: ${GOLD}; border-radius: 1px; }
-  .tor .base { position: absolute; top: -2px; height: 17px; width: 1.5px; background: ${INK}; }
-
   /* Ring detayları uzun olabildiğinden (kısıt tablosu + challenge listesi) sayfalar
      arası bölünebilir; başlık bir sonraki içerikten koparılmaz. */
   .ring-detay { page-break-inside: auto; margin-bottom: 14px; }

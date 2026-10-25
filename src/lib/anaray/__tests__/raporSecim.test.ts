@@ -108,13 +108,13 @@ describe("Rapor bölüm seçimi — her varyasyon kusursuz", () => {
     const yalnizGrafik = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, b === "grafikler"])) as RaporSecim;
     expect(raporKredi(yalnizGrafik)).toBe(RAPOR_TABAN_KREDI + 3);
   });
-  it("raporKredi: grafiksiz tam rapor = taban 3 + 10 bölüm = 13 kredi", () => {
+  it("raporKredi: grafiksiz tam rapor = taban 3 + 9 bölüm = 12 kredi", () => {
     const secim = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, b !== "grafikler"])) as RaporSecim;
-    expect(raporKredi(secim)).toBe(13);
+    expect(raporKredi(secim)).toBe(12);
   });
-  it("raporKredi: her şey açık = 3 + 10 + grafikler(3) = 16 kredi", () => {
+  it("raporKredi: her şey açık = 3 + 9 + grafikler(3) = 15 kredi", () => {
     const secim = Object.fromEntries(RAPOR_BOLUMLER.map((b) => [b, true])) as RaporSecim;
-    expect(raporKredi(secim)).toBe(16);
+    expect(raporKredi(secim)).toBe(15);
   });
 
   // İZLENEBİLİRLİK (Büyük sıçrama B) — motor sürümü DAİMA kapakta; seçilince bölüm 10

@@ -3,8 +3,8 @@
 // Kullanıcı hangi bölümleri istediğini seçer; fiyat KÜMÜLATİF artar. SUNUCU bu
 // tablodan bedeli ENFORCE eder (istemci fiyat yollamaz). Taban (kapak/künye/TOC +
 // DAİMA dâhil Girdi Parametreleri ve Sinyalizasyon-SG bölümleri) + seçilen her
-// bölümün kredisi. Klasik tam rapor (grafiksiz) = 3 taban + 7 bölüm = 10 kredi
-// (eski 10-kredi tam rapor içeriğiyle birebir; grafikler yeni premium katman).
+// bölümün kredisi. Klasik tam rapor (grafiksiz) = 3 taban + 6 bölüm = 9 kredi
+// (grafikler ayrı premium katman).
 //
 // DEĞİŞİKLİK (2026-09-19): "girdi" ve "sinyal" artık SEÇENEK değil — her raporun
 // tabanında yer alır (kullanıcı isteği). Yerine "grafikler" (görsel analiz — tüm
@@ -20,11 +20,10 @@ export const RAPOR_BOLUM_KREDI = {
   kapasite: 1,    // 4. Kapasite (blocking-time, robustluk, çakışma…)
   isletme: 1,     // 5. İşletme & Talep + Tavsiye Edilen Tramvay Sayısı
   tarife: 1,      // 6. Tarife
-  duyarlilik: 1,  // 7. Duyarlılık (tornado)
   kilitleme: 1,   // 3.2 Kilitleme (Interlocking) Kontrol Tablosu — rota/makas konumu/kilit
   dogrulama: 1,   // 9. Doğrulama & Geçerleme (V&V) — motorun analitik referanslara karşı sertifikasyonu
   izlenebilirlik: 1, // 10. İzlenebilirlik & Tekrar-Üretilebilirlik — motor sürümü + girdi künyesi + her sayının yöntem kaynağı
-  grafikler: 3,   // Görsel analiz — tüm şekiller/çizelgeler (Bildfahrplan, hız profili, yük, Sperrzeit, tornado…)
+  grafikler: 3,   // Görsel analiz — tüm şekiller/çizelgeler (Bildfahrplan, hız profili, yük, Sperrzeit…)
 } as const;
 
 export type RaporBolum = keyof typeof RAPOR_BOLUM_KREDI;
@@ -53,7 +52,6 @@ export const RAPOR_BOLUM_AD: Record<RaporBolum, { tr: string; en: string }> = {
   kapasite: { tr: "Kapasite Analizi", en: "Capacity Analysis" },
   isletme: { tr: "İşletme & Talep + Tavsiye Filo", en: "Operations & Demand + Fleet" },
   tarife: { tr: "Tarife", en: "Timetable" },
-  duyarlilik: { tr: "Duyarlılık (Tornado)", en: "Sensitivity (Tornado)" },
   kilitleme: { tr: "Kilitleme Kontrol Tablosu (Interlocking)", en: "Interlocking Control Table" },
   dogrulama: { tr: "Doğrulama & Geçerleme (V&V)", en: "Verification & Validation" },
   izlenebilirlik: { tr: "İzlenebilirlik & Tekrar-Üretilebilirlik", en: "Traceability & Reproducibility" },

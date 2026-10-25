@@ -101,9 +101,9 @@ const ADIMLAR: Adim[] = [
   {
     no: "9", slug: "sistem", sekme: "sm-t3",
     metin: {
-      tr: { faz: "SİSTEM · DOĞRULUK", baslik: "Motor doğruluğu", anlatim: "Sonuçlara güven: duyarlılık (tornado) hangi girdinin kapasiteyi en çok oynattığını sıralar; Doğrulama & Geçerleme (V&V) motoru kanonik analitik referanslara (UIC, Sperrzeit) karşı sertifikalar — 'AI yapımı' değil, mühendislik disiplinli." },
-      en: { faz: "SYSTEM · ACCURACY", baslik: "Engine accuracy", anlatim: "Trust the results: sensitivity (tornado) ranks which input moves capacity most; Verification & Validation (V&V) certifies the engine against canonical analytical references (UIC, Sperrzeit) — engineering-disciplined, not 'AI-made'." },
-      de: { faz: "SYSTEM · GENAUIGKEIT", baslik: "Modellgenauigkeit", anlatim: "Vertrauen in die Ergebnisse: die Sensitivität (Tornado) reiht, welche Eingabe die Kapazität am stärksten bewegt; Verifizierung & Validierung (V&V) zertifiziert das Modell gegen kanonische analytische Referenzen (UIC, Sperrzeit) — ingenieurmäßig, nicht 'KI-gemacht'." },
+      tr: { faz: "SİSTEM · DOĞRULUK", baslik: "Motor doğruluğu", anlatim: "Sonuçlara güven: Doğrulama & Geçerleme (V&V) motoru kanonik analitik referanslara (UIC, Sperrzeit) karşı sertifikalar — 'AI yapımı' değil, mühendislik disiplinli." },
+      en: { faz: "SYSTEM · ACCURACY", baslik: "Engine accuracy", anlatim: "Trust the results: Verification & Validation (V&V) certifies the engine against canonical analytical references (UIC, Sperrzeit) — engineering-disciplined, not 'AI-made'." },
+      de: { faz: "SYSTEM · GENAUIGKEIT", baslik: "Modellgenauigkeit", anlatim: "Vertrauen in die Ergebnisse: Verifizierung & Validierung (V&V) zertifiziert das Modell gegen kanonische analytische Referenzen (UIC, Sperrzeit) — ingenieurmäßig, nicht 'KI-gemacht'." },
     },
   },
   {

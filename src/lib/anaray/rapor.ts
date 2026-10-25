@@ -17,7 +17,6 @@ import { MOTOR_SURUMU } from "./surum";
 import { seferTersEntegre } from "./seferters";
 import { maksimumTren } from "./kapasite";
 import { tarifeUret } from "./tarife";
-import { duyarlilikAnaliz } from "./duyarlilik";
 import type { RollingStock, Line } from "./types";
 import { ringSenaryo, ringChallenge, ringKisitDizisi, loopDenge, kurpKonforAnaliz, KALABALIK_YANAL, type DurakArasiRing, type Sube } from "./ring";
 import { blockingTimeRing } from "./blockingtime";
@@ -823,38 +822,6 @@ export function raporHTML(meta: ProjeMeta, cfg: SimConfig, ringsGiris: DurakAras
     ? `Departures 1–12 shown as a sample; the full schedule (${tarife.seferSayisi} trips) and per-vehicle diagram are generated in the live simulation.`
     : `Örnek olarak 1–12. seferler gösterilmiştir; tam çizelge (${tarife.seferSayisi} sefer) ve araç bazlı diyagram canlı simülasyonda üretilir.`}</div>` : "";
 
-  // ---- 07 DUYARLILIK (tornado) — hangi parametre işletme kapasitesini en çok oynatıyor ----
-  // Her parametre ±%20 oynatılıp diğerleri sabit tutulur; işletme kapasitesinin (tramvay/saat)
-  // aldığı aralık ölçülür. Salınıma göre sıralı → en güçlü kaldıraç tepede. Motorla hesaplanır.
-  const duy = maks.gecerli && rings.length ? duyarlilikAnaliz(rings, stock, cfg, isletme, "isletmeKap", 20) : null;
-  let duyarlilikBolum = "";
-  if (duy && duy.satirlar.length) {
-    const tumDeger = duy.satirlar.flatMap((r) => [r.eksi, r.arti]).concat(duy.taban);
-    const axMin = Math.min(...tumDeger), axMax = Math.max(...tumDeger);
-    const pos = (v: number) => (axMax > axMin ? ((v - axMin) / (axMax - axMin)) * 100 : 50);
-    const bPos = pos(duy.taban);
-    const okKok = duy.satirlar[0];
-    const satirHtml = duy.satirlar.map((r) => {
-      const low = Math.min(r.eksi, r.arti), high = Math.max(r.eksi, r.arti);
-      const l = pos(low), w = Math.max(1.5, pos(high) - l);
-      const ok = r.yon === 1 ? (en ? "rises" : "artar") : r.yon === -1 ? (en ? "falls" : "azalır") : "—";
-      return `<tr><td class="l">${esc(r.ad)}</td>`
-        + `<td class="trk-td"><div class="trk"><div class="barr" style="left:${l.toFixed(1)}%;width:${w.toFixed(1)}%"></div><div class="base" style="left:${bPos.toFixed(1)}%"></div></div></td>`
-        + `<td>${low.toFixed(0)}–${high.toFixed(0)}</td><td><b>${r.salinim.toFixed(0)}</b> ${ok}</td></tr>`;
-    }).join("");
-    duyarlilikBolum = `
-  <div class="banner"><span class="no">07</span>${en ? "SENSITIVITY (TORNADO)" : "DUYARLILIK (TORNADO)"}</div>
-  <p>${en
-    ? `Each parameter is perturbed ±${duy.deltaYuzde}% while the rest are held fixed, and the resulting range of the operating capacity (trains/hour) is measured. Parameters are ranked by swing — the longest bar is the strongest lever. The vertical line marks the current design value (${duy.taban.toFixed(0)} ${en ? "tph" : "tramvay/sa"}).`
-    : `Her parametre ±%${duy.deltaYuzde} oynatılıp diğerleri sabit tutulur ve işletme kapasitesinin (tramvay/saat) aldığı aralık ölçülür. Salınıma göre sıralanır — en uzun çubuk en güçlü kaldıraçtır. Dikey çizgi mevcut tasarım değerini gösterir (${duy.taban.toFixed(0)} tramvay/sa).`}</p>
-  <div class="tor"><table class="tor-tbl"><colgroup><col style="width:26%"><col style="width:44%"><col style="width:15%"><col style="width:15%"></colgroup>
-  <thead><tr><th class="l">${en ? "Parameter" : "Parametre"}</th><th>${en ? "Effect on operating capacity" : "İşletme kapasitesine etki"}</th><th>${en ? "Range" : "Aralık"}</th><th>${en ? "Swing" : "Salınım"}</th></tr></thead>
-  <tbody>${satirHtml}</tbody></table></div>
-  <div class="gs">${en
-    ? `The strongest lever is <b>${esc(okKok.ad)}</b> (swing ${okKok.salinim.toFixed(0)} tph) — the parameter to secure first in design and operation. The direction column states whether capacity rises or falls as the parameter increases.`
-    : `En güçlü kaldıraç <b>${esc(okKok.ad)}</b> (salınım ${okKok.salinim.toFixed(0)} tramvay/sa) — tasarımda ve işletmede önce güvenceye alınması gereken parametredir. Yön sütunu, parametre artınca kapasitenin arttığını mı yoksa azaldığını mı gösterir.`}</div>`;
-  }
-
   // Altbilgi (onay şeridi) içeriği — İKİ yerde kullanılır: (1) tfoot içinde GÖRÜNMEZ kopya
   // → her sayfada gerçek yükseklikte alan REZERVE eder (içerik binmez, iç-içe tablolarda da);
   // (2) position:fixed görünür kopya → her sayfanın FİZİKSEL altına oturur (son sayfada ortada
@@ -960,7 +927,6 @@ ${raporStil(INK, RED, GOLD)}</head>
         <li>5.4 ${en ? "Reverse-Running Variations" : "Ters İşletme Varyasyonları"}</li>
         <li>5.5 ${en ? "Fleet & Recommendation" : "Filo & Öneri"}</li></ul></li>` : ""}
       ${dahil("tarife") ? `<li><b>06</b>${en ? "Timetable (Service Schedule)" : "Tarife (Zaman Çizelgesi)"}<ul><li>6.1 ${en ? "First Departures" : "İlk Kalkışlar"}</li></ul></li>` : ""}
-      ${dahil("duyarlilik") ? `<li><b>07</b>${en ? "Sensitivity (Tornado)" : "Duyarlılık (Tornado)"}</li>` : ""}
       ${g ? `<li><b>08</b>${en ? "Visual Analysis (Charts)" : "Görsel Analiz (Grafikler)"}</li>` : ""}
       ${dahil("dogrulama") ? `<li><b>09</b>${en ? "Verification & Validation" : "Doğrulama & Geçerleme"}</li>` : ""}
       ${dahil("izlenebilirlik") ? `<li><b>10</b>${en ? "Traceability & Reproducibility" : "İzlenebilirlik & Tekrar-Üretilebilirlik"}</li>` : ""}
@@ -1019,8 +985,6 @@ ${raporStil(INK, RED, GOLD)}</head>
   ${dahil("isletme") ? isletmeBolum : ""}
 
   ${dahil("tarife") ? tarifeBolum : ""}
-
-  ${dahil("duyarlilik") ? duyarlilikBolum : ""}
 
   <!-- 8: Grafikler (Görsel Analiz) — tüm şekiller; yalnız "grafikler" seçilince -->
   ${grafiklerBolum}

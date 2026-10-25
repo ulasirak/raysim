@@ -3,7 +3,7 @@
 // raysim — SİSTEM MERKEZİ.
 // Dört sekme: ① Kapasite & Kısıt (blocking-time / UIC 406 / belirleyici blok),
 // ② Terminal & Yol, ③ Filo Kararı (KararDestek + Robust + ortak kapasite kutusu),
-// ④ Doğrulama & Duyarlılık. Parametre girişi header'a taşındı (burada yalnız
+// ④ Doğrulama. Parametre girişi header'a taşındı (burada yalnız
 // yönlendirme). Gerçek proje ringleri (useProje) üzerinde çalışır — örnek seed yok.
 
 import { useMemo, useState, type ReactNode } from "react";
@@ -13,7 +13,6 @@ import { NedenDetay } from "@/components/NedenDetay";
 import { sure, kmh } from "@/lib/anaray/format";
 import { AutoAciklama } from "@/components/AutoAciklama";
 import { useSimConfig, useProje, useArac, useIsletme } from "@/components/SimConfigProvider";
-import { Duyarlilik } from "@/components/Duyarlilik";
 import { DogrulamaPaneli } from "@/components/DogrulamaPaneli";
 import { KilitlemePaneli } from "@/components/KilitlemePaneli";
 import { KararDestekPaneli } from "@/components/KararDestekPaneli";
@@ -148,7 +147,7 @@ export function SistemMerkezi() {
           t({ tr: "① Kapasite & Kısıt", en: "① Capacity & Constraint", de: "① Kapazität & Engpass" }),
           t({ tr: "② Terminal & Yol", en: "② Terminal & Track", de: "② Endstelle & Strecke" }),
           t({ tr: "③ Filo Kararı", en: "③ Fleet Decision", de: "③ Flottenentscheidung" }),
-          t({ tr: "④ Doğrulama & Duyarlılık", en: "④ Validation & Sensitivity", de: "④ Validierung & Sensitivität" }),
+          t({ tr: "④ Doğrulama", en: "④ Validation", de: "④ Validierung" }),
         ]}
         durumlar={[bt ? (!bt.hedefUygun ? "ihlal" : bt.dolulukHedef > 80 ? "uyari" : "") : "", "", "", ""]} />
 
@@ -339,12 +338,7 @@ export function SistemMerkezi() {
       </section>
 
       <section className="sm-panel" data-t="4">
-      <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>{t({ tr: "Sonuçların hangi girdiye ne kadar duyarlı olduğu (tornado) ve motorun analitik referanslara karşı doğrulanması (V&V). Derin analiz — açılır bloklarda.", en: "How sensitive the results are to each input (tornado) and validation of the engine against analytical references (V&V). Deep analysis — in the expandable blocks.", de: "Wie empfindlich die Ergebnisse auf jede Eingabe reagieren (Tornado) und die Verifikation der Engine gegen analytische Referenzen (V&V). Tiefenanalyse — in den aufklappbaren Blöcken." })}</p>
-
-        {/* Duyarlılık (tornado) — hangi parametre kapasiteyi en çok oynatıyor. */}
-        <Kapanir baslik={t({ tr: "Duyarlılık (Tornado)", en: "Sensitivity (Tornado)", de: "Empfindlichkeit (Tornado)" })} ozet={t({ tr: "hangi girdi kapasiteyi en çok oynatıyor", en: "which input moves capacity the most", de: "welche Eingabe die Kapazität am stärksten bewegt" })}>
-          <Duyarlilik ringsHam={ringsHam} stock={stock} cfg={cfg} isletme={isletme} />
-        </Kapanir>
+      <p className="mb-4 max-w-2xl text-xs" style={{ color: brand.muted }}>{t({ tr: "Motorun analitik referanslara karşı doğrulanması (V&V). Derin analiz — açılır bloklarda.", en: "Validation of the engine against analytical references (V&V). Deep analysis — in the expandable blocks.", de: "Verifikation der Engine gegen analytische Referenzen (V&V). Tiefenanalyse — in den aufklappbaren Blöcken." })}</p>
 
         {/* Doğrulama & Geçerleme — motorun analitik referanslara karşı doğruluk sertifikasyonu. */}
         <Kapanir baslik={t({ tr: "Doğrulama & Geçerleme (V&V)", en: "Verification & Validation (V&V)", de: "Verifikation & Validierung (V&V)" })} ozet={t({ tr: "motor analitik referanslara karşı sertifikasyon", en: "engine certification against analytical references", de: "Engine-Zertifizierung gegen analytische Referenzen" })}><DogrulamaPaneli /></Kapanir>
@@ -367,7 +361,7 @@ export function SistemMerkezi() {
 
 // ————— yardımcılar —————
 /** Bileşen paneli çekmecesi — ayrı bileşenleri (kendi kartı olanlar: Kilitleme, karar
- *  panelleri, V&V, tornado…) native <details> ile katlar. Kenarlıksız: kapalıyken yalnız
+ *  panelleri, V&V…) native <details> ile katlar. Kenarlıksız: kapalıyken yalnız
  *  başlık çubuğu, açıkken bileşenin kendi kartı altında görünür. JS/state YOK → freeze yok. */
 function Kapanir({ baslik, ozet, children }: { baslik: string; ozet?: ReactNode; children: ReactNode }) {
   return (
