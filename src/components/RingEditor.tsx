@@ -40,15 +40,32 @@ const DONUS_TIP_AD: Record<DonusTip, string> = {
 };
 
 // Her dönüş tipinin ne olduğu + terminal aralığına/kapasiteye NE FARK yarattığı (dürüst).
-const DONUS_TIP_ACIKLAMA: Record<DonusTip, string> = {
-  korTerminal: "Tren tek perona girer, durur, aynı perondan ters yönde çıkar. Dönüş süresi = peron işgali ÷ etkin dönüş yolu; tek peron/tek makasla en yavaş dönüş → terminal darboğazının alt sınırını bu belirler. En yaygın basit tramvay terminali.",
-  ciftPeron: "İki ayrı peron: biri dönerken diğerine gelen tren girer → dönüşler paralel. Etkin dönüş = min(peron, makas yolu) arttıkça terminal aralığı buna bölünür (ör. 2 peron → ~yarı süre) → daha sık sefer.",
-  dongu: "Balon (loop) hattı: tren durmadan döner, ters dönüş yok. Terminal dönüş beklemesi ≈ 0 (turnback süresi sıfır) → en yüksek kapasite; ama fiziksel loop alanı ister, tramvayda nadir.",
-  makasliGecis: "Hat üstü makas (crossover) ile ters dönüş — ayrı terminal peronu şart değil, ara noktada da olabilir. Dönüş kapasitesi makas (S/X) yoluyla sınırlı; kısa dönüş / esnek işletme için uygun.",
+// Çağrı-yeri çevirisi: tt(DONUS_TIP_ACIKLAMA[tip]) — eksik dil tr'ye düşer.
+const DONUS_TIP_ACIKLAMA: Record<DonusTip, { tr: string; en: string; de: string }> = {
+  korTerminal: {
+    tr: "Tren tek perona girer, durur, aynı perondan ters yönde çıkar. Dönüş süresi = peron işgali ÷ etkin dönüş yolu; tek peron/tek makasla en yavaş dönüş → terminal darboğazının alt sınırını bu belirler. En yaygın basit tramvay terminali.",
+    en: "The train enters a single platform, stops, and departs from the same platform in the opposite direction. Turnback time = platform occupancy ÷ effective turnback path; with a single platform/single switch this is the slowest turnback → it sets the lower bound of the terminal bottleneck. The most common simple tram terminal.",
+    de: "Der Zug fährt in einen einzigen Bahnsteig ein, hält und fährt vom selben Bahnsteig in Gegenrichtung ab. Wendezeit = Bahnsteigbelegung ÷ effektiver Wendeweg; mit einem Bahnsteig/einer Weiche die langsamste Wende → sie bestimmt die Untergrenze des Endstellen-Engpasses. Die häufigste einfache Straßenbahn-Endstelle.",
+  },
+  ciftPeron: {
+    tr: "İki ayrı peron: biri dönerken diğerine gelen tren girer → dönüşler paralel. Etkin dönüş = min(peron, makas yolu) arttıkça terminal aralığı buna bölünür (ör. 2 peron → ~yarı süre) → daha sık sefer.",
+    en: "Two separate platforms: while one turns back, an arriving train enters the other → turnbacks run in parallel. As the effective turnback = min(platform, switch path) increases, the terminal interval is divided by it (e.g. 2 platforms → ~half the time) → more frequent service.",
+    de: "Zwei getrennte Bahnsteige: während einer wendet, fährt ein ankommender Zug in den anderen ein → Wenden laufen parallel. Mit steigender effektiver Wende = min(Bahnsteig, Weichenweg) wird das Endstellen-Intervall dadurch geteilt (z. B. 2 Bahnsteige → ~halbe Zeit) → dichterer Takt.",
+  },
+  dongu: {
+    tr: "Balon (loop) hattı: tren durmadan döner, ters dönüş yok. Terminal dönüş beklemesi ≈ 0 (turnback süresi sıfır) → en yüksek kapasite; ama fiziksel loop alanı ister, tramvayda nadir.",
+    en: "Balloon (loop) track: the train turns without stopping, no reversal. Terminal turnback wait ≈ 0 (zero turnback time) → the highest capacity; but it requires physical loop space, rare in trams.",
+    de: "Gleisschleife (Loop): der Zug wendet ohne Halt, kein Richtungswechsel. Endstellen-Wendewartezeit ≈ 0 (null Wendezeit) → höchste Kapazität; benötigt aber physischen Schleifenraum, bei Straßenbahnen selten.",
+  },
+  makasliGecis: {
+    tr: "Hat üstü makas (crossover) ile ters dönüş — ayrı terminal peronu şart değil, ara noktada da olabilir. Dönüş kapasitesi makas (S/X) yoluyla sınırlı; kısa dönüş / esnek işletme için uygun.",
+    en: "Reversal via a track crossover — a separate terminal platform is not required and it can also be at an intermediate point. Turnback capacity is limited by the switch (S/X) path; suitable for short-turns / flexible operation.",
+    de: "Richtungswechsel über eine Gleisverbindung (Crossover) — ein separater Endstellen-Bahnsteig ist nicht erforderlich und kann auch an einem Zwischenpunkt liegen. Wendekapazität durch den Weichenweg (S/X) begrenzt; geeignet für Kurzwenden / flexiblen Betrieb.",
+  },
 };
 
 export function RingEditor() {
-  const { t } = useDil();
+  const { t, dil } = useDil();
   // Alias: terminal .map bloğunda `const t = isletme[uc]` çevirmeni gölgeler → orada `tt`.
   const tt = t;
   const { cfg } = useSimConfig();
@@ -614,13 +631,13 @@ export function RingEditor() {
             {/* Bilgilendirme: neden makaslı turnback hesabı — kademeli açılım (uzun eğitim
                 metni varsayılan kapalı; panel girdilerle açılır, bilgiyle boğmaz). */}
             <details className="mb-2 rounded border-l-4 px-3 py-2 text-xs leading-relaxed" style={{ background: CK.goodBgSoft, borderColor: brand.ink, color: brand.inkSoft }}>
-              <summary className="cursor-pointer select-none font-semibold" style={{ color: brand.ink }}>ℹ️ Neden makaslı turnback hesabı? <span className="font-normal" style={{ color: brand.muted }}>(nasıl hesaplanır — aç)</span></summary>
+              <summary className="cursor-pointer select-none font-semibold" style={{ color: brand.ink }}>ℹ️ {tt({ tr: "Neden makaslı turnback hesabı?", en: "Why a switch-based turnback calculation?", de: "Warum eine weichenbasierte Wendeberechnung?" })} <span className="font-normal" style={{ color: brand.muted }}>({tt({ tr: "nasıl hesaplanır — aç", en: "how it is computed — open", de: "wie berechnet — öffnen" })})</span></summary>
               <div className="mt-1.5">
-              Tramvay uçta dönmek için karşı hatta <b>makasla (crossover)</b> geçmek zorundadır — yoksa gelen hatla <b>kafa kafaya çarpışır</b>. Terminalin en fazla kaç tramvay çevirebileceğini asıl bu makasın tipi belirler:
-              <br />• <b>S-makas:</b> dönüşler <b>seri, tek tek</b> — bir tramvay dönüp boğazı boşaltmadan öbürü giremez → terminal aralığı = <b>tam peron işgali</b> (peron çok olsa da hızlanmaz).
-              <br />• <b>X-makas:</b> iki bağımsız hareket → 2 tramvay <b>eş-zamanlı olmadan ardışık</b> hızlıca dönebilir → her X-makas = <b>2 dönüş yolu</b>.
-              <br /><b>Dönüş yolu = (S sayısı × 1) + (X sayısı × 2).</b> Ör. Şehir Hastanesi <b>2 S + 1 X</b> → 2+2 = 4 yol; Adliye <b>2 S</b> → 2 yol.
-              <br /><b>Peron sayısı</b> = terminaldeki dönüş rayı adedi (çift hatta genelde 2). <b>Tek yön</b> modunda yön başına girersin, sistem ×2 yapar. Etkin dönüş = <b>min(peron, dönüş yolu)</b> → terminal aralığı = peron işgali ÷ etkin dönüş. (n ardışık dönüş için hem n peron hem yeterli makas yolu gerekir.)
+              {tt({ tr: "Tramvay uçta dönmek için", en: "To turn back at the end, the tram must cross to the opposite track via a", de: "Um am Endpunkt zu wenden, muss die Straßenbahn über eine" })} {dil === "tr" ? <><b>makasla (crossover)</b> geçmek zorundadır</> : dil === "de" ? <><b>Weichenverbindung (Crossover)</b> auf das Gegengleis wechseln</> : <><b>crossover switch</b></>} — {tt({ tr: "yoksa gelen hatla", en: "otherwise it would collide", de: "sonst würde sie" })} <b>{tt({ tr: "kafa kafaya çarpışır", en: "head-on with oncoming traffic", de: "frontal mit dem Gegenverkehr kollidieren" })}</b>. {tt({ tr: "Terminalin en fazla kaç tramvay çevirebileceğini asıl bu makasın tipi belirler:", en: "The type of this switch is what mainly determines how many trams the terminal can turn back:", de: "Der Typ dieser Weiche bestimmt maßgeblich, wie viele Straßenbahnen die Endstelle wenden kann:" })}
+              <br />• <b>{tt({ tr: "S-makas:", en: "S switch:", de: "S-Weiche:" })}</b> {tt({ tr: "dönüşler", en: "turnbacks are", de: "Wenden sind" })} <b>{tt({ tr: "seri, tek tek", en: "serial, one by one", de: "seriell, nacheinander" })}</b> — {tt({ tr: "bir tramvay dönüp boğazı boşaltmadan öbürü giremez → terminal aralığı =", en: "a second tram cannot enter until the first turns and clears the throat → terminal interval =", de: "eine zweite Straßenbahn kann erst einfahren, wenn die erste gewendet und den Hals geräumt hat → Endstellen-Intervall =" })} <b>{tt({ tr: "tam peron işgali", en: "full platform occupancy", de: "volle Bahnsteigbelegung" })}</b> {tt({ tr: "(peron çok olsa da hızlanmaz).", en: "(more platforms do not speed it up).", de: "(mehr Bahnsteige beschleunigen es nicht)." })}
+              <br />• <b>{tt({ tr: "X-makas:", en: "X switch:", de: "X-Weiche:" })}</b> {tt({ tr: "iki bağımsız hareket → 2 tramvay", en: "two independent moves → 2 trams can turn back", de: "zwei unabhängige Fahrten → 2 Straßenbahnen können" })} <b>{tt({ tr: "eş-zamanlı olmadan ardışık", en: "in quick succession (not simultaneously)", de: "kurz nacheinander (nicht gleichzeitig)" })}</b> {tt({ tr: "hızlıca dönebilir → her X-makas =", en: "→ each X switch =", de: "wenden → jede X-Weiche =" })} <b>{tt({ tr: "2 dönüş yolu", en: "2 turnback paths", de: "2 Wendewege" })}</b>.
+              <br /><b>{tt({ tr: "Dönüş yolu = (S sayısı × 1) + (X sayısı × 2).", en: "Turnback paths = (S count × 1) + (X count × 2).", de: "Wendewege = (S-Anzahl × 1) + (X-Anzahl × 2)." })}</b> {tt({ tr: "Ör. Şehir Hastanesi", en: "E.g. Şehir Hastanesi", de: "Z. B. Şehir Hastanesi" })} <b>2 S + 1 X</b> → 2+2 = 4 {tt({ tr: "yol; Adliye", en: "paths; Adliye", de: "Wege; Adliye" })} <b>2 S</b> → 2 {tt({ tr: "yol.", en: "paths.", de: "Wege." })}
+              <br /><b>{tt({ tr: "Peron sayısı", en: "Platform count", de: "Bahnsteiganzahl" })}</b> = {tt({ tr: "terminaldeki dönüş rayı adedi (çift hatta genelde 2).", en: "the number of turnback tracks at the terminal (usually 2 on double track).", de: "die Anzahl der Wendegleise an der Endstelle (bei zweigleisig meist 2)." })} <b>{tt({ tr: "Tek yön", en: "Single direction", de: "Eine Richtung" })}</b> {tt({ tr: "modunda yön başına girersin, sistem ×2 yapar. Etkin dönüş =", en: "mode: you enter per direction and the system ×2s it. Effective turnback =", de: "-Modus: Eingabe je Richtung, das System multipliziert mit 2. Effektive Wende =" })} <b>{tt({ tr: "min(peron, dönüş yolu)", en: "min(platform, turnback path)", de: "min(Bahnsteig, Wendeweg)" })}</b> → {tt({ tr: "terminal aralığı = peron işgali ÷ etkin dönüş. (n ardışık dönüş için hem n peron hem yeterli makas yolu gerekir.)", en: "terminal interval = platform occupancy ÷ effective turnback. (n consecutive turnbacks need both n platforms and enough switch paths.)", de: "Endstellen-Intervall = Bahnsteigbelegung ÷ effektive Wende. (n aufeinanderfolgende Wenden benötigen sowohl n Bahnsteige als auch genügend Weichenwege.)" })}
               </div>
             </details>
             {/* Terminal (dönüş) girdileri — iki uç */}
@@ -644,7 +661,7 @@ export function RingEditor() {
                     </label>
                     <NedenDetay ozet={tt({ tr: "seçilen dönüş tipi ne demek?", en: "what does the selected turnback type mean?", de: "Was bedeutet der gewählte Wendetyp?" })}>
                       <p className="rounded border-l-2 py-1 pl-2 text-[0.68rem] leading-relaxed" style={{ borderColor: t.tip === "dongu" ? CK.good : CK.amber, background: t.tip === "dongu" ? CK.goodBg : CK.amberBg, color: brand.inkSoft }}>
-                        {DONUS_TIP_ACIKLAMA[t.tip]}
+                        {tt(DONUS_TIP_ACIKLAMA[t.tip])}
                       </p>
                     </NedenDetay>
                     <div className="mt-2 grid grid-cols-2 gap-3">

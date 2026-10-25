@@ -58,7 +58,7 @@ interface KartProps {
 }
 
 export function RingKart(p: KartProps) {
-  const { t } = useDil();
+  const { t, dil } = useDil();
   // Alias: tehlike listesi map param'ı `t` çevirmeni gölgeler → o blokta `tt` kullanılır.
   const tt = t;
   const { ring, index, stock, cfg, isletme } = p;
@@ -387,9 +387,25 @@ export function RingKart(p: KartProps) {
               <div className="mb-2 rounded-md border p-3 text-xs leading-relaxed" style={{ borderColor: brand.ink, background: "#F7F9FB", color: brand.ink }}>
                 <b>{t({ tr: "Kurp hızı ↔ fren (b) ↔ ivme (a) birbirine bağlıdır:", en: "Curve speed ↔ braking (b) ↔ acceleration (a) are interlinked:", de: "Bogengeschwindigkeit ↔ Bremsung (b) ↔ Beschleunigung (a) sind miteinander verknüpft:" })}</b>
                 <ol className="mt-1 list-decimal pl-4">
-                  <li><b>Kurp hızı</b> = trenin bu kavisten geçebileceği <b>azami hız</b> (yarıçaptan: v=√(R·(a<sub>yanal</sub>+g·dever/ekartman))). Bu, bölgenin hız limiti olur — <b>per-kurp</b>.</li>
-                  <li><b>Bu hıza inme (yavaşlama)</b> = <b>Servis freni (b)</b> ile — tren kurptan önce bu fren oranıyla yavaşlar. <b>Global/araç</b> ayarı, kurpa özel değil.</li>
-                  <li><b>Kurptan çıkışta hızlanma</b> = <b>Kalkış ivme tavanı (a)</b> + aracın çekiş/güç/kütlesi. Daha hızlı kalkış için aracın çekişini artır.</li>
+                  {dil === "en" ? (
+                    <>
+                      <li><b>Curve speed</b> = the <b>maximum speed</b> the train can take this curve at (from radius: v=√(R·(a<sub>lat</sub>+g·cant/gauge))). This becomes the speed limit of the zone — <b>per curve</b>.</li>
+                      <li><b>Slowing to this speed (deceleration)</b> = via the <b>service brake (b)</b> — the train slows at this braking rate before the curve. A <b>global/vehicle</b> setting, not curve-specific.</li>
+                      <li><b>Accelerating out of the curve</b> = <b>departure acceleration ceiling (a)</b> + the vehicle's traction/power/mass. For a faster start, increase the vehicle's traction.</li>
+                    </>
+                  ) : dil === "de" ? (
+                    <>
+                      <li><b>Bogengeschwindigkeit</b> = die <b>Höchstgeschwindigkeit</b>, mit der der Zug diesen Bogen befahren kann (aus Radius: v=√(R·(a<sub>quer</sub>+g·Überhöhung/Spurweite))). Sie wird zur Geschwindigkeitsgrenze des Abschnitts — <b>je Bogen</b>.</li>
+                      <li><b>Abbremsen auf diese Geschwindigkeit</b> = über die <b>Betriebsbremse (b)</b> — der Zug bremst vor dem Bogen mit dieser Bremsrate. Eine <b>globale/Fahrzeug</b>-Einstellung, nicht bogenspezifisch.</li>
+                      <li><b>Beschleunigen aus dem Bogen heraus</b> = <b>Anfahrbeschleunigungs-Obergrenze (a)</b> + Traktion/Leistung/Masse des Fahrzeugs. Für eine schnellere Anfahrt die Traktion des Fahrzeugs erhöhen.</li>
+                    </>
+                  ) : (
+                    <>
+                      <li><b>Kurp hızı</b> = trenin bu kavisten geçebileceği <b>azami hız</b> (yarıçaptan: v=√(R·(a<sub>yanal</sub>+g·dever/ekartman))). Bu, bölgenin hız limiti olur — <b>per-kurp</b>.</li>
+                      <li><b>Bu hıza inme (yavaşlama)</b> = <b>Servis freni (b)</b> ile — tren kurptan önce bu fren oranıyla yavaşlar. <b>Global/araç</b> ayarı, kurpa özel değil.</li>
+                      <li><b>Kurptan çıkışta hızlanma</b> = <b>Kalkış ivme tavanı (a)</b> + aracın çekiş/güç/kütlesi. Daha hızlı kalkış için aracın çekişini artır.</li>
+                    </>
+                  )}
                 </ol>
                 <div className="mt-1.5 flex flex-wrap gap-2">
                   <Link href="/#sistem" className="rounded px-2 py-1 font-semibold text-white" style={{ background: brand.ink }}>{t({ tr: "→ Sistem Merkezi (a / b ayarı)", en: "→ System Center (a / b setting)", de: "→ Systemzentrale (a-/b-Einstellung)" })}</Link>
@@ -398,7 +414,13 @@ export function RingKart(p: KartProps) {
               </div>
             )}
             <p className="mb-2 text-xs" style={{ color: brand.muted }}>
-              Yatay kavis. <b>Yarıçap (R)</b> girince güvenli hız otomatik hesaplanır (a<sub>yanal</sub>={cfg.aYanalKonfor} m/s², ekartman={Math.round(cfg.ekartman * 1000)} mm); dilersen <b>hızı elle</b> girebilirsin. Hesabın formülü için üstteki <b>ⓘ nasıl çalışır?</b>.
+              {dil === "en" ? (
+                <>Horizontal curve. Enter the <b>radius (R)</b> and the safe speed is computed automatically (a<sub>lat</sub>={cfg.aYanalKonfor} m/s², gauge={Math.round(cfg.ekartman * 1000)} mm); you may also <b>enter the speed manually</b>. For the formula, see <b>ⓘ how does it work?</b> above.</>
+              ) : dil === "de" ? (
+                <>Horizontaler Bogen. Nach Eingabe des <b>Radius (R)</b> wird die sichere Geschwindigkeit automatisch berechnet (a<sub>quer</sub>={cfg.aYanalKonfor} m/s², Spurweite={Math.round(cfg.ekartman * 1000)} mm); die <b>Geschwindigkeit</b> kann auch <b>manuell</b> eingegeben werden. Zur Formel siehe oben <b>ⓘ wie funktioniert es?</b>.</>
+              ) : (
+                <>Yatay kavis. <b>Yarıçap (R)</b> girince güvenli hız otomatik hesaplanır (a<sub>yanal</sub>={cfg.aYanalKonfor} m/s², ekartman={Math.round(cfg.ekartman * 1000)} mm); dilersen <b>hızı elle</b> girebilirsin. Hesabın formülü için üstteki <b>ⓘ nasıl çalışır?</b>.</>
+              )}
             </p>
             {(ring.kurplar ?? []).length === 0 ? (
               <p className="text-xs" style={{ color: brand.faint }}>{t({ tr: "Kurp yok.", en: "No curve.", de: "Kein Bogen." })}</p>
@@ -412,7 +434,7 @@ export function RingKart(p: KartProps) {
                   const asim = kk?.seviye === "asim";
                   const kalabalik = kk?.seviye === "kalabalik";
                   const vKalabalik = kk?.oneriVKmh ?? 0;
-                  const dolText = kk?.doluluk != null ? ` (doluluk %${Math.round(kk.doluluk * 100)})` : "";
+                  const dolText = kk?.doluluk != null ? ` (${t({ tr: "doluluk", en: "occupancy", de: "Auslastung" })} %${Math.round(kk.doluluk * 100)})` : "";
                   const olcu = kurpOlcu[k.id];
                   return (
                     <div key={k.id} className="rounded border p-2" style={{ borderColor: brand.border }}>
@@ -440,7 +462,7 @@ export function RingKart(p: KartProps) {
                         <span className="rounded px-2 py-1 text-xs font-semibold" style={{ background: "#EEF6EE", color: "#2E7D32" }}>≈ {Math.round(kmh(vHesap))} km/h</span>
                         <span title={t({ tr: "dengelenmemiş yanal ivme = v²/R − g·dever/ekartman", en: "unbalanced lateral acceleration = v²/R − g·cant/gauge", de: "unausgeglichene Querbeschleunigung = v²/R − g·Überhöhung/Spurweite" })} className="rounded px-2 py-1 text-xs font-semibold"
                           style={asim ? { background: "#FBEAEA", color: brand.red } : { background: "#EEF1F6", color: brand.inkSoft }}>
-                          {t({ tr: "yanal", en: "lateral", de: "quer" })} {aYanal.toFixed(2)} m/s²{asim ? " ⚠" : kalabalik ? ` · kalabalıkta ≤ ${vKalabalik} km/h${dolText}` : ""}
+                          {t({ tr: "yanal", en: "lateral", de: "quer" })} {aYanal.toFixed(2)} m/s²{asim ? " ⚠" : kalabalik ? ` · ${t({ tr: "kalabalıkta", en: "when crowded", de: "bei Andrang" })} ≤ ${vKalabalik} km/h${dolText}` : ""}
                         </span>
                         <button type="button" onClick={() => setKurpOlcu((s) => (s[k.id] ? (() => { const n = { ...s }; delete n[k.id]; return n; })() : { ...s, [k.id]: { C: 0, M: 0 } }))}
                           className="rounded border px-2 py-1 text-[0.7rem] font-medium" style={{ borderColor: brand.border, color: brand.inkSoft }} title={t({ tr: "Pafta/haritadan ölçüyle yarıçap hesapla", en: "Compute radius from a plan/map measurement", de: "Radius aus einer Plan-/Kartenmessung berechnen" })}>{t({ tr: "◠ ölçüden R", en: "◠ R from measurement", de: "◠ R aus Messung" })}</button>
@@ -476,7 +498,13 @@ export function RingKart(p: KartProps) {
               <span className="text-[0.65rem]" style={{ color: brand.faint }}>{t({ tr: "▸ aç/kapa", en: "▸ toggle", de: "▸ auf/zu" })}</span>
             </summary>
             <p className="mb-2 text-xs" style={{ color: brand.muted }}>
-              Manuel blok aralığı yerine gerçek sinyalleri buraya koy. Her sinyal bir <b>yön</b> (giden/gelen) trafiğini görür, <b>kilometraj</b>ında durur ve <b>aspect süreleri</b> (yeşil→sarı→kırmızı→yeşil) taşır — bu süreler canlı simde lambayı animasyonlar HEM blocking-time/headway tabanına girer. İstasyon başına birden fazla eklenebilir.
+              {dil === "en" ? (
+                <>Place real signals here instead of a manual block interval. Each signal sees one <b>direction</b> (outbound/inbound) of traffic, stands at its <b>chainage</b>, and carries <b>aspect times</b> (green→yellow→red→green) — these times both animate the lamp in the live sim AND feed the blocking-time/headway floor. More than one can be added per station.</>
+              ) : dil === "de" ? (
+                <>Setzen Sie hier echte Signale statt eines manuellen Blockabstands. Jedes Signal sieht eine <b>Richtung</b> (Hin-/Rückfahrt) des Verkehrs, steht an seiner <b>Kilometrierung</b> und trägt <b>Begriffszeiten</b> (grün→gelb→rot→grün) — diese Zeiten animieren das Signal in der Live-Simulation UND speisen die Sperrzeit-/Zugfolge-Untergrenze. Je Station können mehrere hinzugefügt werden.</>
+              ) : (
+                <>Manuel blok aralığı yerine gerçek sinyalleri buraya koy. Her sinyal bir <b>yön</b> (giden/gelen) trafiğini görür, <b>kilometraj</b>ında durur ve <b>aspect süreleri</b> (yeşil→sarı→kırmızı→yeşil) taşır — bu süreler canlı simde lambayı animasyonlar HEM blocking-time/headway tabanına girer. İstasyon başına birden fazla eklenebilir.</>
+              )}
             </p>
             {p.duzenlenebilir && (
               <div className="rounded border p-2" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
@@ -497,12 +525,24 @@ export function RingKart(p: KartProps) {
                   <div>
                     <button type="button" onClick={() => p.onSinyalEkle(sigYon, sigKonum, false)}
                       className="w-full rounded px-2 py-1.5 text-xs font-semibold text-white" style={{ background: brand.ink }}>{t({ tr: "＋ Düz sinyal lambası", en: "＋ Plain signal lamp", de: "＋ Normalsignal" })}</button>
-                    <Kucuk>Normal blok koruyucu sinyal. <b>{sigYon === "giden" ? "Giden" : "Gelen"}</b> tramvayın <b>daima görebileceği</b> şekilde konur. Aspect süreleri hem canlı simde lambayı animasyonlar HEM blocking-time/headway tabanını besler: <b>kırmızı→yeşil</b> = temizleme + rota serbest bırakma, <b>sarı</b> = yaklaşma/görme uyarısı. Aynı sinyalden ardışık iki tren bu çevrimden sık geçemez.</Kucuk>
+                    <Kucuk>{dil === "en" ? (
+                      <>Normal block-protecting signal. Placed so the <b>{sigYon === "giden" ? "outbound" : "inbound"}</b> tram can <b>always see it</b>. Aspect times both animate the lamp in the live sim AND feed the blocking-time/headway floor: <b>red→green</b> = clearing + route release, <b>yellow</b> = approach/sighting warning. Two consecutive trains cannot pass the same signal faster than this cycle.</>
+                    ) : dil === "de" ? (
+                      <>Normales blockschützendes Signal. So platziert, dass die <b>{sigYon === "giden" ? "Hinfahrt-" : "Rückfahrt-"}</b>Straßenbahn es <b>stets sehen kann</b>. Begriffszeiten animieren das Signal in der Live-Simulation UND speisen die Sperrzeit-/Zugfolge-Untergrenze: <b>rot→grün</b> = Räumen + Fahrstraßenauflösung, <b>gelb</b> = Annäherungs-/Sichtwarnung. Zwei aufeinanderfolgende Züge können dasselbe Signal nicht schneller als dieser Zyklus passieren.</>
+                    ) : (
+                      <>Normal blok koruyucu sinyal. <b>{sigYon === "giden" ? "Giden" : "Gelen"}</b> tramvayın <b>daima görebileceği</b> şekilde konur. Aspect süreleri hem canlı simde lambayı animasyonlar HEM blocking-time/headway tabanını besler: <b>kırmızı→yeşil</b> = temizleme + rota serbest bırakma, <b>sarı</b> = yaklaşma/görme uyarısı. Aynı sinyalden ardışık iki tren bu çevrimden sık geçemez.</>
+                    )}</Kucuk>
                   </div>
                   <div>
                     <button type="button" onClick={() => p.onSinyalEkle(sigYon, sigKonum, true)}
                       className="w-full rounded border px-2 py-1.5 text-xs font-semibold" style={{ borderColor: brand.ink, color: brand.ink }}>{t({ tr: "＋ Ters işletme sinyali", en: "＋ Reverse-running signal", de: "＋ Gegengleis-Signal" })}</button>
-                    <Kucuk>Ters işletme (kısa dönüş) için. Tramvay <b>S makasa</b> girip karşı şeride geçerken <b>karşı yönden gelenle çakışmamak</b> için gitme yönünün <b>tersine</b> konur → güvenli <b>dönüşü (turnback)</b> sağlar. Süresi ters işletme dönüş süresine girer (Ters İşletme analizini besler).</Kucuk>
+                    <Kucuk>{dil === "en" ? (
+                      <>For reverse running (short-turn). Placed <b>against</b> the direction of travel so that, as the tram enters the <b>S switch</b> and crosses to the opposite track, it <b>does not conflict with oncoming traffic</b> → it enables a safe <b>turnback</b>. Its time enters the reverse-running turnback time (feeds the Reverse Running analysis).</>
+                    ) : dil === "de" ? (
+                      <>Für den Kehrbetrieb (Kurzwende). <b>Entgegen</b> der Fahrtrichtung platziert, damit die Straßenbahn beim Einfahren in die <b>S-Weiche</b> und Überwechseln auf das Gegengleis <b>nicht mit dem Gegenverkehr kollidiert</b> → sie ermöglicht eine sichere <b>Wende (Turnback)</b>. Ihre Zeit geht in die Kehrbetriebs-Wendezeit ein (speist die Kehrbetrieb-Analyse).</>
+                    ) : (
+                      <>Ters işletme (kısa dönüş) için. Tramvay <b>S makasa</b> girip karşı şeride geçerken <b>karşı yönden gelenle çakışmamak</b> için gitme yönünün <b>tersine</b> konur → güvenli <b>dönüşü (turnback)</b> sağlar. Süresi ters işletme dönüş süresine girer (Ters İşletme analizini besler).</>
+                    )}</Kucuk>
                   </div>
                 </div>
               </div>
