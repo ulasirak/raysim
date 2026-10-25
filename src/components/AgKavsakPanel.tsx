@@ -15,6 +15,7 @@ import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { Panel } from "@/components/RingUI";
 import { useDil } from "@/components/DilProvider";
+import { Not } from "@/components/Not";
 import { type KavsakCakismaSonuc, type KavsakAnaliz } from "@/lib/anaray/kavsakCakisma";
 import type { OrtakKesimSonuc } from "@/lib/anaray/ortakKesim";
 import type { Sube } from "@/lib/anaray/ring";
@@ -40,13 +41,13 @@ export function AgKavsakPanel({ subeler, ortak, kavsak }: {
       </p>
 
       {!servisTrenVar && (
-        <div className="mb-5 rounded-lg border px-4 py-3 text-sm" style={{ borderColor: brand.border, background: CK.goodBgSoft, color: brand.inkSoft }}>
+        <Not className="mb-5">
           {t({
-            tr: "Bu analiz opt-in'dir (tahmin yok): bir şubeye «servis treni» (o kola kaç tren gider) girince hesaplanır. Şube düzenleyicisinde (Ringler → Şube) servis treni gir.",
-            en: "This analysis is opt-in (no estimation): it computes once you enter a branch's «service trains» (how many trains run to that spur). Enter it in the branch editor (Rings → Branch).",
-            de: "Diese Analyse ist opt-in (keine Schätzung): Sie wird berechnet, sobald Sie die «Betriebszüge» eines Zweigs eingeben. Geben Sie dies im Zweig-Editor ein (Ringe → Zweig).",
+            tr: "Bu analiz opt-in'dir (tahmin yok): bir şubeye \"servis treni\" (o kola kaç tren gider) girince hesaplanır. Şube düzenleyicisinde (Ringler'deki Şube) servis treni gir.",
+            en: "This analysis is opt-in (no estimation): it computes once you enter a branch's \"service trains\" (how many trains run to that spur). Enter it in the branch editor (Branch in Rings).",
+            de: "Diese Analyse ist opt-in (keine Schätzung): Sie wird berechnet, sobald Sie die \"Betriebszüge\" eines Zweigs eingeben. Geben Sie dies im Zweig-Editor ein (Zweig in Ringe).",
           })}
-        </div>
+        </Not>
       )}
 
       {/* ① ORTAK KESİM YÜKÜ (ortalama kapasite) */}

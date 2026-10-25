@@ -19,6 +19,7 @@ import { sure } from "@/lib/anaray/format";
 import { BosDurum } from "@/components/BosDurum";
 import { Kpi } from "@/components/Kpi";
 import { useDil } from "@/components/DilProvider";
+import { Not } from "@/components/Not";
 
 // Performans: MC pahalı. (1) Simüle tren sayısı sabit temsili pencereyle sınırlanır —
 // gecikme yayılımı ~birkaç trende doygunlaşır, tüm filoyu simüle etmek gereksiz.
@@ -213,25 +214,25 @@ export function RobustFiloPaneli() {
           {/* Çözüm */}
           <div className="flex flex-col gap-3">
             {sonuc.fizibil && oneri ? (
-              <div className="rounded-md p-3" style={{ background: CK.goodBgSoft, border: `1px solid ${CK.good}` }}>
+              <div className="rounded-md border p-3" style={{ borderColor: brand.border, background: brand.paper }}>
                 <Kpi etiket={t({ tr: "Önerilen minimum filo", en: "Recommended minimum fleet", de: "Empfohlene Mindestflotte" })} deger={`${oneri.filo}`} ton="success" boyut="lg"
                   alt={`${t({ tr: "güvenilirlik", en: "reliability", de: "Zuverlässigkeit" })} %${Math.round(oneri.guvenilirlik)} · ${t({ tr: "aralık", en: "interval", de: "Intervall" })} ${sure(oneri.headwaySn)} · ${t({ tr: "bekleme", en: "wait", de: "Wartezeit" })} ${oneri.beklemeDk.toFixed(1)} dk${oneri.doluluk != null ? ` · ${t({ tr: "doluluk", en: "load", de: "Auslastung" })} %${Math.round(oneri.doluluk * 100)}` : ""}`} />
               </div>
             ) : (
-              <div className="rounded-md p-3 text-[0.8rem]" style={{ background: CK.amberBg, border: `1px solid ${CK.amber}`, color: CK.amberInk }}>
-                <b>{t({ tr: "⚠ Kısıtlar çakışıyor — fizibıl filo yok.", en: "⚠ Constraints conflict — no feasible fleet.", de: "⚠ Beschränkungen widersprechen sich — keine machbare Flotte." })}</b><br />
+              <Not tonu="uyari">
+                <b>{t({ tr: "Kısıtlar çakışıyor: fizibıl filo yok.", en: "Constraints conflict: no feasible fleet.", de: "Beschränkungen widersprechen sich: keine machbare Flotte." })}</b><br />
                 {sonuc.demandVar && sonuc.konforMinFilo && sonuc.robustMaxFilo != null
                   ? `${t({ tr: "Konfor en az", en: "Comfort needs at least", de: "Komfort verlangt mindestens" })} ${sonuc.konforMinFilo} ${t({ tr: "araç ister ama", en: "vehicles, but", de: "Fahrzeuge, aber" })} %${sonuc.hedefGuvenilirlik} ${t({ tr: "güvenilirlik en fazla", en: "reliability allows at most", de: "Zuverlässigkeit erlaubt höchstens" })} ${sonuc.robustMaxFilo} ${t({ tr: "araca izin verir. Araç kapasitesini büyüt, hattı güçlendir (hMin düşür) ya da güvenilirlik hedefini düşür.", en: "vehicles. Increase vehicle capacity, strengthen the line (lower hMin) or lower the reliability target.", de: "Fahrzeuge. Fahrzeugkapazität erhöhen, die Strecke verstärken (hMin senken) oder das Zuverlässigkeitsziel senken." })}`
                   : `%${sonuc.hedefGuvenilirlik} ${t({ tr: "güvenilirlik hiçbir filoda sağlanamıyor. Gecikme girdilerini (giriş/duruş sapması) düşür ya da hedefi gevşet.", en: "reliability cannot be met by any fleet. Lower the delay inputs (entry/dwell variability) or relax the target.", de: "Zuverlässigkeit ist von keiner Flotte erreichbar. Die Verspätungseingaben (Einstiegs-/Haltestreuung) senken oder das Ziel lockern." })}`}
-              </div>
+              </Not>
             )}
             <div className="grid grid-cols-2 gap-2">
               <Kpi etiket={t({ tr: "Robustluk üst sınırı", en: "Robustness upper bound", de: "Robustheits-Obergrenze" })} deger={sonuc.robustMaxFilo != null ? `${sonuc.robustMaxFilo}` : "—"} boyut="sm" renk={CK.amber} alt={`%${sonuc.hedefGuvenilirlik} ${t({ tr: "güvenilir en fazla filo", en: "reliable — max fleet", de: "zuverlässig — max. Flotte" })}`} />
               <Kpi etiket={t({ tr: "Konfor alt sınırı", en: "Comfort lower bound", de: "Komfort-Untergrenze" })} deger={sonuc.konforMinFilo != null ? `${sonuc.konforMinFilo}` : "—"} boyut="sm" renk={CK.amber} alt={sonuc.demandVar ? t({ tr: "doluluk tavanı için en az filo", en: "min fleet for the load cap", de: "Mindestflotte für die Auslastungsgrenze" }) : t({ tr: "talep girilmedi", en: "no demand entered", de: "keine Nachfrage eingegeben" })} />
             </div>
-            <p className="text-xs" style={{ color: brand.faint }}>{t({ tr: "Kapasite duvarı · min aralık → yukarıdaki “Filo & Kapasite kararı” kutusunda (tek kaynak).", en: "Capacity wall · min interval → in the “Fleet & Capacity decision” box above (single source).", de: "Kapazitätsgrenze · Mindestintervall → im Kasten „Flotten- & Kapazitätsentscheidung“ oben (einzige Quelle)." })}</p>
-            <p className="text-xs leading-snug" style={{ color: brand.muted }}>
-              {t({ tr: "Yeşil bölge =", en: "Green zone =", de: "Grüner Bereich =" })} <b>{t({ tr: "fizibıl filo penceresi", en: "feasible fleet window", de: "machbares Flottenfenster" })}</b> {t({ tr: "(konfor alt sınırı ↔ robustluk üst sınırı). Yeşil halka = önerilen en az filo. Eğri Monte-Carlo güvenilirliği; hedefin altına inen filolar dakiklik kısıtını çiğner.", en: "(comfort lower bound ↔ robustness upper bound). Green ring = recommended minimum fleet. The curve is Monte-Carlo reliability; fleets below the target violate the punctuality constraint.", de: "(Komfort-Untergrenze ↔ Robustheits-Obergrenze). Grüner Ring = empfohlene Mindestflotte. Die Kurve zeigt die Monte-Carlo-Zuverlässigkeit; Flotten unterhalb des Ziels verletzen die Pünktlichkeitsbeschränkung." })}
+            <p className="text-xs" style={{ color: brand.muted }}>{t({ tr: "Kapasite duvarı ve min aralık, yukarıdaki “Filo & Kapasite kararı” kutusunda (tek kaynak).", en: "The capacity wall and min interval are in the “Fleet & Capacity decision” box above (single source).", de: "Kapazitätsgrenze und Mindestintervall stehen im Kasten „Flotten- & Kapazitätsentscheidung“ oben (einzige Quelle)." })}</p>
+            <p className="text-sm leading-relaxed" style={{ color: brand.inkSoft }}>
+              {t({ tr: "Yeşil bölge,", en: "The green zone is the", de: "Der grüne Bereich ist das" })} <b>{t({ tr: "fizibıl filo penceresidir", en: "feasible fleet window", de: "machbare Flottenfenster" })}</b> {t({ tr: "(konfor alt sınırından robustluk üst sınırına). Yeşil halka, önerilen en az filodur. Eğri Monte-Carlo güvenilirliğini gösterir; hedefin altına inen filolar dakiklik kısıtını çiğner.", en: "(from the comfort lower bound to the robustness upper bound). The green ring is the recommended minimum fleet. The curve shows Monte-Carlo reliability; fleets below the target violate the punctuality constraint.", de: "(von der Komfort-Untergrenze bis zur Robustheits-Obergrenze). Der grüne Ring ist die empfohlene Mindestflotte. Die Kurve zeigt die Monte-Carlo-Zuverlässigkeit; Flotten unterhalb des Ziels verletzen die Pünktlichkeitsbeschränkung." })}
             </p>
           </div>
         </div>
