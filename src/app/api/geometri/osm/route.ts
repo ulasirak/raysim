@@ -5,6 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { hizSiniri } from "@/lib/rateLimit";
+import { overpassSorgu } from "@/lib/overpass";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -16,13 +17,6 @@ type OsmSonuc = { geometri: GeoYol[]; istasyonlar: OsmIstasyon[] };
 // Modül-içi cache (bbox anahtarlı, 24 s TTL). Serverless soğuk-başlatmada sıfırlanır — zararsız.
 const cache = new Map<string, { t: number; veri: OsmSonuc }>();
 const TTL = 1000 * 60 * 60 * 24;
-
-const OVERPASS = [
-  "https://overpass.kumi.systems/api/interpreter",
-  "https://overpass-api.de/api/interpreter",
-  "https://overpass.osm.jp/api/interpreter",
-  "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
-];
 
 /** Douglas-Peucker (lat/lon planar, şehir ölçeği) → nokta sayısını düşür, harita boyutu makul. */
 function dp(pts: { lat: number; lon: number }[], eps = 0.00025): [number, number][] {
@@ -48,34 +42,24 @@ async function overpassCek(bbox: [number, number, number, number], eps = 0.00025
     + `(way["railway"~"^(tram|light_rail|subway|construction)$"]${bb};)->.w;`
     + `(node["railway"~"^(tram_stop|station|halt)$"]${bb};node["public_transport"~"^(station|platform|stop_position)$"]${bb};node["construction:railway"~"^(station|halt|tram_stop)$"]${bb};node["proposed:railway"~"^(station|halt|tram_stop)$"]${bb};node["disused:railway"~"^(station|halt|tram_stop)$"]${bb};node["railway"~"^(construction|proposed)$"]["name"]${bb};)->.n;`
     + `.w out geom;.n out body;`;
-  let sonHata: unknown = null;
-  for (const url of OVERPASS) {
-    try {
-      const ctrl = new AbortController();
-      const zaman = setTimeout(() => ctrl.abort(), 45000);
-      const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "data=" + encodeURIComponent(q), signal: ctrl.signal });
-      clearTimeout(zaman);
-      if (!r.ok) { sonHata = new Error("HTTP " + r.status); continue; }
-      const j = (await r.json()) as { elements?: { type: string; tags?: Record<string, string>; lat?: number; lon?: number; geometry?: { lat: number; lon: number }[] }[] };
-      const el = j.elements ?? [];
-      const geometri = el.filter((x) => x.type === "way" && x.geometry && x.geometry.length >= 2)
-        .map((wy) => ({ insaat: wy.tags?.railway === "construction", noktalar: dp(wy.geometry!, eps) }))
-        .filter((y) => y.noktalar.length >= 2);
-      // İstasyon node'ları: adlı olanlar; aynı ada birden çok platform → ilkini tut.
-      const gorulen = new Set<string>();
-      const istasyonlar: OsmIstasyon[] = [];
-      for (const nd of el) {
-        if (nd.type !== "node" || !nd.tags?.name || !Number.isFinite(nd.lat) || !Number.isFinite(nd.lon)) continue;
-        const ad = nd.tags.name.trim();
-        const key = ad.toLocaleLowerCase("tr");
-        if (gorulen.has(key)) continue;
-        gorulen.add(key);
-        istasyonlar.push({ ad, lat: r4(nd.lat!), lon: r4(nd.lon!) });
-      }
-      return { geometri, istasyonlar };
-    } catch (err) { sonHata = err; }
+  // Paralel çok-ayna yarıştırıcı: ilk geçerli yanıt kazanır (bkz. src/lib/overpass.ts).
+  const j = await overpassSorgu<{ elements?: { type: string; tags?: Record<string, string>; lat?: number; lon?: number; geometry?: { lat: number; lon: number }[] }[] }>(q, 40000);
+  const el = j.elements ?? [];
+  const geometri = el.filter((x) => x.type === "way" && x.geometry && x.geometry.length >= 2)
+    .map((wy) => ({ insaat: wy.tags?.railway === "construction", noktalar: dp(wy.geometry!, eps) }))
+    .filter((y) => y.noktalar.length >= 2);
+  // İstasyon node'ları: adlı olanlar; aynı ada birden çok platform → ilkini tut.
+  const gorulen = new Set<string>();
+  const istasyonlar: OsmIstasyon[] = [];
+  for (const nd of el) {
+    if (nd.type !== "node" || !nd.tags?.name || !Number.isFinite(nd.lat) || !Number.isFinite(nd.lon)) continue;
+    const ad = nd.tags.name.trim();
+    const key = ad.toLocaleLowerCase("tr");
+    if (gorulen.has(key)) continue;
+    gorulen.add(key);
+    istasyonlar.push({ ad, lat: r4(nd.lat!), lon: r4(nd.lon!) });
   }
-  throw sonHata ?? new Error("Overpass erişilemedi.");
+  return { geometri, istasyonlar };
 }
 
 export async function POST(req: Request) {

@@ -9,18 +9,11 @@
 
 import { NextResponse } from "next/server";
 import { hizSiniri } from "@/lib/rateLimit";
+import { overpassSorgu } from "@/lib/overpass";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-// Sıra ÖNEMLİ: yanıt vermeyen uç 45 s bekletmesin diye en güvenilir public instance önce,
-// her uçta kısa abort (18 s) → ölü uç hızlı elenir, çalışana ~3 s'de düşülür.
-const OVERPASS = [
-  "https://overpass-api.de/api/interpreter",
-  "https://overpass.kumi.systems/api/interpreter",
-  "https://overpass.osm.jp/api/interpreter",
-  "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
-];
 const UA = "raysim/1.0 (https://raysim.vercel.app; raysim OSM hat içe aktarma)";
 const r4 = (n: number) => Math.round(n * 1e4) / 1e4;
 
@@ -38,21 +31,6 @@ function dp(pts: LL[], eps = 0.00025): [number, number][] {
   const st: [number, number][] = [[0, pts.length - 1]];
   while (st.length) { const [i, j] = st.pop()!; let mx = 0, mi = -1; for (let k = i + 1; k < j; k++) { const dd = d2(pts[k], pts[i], pts[j]); if (dd > mx) { mx = dd; mi = k; } } if (mx > eps * eps && mi > 0) { keep[mi] = true; st.push([i, mi], [mi, j]); } }
   return pts.filter((_, k) => keep[k]).map((p) => [r4(p.lat), r4(p.lon)]);
-}
-
-async function overpass(q: string): Promise<{ elements: OsmEl[] }> {
-  let sonHata: unknown = null;
-  for (const url of OVERPASS) {
-    try {
-      const ctrl = new AbortController();
-      const zaman = setTimeout(() => ctrl.abort(), 18000);
-      const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": UA }, body: "data=" + encodeURIComponent(q), signal: ctrl.signal });
-      clearTimeout(zaman);
-      if (!r.ok) { sonHata = new Error("HTTP " + r.status); continue; }
-      return (await r.json()) as { elements: OsmEl[] };
-    } catch (err) { sonHata = err; }
-  }
-  throw sonHata ?? new Error("Overpass erişilemedi.");
 }
 
 interface OsmEl {
@@ -93,7 +71,7 @@ async function rotaAra(sehir: string | undefined, bbox: [number, number, number,
   const [s, w, n, e] = bbox;
   if (!(n > s && e > w) || n - s > 4 || e - w > 4) throw new Error("Bölge geçersiz ya da çok büyük (≤4°). Daha dar bir şehir/ilçe yaz.");
   const q = `[out:json][timeout:50];rel["route"~"^(tram|light_rail|subway)$"](${s},${w},${n},${e});out tags;`;
-  return finishAra(await overpass(q), alanAd, bbox);
+  return finishAra(await overpassSorgu<{ elements: OsmEl[] }>(q), alanAd, bbox);
 }
 
 function finishAra(js: { elements: OsmEl[] }, alanAd: string, bbox?: [number, number, number, number]) {
@@ -120,7 +98,7 @@ async function hatCek(relIds: number[]) {
   // Küme adlandırması ŞART: adsız `node(r)` bir önceki `way(r)` kümesine bakar → 0 durak.
   // .r = ilişkiler, .w = üye way'ler (geometri), .n = üye node'lar (durak koord+ad).
   const q = `[out:json][timeout:60];rel(id:${idListe.join(",")})->.r;.r out body;way(r.r)->.w;.w out geom;node(r.r)->.n;.n out body;`;
-  const js = await overpass(q);
+  const js = await overpassSorgu<{ elements: OsmEl[] }>(q, 40000); // ağır `out geom` → daha uzun süre
   const el = js.elements ?? [];
   const nodeById = new Map<number, OsmEl>();
   const wayById = new Map<number, OsmEl>();
