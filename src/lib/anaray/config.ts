@@ -186,7 +186,7 @@ export const VARSAYILAN_TERMINAL: TerminalConfig = {
 };
 
 /** Boğaz işgali (s) terminal makas config'inden: tanzim (makas×adım) + geçiş (bölge/vMakas) + rota serbest. */
-export function bogazIsgaliOto(t: TerminalConfig, cfg: SimConfig): number {
+function bogazIsgaliOto(t: TerminalConfig, cfg: SimConfig): number {
   const ADIM = 4;      // s — makas başına tanzim (ring makas varsayılanıyla uyumlu)
   const RELEASE = 5;   // s — ana hat rota serbest bırakma
   const tanzim = Math.max(1, t.bogazMakasSayisi || 1) * ADIM;
@@ -212,7 +212,7 @@ export function terminalMakasSayilari(t: TerminalConfig): { s: number; x: number
 }
 
 /** Makas sayılarından dönüş yolu: her S crossover 1 yol (seri), her X (scissors) 2 yol (ardışık). */
-export function makasDonusKapasitesi(t: TerminalConfig): number {
+function makasDonusKapasitesi(t: TerminalConfig): number {
   const { s, x } = terminalMakasSayilari(t);
   return Math.max(1, s * 1 + x * 2);
 }

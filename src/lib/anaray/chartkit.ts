@@ -71,8 +71,3 @@ export function num(x: number, y: number, text: string, o: { size?: number; anch
 export function lab(x: number, y: number, text: string, o: { size?: number; anchor?: string; color?: string; weight?: number } = {}): string {
   return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${o.anchor ?? "start"}" font-family="${CK.sans}" font-size="${o.size ?? 9}" font-weight="${o.weight ?? 400}" fill="${o.color ?? CK.muted}">${text}</text>`;
 }
-
-// Dikey alan gradyanı tanımı (üst renkli → alta şeffaf). id benzersiz olmalı.
-export function areaGrad(id: string, color: string, topOpacity = 0.22): string {
-  return `<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity="${topOpacity}"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/></linearGradient>`;
-}

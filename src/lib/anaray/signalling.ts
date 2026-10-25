@@ -79,7 +79,7 @@ export function makeBlocks(line: Line, sinyaller: number[] = []): number[] {
   return out;
 }
 
-export function blockOf(bounds: number[], s: number): number {
+function blockOf(bounds: number[], s: number): number {
   for (let j = 0; j < bounds.length - 1; j++) if (s < bounds[j + 1] - 1e-6) return j;
   return bounds.length - 2;
 }
@@ -90,7 +90,7 @@ export function blockOf(bounds: number[], s: number): number {
  * doludur. Bu, kapasitenin blocking-time teorisiyle (t_clearing) tutarlı çıkmasını
  * sağlar; noktasal model kapasiteyi olduğundan yüksek gösterirdi.
  */
-export function occupiedBlocks(bounds: number[], sHead: number, length: number): [number, number] {
+function occupiedBlocks(bounds: number[], sHead: number, length: number): [number, number] {
   const tail = Math.max(0, sHead - length);
   return [blockOf(bounds, tail), blockOf(bounds, sHead)];
 }

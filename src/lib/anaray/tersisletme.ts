@@ -87,7 +87,7 @@ export interface TersIsletmeRapor {
 // ————————————————————————————————————————————————
 // İstasyon rolünden talep ağırlığı (şeffaf, ad-tabanlı). 1 = sıradan durak.
 // ————————————————————————————————————————————————
-export function durakAgirlik(ad: string): number {
+function durakAgirlik(ad: string): number {
   const a = (ad || "").toLocaleLowerCase("tr");
   let w = 1;
   const ek = (re: RegExp, v: number) => { if (re.test(a)) w += v; };

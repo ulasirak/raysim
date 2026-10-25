@@ -34,14 +34,6 @@ export function yolcuAkisSuresi(inen: number, binen: number, stock: RollingStock
   return Math.max(0, (Math.max(0, inen) + Math.max(0, binen)) / kapasite);
 }
 
-/** Bir durağın (varış) HESAPLANAN duruş süresi (dwell, s) — fiziksel yolcu akışından. */
-export function hesaplananDwell(ring: DurakArasiRing, stock: RollingStock, isletme: Isletme): number {
-  const flow = yolcuAkisSuresi(ring.inenYolcu ?? 0, ring.binenYolcu ?? 0, stock, isletme.yolcuAkisHizi);
-  const kapiAcma = ring.kapiAcma ?? 2;
-  const kapiKapama = ring.kapiKapama ?? 2;
-  return Math.max(isletme.minDurusSuresi, flow) + kapiAcma + kapiKapama;
-}
-
 /** Dwell OTO açık ringlerin dwell'ini yolcu dinamiğinden hesaplayıp yazar; diğerleri
  *  elle. `dwell` YETKİLİ toplam kalır (motorlar bunu okur) → tek kaynak. */
 export function dwellUygulanmisRings(rings: DurakArasiRing[], stock: RollingStock, isletme: Isletme): DurakArasiRing[] {

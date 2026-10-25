@@ -44,7 +44,7 @@ export const varsayilanArac = araclar[0];
 // TİPİK tahminlerdir (üretici sertifikalı sayı değil) — kalkış çekişi ≈ etkin kütle
 // × ~1,0 m/s² kabulüyle. Kullanıcı seçtikten sonra tüm bu değerleri panelden
 // düzenleyebilir; kesin datasheet varsa oradan girmelidir.
-export const gercekModeller: RollingStock[] = [
+const gercekModeller: RollingStock[] = [
   {
     id: "skoda-28t", name: "Škoda ForCity Classic 28T",
     mass: 41_500, rotatingMassFactor: 0.08, length: 32.52, maxSpeed: 70 * KMH,

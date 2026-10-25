@@ -455,7 +455,7 @@ export function haritaKisitlari(rings: DurakArasiRing[], cfg: SimConfig = BELGE,
 // ————————————————————————————————————————————————
 
 /** Ringin salt seyir süresi (durak beklemesi hariç), verilen mod için (s). */
-export function ringSeyirSuresi(ring: DurakArasiRing, stock: RollingStock, mode: Mode, cfg: SimConfig = BELGE): number {
+function ringSeyirSuresi(ring: DurakArasiRing, stock: RollingStock, mode: Mode, cfg: SimConfig = BELGE): number {
   // Config dinamik tavanları (ivme/servis freni) araca bağlanır → sim tek fizik kaynağı.
   return simulate(ringToLine(ring, mode, cfg), etkinArac(stock, cfg), 0.5).totalTime;
 }
@@ -652,7 +652,7 @@ export function ringKisitDizisi(ring: DurakArasiRing): Kisitlik[] {
 }
 
 /** Ardışık kısıtlar arası en kısa mesafe (m). Kısıt < 2 ise null. */
-export function enKisaKisitAralik(ring: DurakArasiRing): { mesafe: number; a: Kisitlik; b: Kisitlik } | null {
+function enKisaKisitAralik(ring: DurakArasiRing): { mesafe: number; a: Kisitlik; b: Kisitlik } | null {
   const d = ringKisitDizisi(ring);
   if (d.length < 2) return null;
   let min = Infinity;

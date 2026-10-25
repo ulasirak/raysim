@@ -54,6 +54,7 @@ export function RingEditor() {
   const { rings, setRings, sifirlaRings, subeler, meta, patchMeta, yukleniyor, yazilabilir } = useProje();
   const { projeYeni } = useHesap();
   const [iceMesgul, setIceMesgul] = useState(false);
+  const [iceHata, setIceHata] = useState<string | null>(null);
   // Araç ve işletme parametreleri KALICI (projeye kayıtlı) — tek kaynak.
   const { arac: stock } = useArac();
   const { isletme, patchIsletme } = useIsletme();
@@ -125,8 +126,9 @@ export function RingEditor() {
     }
     else if (mod === "yeniHat") {
       setIceMesgul(true);
+      setIceHata(null);
       try { await projeYeni(ad); setRings(() => yeni); patchMeta({ hatAdi: ad }); patchIsletme({ istasyonKoordinat: koord ?? {}, hatGeometri: geometri, koordinatKaynak: "iceaktar" }); }
-      catch (e) { alert(e instanceof Error ? e.message : t({ tr: "Yeni hat oluşturulamadı.", en: "Could not create new line.", de: "Neue Strecke konnte nicht erstellt werden." })); }
+      catch (e) { setIceHata(e instanceof Error ? e.message : t({ tr: "Yeni hat oluşturulamadı.", en: "Could not create new line.", de: "Neue Strecke konnte nicht erstellt werden." })); }
       finally { setIceMesgul(false); }
     }
   };
@@ -310,6 +312,12 @@ export function RingEditor() {
           (mevcut hattın üzerine yazar; "Silmeyi geri al" ile dönülebilir). */}
       {!yukleniyor && (
         <HatIceAktar onIceAktar={iceAktarUygula} mevcutSonKoord={mevcutSonKoord} mevcutDurakVar={duraklar.length > 0} mevcutKoordVar={gtfsKoordVar} disabled={!yazilabilir} mesgulDis={iceMesgul} />
+      )}
+      {iceHata && (
+        <div role="alert" className="mt-2 flex items-start justify-between gap-3 rounded-lg px-3 py-2 text-xs" style={{ background: "rgba(220,38,38,0.08)", color: brand.red }}>
+          <span>{iceHata}</span>
+          <button onClick={() => setIceHata(null)} className="shrink-0 underline opacity-80 hover:opacity-100">{t({ tr: "kapat", en: "dismiss", de: "schließen" })}</button>
+        </div>
       )}
 
       {/* ŞUBELER ve DIŞA AKTAR aşağıya taşındı — önce hattı kur (Duraklar + ring kartları),

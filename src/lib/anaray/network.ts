@@ -106,11 +106,6 @@ export function flattenRoute(net: RailNetwork, route: Route): Line {
   return { id: route.id, name: route.name, length: cursor, stations, segments };
 }
 
-/** Bir rotanın kullandığı kenar id'lerini küme olarak döndürür (çizimde vurgu için). */
-export function routeEdgeSet(route: Route): Set<string> {
-  return new Set(route.edgeIds);
-}
-
 // ————————————————————————————————————————————————
 // Proje hattı (ring zinciri) → graf şebekesi
 // ————————————————————————————————————————————————
@@ -326,23 +321,6 @@ export function sinyalKonumlari(rings: DurakArasiRing[], cfg: SimConfig = BELGE)
     for (const s of r.sinyaller ?? []) {
       if (s.tersIsletme) continue; // ters işletme sinyali blok sınırı değil (özel turnback)
       out.push(offset + Math.max(0, Math.min(r.uzunluk, s.konum)) * scale);
-    }
-    offset += L;
-  }
-  return out;
-}
-
-/** Makas (kavşak) merkezlerinin hat-boyu konumları (ileri yön) — kavşak sinyalleri için. */
-export function makasKonumlari(
-  rings: DurakArasiRing[], cfg: SimConfig = BELGE,
-): { pos: number; ad: string }[] {
-  const out: { pos: number; ad: string }[] = [];
-  let offset = 0;
-  for (const r of rings) {
-    const L = ringToLine(r, "nominal", cfg).length;
-    for (const m of r.makaslar) {
-      const k = Math.max(0, Math.min(r.uzunluk, m.konum));
-      out.push({ pos: offset + k * (L / Math.max(1, r.uzunluk)), ad: m.ad || "Makas" });
     }
     offset += L;
   }

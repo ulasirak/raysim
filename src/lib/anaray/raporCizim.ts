@@ -161,7 +161,7 @@ export function reverseLineOf(line: Line): Line {
 }
 
 // ornekler (t artan, 0..periyot) → faz anındaki kümülatif s (doğrusal ara değer).
-export function bfSampleS(orn: LoopYorunge["ornekler"], faz: number): number {
+function bfSampleS(orn: LoopYorunge["ornekler"], faz: number): number {
   const n = orn.length; if (n === 0) return 0;
   if (faz <= orn[0].t) return orn[0].s;
   if (faz >= orn[n - 1].t) return orn[n - 1].s;
