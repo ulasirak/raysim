@@ -259,7 +259,7 @@ function Govde({ children }: { children: React.ReactNode }) {
   return (
     <>
       {/* Header: marka + sağ slotta hesap/hat kontrolleri (girişsizken slot boş → sade) */}
-      <Masthead altBaslik={t({ tr: "Demiryolu Ağı Simülasyon Sistemi", en: "Railway Network Simulation System", de: "Bahnnetz-Simulationssystem" })} sag={<div className="flex flex-wrap items-center justify-end gap-3"><DilAnahtari /><ParametreDuzenleButonu /><HesapKontrolleri /></div>} />
+      <Masthead altBaslik={t({ tr: "Demiryolu Ağı Simülasyon Sistemi", en: "Railway Network Simulation System", de: "Bahnnetz-Simulationssystem" })} sag={<div id="ust-cubuk" className="flex flex-wrap items-center justify-end gap-3"><DilAnahtari /><ParametreDuzenleButonu /><HesapKontrolleri /></div>} />
 
       {/* Modül navigasyonu — sistemin mantıksal iş akışı bir METRO HATTI olarak:
           altı istasyon soldan sağa boru hattı; kaydırma ilerlemesi rayda akan bir

@@ -86,9 +86,73 @@ const ADIMLAR: Adim[] = [
     },
   },
 
+  // ——— ARAYÜZ / ÜST ÇUBUK ———
+  {
+    no: "2", anahtar: "arayuz", slug: "ringler", hedefId: "ust-cubuk", baglanti: ["kur", "belgele"],
+    metin: {
+      tr: {
+        faz: "Arayüz", baslik: "Üst çubuk ve çalışma alanı",
+        anlatim: "Bu çubuk her ekranın üstünde sabit durur; projeyi, parametreleri, dili ve hesabınızı tek yerden yönetirsiniz.",
+        amac: "Hangi ekranda olursanız olun en üstte duran kumanda çubuğu; üzerinde çalıştığınız projeyi seçer, bütün parametreleri açar, dili değiştirir ve hesabınızı yönetir.",
+        bolmeler: [
+          { ad: "Parametreler", ne: "Bütün simülasyon parametrelerinin tek kaynağıdır; buradan açılan pencerede ivme, yavaşlama ve sinyal süreleri gibi değerleri düzenlersiniz." },
+          { ad: "Aktif Hat", ne: "Üzerinde çalıştığınız projeyi seçer; her proje ayrı ve kalıcıdır." },
+          { ad: "Hesap ve krediler", ne: "Kredi satın alma, kredi geçmişi, paylaşım panosu ve çıkış bu menünün altındadır." },
+        ],
+        butonlar: [
+          { ad: "Parametreler", ne: "Simülasyon parametreleri penceresini açar (tek kaynak)." },
+          { ad: "Aktif Hat (seçim)", ne: "Çalıştığınız projeyi değiştirir." },
+          { ad: "＋ Yeni hat · 📁 Dosyadan", ne: "Boş yeni bir hat ya da dosyadan içe aktarılmış bir hat oluşturur." },
+          { ad: "TR · EN · DE", ne: "Hem arayüzün hem bu sunumun dilini değiştirir." },
+          { ad: "⋮ Hesap menüsü", ne: "Kredi al, kredi geçmişi, paylaşım, hattı sil, tanıtımı göster ve çıkış." },
+          { ad: "✎ Yeniden adlandır", ne: "Aktif projenin adını değiştirir." },
+          { ad: "↑ Başa dön", ne: "Sayfanın en üstüne hızlıca çıkar." },
+        ],
+      },
+      en: {
+        faz: "Interface", baslik: "The top bar and workspace",
+        anlatim: "This bar stays fixed at the top of every screen; you manage the project, the parameters, the language and your account all from one place.",
+        amac: "The control bar that stays at the very top whatever screen you're on; it selects the project you work on, opens all the parameters, switches the language and manages your account.",
+        bolmeler: [
+          { ad: "Parameters", ne: "The single source for all simulation parameters; the window it opens lets you edit values like acceleration, deceleration and signal times." },
+          { ad: "Active Line", ne: "Selects the project you're working on; each project is separate and permanent." },
+          { ad: "Account and credits", ne: "Buying credits, credit history, the share panel and sign-out are under this menu." },
+        ],
+        butonlar: [
+          { ad: "Parameters", ne: "Opens the simulation-parameters window (the single source)." },
+          { ad: "Active Line (selector)", ne: "Switches the project you're working on." },
+          { ad: "＋ New line · 📁 From file", ne: "Creates an empty new line or one imported from a file." },
+          { ad: "TR · EN · DE", ne: "Switches the language of both the interface and this tour." },
+          { ad: "⋮ Account menu", ne: "Buy credits, credit history, sharing, delete line, show the intro and sign out." },
+          { ad: "✎ Rename", ne: "Changes the name of the active project." },
+          { ad: "↑ Back to top", ne: "Jumps quickly to the top of the page." },
+        ],
+      },
+      de: {
+        faz: "Oberfläche", baslik: "Obere Leiste und Arbeitsbereich",
+        anlatim: "Diese Leiste bleibt oben auf jedem Bildschirm fest; Sie verwalten Projekt, Parameter, Sprache und Konto an einem Ort.",
+        amac: "Die Steuerleiste, die auf jedem Bildschirm ganz oben bleibt; sie wählt das Projekt, an dem Sie arbeiten, öffnet alle Parameter, wechselt die Sprache und verwaltet Ihr Konto.",
+        bolmeler: [
+          { ad: "Parameter", ne: "Die einzige Quelle für alle Simulationsparameter; das geöffnete Fenster lässt Sie Werte wie Beschleunigung, Verzögerung und Signalzeiten bearbeiten." },
+          { ad: "Aktive Strecke", ne: "Wählt das Projekt, an dem Sie arbeiten; jedes Projekt ist eigenständig und dauerhaft." },
+          { ad: "Konto und Credits", ne: "Credits kaufen, Credit-Verlauf, das Teilen-Panel und Abmelden sind unter diesem Menü." },
+        ],
+        butonlar: [
+          { ad: "Parameter", ne: "Öffnet das Fenster der Simulationsparameter (die einzige Quelle)." },
+          { ad: "Aktive Strecke (Auswahl)", ne: "Wechselt das Projekt, an dem Sie arbeiten." },
+          { ad: "＋ Neue Strecke · 📁 Aus Datei", ne: "Erstellt eine leere neue Strecke oder eine aus einer Datei importierte." },
+          { ad: "TR · EN · DE", ne: "Wechselt die Sprache sowohl der Oberfläche als auch dieser Tour." },
+          { ad: "⋮ Kontomenü", ne: "Credits kaufen, Credit-Verlauf, Teilen, Strecke löschen, Einführung zeigen und abmelden." },
+          { ad: "✎ Umbenennen", ne: "Ändert den Namen des aktiven Projekts." },
+          { ad: "↑ Nach oben", ne: "Springt schnell an den Seitenanfang." },
+        ],
+      },
+    },
+  },
+
   // ——— KUR ———
   {
-    no: "2", anahtar: "kur", slug: "ringler", baglanti: ["filo", "kapasite", "belgele"],
+    no: "3", anahtar: "kur", slug: "ringler", baglanti: ["filo", "kapasite", "belgele"],
     metin: {
       tr: {
         faz: "Kur", baslik: "Hattı tanımla",
@@ -111,6 +175,8 @@ const ADIMLAR: Adim[] = [
           { ad: "oto dwell (durak bazlı) + inen/binen", ne: "Beklemeyi yolcudan otomatik hesaplar: kapı aç + (inen+binen)÷(kapı×genişlik×akış) + kapı kapa, en az min duruş; kapalıyken elle girersin." },
           { ad: "＋ makas · yaya · karayolu · acil fren · kurp · sinyal", ne: "Seçili ring hücresine saha öğesi ekler." },
           { ad: "depo işaretle + araç kuyruğu", ne: "Durağı depo yapar ve park eden araç sayısını belirler." },
+          { ad: "+ Şube ekle · durak ekle/sil · kavşak durağı", ne: "Şube / Tali Hat editöründe bir kavşak durağından tali hat açar, şubeye durak ekler ya da çıkarır." },
+          { ad: "tek hat · durağı böl", ne: "Bir hücreyi tek hatlı işaretler ya da bir durağı ikiye bölerek ara durak ekler." },
           { ad: "⬇ İçe aktar", ne: "Seçili dosya/OSM verisini hatta uygular (+ harita için koordinat/geometri)." },
         ],
       },
@@ -135,6 +201,8 @@ const ADIMLAR: Adim[] = [
           { ad: "auto dwell (per stop) + alight/board", ne: "Computes dwell from passengers: door open + (alight+board)÷(doors×width×flow) + door close, at least min dwell; off = enter manually." },
           { ad: "＋ switch · pedestrian · road · e-brake · curve · signal", ne: "Adds a field element to the selected ring cell." },
           { ad: "flag depot + vehicle queue", ne: "Marks a stop as a depot and sets the parked vehicle count." },
+          { ad: "+ Add branch · add/remove stop · junction stop", ne: "In the Branch / spur-line editor, opens a spur off a junction stop and adds or removes its stops." },
+          { ad: "single track · split a stop", ne: "Marks a cell as single-track, or splits a stop in two to insert an intermediate stop." },
           { ad: "⬇ Import", ne: "Applies the selected file/OSM data to the line (+ coordinates/geometry for the map)." },
         ],
       },
@@ -159,6 +227,8 @@ const ADIMLAR: Adim[] = [
           { ad: "Auto-Haltezeit (je Halt) + Aus/Ein", ne: "Berechnet die Haltezeit aus Fahrgästen: Tür auf + (Aus+Ein)÷(Türen×Breite×Fluss) + Tür zu, mind. Min-Haltezeit; aus = manuell eingeben." },
           { ad: "＋ Weiche · Fußgänger · Straße · Notbremse · Bogen · Signal", ne: "Fügt dem gewählten Abschnitt ein Streckenelement hinzu." },
           { ad: "Depot markieren + Fahrzeugschlange", ne: "Macht eine Haltestelle zum Depot und setzt die geparkte Fahrzeugzahl." },
+          { ad: "+ Ast hinzufügen · Halt hinzufügen/entfernen · Kreuzungshalt", ne: "Im Editor 'Ast / Zweigstrecke' öffnet einen Ast an einer Kreuzungshaltestelle und fügt dessen Halte hinzu oder entfernt sie." },
+          { ad: "Eingleis · Halt teilen", ne: "Markiert einen Abschnitt als eingleisig oder teilt einen Halt, um einen Zwischenhalt einzufügen." },
           { ad: "⬇ Importieren", ne: "Wendet Datei/OSM-Daten auf die Strecke an (+ Koordinaten/Geometrie für die Karte)." },
         ],
       },
@@ -183,9 +253,11 @@ const ADIMLAR: Adim[] = [
         butonlar: [
           { ad: "✓ Onayla — filoyu öneriye eşitle", ne: "Çalışan filoyu önerilen sayıya ayarlar ve onaylandı işaretler." },
           { ad: "− / + filo", ne: "Çalışan filoyu (park toplamı) elle artırır/azaltır." },
-          { ad: "yolcu verisi gir", ne: "Durak bazlı iniş/biniş yolcu verisini açar." },
+          { ad: "parklanma dizilimi (depo başına)", ne: "Her depoya kaç araç park edileceğini girersiniz; kalkışlar buradan oluşur." },
           { ad: "eşit dağıt", ne: "Araçları depolara eşit paylaştırır." },
+          { ad: "yolcu verisi gir", ne: "Durak bazlı iniş/biniş yolcu verisini açar." },
           { ad: "araç ön-ayarı seç", ne: "Hazır tramvay modelinin fiziğini yükler." },
+          { ad: "analiz edilen şube (seçim)", ne: "Hat şubeliyse, tüm Sefer ve Sistem analizini seçtiğiniz şubeye göre yeniden çalıştırır." },
         ],
       },
       en: {
@@ -202,9 +274,11 @@ const ADIMLAR: Adim[] = [
         butonlar: [
           { ad: "✓ Confirm — set fleet to recommendation", ne: "Sets the running fleet to the recommended count and marks it confirmed." },
           { ad: "− / + fleet", ne: "Manually raises/lowers the running fleet (parking total)." },
-          { ad: "enter passenger data", ne: "Opens per-stop board/alight passenger data." },
+          { ad: "parking layout (per depot)", ne: "You enter how many vehicles park at each depot; departures start from here." },
           { ad: "distribute evenly", ne: "Splits vehicles evenly across depots." },
+          { ad: "enter passenger data", ne: "Opens per-stop board/alight passenger data." },
           { ad: "select vehicle preset", ne: "Loads the physics of a ready tram model." },
+          { ad: "analyzed branch (selector)", ne: "If the line has branches, re-runs all the Service and System analysis for the branch you select." },
         ],
       },
       de: {
@@ -221,9 +295,11 @@ const ADIMLAR: Adim[] = [
         butonlar: [
           { ad: "✓ Bestätigen — Flotte = Empfehlung", ne: "Setzt die laufende Flotte auf die empfohlene Zahl und markiert sie als bestätigt." },
           { ad: "− / + Flotte", ne: "Erhöht/senkt die laufende Flotte (Abstellsumme) von Hand." },
-          { ad: "Fahrgastdaten eingeben", ne: "Öffnet Ein-/Ausstieg je Haltestelle." },
+          { ad: "Abstellplan (je Depot)", ne: "Sie geben ein, wie viele Fahrzeuge je Depot abgestellt werden; die Abfahrten beginnen hier." },
           { ad: "gleich verteilen", ne: "Verteilt Fahrzeuge gleichmäßig auf die Depots." },
+          { ad: "Fahrgastdaten eingeben", ne: "Öffnet Ein-/Ausstieg je Haltestelle." },
           { ad: "Fahrzeug-Preset wählen", ne: "Lädt die Physik eines fertigen Straßenbahnmodells." },
+          { ad: "analysierter Ast (Auswahl)", ne: "Hat die Strecke Äste, führt sie die gesamte Betriebs- und Systemanalyse für den gewählten Ast neu aus." },
         ],
       },
     },
@@ -245,12 +321,16 @@ const ADIMLAR: Adim[] = [
           { ad: "Tarife", ne: "Çevrim süresi ve sefer aralığından kalkış çizelgesini üretir." },
         ],
         butonlar: [
-          { ad: "Şematik / Harita", ne: "Canlı görünümü şema ↔ gerçek harita arasında değiştirir." },
+          { ad: "Şematik / Harita", ne: "Canlı görünümü şema ile gerçek harita arasında değiştirir." },
+          { ad: "Oynat / Duraklat ve hız", ne: "Simülasyonu başlatıp durdurur ve oynatma hızını ayarlar." },
+          { ad: "Yakınlaştır / Uzaklaştır / Sığdır", ne: "Haritada yakınlaşır, uzaklaşır ya da tüm hattı ekrana sığdırır." },
+          { ad: "Ters yönü göster", ne: "Haritada dönüş (geri) yönünü ayrı katman olarak açıp kapatır." },
           { ad: "Koordinat gir", ne: "Elle enlem/boylam girişi panelini açar." },
-          { ad: "Çakışmasız çizelge", ne: "Tek-hat için kalkış offset'li çakışmasız çizelgeyi uygular." },
-          { ad: "⤓ OSM'den çek", ne: "Durak koordinat + geometrisini OpenStreetMap'ten getirir (hattı değiştirmez)." },
+          { ad: "Çakışmasız çizelge", ne: "Tek hat için kalkış kaydırmalı çakışmasız çizelgeyi uygular." },
+          { ad: "⤓ OSM'den çek", ne: "Durak koordinatlarını ve geometriyi OpenStreetMap'ten getirir (hattı değiştirmez)." },
           { ad: "⬇ CAD verisini içe aktar", ne: "Bu hattın GTFS/CAD koordinatını yükler." },
-          { ad: "blok tıkla · Arızayı temizle", ne: "Blokta arıza oluşturur/temizler; etkisini canlı izlersin." },
+          { ad: "Bloğa tıkla / Arızayı temizle", ne: "Bir blokta arıza oluşturur ya da temizler; etkisini canlı izlersiniz." },
+          { ad: "Ters İşletme (mod · sıfırla · gir)", ne: "Kısa dönüş modunu seçer, tahmine sıfırlar ya da elle değer girersiniz." },
         ],
       },
       en: {
@@ -265,12 +345,16 @@ const ADIMLAR: Adim[] = [
           { ad: "Timetable", ne: "Produces the departure schedule from the cycle time and the headway." },
         ],
         butonlar: [
-          { ad: "Schematic / Map", ne: "Switches the live view between schematic and real map." },
+          { ad: "Schematic / Map", ne: "Switches the live view between the schematic and the real map." },
+          { ad: "Play / Pause and speed", ne: "Starts and stops the simulation and sets the playback speed." },
+          { ad: "Zoom in / out / fit", ne: "Zooms in, zooms out, or fits the whole line to the screen on the map." },
+          { ad: "Show reverse direction", ne: "Turns the return (reverse) direction on and off as a separate overlay on the map." },
           { ad: "Enter coordinates", ne: "Opens the manual latitude/longitude panel." },
-          { ad: "Conflict-free schedule", ne: "Applies departure offsets for a clash-free single-track schedule." },
-          { ad: "⤓ Fetch from OSM", ne: "Gets stop coordinates + geometry from OpenStreetMap (does not change the line)." },
+          { ad: "Conflict-free schedule", ne: "Applies the clash-free schedule with departure offsets for single track." },
+          { ad: "⤓ Fetch from OSM", ne: "Gets stop coordinates and geometry from OpenStreetMap (does not change the line)." },
           { ad: "⬇ Import CAD data", ne: "Loads this line's GTFS/CAD coordinates." },
-          { ad: "click a block · Clear fault", ne: "Creates/clears a fault on a block; you watch the effect live." },
+          { ad: "Click a block / Clear fault", ne: "Creates or clears a fault on a block; you watch the effect live." },
+          { ad: "Reverse Operation (mode · reset · enter)", ne: "Picks the short-turn mode, resets to the estimate, or lets you enter a value by hand." },
         ],
       },
       de: {
@@ -286,11 +370,15 @@ const ADIMLAR: Adim[] = [
         ],
         butonlar: [
           { ad: "Schema / Karte", ne: "Wechselt die Live-Ansicht zwischen Schema und echter Karte." },
+          { ad: "Abspielen / Pause und Tempo", ne: "Startet und stoppt die Simulation und stellt das Abspieltempo ein." },
+          { ad: "Vergrößern / Verkleinern / Einpassen", ne: "Zoomt auf der Karte hinein, hinaus oder passt die ganze Strecke ins Bild ein." },
+          { ad: "Gegenrichtung anzeigen", ne: "Blendet die Rückrichtung als separate Ebene auf der Karte ein und aus." },
           { ad: "Koordinaten eingeben", ne: "Öffnet das manuelle Breiten-/Längengrad-Panel." },
-          { ad: "Konfliktfreier Fahrplan", ne: "Wendet Abfahrtsversätze für einen konfliktfreien Eingleis-Fahrplan an." },
-          { ad: "⤓ Aus OSM holen", ne: "Holt Haltestellenkoordinaten + Geometrie aus OpenStreetMap (ändert die Strecke nicht)." },
+          { ad: "Konfliktfreier Fahrplan", ne: "Wendet den konfliktfreien Fahrplan mit Abfahrtsversätzen für Eingleis an." },
+          { ad: "⤓ Aus OSM holen", ne: "Holt Haltestellenkoordinaten und Geometrie aus OpenStreetMap (ändert die Strecke nicht)." },
           { ad: "⬇ CAD-Daten importieren", ne: "Lädt die GTFS/CAD-Koordinaten dieser Strecke." },
-          { ad: "Block anklicken · Störung löschen", ne: "Erzeugt/löscht eine Störung an einem Block; Wirkung live sichtbar." },
+          { ad: "Block anklicken / Störung löschen", ne: "Erzeugt oder löscht eine Störung an einem Block; Wirkung live sichtbar." },
+          { ad: "Kehrbetrieb (Modus · Reset · Eingabe)", ne: "Wählt den Kehrmodus, setzt auf die Schätzung zurück oder lässt Sie einen Wert eingeben." },
         ],
       },
     },
@@ -315,6 +403,10 @@ const ADIMLAR: Adim[] = [
         ],
         butonlar: [
           { ad: "hedef tren seç · birincil gecikme", ne: "Gecikme yayılımı grafiğini sürer (hangi tren, ne kadar gecikme)." },
+          { ad: "Bildfahrplan: PNG / SVG indir", ne: "Zaman-mesafe grafiğini sunum ya da rapora koymak için görüntü olarak indirir." },
+          { ad: "Yakınlaştır / Uzaklaştır / Sıfırla", ne: "Grafikte yakınlaşıp uzaklaşır ve görünümü ilk haline döndürür." },
+          { ad: "Tam ekran", ne: "Herhangi bir grafiği incelemek için tam ekrana açar." },
+          { ad: "Çakışma işaretine tıkla", ne: "Bildfahrplan'da bir çakışma noktasına tıklayarak ayrıntısını görürsünüz." },
         ],
       },
       en: {
@@ -332,6 +424,10 @@ const ADIMLAR: Adim[] = [
         ],
         butonlar: [
           { ad: "select target train · primary delay", ne: "Drives the delay-propagation chart (which train, how much delay)." },
+          { ad: "Bildfahrplan: download PNG / SVG", ne: "Downloads the time-distance chart as an image to drop into a presentation or report." },
+          { ad: "Zoom in / out / reset", ne: "Zooms in and out of the chart and returns the view to its original state." },
+          { ad: "Full screen", ne: "Opens any chart full screen for closer inspection." },
+          { ad: "Click a conflict marker", ne: "Click a conflict point on the Bildfahrplan to see its detail." },
         ],
       },
       de: {
@@ -349,6 +445,10 @@ const ADIMLAR: Adim[] = [
         ],
         butonlar: [
           { ad: "Zielzug wählen · Primärverspätung", ne: "Steuert das Verspätungsausbreitungs-Diagramm (welcher Zug, wie viel Verspätung)." },
+          { ad: "Bildfahrplan: PNG / SVG herunterladen", ne: "Lädt das Zeit-Weg-Diagramm als Bild für Präsentation oder Bericht herunter." },
+          { ad: "Vergrößern / Verkleinern / Zurücksetzen", ne: "Zoomt im Diagramm hinein und hinaus und setzt die Ansicht zurück." },
+          { ad: "Vollbild", ne: "Öffnet jedes Diagramm im Vollbild zur genaueren Betrachtung." },
+          { ad: "Konfliktmarkierung anklicken", ne: "Klicken Sie im Bildfahrplan einen Konfliktpunkt an, um sein Detail zu sehen." },
         ],
       },
     },
@@ -407,6 +507,52 @@ const ADIMLAR: Adim[] = [
           { ad: "150 Läufe simulieren", ne: "Startet den Monte-Carlo-Robustheitslauf." },
           { ad: "mittl. Einfahrverspätung · Halteabweichung", ne: "Eingaben des Zufallsverspätungsszenarios." },
           { ad: "Zugfolgezeit · Zeitleiste (integriert)", ne: "Spielt das Kehrbetriebsszenario über die Zeit ab." },
+        ],
+      },
+    },
+  },
+
+  // ——— ANALİZ · AĞ & KAVŞAK (sf-t5, yalnız şube varsa) ———
+  {
+    no: "6b", anahtar: "agkavsak", slug: "sefer", sekme: "sf-t5", baglanti: ["kur", "risk", "kapasite"],
+    metin: {
+      tr: {
+        faz: "Analiz", baslik: "Ağ ve kavşak",
+        anlatim: "Bu sekme yalnızca hatta bir şube tanımlıysa görünür. Şubelerin ortaklaşa kullandığı kesimdeki yükü ve kavşakta trenlerin birbirini bekleme durumunu bir arada değerlendirir.",
+        amac: "Şubeli bir ağda, ortak kesimin yükünü ve kavşaktaki zaman çakışmalarını analiz eder.",
+        girdi: "Tanımlı şubeler, bunların paylaştığı ortak kesim ve kavşak durağı.",
+        cikti: "Ortak kesimdeki birleşik yük ve kavşakta trenlerin birbirini ne kadar beklediği.",
+        bolmeler: [
+          { ad: "Ağ & Kavşak Analizi", ne: "Şubelerin ortak kullandığı kesimin toplam yükünü ve kavşaktaki zaman çakışmasını gösterir; yalnız okuma amaçlıdır, ayar içermez." },
+        ],
+        butonlar: [
+          { ad: "(bu bölmede ayar yoktur)", ne: "Şubeler Ringler'deki 'Şube / Tali Hat' editöründe tanımlanır; bu sekme yalnız sonucu gösterir." },
+        ],
+      },
+      en: {
+        faz: "Analysis", baslik: "Network and junction",
+        anlatim: "This tab appears only when the line has a branch defined. It weighs together the load on the section the branches share and how the trains wait for each other at the junction.",
+        amac: "In a branched network, it analyzes the load on the shared section and the time conflicts at the junction.",
+        girdi: "The defined branches, the section they share and the junction stop.",
+        cikti: "The combined load on the shared section and how much the trains wait for each other at the junction.",
+        bolmeler: [
+          { ad: "Network & Junction Analysis", ne: "Shows the total load on the section the branches share and the time conflict at the junction; it is read-only and has no settings." },
+        ],
+        butonlar: [
+          { ad: "(no settings in this pane)", ne: "Branches are defined in the 'Branch / spur line' editor in Ringler; this tab only shows the result." },
+        ],
+      },
+      de: {
+        faz: "Analyse", baslik: "Netz und Kreuzung",
+        anlatim: "Dieser Tab erscheint nur, wenn die Strecke einen Ast hat. Er bewertet zusammen die Last des von den Ästen gemeinsam genutzten Abschnitts und wie die Züge an der Kreuzung aufeinander warten.",
+        amac: "In einem verzweigten Netz analysiert er die Last des gemeinsamen Abschnitts und die zeitlichen Konflikte an der Kreuzung.",
+        girdi: "Die definierten Äste, der von ihnen geteilte Abschnitt und die Kreuzungshaltestelle.",
+        cikti: "Die kombinierte Last des gemeinsamen Abschnitts und wie lange die Züge an der Kreuzung aufeinander warten.",
+        bolmeler: [
+          { ad: "Netz- & Kreuzungsanalyse", ne: "Zeigt die Gesamtlast des von den Ästen gemeinsam genutzten Abschnitts und den zeitlichen Konflikt an der Kreuzung; nur lesend, keine Einstellungen." },
+        ],
+        butonlar: [
+          { ad: "(in diesem Bereich keine Einstellung)", ne: "Äste werden im Editor 'Ast / Zweigstrecke' in Ringler definiert; dieser Tab zeigt nur das Ergebnis." },
         ],
       },
     },
@@ -798,7 +944,7 @@ function Noktalar({ i, git, dil, gizliMobil }: { i: number; git: (n: number) => 
   return (
     <div className={`${gizliMobil ? "hidden md:flex" : "flex"} flex-wrap items-center justify-center gap-1.5`}>
       {ADIMLAR.map((s, k) => (
-        <button key={s.no} type="button" onClick={() => git(k)} aria-label={`${k + 1}: ${s.metin[dil].baslik}`} title={`${s.no}. ${s.metin[dil].baslik}`}
+        <button key={s.anahtar} type="button" onClick={() => git(k)} aria-label={`${k + 1}: ${s.metin[dil].baslik}`} title={`${k + 1}. ${s.metin[dil].baslik}`}
           className="h-2 rounded-full transition-all"
           style={{ width: k === i ? 18 : 8, background: k === i ? brand.gold : k < i ? "#6C5A2E" : "#31536B" }} />
       ))}
@@ -971,7 +1117,7 @@ export function SunumModu() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-mono text-sm font-bold tabular-nums"
-              style={{ background: brand.red, color: "#fff", boxShadow: `0 0 0 4px ${brand.red}33` }}>{a.no}</span>
+              style={{ background: brand.red, color: "#fff", boxShadow: `0 0 0 4px ${brand.red}33` }}>{i + 1}</span>
             <div className="min-w-0">
               <div className="font-brand text-xs font-semibold tracking-[0.1em]" style={{ color: "#E7D9B0" }}>
                 {m.faz}<span className="ml-1.5 font-mono tracking-normal" style={{ color: "#7E93A6" }}>{i + 1}/{TOPLAM}</span>
