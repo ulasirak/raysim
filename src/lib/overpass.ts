@@ -10,7 +10,8 @@
 // bloklamaz; gecikme = en hızlı sağlıklı aynanın süresi (~2-4 s). © OSM · ODbL.
 
 // Sağlık bakımı: ayna listesi zaman zaman gözden geçirilmeli (public instance'lar gelir-gider).
-const OVERPASS = [
+// Hem sunucu (overpassSorgu) hem istemci fallback (overpassIstemci.ts) aynı listeyi kullanır.
+export const OVERPASS_AYNALAR = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
   "https://overpass.osm.ch/api/interpreter",
@@ -18,6 +19,15 @@ const OVERPASS = [
   "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 ];
 const UA = "raysim/1.0 (https://raysim.vercel.app; raysim OSM hat içe aktarma)";
+
+// SAĞLIK KAPISI: bazı aynalar BOZUK/BOŞ bir DB servis eder — hızlı ama boş cevap verip
+// yarışı yanlışlıkla kazanır ("rota yok" gibi görünür). Geçerli bir Overpass yanıtı taze bir
+// `timestamp_osm_base` (ISO, <30 gün) taşır; aksi halde o aynayı elenmiş say. Bu, bozuk-boş
+// ile gerçekten-boş'u ayırır ve ayna listesini kendi kendine temizler. Sunucu+istemci ortak.
+export function overpassTaze(veri: unknown): boolean {
+  const ts = (veri as { osm3s?: { timestamp_osm_base?: string } } | null)?.osm3s?.timestamp_osm_base;
+  return typeof ts === "string" && /^\d{4}-\d{2}-\d{2}T/.test(ts) && Date.now() - Date.parse(ts) < 30 * 864e5;
+}
 
 /**
  * Overpass QL sorgusunu tüm aynalarda paralel çalıştırır; ilk geçerli JSON yanıtı döndürür.
@@ -39,22 +49,16 @@ export async function overpassSorgu<T = { elements: unknown[] }>(q: string, ayna
         signal: ctrl.signal,
       });
       if (!r.ok) throw new Error("HTTP " + r.status);
-      const veri = (await r.json()) as T & { osm3s?: { timestamp_osm_base?: string } };
-      // SAĞLIK KAPISI: bazı aynalar BOZUK/BOŞ bir DB servis eder — hızlı ama boş cevap
-      // verip paralel yarışı yanlışlıkla kazanır ve "rota yok" gibi görünür. Geçerli bir
-      // Overpass yanıtı taze bir `timestamp_osm_base` (ISO, <30 gün) taşır; aksi halde o
-      // aynayı elenmiş say. Bu, bozuk-boş ile gerçekten-boş'u ayırır; liste kendini temizler.
-      const ts = veri?.osm3s?.timestamp_osm_base;
-      const taze = typeof ts === "string" && /^\d{4}-\d{2}-\d{2}T/.test(ts) && Date.now() - Date.parse(ts) < 30 * 864e5;
-      if (!taze) throw new Error("ayna bayat/bozuk veri (osm_base: " + String(ts) + ")");
-      return veri as T;
+      const veri = (await r.json()) as T;
+      if (!overpassTaze(veri)) throw new Error("ayna bayat/bozuk veri");
+      return veri;
     } finally {
       clearTimeout(zaman);
       ust.signal.removeEventListener("abort", ilet);
     }
   };
   try {
-    return await Promise.any(OVERPASS.map(dene));
+    return await Promise.any(OVERPASS_AYNALAR.map(dene));
   } catch {
     throw new Error("Overpass aynalarının hiçbiri yanıt vermedi");
   } finally {

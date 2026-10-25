@@ -10,6 +10,7 @@ import Link from "next/link";
 import type { RailNetwork, Route } from "@/lib/anaray/types";
 import { flattenRoute, ringlerdenSebeke, hemzeminDuruslari, duruslariEkle, kalkisEkle, hatOzellikleri, kavsakliRingler, subeEfektifRingler, hatAdiTemiz, hatOzetMetni } from "@/lib/anaray/network";
 import { subeCanliYorungeler } from "@/lib/anaray/subeCanli";
+import { osmFetch } from "@/lib/overpassIstemci";
 import { parkAnahtar, konumDurakIndex, queuedYaz } from "@/lib/anaray/parklanma";
 import { simulate } from "@/lib/anaray/sim";
 import { simulateSignalled, reverseRoute, monteCarlo, planDepotDispatch, loopYorunge, type MonteCarloResult } from "@/lib/anaray/signalling";
@@ -348,7 +349,7 @@ function StudioIc() {
       for (let deneme = 0; deneme < 4 && !iptal; deneme++) {
         if (deneme > 0) { await bekle(6000 * deneme); if (iptal) return; } // 6s·12s·18s backoff
         try {
-          const r = await fetch("/api/geometri/osm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bbox }) });
+          const r = await osmFetch("/api/geometri/osm", { bbox });
           const j = await r.json();
           if (iptal) return;
           if (!r.ok) continue; // 502/429 (Overpass yoğun) → tekrar dene
@@ -420,7 +421,7 @@ function StudioIc() {
     for (let deneme = 0; deneme < 4; deneme++) {
       if (deneme > 0) await bekle(5000 * deneme);
       try {
-        const r = await fetch("/api/geometri/osm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bbox }) });
+        const r = await osmFetch("/api/geometri/osm", { bbox });
         const j = await r.json();
         if (!r.ok) continue;
         const koord = osmKoordinatEsle(agIstasyonlar, Array.isArray(j.istasyonlar) ? j.istasyonlar : []);

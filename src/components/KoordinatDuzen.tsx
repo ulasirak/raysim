@@ -10,6 +10,7 @@ import { useState } from "react";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { useDil } from "@/components/DilProvider";
+import { osmFetch } from "@/lib/overpassIstemci";
 
 type Koord = Record<string, { lat: number; lon: number }>;
 type GeoYol = { insaat?: boolean; noktalar: [number, number][] };
@@ -41,7 +42,7 @@ export function KoordinatDuzen({
     const bbox: [number, number, number, number] = [Math.min(...lats) - m, Math.min(...lons) - m, Math.max(...lats) + m, Math.max(...lons) + m];
     setOsmDurum("yukleniyor"); setOsmMesaj("");
     try {
-      const r = await fetch(`/api/geometri/osm?dil=${dil}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bbox }) });
+      const r = await osmFetch(`/api/geometri/osm?dil=${dil}`, { bbox });
       const j = await r.json();
       if (!r.ok) { setOsmDurum("hata"); setOsmMesaj(j.hata || t({ tr: "Çekilemedi.", en: "Could not fetch.", de: "Konnte nicht abgerufen werden." })); return; }
       if (!j.geometri || j.geometri.length === 0) { setOsmDurum("hata"); setOsmMesaj(j.uyari || t({ tr: "Bu alanda OSM hattı bulunamadı.", en: "No OSM line found in this area.", de: "In diesem Gebiet wurde keine OSM-Trasse gefunden." })); return; }

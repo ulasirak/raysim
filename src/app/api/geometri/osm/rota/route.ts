@@ -60,18 +60,18 @@ async function sehirCoz(sehir: string): Promise<{ bbox: [number, number, number,
   return { bbox: [bb[0], bb[2], bb[1], bb[3]], ad: h.display_name ?? sehir };
 }
 
-async function rotaAra(sehir: string | undefined, bbox: [number, number, number, number] | undefined) {
-  let alanAd = "";
-  if (sehir) {
-    const c = await sehirCoz(sehir);
-    alanAd = c.ad;
-    bbox = c.bbox;
-  }
-  if (!bbox) throw new Error("Şehir ya da bbox gerekli.");
-  const [s, w, n, e] = bbox;
+// bbox + alanAd + Overpass sorgusunu hazırlar (Nominatim gerekiyorsa çözer). Fetch BURADA YOK —
+// böylece POST, fetch'i sunucuda mı yoksa (erişilemezse) istemci ham verisiyle mi yapacağına karar verir.
+type AraBaglam = { alanAd?: string; bbox?: [number, number, number, number] };
+async function araHazirla(sehir: string | undefined, bbox: [number, number, number, number] | undefined, baglam?: AraBaglam): Promise<{ q: string; alanAd: string; bbox: [number, number, number, number] }> {
+  let alanAd = baglam?.alanAd ?? "";
+  let bb = baglam?.bbox ?? bbox;
+  if (!bb && sehir) { const c = await sehirCoz(sehir); alanAd = c.ad; bb = c.bbox; }
+  if (!bb) throw new Error("Şehir ya da bbox gerekli.");
+  const [s, w, n, e] = bb;
   if (!(n > s && e > w) || n - s > 4 || e - w > 4) throw new Error("Bölge geçersiz ya da çok büyük (≤4°). Daha dar bir şehir/ilçe yaz.");
   const q = `[out:json][timeout:50];rel["route"~"^(tram|light_rail|subway)$"](${s},${w},${n},${e});out tags;`;
-  return finishAra(await overpassSorgu<{ elements: OsmEl[] }>(q), alanAd, bbox);
+  return { q, alanAd, bbox: bb };
 }
 
 function finishAra(js: { elements: OsmEl[] }, alanAd: string, bbox?: [number, number, number, number]) {
@@ -92,14 +92,15 @@ function finishAra(js: { elements: OsmEl[] }, alanAd: string, bbox?: [number, nu
   return NextResponse.json({ alanAd, bbox, rotalar, not: "© OpenStreetMap · ODbL" });
 }
 
-async function hatCek(relIds: number[]) {
-  const idListe = relIds.map((n) => Math.round(n)).filter((n) => n > 0).slice(0, 8);
-  if (idListe.length === 0) throw new Error("Geçerli rota kimliği gerekli.");
-  // Küme adlandırması ŞART: adsız `node(r)` bir önceki `way(r)` kümesine bakar → 0 durak.
-  // .r = ilişkiler, .w = üye way'ler (geometri), .n = üye node'lar (durak koord+ad).
-  const q = `[out:json][timeout:60];rel(id:${idListe.join(",")})->.r;.r out body;way(r.r)->.w;.w out geom;node(r.r)->.n;.n out body;`;
-  const js = await overpassSorgu<{ elements: OsmEl[] }>(q, 40000); // ağır `out geom` → daha uzun süre
-  const el = js.elements ?? [];
+// Küme adlandırması ŞART: adsız `node(r)` bir önceki `way(r)` kümesine bakar → 0 durak.
+// .r = ilişkiler, .w = üye way'ler (geometri), .n = üye node'lar (durak koord+ad).
+function hatSorgu(idListe: number[]): string {
+  return `[out:json][timeout:60];rel(id:${idListe.join(",")})->.r;.r out body;way(r.r)->.w;.w out geom;node(r.r)->.n;.n out body;`;
+}
+
+// Overpass elemanlarını SIRALI durak + geometri segmentlerine ayrıştırır (sunucu ya da istemci
+// ham verisi — AYNI kod → harita boru hattı değişmez).
+function hatAyristir(el: OsmEl[], idListe: number[]) {
   const nodeById = new Map<number, OsmEl>();
   const wayById = new Map<number, OsmEl>();
   for (const e of el) { if (e.type === "node") nodeById.set(e.id, e); else if (e.type === "way") wayById.set(e.id, e); }
@@ -154,24 +155,39 @@ export async function POST(req: Request) {
   const hiz = await hizSiniri("osmrota:" + ip, 20, 60, false);
   if (!hiz.izin) return NextResponse.json({ hata: m("Çok fazla istek; biraz bekleyin.", "Too many requests; please wait a moment.", "Zu viele Anfragen; bitte warten Sie einen Moment."), sifirlaSn: hiz.sifirlaSn }, { status: 429 });
 
-  let body: { mod?: string; sehir?: string; bbox?: [number, number, number, number]; relIds?: number[]; relId?: number };
+  let body: { mod?: string; sehir?: string; bbox?: [number, number, number, number]; relIds?: number[]; relId?: number; hamElemanlar?: OsmEl[]; baglam?: AraBaglam };
   try { body = await req.json(); } catch { return NextResponse.json({ hata: m("Geçersiz istek.", "Invalid request.", "Ungültige Anfrage.") }, { status: 400 }); }
+
+  // İSTEMCİ ham verisi: sunucu Overpass'a erişemediğinde tarayıcı çekip bunu geri yollar → fetch'i atla, yalnız ayrıştır.
+  const ham = Array.isArray(body.hamElemanlar) ? body.hamElemanlar : undefined;
+  const busy = (tr: string) => tr + " " + m("(Overpass/Nominatim yoğun olabilir; birazdan tekrar deneyin.)", "(Overpass/Nominatim may be busy; try again shortly.)", "(Overpass/Nominatim ist evtl. ausgelastet; versuchen Sie es bald erneut.)");
+  // Sunucu Overpass'a erişemezse: istemci bu sorguyu tarayıcıdan çalıştırıp ham JSON'u geri yollasın.
+  const fallbackHata = (e: unknown, istemciSorgu: string, baglam: unknown, aynaBasiMs?: number) =>
+    NextResponse.json({ hata: busy(e instanceof Error ? e.message : m("OSM'den çekilemedi.", "Could not fetch from OSM.", "Konnte nicht aus OSM abgerufen werden.")), istemciSorgu, baglam, aynaBasiMs }, { status: 502 });
 
   try {
     if (body.mod === "ara") {
       const bbox = Array.isArray(body.bbox) && body.bbox.length === 4 && body.bbox.every((v) => typeof v === "number" && Number.isFinite(v)) ? body.bbox : undefined;
       const sehir = typeof body.sehir === "string" && body.sehir.trim() ? body.sehir.trim().slice(0, 120) : undefined;
-      if (!sehir && !bbox) return NextResponse.json({ hata: m("Şehir adı ya da bbox gerekli.", "A city name or bbox is required.", "Ein Städtename oder eine Bbox ist erforderlich.") }, { status: 400 });
-      return await rotaAra(sehir, bbox);
+      if (!sehir && !bbox && !body.baglam?.bbox) return NextResponse.json({ hata: m("Şehir adı ya da bbox gerekli.", "A city name or bbox is required.", "Ein Städtename oder eine Bbox ist erforderlich.") }, { status: 400 });
+      const { q, alanAd, bbox: bb } = await araHazirla(sehir, bbox, body.baglam);
+      if (ham) return finishAra({ elements: ham }, alanAd, bb);
+      try { return finishAra(await overpassSorgu<{ elements: OsmEl[] }>(q), alanAd, bb); }
+      catch (e) { return fallbackHata(e, q, { alanAd, bbox: bb }); }
     }
     if (body.mod === "hat") {
       const relIds = Array.isArray(body.relIds) ? body.relIds : (typeof body.relId === "number" ? [body.relId] : []);
       if (relIds.length === 0) return NextResponse.json({ hata: m("En az bir rota kimliği (relId) gerekli.", "At least one route id (relId) is required.", "Mindestens eine Routen-ID (relId) ist erforderlich.") }, { status: 400 });
-      return await hatCek(relIds);
+      const idListe = relIds.map((n) => Math.round(n)).filter((n) => n > 0).slice(0, 8);
+      if (idListe.length === 0) return NextResponse.json({ hata: m("Geçerli rota kimliği gerekli.", "A valid route id is required.", "Eine gültige Routen-ID ist erforderlich.") }, { status: 400 });
+      const q = hatSorgu(idListe);
+      if (ham) return hatAyristir(ham, idListe);
+      try { return hatAyristir((await overpassSorgu<{ elements: OsmEl[] }>(q, 40000)).elements ?? [], idListe); }
+      catch (e) { return fallbackHata(e, q, { relIds: idListe }, 40000); }
     }
     return NextResponse.json({ hata: m("mod 'ara' ya da 'hat' olmalı.", "mode must be 'ara' or 'hat'.", "mod muss 'ara' oder 'hat' sein.") }, { status: 400 });
   } catch (e) {
-    const detay = e instanceof Error ? e.message : m("OSM'den çekilemedi.", "Could not fetch from OSM.", "Konnte nicht aus OSM abgerufen werden.");
-    return NextResponse.json({ hata: detay + " " + m("(Overpass/Nominatim yoğun olabilir; birazdan tekrar deneyin.)", "(Overpass/Nominatim may be busy; try again shortly.)", "(Overpass/Nominatim ist evtl. ausgelastet; versuchen Sie es bald erneut.)") }, { status: 502 });
+    // araHazirla / sehirCoz / ayrıştırma hatası (Overpass-dışı) — istemci fallback uygulanmaz.
+    return NextResponse.json({ hata: busy(e instanceof Error ? e.message : m("OSM'den çekilemedi.", "Could not fetch from OSM.", "Konnte nicht aus OSM abgerufen werden.")) }, { status: 502 });
   }
 }

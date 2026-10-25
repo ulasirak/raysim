@@ -33,18 +33,23 @@ function dp(pts: { lat: number; lon: number }[], eps = 0.00025): [number, number
 }
 const r4 = (n: number) => Math.round(n * 1e4) / 1e4;
 
-async function overpassCek(bbox: [number, number, number, number], eps = 0.00025): Promise<OsmSonuc> {
+type OsmHamEleman = { type: string; tags?: Record<string, string>; lat?: number; lon?: number; geometry?: { lat: number; lon: number }[] };
+
+// bbox → Overpass sorgusu (fetch YOK; POST fetch'i sunucuda mı yoksa istemci ham verisiyle mi yapacağına karar verir).
+function osmSorgu(bbox: [number, number, number, number]): string {
   const [s, w, n, e] = bbox;
   const bb = `(${s},${w},${n},${e})`;
   // Tek sorguda hem raylı-hat WAY'leri (geometri) hem de İSTASYON NODE'ları (tram_stop /
   // station / halt / public_transport + inşaat halindeki istasyonlar) — koordinat da gelir.
-  const q = `[out:json][timeout:60];`
+  return `[out:json][timeout:60];`
     + `(way["railway"~"^(tram|light_rail|subway|construction)$"]${bb};)->.w;`
     + `(node["railway"~"^(tram_stop|station|halt)$"]${bb};node["public_transport"~"^(station|platform|stop_position)$"]${bb};node["construction:railway"~"^(station|halt|tram_stop)$"]${bb};node["proposed:railway"~"^(station|halt|tram_stop)$"]${bb};node["disused:railway"~"^(station|halt|tram_stop)$"]${bb};node["railway"~"^(construction|proposed)$"]["name"]${bb};)->.n;`
     + `.w out geom;.n out body;`;
-  // Paralel çok-ayna yarıştırıcı: ilk geçerli yanıt kazanır (bkz. src/lib/overpass.ts).
-  const j = await overpassSorgu<{ elements?: { type: string; tags?: Record<string, string>; lat?: number; lon?: number; geometry?: { lat: number; lon: number }[] }[] }>(q, 40000);
-  const el = j.elements ?? [];
+}
+
+// Overpass elemanlarını geometri + istasyon listesine ayrıştırır (sunucu ya da istemci ham verisi —
+// AYNI kod → harita boru hattı değişmez).
+function osmAyristir(el: OsmHamEleman[], eps: number): OsmSonuc {
   const geometri = el.filter((x) => x.type === "way" && x.geometry && x.geometry.length >= 2)
     .map((wy) => ({ insaat: wy.tags?.railway === "construction", noktalar: dp(wy.geometry!, eps) }))
     .filter((y) => y.noktalar.length >= 2);
@@ -71,8 +76,9 @@ export async function POST(req: Request) {
   const hiz = await hizSiniri("osmgeo:" + ip, 20, 60, false); // 20/dk; rate-limit altyapısı yoksa fail-OPEN (convenience uç)
   if (!hiz.izin) return NextResponse.json({ hata: m("Çok fazla istek; biraz bekleyin.", "Too many requests; please wait a moment.", "Zu viele Anfragen; bitte warten Sie einen Moment."), sifirlaSn: hiz.sifirlaSn }, { status: 429 });
 
-  let body: { bbox?: [number, number, number, number]; ham?: boolean };
+  let body: { bbox?: [number, number, number, number]; ham?: boolean; hamElemanlar?: OsmHamEleman[] };
   try { body = await req.json(); } catch { return NextResponse.json({ hata: m("Geçersiz istek.", "Invalid request.", "Ungültige Anfrage.") }, { status: 400 }); }
+  const hamElemanlar = Array.isArray(body.hamElemanlar) ? body.hamElemanlar : undefined; // istemci fallback ham verisi
   const bbox = body.bbox;
   const eps = body.ham ? 0.00002 : 0.00025; // ham=~2m (kavis analizi), varsayılan ~28m (harita)
   if (!Array.isArray(bbox) || bbox.length !== 4 || !bbox.every((v) => typeof v === "number" && Number.isFinite(v))) {
@@ -87,17 +93,24 @@ export async function POST(req: Request) {
   const c = cache.get(key);
   if (c && Date.now() - c.t < TTL) return NextResponse.json({ geometri: c.veri.geometri, istasyonlar: c.veri.istasyonlar, kaynak: "osm-cache", not: "© OpenStreetMap · ODbL" });
 
+  const q = osmSorgu(bbox);
   try {
-    const veri = await overpassCek(bbox, eps);
+    // İstemci ham verisi varsa fetch'i atla (sunucu Overpass'a erişemediğinde tarayıcı çekip yolladı).
+    const el = hamElemanlar ?? (await overpassSorgu<{ elements?: OsmHamEleman[] }>(q, 40000)).elements ?? [];
+    const veri = osmAyristir(el, eps);
     cache.set(key, { t: Date.now(), veri });
     return NextResponse.json({
       geometri: veri.geometri,
       istasyonlar: veri.istasyonlar,
-      kaynak: "osm",
+      kaynak: hamElemanlar ? "osm-istemci" : "osm",
       not: "© OpenStreetMap · ODbL",
       uyari: veri.geometri.length === 0 && veri.istasyonlar.length === 0 ? m("Bu alanda OpenStreetMap'te raylı hat bulunamadı.", "No rail line found in OpenStreetMap for this area.", "In diesem Gebiet wurde in OpenStreetMap keine Bahnstrecke gefunden.") : undefined,
     });
   } catch {
-    return NextResponse.json({ hata: m("OpenStreetMap'ten çekilemedi (geçici; Overpass yoğun olabilir). Biraz sonra tekrar deneyin.", "Could not fetch from OpenStreetMap (temporary; Overpass may be busy). Try again shortly.", "Konnte nicht aus OpenStreetMap abgerufen werden (vorübergehend; Overpass evtl. ausgelastet). Versuchen Sie es bald erneut.") }, { status: 502 });
+    // Sunucu Overpass'a erişemedi → istemci bu sorguyu tarayıcıdan çalıştırıp ham JSON'u geri yollasın.
+    return NextResponse.json({
+      hata: m("OpenStreetMap'ten çekilemedi (geçici; Overpass yoğun olabilir). Biraz sonra tekrar deneyin.", "Could not fetch from OpenStreetMap (temporary; Overpass may be busy). Try again shortly.", "Konnte nicht aus OpenStreetMap abgerufen werden (vorübergehend; Overpass evtl. ausgelastet). Versuchen Sie es bald erneut."),
+      istemciSorgu: q, aynaBasiMs: 40000,
+    }, { status: 502 });
   }
 }

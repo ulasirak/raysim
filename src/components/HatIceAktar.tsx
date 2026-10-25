@@ -17,6 +17,7 @@ import { Ikon } from "@/components/Ikon";
 import { brand } from "@/lib/anaray/brand";
 import { CK } from "@/lib/anaray/chartkit";
 import { parseGtfsZip, gtfsRotalar, gtfsYonler, gtfsHatKur, type GtfsFeed } from "@/lib/anaray/gtfs";
+import { osmFetch } from "@/lib/overpassIstemci";
 import { osmHatKur, type OsmHatSonuc, type OsmSegment } from "@/lib/anaray/osmHat";
 import { railmlHatKur } from "@/lib/anaray/railml";
 import { dxfAyristir } from "@/lib/anaray/dxf";
@@ -87,7 +88,7 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
     if (!sehir) return;
     sifirla(); setKaynak("osm"); setOsmDurum("ara"); setOsmMesaj(null);
     try {
-      const r = await fetch(`/api/geometri/osm/rota?dil=${dil}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mod: "ara", sehir }) });
+      const r = await osmFetch(`/api/geometri/osm/rota?dil=${dil}`, { mod: "ara", sehir });
       const j = await r.json();
       if (!r.ok) throw new Error(j.hata || t({ tr: "Aranamadı.", en: "Search failed.", de: "Suche fehlgeschlagen." }));
       const list: OsmRota[] = Array.isArray(j.rotalar) ? j.rotalar : [];
@@ -102,7 +103,7 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
     if (osmSecili.length === 0) return;
     setOsmDurum("getir"); setOsmMesaj(null); setOsmFull(null);
     try {
-      const r = await fetch(`/api/geometri/osm/rota?dil=${dil}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mod: "hat", relIds: osmSecili }) });
+      const r = await osmFetch(`/api/geometri/osm/rota?dil=${dil}`, { mod: "hat", relIds: osmSecili });
       const j = await r.json();
       if (!r.ok) throw new Error(j.hata || t({ tr: "Getirilemedi.", en: "Could not fetch.", de: "Konnte nicht abgerufen werden." }));
       const segs: OsmSegment[] = (Array.isArray(j.segmentler) ? j.segmentler : []).map((s: { ad: string; duraklar: OsmSegment["duraklar"]; geometri: [number, number][] }) => ({ ad: s.ad, duraklar: s.duraklar ?? [], geometri: s.geometri ?? [] }));
