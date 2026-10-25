@@ -179,7 +179,7 @@ export function CanliAgSayfa() {
 
       {/* Rozet açıklaması — tren üstündeki işaretler ne demek (mobilde katlanır) */}
       {acikLegend && (
-        <div className="border-b px-3 py-2 text-xs" style={{ borderColor: brand.border, background: "#F7F9FA", color: brand.inkSoft }}>
+        <div className="border-b px-3 py-2 text-xs" style={{ borderColor: brand.border, background: brand.paper, color: brand.inkSoft }}>
           <div className="mb-1 font-semibold" style={{ color: brand.ink }}>{t({ tr: "Trenin üstündeki işaretler", en: "Markers above the train", de: "Markierungen über dem Zug" })}</div>
           <ul className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
             {ROZETLER.map((r) => (

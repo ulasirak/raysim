@@ -342,7 +342,7 @@ export function Belgeler() {
         )}
 
         {/* BÖLÜM SEÇİCİ — hangi bölümler PDF'e girecek; fiyat KÜMÜLATİF (taban + seçilen). */}
-        <div className="mb-3 rounded-md border p-3" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
+        <div className="mb-3 rounded-md border p-3" style={{ borderColor: brand.border, background: brand.paper }}>
           <div className="mb-2 flex items-center justify-between">
             <span className="field-label">{t({ tr: "Rapor Bölümleri — dâhil etmek istediklerini seç", en: "Report Sections — select which to include", de: "Berichtsabschnitte — wählen Sie die gewünschten aus" })}</span>
             <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "Taban", en: "Base", de: "Basis" })} {RAPOR_TABAN_KREDI} {t({ tr: "kredi — kapak + künye + içindekiler + Girdi Parametreleri + Sinyalizasyon (SG) daima dâhil", en: "credits — cover + title page + contents + Input Parameters + Signalling (SG) always included", de: "Credits — Deckblatt + Impressum + Inhalt + Eingabeparameter + Signaltechnik (SG) immer enthalten" })}</span>
@@ -385,7 +385,7 @@ export function Belgeler() {
             belirler. PDF Rapor panelinin İÇİNDE (etkisinin özetlendiği yerin hemen yanında).
             Paylaşım/demo görünümünde (yazilabilir=false) hiç render edilmez. */}
         {yazilabilir && (
-          <label className="mt-3 flex items-start gap-2 rounded border p-2.5 text-xs" style={{ borderColor: sunum ? CK.good : brand.border, background: sunum ? CK.goodBgSoft : "transparent", color: brand.inkSoft }}>
+          <label className="mt-3 flex items-start gap-2 rounded border p-2.5 text-xs" style={{ borderColor: sunum ? brand.ink : brand.border, background: "transparent", color: brand.inkSoft }}>
             <input type="checkbox" checked={sunum} onChange={(e) => patchMeta({ sunumModu: e.target.checked })} className="mt-0.5 shrink-0" />
             <span>
               <b>{t({ tr: "PDF'i müşteri sunumu olarak üret", en: "Produce the PDF as a customer presentation", de: "PDF als Kundenpräsentation erstellen" })}</b>{t({ tr: " — üretilecek raporda ihlal/risk/denge uyarıları, hat ", en: " — in the generated report, violation/risk/balance warnings are presented as an ", de: " — im erstellten Bericht werden Verstoß-/Risiko-/Ausgeglichenheits-Warnungen als " })}<b>{t({ tr: "onaylı/kesinleşmiş tasarım", en: "approved/finalized design", de: "freigegebene/endgültige Planung" })}</b>{t({ tr: " dilinde sunulur (belirleyici kısıt nötr anlatılır).", en: " (the governing constraint is described neutrally).", de: " dargestellt (die maßgebende Einschränkung wird neutral beschrieben)." })}

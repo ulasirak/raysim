@@ -377,7 +377,7 @@ export function CografiAg({
     <div>
       {/* Kip rozeti + kontroller */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <span className="ds-chip" style={{ background: g.coordluMu ? CK.goodBgSoft : "#EEF2F6", color: g.coordluMu ? CK.good : brand.muted, border: `1px solid ${g.coordluMu ? CK.good : brand.border}` }}>
+        <span className="ds-chip" style={{ background: CK.track, color: brand.inkSoft, border: `1px solid ${brand.border}` }}>
           {gercekGeo ? tt({ tr: "Gerçek OSM hattı (harita)", en: "Real OSM line (map)", de: "Echte OSM-Trasse (Karte)" }) : g.coordluMu ? tt({ tr: "Gerçek koordinat (harita)", en: "Real coordinates (map)", de: "Echte Koordinaten (Karte)" }) : tt({ tr: "Ölçekli plan (koordinatsız)", en: "Scaled plan (no coordinates)", de: "Maßstäblicher Plan (ohne Koordinaten)" })}
         </span>
         {loop && periyot > 0 && (
@@ -401,8 +401,8 @@ export function CografiAg({
 
       {/* Ters işletme analizi — kısa dönüş önerilen istasyonlar + filo etkisi (overlay özeti) */}
       {tersMakaslar.length > 0 && (
-        <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-3 py-2 text-xs" style={{ background: CK.amberBg, border: `1px solid ${CK.amber}`, color: CK.amberInk }}>
-          <span className="font-semibold">{tt({ tr: "↺ Ters işletme:", en: "↺ Reverse operation:", de: "↺ Kehrbetrieb:" })}</span>
+        <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border px-3 py-2 text-xs" style={{ borderColor: brand.border, color: brand.inkSoft }}>
+          <span className="font-semibold" style={{ color: brand.ink }}>{tt({ tr: "↺ Ters işletme:", en: "↺ Reverse operation:", de: "↺ Kehrbetrieb:" })}</span>
           <span><b>{tersMakaslar.length}</b> {tt({ tr: "istasyon makasında kısa dönüş önerilir (haritada ↺)", en: "station switches recommend short-turn (↺ on the map)", de: "Haltestellenweichen empfehlen Kurzwende (↺ auf der Karte)" })}</span>
           {ters?.filo && ters.filo.kisaDonusTasarruf > 0 && (
             <span>· {tt({ tr: "filo: gereken", en: "fleet: required", de: "Flotte: benötigt" })} <b>{ters.filo.gerekenArac}</b> → {tt({ tr: "kısa dönüşle", en: "with short-turn", de: "mit Kurzwende" })} <b>{ters.filo.gerekenAracKisaDonusle}</b> (−{ters.filo.kisaDonusTasarruf} {tt({ tr: "araç", en: "vehicles", de: "Fahrzeuge" })})</span>
@@ -417,7 +417,7 @@ export function CografiAg({
         const asim = konforlu.filter((k) => k.seviye === "asim").length;
         const kritik = asim > 0;
         return (
-          <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-3 py-2 text-xs" style={{ background: kritik ? "#FDECEC" : CK.goodBgSoft, border: `1px solid ${kritik ? CK.red : brand.border}`, color: kritik ? CK.red : brand.inkSoft }}>
+          <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border px-3 py-2 text-xs" style={{ background: kritik ? CK.badBg : "transparent", borderColor: kritik ? CK.red : brand.border, color: kritik ? CK.red : brand.inkSoft }}>
             <span className="font-semibold" style={{ color: brand.ink }}>{tt({ tr: "⏱ Hız sınırı önerileri:", en: "⏱ Speed limit suggestions:", de: "⏱ Geschwindigkeitsvorschläge:" })}</span>
             <span><b>{hizKisitlari.length}</b> {tt({ tr: "kısıt haritada işaretli (km/h —", en: "constraints marked on the map (km/h —", de: "Einschränkungen auf der Karte markiert (km/h —" })} <b>{tt({ tr: "tıkla", en: "click", de: "klicken" })}</b> {tt({ tr: "→ detay)", en: "→ detail)", de: "→ Detail)" })}{konforlu.length > 0 ? ` · ${konforlu.length} ${tt({ tr: "kurpta konfor önerisi", en: "curves with comfort advice", de: "Bögen mit Komfortempfehlung" })}` : ""}{asim > 0 ? ` (${asim} ${tt({ tr: "aşım", en: "exceedances", de: "Überschreitungen" })})` : ""}</span>
             {konforlu.length > 0 && <span style={{ color: brand.muted }}>{yolcuVeriVar ? tt({ tr: "kurplar istasyon yolcu sayısına eşli", en: "curves matched to station passenger counts", de: "Bögen an Haltestellen-Fahrgastzahlen gekoppelt" }) : tt({ tr: "kurplar talep doluluğuna eşli", en: "curves matched to demand occupancy", de: "Bögen an Nachfrage-Auslastung gekoppelt" })}</span>}

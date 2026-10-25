@@ -261,7 +261,7 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
         {hata && <p className="mt-2 text-sm" style={{ color: brand.red }}>⚠ {hata}</p>}
 
         {/* OSM / Şehir hattı — sistemin kendi çekmesi (dosya gerektirmez) */}
-        <div className="mt-3 rounded-md border p-3" style={{ borderColor: brand.border, background: "#F7FBFC" }}>
+        <div className="mt-3 rounded-md border p-3" style={{ borderColor: brand.border, background: brand.paper }}>
           <div className="mb-1.5 flex items-center gap-2">
             <span className="flex items-center gap-1.5 text-sm font-semibold" style={{ color: brand.ink }}><Ikon ad="kure" size={15} /> {t({ tr: "OSM'den şehir hattı", en: "City line from OSM", de: "Stadtstrecke aus OSM" })}</span>
             <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "dosya gerekmez — şehir yaz, sistem OpenStreetMap'ten gerçek hattı çeker", en: "no file needed — type a city, the system fetches the real line from OpenStreetMap", de: "keine Datei nötig — Stadt eingeben, das System holt die echte Strecke aus OpenStreetMap" })}</span>
@@ -363,7 +363,7 @@ export function HatIceAktar({ onIceAktar, disabled, mesgulDis, gomulu = false, m
         {/* Önizleme + mini şema + uygulama modu */}
         {kaynak && sonuc && (
           <>
-            <div className="mt-4 rounded-md border-l-4 px-3 py-2.5 text-sm" style={{ borderColor: brand.ink, background: "#F7F9FA", color: brand.inkSoft }}>
+            <div className="mt-4 rounded-md border-l-4 px-3 py-2.5 text-sm" style={{ borderColor: brand.ink, background: brand.paper, color: brand.inkSoft }}>
               <div><b style={{ color: brand.ink }}>{sonuc.ad}</b> — {sonuc.durakSayisi} {t({ tr: "durak", en: "stops", de: "Halt." })} · {sonuc.toplamKm.toFixed(1)} km · {sonuc.rings.length} {t({ tr: "ring", en: "rings", de: "Ringe" })}</div>
               {sonuc.yol && sonuc.duraklar && <SemaOnizleme yol={sonuc.yol} duraklar={sonuc.duraklar} />}
               <ul className="mt-1 ml-4 list-disc text-xs" style={{ color: brand.muted }}>
