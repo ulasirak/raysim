@@ -52,8 +52,23 @@ export function bolumDogrulama(rings: DurakArasiRing[], stock: RollingStock, cfg
   const YESIL = "#2E7D57";
   const vvSay = (v: number, birim: string) => { const d = Math.abs(v) >= 100 ? 0 : Math.abs(v) >= 10 ? 1 : 2; return `${v.toFixed(d)}${birim ? " " + birim : ""}`; };
   const etiket = (b: boolean) => b ? (en ? "analytical" : "analitik") : (en ? "consistency" : "tutarlılık");
+  // İngilizce rapor için kontrol ADI + KATEGORİ (sabit) çevirisi. (yontem alanı dinamik
+  // sayılar taşıdığından motor tarafında çevrilir; burada kaynak dilde kalır.)
+  const adEn: Record<string, string> = {
+    "Kalkış–seyir–fren süresi": "Departure–cruise–brake time",
+    "Kalkış (hızlanma) mesafesi": "Departure (acceleration) distance",
+    "Fren mesafesi": "Braking distance",
+    "Direnç denge (terminal) hızı": "Resistance-balancing (terminal) speed",
+    "Çok-segment seyir süresi (uçtan-uca)": "Multi-segment run time (end-to-end)",
+    "Tam işletme çevrimi (uçtan-uca)": "Full operating cycle (end-to-end)",
+    "Kurp yanal ivmesi = konfor tavanı": "Curve lateral acceleration = comfort ceiling",
+    "UIC 406 kapasite kimliği (bu hat)": "UIC 406 capacity identity (this line)",
+  };
+  const katEn: Record<string, string> = { "Kinematik": "Kinematics", "Direnç": "Resistance", "Kurp": "Curve", "Kapasite": "Capacity" };
+  const adG = (a: string) => (en ? adEn[a] ?? a : a);
+  const katG = (k: string) => (en ? katEn[k] ?? k : k);
   const vvRows = vv.sonuclar.map((s) => [
-    `<b>${esc(s.ad)}</b> <span style="font-size:8pt;color:#6B7480">[${etiket(s.bagimsiz)}] · ${esc(s.kategori)}</span><br><span style="font-size:8.5pt;color:#6B7480">${esc(s.yontem)}</span>`,
+    `<b>${esc(adG(s.ad))}</b> <span style="font-size:8pt;color:#6B7480">[${etiket(s.bagimsiz)}] · ${esc(katG(s.kategori))}</span><br><span style="font-size:8.5pt;color:#6B7480">${esc(s.yontem)}</span>`,
     vvSay(s.referans, s.birim), vvSay(s.hesaplanan, s.birim), `%${s.sapmaYuzde.toFixed(2)}`,
     `<b style="color:${s.gecti ? YESIL : RED}">${s.gecti ? (en ? "Pass" : "Geçti") : (en ? "Fail" : "Kaldı")}</b> <span style="font-size:8pt;color:#6B7480">(≤%${s.tolerans})</span>`,
   ]);
