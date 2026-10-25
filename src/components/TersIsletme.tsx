@@ -183,7 +183,7 @@ export function TersIsletme() {
             </div>
           </div>
           {/* Çapraz-ref: bu kart ≠ Sefer filo kartı (farklı headway tabanı → rakamlar ayrışabilir) */}
-          <p className="mt-2 rounded border-l-2 px-2 py-1 text-[0.7rem]" style={{ borderColor: brand.border, background: "#F4F6F8", color: brand.muted }}>
+          <p className="mt-2 rounded border-l-2 px-2 py-1 text-xs" style={{ borderColor: brand.border, background: "#F4F6F8", color: brand.muted }}>
             {t({ tr: "Bu kart yolcu talebi (OD-lite) odaklıdır. Sefer-aralığı odaklı birincil filo önerisi", en: "This card is passenger-demand driven (OD-lite). The dispatch-interval-driven primary fleet recommendation is in", de: "Diese Karte ist nachfragegetrieben (OD-lite). Die auf dem Taktintervall basierende primäre Flottenempfehlung steht in" })} <b style={{ color: brand.ink }}>{t({ tr: "① Kurulum & Filo → Filo & Öneri", en: "① Setup & Fleet → Fleet & Recommendation", de: "① Einrichtung & Flotte → Flotte & Empfehlung" })}</b>{t({ tr: " kartındadır; farklı headway tabanı kullandıkları için iki rakam ayrışabilir.", en: "; the two figures may differ because they use different headway bases.", de: "; die beiden Werte können abweichen, da sie unterschiedliche Zugfolgezeit-Grundlagen verwenden." })}
           </p>
           {/* Alt-döküm — eski "Filo Önerisi" kartından taşınan benzersiz bilgiler */}
@@ -207,7 +207,7 @@ export function TersIsletme() {
           )}
           <p className="mt-1 text-sm" style={{ color: brand.inkSoft }}>{tavsiye.gerekce}</p>
           {/* Etkileyen girdilere yönlendirme */}
-          <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t pt-2 text-[0.72rem]" style={{ borderColor: brand.border }}>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t pt-2 text-xs" style={{ borderColor: brand.border }}>
             <span style={{ color: brand.muted }}>{t({ tr: "Etkileyen girdiler →", en: "Influencing inputs →", de: "Einflussgrößen →" })}</span>
             <button type="button" onClick={acGirdi} className="rounded border px-2 py-0.5 font-medium" style={{ borderColor: brand.border, color: brand.ink }}
               title={t({ tr: "Durak yolcu talebi + araç kapasitesi + doluluk hedefi (bu sayfada)", en: "Station passenger demand + vehicle capacity + occupancy target (on this page)", de: "Fahrgastnachfrage der Haltestelle + Fahrzeugkapazität + Auslastungsziel (auf dieser Seite)" })}>{t({ tr: "📊 Talep · kapasite · doluluk", en: "📊 Demand · capacity · occupancy", de: "📊 Nachfrage · Kapazität · Auslastung" })}</button>
@@ -262,7 +262,7 @@ export function TersIsletme() {
               <div key={i} className="rounded-md border p-3" style={{ borderColor: m.kisaDonusOnerilir ? brand.ink : brand.border }}>
                 <div className="flex items-center justify-between">
                   <b style={{ color: brand.ink }}>{m.ad}</b>
-                  <span className="rounded px-1.5 py-0.5 text-[0.65rem] font-semibold" style={{ background: m.crossover === "x" ? CK.goodBgSoft : "#F1F5F9", color: brand.inkSoft }}>
+                  <span className="rounded px-1.5 py-0.5 text-xs font-semibold" style={{ background: m.crossover === "x" ? CK.goodBgSoft : "#F1F5F9", color: brand.inkSoft }}>
                     {m.makasSayisi} {m.crossover === "x" ? "X" : "S"}-{t({ tr: "makas", en: "switch", de: "Weiche" })} · {m.kisaDonusOnerilir ? `${t({ tr: "KISA DÖNÜŞ ADAYI", en: "SHORT-TURN CANDIDATE", de: "KEHR-KANDIDAT" })} (%${m.kisaDonusYuzde})` : t({ tr: "dengeli", en: "balanced", de: "ausgewogen" })}
                   </span>
                 </div>
@@ -293,7 +293,7 @@ export function TersIsletme() {
                 {KUTU.map((k, i) => (
                   <div key={i} className="rounded-lg border px-2 py-2.5 text-center" style={{ borderColor: brand.border, background: "#F9FAFB" }}>
                     <div className="text-xl font-bold tabular-nums" style={{ color: k.renk }}>{k.deger}</div>
-                    <div className="mt-0.5 text-[0.65rem] font-medium leading-tight" style={{ color: brand.muted }}>{k.ad}</div>
+                    <div className="mt-0.5 text-xs font-medium leading-tight" style={{ color: brand.muted }}>{k.ad}</div>
                   </div>
                 ))}
               </div>

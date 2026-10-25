@@ -115,12 +115,12 @@ export function HatDisaAktar() {
           </button>
         </div>
         {subeler.length > 0 && (
-          <p className="mt-2 rounded border-l-2 px-2 py-1 text-[0.7rem]" style={{ borderColor: brand.red, background: CK.badBgSoft, color: brand.inkSoft }}>
+          <p className="mt-2 rounded border-l-2 px-2 py-1 text-xs" style={{ borderColor: brand.red, background: CK.badBgSoft, color: brand.inkSoft }}>
             ◆ {subeler.length} {t({ tr: "tali hat da dışa aktarılır", en: "branch line(s) are also exported", de: "Abzweigung(en) werden ebenfalls exportiert" })}: <b>railML</b> {t({ tr: "her şubeyi ayrı <track> olarak (kavşak ocp'sinde ayrılır) yazar — durak ve geometri kaybı yok. ", en: "writes each branch as a separate <track> (diverging at the junction ocp) — no loss of stops or geometry. ", de: "schreibt jede Abzweigung als separaten <track> (Abzweig am Knoten-ocp) — kein Verlust von Haltestellen oder Geometrie. " })}<b>GTFS</b> {t({ tr: "her şubeyi ayrı route + çift yön sefer yapar (koordinatı tam olan şubeler).", en: "makes each branch a separate route + both-way service (branches with complete coordinates).", de: "macht jede Abzweigung zu einer eigenen Route + Betrieb in beide Richtungen (Abzweigungen mit vollständigen Koordinaten)." })}
           </p>
         )}
         {!gtfsKoordVar && (
-          <p className="mt-2 text-[0.7rem]" style={{ color: brand.muted }}>
+          <p className="mt-2 text-xs" style={{ color: brand.muted }}>
             {t({ tr: "GTFS için durakların ", en: "For GTFS, the stops need their ", de: "Für GTFS benötigen die Haltestellen ihre " })}<b>{t({ tr: "coğrafi koordinatı (lat/lon)", en: "geographic coordinates (lat/lon)", de: "geografischen Koordinaten (lat/lon)" })}</b>{t({ tr: " gerekir — GTFS'ten içe aktarınca otomatik gelir, ya da ", en: " — they come automatically when importing from GTFS, or ", de: " — sie kommen automatisch beim Import aus GTFS, oder " })}<b>{t({ tr: "aşağıdan elle gir", en: "enter them manually below", de: "unten manuell eingeben" })}</b>{t({ tr: ". railML her hatta çalışır.", en: ". railML works for every line.", de: ". railML funktioniert für jede Strecke." })}
           </p>
         )}
@@ -130,7 +130,7 @@ export function HatDisaAktar() {
               {t({ tr: "İstasyon koordinatları (GTFS için) — ", en: "Station coordinates (for GTFS) — ", de: "Stationskoordinaten (für GTFS) — " })}<span style={{ color: koordSayisi === duraklar.length ? "#16794C" : CK.amberInk }}>{koordSayisi}/{duraklar.length}</span> {t({ tr: "girildi", en: "entered", de: "eingegeben" })}
             </summary>
             <div className="max-h-64 overflow-auto border-t px-3 py-2" style={{ borderColor: brand.border }}>
-              <p className="mb-2 text-[0.68rem]" style={{ color: brand.muted }}>{t({ tr: "Enlem/boylam (WGS84, ondalık derece). Tümü dolunca GTFS indirilebilir. ", en: "Latitude/longitude (WGS84, decimal degrees). Once all are filled, GTFS can be downloaded. ", de: "Breite/Länge (WGS84, Dezimalgrad). Sobald alle ausgefüllt sind, kann GTFS heruntergeladen werden. " })}<b>{t({ tr: "İpucu:", en: "Tip:", de: "Tipp:" })}</b>{t({ tr: " Google Maps'te durağa sağ tık → koordinat çiftini kopyala.", en: " In Google Maps, right-click the stop → copy the coordinate pair.", de: " In Google Maps mit Rechtsklick auf die Haltestelle → das Koordinatenpaar kopieren." })}</p>
+              <p className="mb-2 text-xs" style={{ color: brand.muted }}>{t({ tr: "Enlem/boylam (WGS84, ondalık derece). Tümü dolunca GTFS indirilebilir. ", en: "Latitude/longitude (WGS84, decimal degrees). Once all are filled, GTFS can be downloaded. ", de: "Breite/Länge (WGS84, Dezimalgrad). Sobald alle ausgefüllt sind, kann GTFS heruntergeladen werden. " })}<b>{t({ tr: "İpucu:", en: "Tip:", de: "Tipp:" })}</b>{t({ tr: " Google Maps'te durağa sağ tık → koordinat çiftini kopyala.", en: " In Google Maps, right-click the stop → copy the coordinate pair.", de: " In Google Maps mit Rechtsklick auf die Haltestelle → das Koordinatenpaar kopieren." })}</p>
               {duraklar.map((d, i) => {
                 const k = isletme.istasyonKoordinat?.[d.ad];
                 return (

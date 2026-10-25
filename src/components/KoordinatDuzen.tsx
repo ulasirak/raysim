@@ -74,14 +74,14 @@ export function KoordinatDuzen({
         )}
       </div>
       {osmMesaj && (
-        <div className="mb-2 text-[0.72rem]" style={{ color: osmDurum === "hata" ? CK.red : CK.good }}>{osmMesaj}</div>
+        <div className="mb-2 text-xs" style={{ color: osmDurum === "hata" ? CK.red : CK.good }}>{osmMesaj}</div>
       )}
       <div className="grid max-h-64 grid-cols-1 gap-1.5 overflow-auto pr-1 sm:grid-cols-2">
         {istasyonlar.map((s) => {
           const dolu = k[s] && Number.isFinite(k[s].lat) && Number.isFinite(k[s].lon);
           return (
             <div key={s} className="flex items-center gap-1.5">
-              <span className="w-28 shrink-0 truncate text-[0.72rem]" style={{ color: dolu ? brand.ink : brand.muted }} title={s}>{s}</span>
+              <span className="w-28 shrink-0 truncate text-xs" style={{ color: dolu ? brand.ink : brand.muted }} title={s}>{s}</span>
               <input type="number" step="0.0001" inputMode="decimal" placeholder={t({ tr: "enlem", en: "latitude", de: "Breite" })} value={k[s]?.lat ?? ""}
                 onChange={(e) => set(s, "lat", parseFloat(e.target.value))}
                 className="w-24 rounded border px-1.5 py-0.5 text-xs tabular-nums" style={{ borderColor: brand.border, color: brand.ink }} />
@@ -92,7 +92,7 @@ export function KoordinatDuzen({
           );
         })}
       </div>
-      <div className="mt-2 rounded-md border-l-2 pl-2 text-[0.68rem] leading-relaxed" style={{ borderColor: CK.good, color: brand.muted }}>
+      <div className="mt-2 rounded-md border-l-2 pl-2 text-xs leading-relaxed" style={{ borderColor: CK.good, color: brand.muted }}>
         <b style={{ color: brand.inkSoft }}>{t({ tr: "Gerçek hattı haritada görmenin 3 yolu:", en: "3 ways to see the real line on the map:", de: "3 Wege, die echte Trasse auf der Karte zu sehen:" })}</b>
         <div className="mt-0.5">① <b>{t({ tr: "GTFS içe aktar", en: "GTFS import", de: "GTFS-Import" })}</b> {t({ tr: "(transit verisi — gerçek geometri otomatik gelir) · ② ", en: "(transit data — real geometry comes automatically) · ② ", de: "(Transitdaten — echte Geometrie kommt automatisch) · ② " })}<b>{t({ tr: "koordinat gir", en: "enter coordinates", de: "Koordinaten eingeben" })}</b> + <b>{t({ tr: "“OSM'den çek”", en: "“Fetch from OSM”", de: "„Von OSM abrufen“" })}</b> {t({ tr: "(yukarıdaki yeşil buton) · ③ elle koordinat (düz-çizgi harita).", en: "(the green button above) · ③ manual coordinates (straight-line map).", de: "(die grüne Schaltfläche oben) · ③ manuelle Koordinaten (Karte mit geraden Linien)." })}</div>
         <div className="mt-0.5"><b>{t({ tr: "Tüm", en: "All", de: "Alle" })}</b> {t({ tr: "istasyonlar koordinatlı olunca Canlı Ağ ", en: "stations having coordinates draws the Live Network in ", de: "Haltestellen mit Koordinaten zeichnet das Live-Netz im " })}<b>{t({ tr: "Harita", en: "Map", de: "Karte" })}</b> {t({ tr: "modunda gerçek konumda çizilir. Koordinat + geometri ", en: "mode at the real position. Coordinates + geometry are saved ", de: "-Modus an der echten Position. Koordinaten + Geometrie werden " })}<b>{t({ tr: "kalıcı", en: "permanently", de: "dauerhaft" })}</b> {t({ tr: "kaydolur (© OpenStreetMap · ODbL).", en: "(© OpenStreetMap · ODbL).", de: "gespeichert (© OpenStreetMap · ODbL)." })}</div>

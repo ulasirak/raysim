@@ -90,7 +90,7 @@ export function AgKavsakPanel({ subeler, ortak, kavsak }: {
                     <td className="px-3 py-2 text-right tabular-nums" style={{ color: brand.inkSoft }}>{sn(k.birlesikHeadway)}</td>
                     <td className="px-3 py-2 text-right tabular-nums" style={{ color: brand.inkSoft }}>{sn(k.minHeadway)}</td>
                     <td className="px-3 py-2 text-center">
-                      <span className="rounded px-1.5 py-0.5 text-[0.62rem] font-semibold uppercase"
+                      <span className="rounded px-1.5 py-0.5 text-xs font-semibold uppercase"
                         style={k.uygun ? { background: CK.goodBgSoft, color: "#0E7C57" } : { background: "rgba(199,16,46,0.12)", color: CK.red }}>
                         {k.uygun ? t({ tr: "Uygun", en: "OK", de: "OK" }) : t({ tr: "Aşırı", en: "Over", de: "Über" })}
                       </span>
@@ -148,7 +148,7 @@ function KavsakKart({ k, t }: { k: KavsakAnaliz; t: ReturnType<typeof useDil>["t
           <span className="font-semibold" style={{ color: brand.ink }}>{k.junctionAd}</span>
           <span className="ml-2 text-xs tabular-nums" style={{ color: brand.muted }}>{t({ tr: "ortak kesim", en: "shared section", de: "gem. Abschnitt" })} {k.paylasilanKm.toFixed(1)} km · {t({ tr: "kavşak min", en: "junction min", de: "Verzw.-Min" })} {sn(k.minHeadway)}</span>
         </div>
-        <span className="rounded px-2 py-0.5 text-[0.65rem] font-semibold uppercase" style={{ background: `${durumRenk}22`, color: durumRenk }}>{durumMetin}</span>
+        <span className="rounded px-2 py-0.5 text-xs font-semibold uppercase" style={{ background: `${durumRenk}22`, color: durumRenk }}>{durumMetin}</span>
       </div>
 
       <div className="px-4 py-3">
@@ -187,7 +187,7 @@ function KavsakKart({ k, t }: { k: KavsakAnaliz; t: ReturnType<typeof useDil>["t
 function Mini({ etiket, deger, vurgu }: { etiket: string; deger: string; vurgu?: string }) {
   return (
     <div>
-      <div className="text-[0.62rem] uppercase tracking-wide" style={{ color: brand.muted }}>{etiket}</div>
+      <div className="text-xs uppercase tracking-wide" style={{ color: brand.muted }}>{etiket}</div>
       <div className="text-sm font-semibold tabular-nums" style={{ color: vurgu ?? brand.ink }}>{deger}</div>
     </div>
   );
@@ -261,7 +261,7 @@ function ZamanSeridi({ k, t }: { k: KavsakAnaliz; t: ReturnType<typeof useDil>["
         <text x={padL} y={ySube + 15} fontSize={8} fill={CK.gold} fontWeight={600}>{b.bAd}</text>
         <text x={760 - padR} y={H - 6} fontSize={8} fill={brand.muted} textAnchor="end">{t({ tr: "zaman", en: "time", de: "Zeit" })} → {Math.round(W)} s</text>
       </svg>
-      <div className="mt-1 text-[0.68rem]" style={{ color: brand.muted }}>
+      <div className="mt-1 text-xs" style={{ color: brand.muted }}>
         {cakismalar.length === 0
           ? t({ tr: `Önerilen ${sn(ofset)} öteleme ile pencere boyunca örtüşme yok — bantlar (min headway ${sn(hJ)}) ayrık.`, en: `With the recommended ${sn(ofset)} offset no overlap across the window — bands (min headway ${sn(hJ)}) are separated.`, de: `Mit dem empfohlenen Versatz ${sn(ofset)} keine Überlappung — Bänder (Min-ZF ${sn(hJ)}) getrennt.` })
           : t({ tr: `Kırmızı çizgiler: iki servisin kavşak bantları (min headway ${sn(hJ)}) örtüşüyor — çakışma. En iyi ötelemeyle bile kapanmıyor.`, en: `Red lines: the two services' junction bands (min headway ${sn(hJ)}) overlap — conflict. Not closed even at the best offset.`, de: `Rote Linien: die Verzweigungsbänder beider Verkehre (Min-ZF ${sn(hJ)}) überlappen — Konflikt. Auch beim besten Versatz nicht geschlossen.` })}

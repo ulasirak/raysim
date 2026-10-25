@@ -69,7 +69,7 @@ export function Karsilama() {
             {ISTASYONLAR.map((s) => (
               <li key={s.no} className="flex items-start gap-3">
                 <span
-                  className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border font-mono text-[0.68rem] font-semibold tabular-nums"
+                  className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border font-mono text-xs font-semibold tabular-nums"
                   style={{ background: brand.ink, borderColor: brand.ink, color: "#fff" }}
                 >
                   {s.no}
@@ -99,7 +99,7 @@ export function Karsilama() {
               ["3", t({ tr: "Belgele & karşılaştır", en: "Document & compare", de: "Dokumentieren & vergleichen" }), t({ tr: "Teknik Belgeler'den amblemli, baskıya hazır PDF raporu üret; Karşılaştırma'da senaryo/projeleri yan yana koyup kararını destekle.", en: "Produce a branded, print-ready PDF report from Technical Documents; in Comparison, put scenarios/projects side by side to support your decision.", de: "Erstelle aus den technischen Dokumenten einen gebrandeten, druckfertigen PDF-Bericht; stelle in Vergleich Szenarien/Projekte nebeneinander, um deine Entscheidung zu stützen." })],
             ].map(([n, b, a]) => (
               <li key={n} className="flex items-start gap-3">
-                <span className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[0.7rem] font-bold text-white" style={{ background: brand.red }}>{n}</span>
+                <span className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: brand.red }}>{n}</span>
                 <span className="min-w-0">
                   <span className="font-medium" style={{ color: brand.ink }}>{b}</span>
                   <span className="block text-[0.82rem]" style={{ color: brand.muted }}>{a}</span>
@@ -176,7 +176,7 @@ export function Karsilama() {
 
         {/* İçerik */}
         <div className="px-5 pb-2 pt-5">
-          <span className="font-brand text-[0.7rem] font-bold tracking-[0.22em]" style={{ color: brand.red }}>
+          <span className="font-brand text-xs font-bold tracking-[0.22em]" style={{ color: brand.red }}>
             {adim.rozet}
           </span>
           <h2 className="mb-3 mt-1 text-lg font-semibold" style={{ color: brand.ink }}>{adim.baslik}</h2>
@@ -192,7 +192,7 @@ export function Karsilama() {
         </div>
 
         {/* Bu tanıtım yalnız ilk girişte bir kez gösterilir — bilgilendirme */}
-        <div className="border-t px-5 py-2 text-[0.68rem]" style={{ borderColor: brand.border, color: brand.faint }}>
+        <div className="border-t px-5 py-2 text-xs" style={{ borderColor: brand.border, color: brand.faint }}>
           {t({ tr: "Bu tanıtım yalnız ilk girişte bir kez açılır. İstediğinde hesap menüsünden ", en: "This tour opens only once, on first sign-in. You can reopen it anytime from the account menu with ", de: "Diese Einführung öffnet sich nur einmal, bei der ersten Anmeldung. Du kannst sie jederzeit über das Kontomenü mit " })}<b>{t({ tr: "“Tanıtımı göster”", en: "“Show tour”", de: "„Tour anzeigen“" })}</b>{t({ tr: " ile tekrar açabilirsin.", en: ".", de: " erneut öffnen." })}
         </div>
 

@@ -25,7 +25,7 @@ export function Masthead({ sag, altBaslik = "Demiryolu Ağı Simülasyon Sistemi
           <div className="font-brand text-2xl font-semibold leading-none tracking-[0.15em] text-white">
             RaySim
           </div>
-          <div className="mt-1.5 text-[0.7rem] uppercase tracking-[0.22em] text-slate-300">
+          <div className="mt-1.5 text-xs uppercase tracking-[0.22em] text-slate-300">
             {altBaslik}
           </div>
         </div>

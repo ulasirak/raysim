@@ -87,10 +87,10 @@ export function PaylasimPano() {
               readOnly
               value={link}
               onFocus={(e) => e.currentTarget.select()}
-              className="min-w-0 flex-1 rounded border px-2 py-1 text-[0.7rem]"
+              className="min-w-0 flex-1 rounded border px-2 py-1 text-xs"
               style={{ borderColor: brand.border, color: brand.inkSoft, background: brand.paper }}
             />
-            <button onClick={kopyala} className="shrink-0 rounded border px-2 py-1 text-[0.7rem] font-medium transition hover:bg-slate-50"
+            <button onClick={kopyala} className="shrink-0 rounded border px-2 py-1 text-xs font-medium transition hover:bg-slate-50"
               style={{ borderColor: brand.borderStrong, color: kopyalandi ? CK.good : brand.ink }}>
               {kopyalandi ? "✓" : t({ tr: "Kopyala", en: "Copy", de: "Kopieren" })}
             </button>
@@ -98,12 +98,12 @@ export function PaylasimPano() {
 
           {/* Aksiyonlar: QR + (mobil) sistem paylaşımı */}
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            <button onClick={() => setQrAcik((a) => !a)} className="rounded border px-2 py-1 text-[0.7rem] font-medium transition hover:bg-slate-50"
+            <button onClick={() => setQrAcik((a) => !a)} className="rounded border px-2 py-1 text-xs font-medium transition hover:bg-slate-50"
               style={{ borderColor: brand.border, color: brand.inkSoft }}>
               {qrAcik ? t({ tr: "QR gizle", en: "Hide QR", de: "QR ausblenden" }) : t({ tr: "📷 QR (telefonla tara)", en: "📷 QR (scan with phone)", de: "📷 QR (mit Handy scannen)" })}
             </button>
             {webShareVar && (
-              <button onClick={paylas} className="rounded border px-2 py-1 text-[0.7rem] font-medium transition hover:bg-slate-50"
+              <button onClick={paylas} className="rounded border px-2 py-1 text-xs font-medium transition hover:bg-slate-50"
                 style={{ borderColor: brand.border, color: brand.inkSoft }}>
                 📱 {t({ tr: "Paylaş", en: "Share", de: "Teilen" })}
               </button>
@@ -113,16 +113,16 @@ export function PaylasimPano() {
           {qrAcik && (
             <div className="mt-2 flex flex-col items-center gap-1 rounded border p-2" style={{ borderColor: brand.border, background: brand.surface }}>
               <div ref={qrRef} aria-label={t({ tr: "Paylaşım linki QR kodu", en: "Share link QR code", de: "Freigabelink-QR-Code" })} />
-              <span className="text-[0.65rem]" style={{ color: brand.muted }}>{t({ tr: "Telefon kamerasıyla tarayın — hat salt-okunur açılır.", en: "Scan with your phone camera — the line opens read-only.", de: "Mit der Handykamera scannen — die Linie öffnet schreibgeschützt." })}</span>
+              <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "Telefon kamerasıyla tarayın — hat salt-okunur açılır.", en: "Scan with your phone camera — the line opens read-only.", de: "Mit der Handykamera scannen — die Linie öffnet schreibgeschützt." })}</span>
             </div>
           )}
 
-          <p className="mt-1.5 text-[0.65rem] leading-snug" style={{ color: brand.muted }}>
+          <p className="mt-1.5 text-xs leading-snug" style={{ color: brand.muted }}>
             {t({ tr: "Linki bilen herkes ", en: "Anyone with the link, for the ", de: "Jeder mit dem Link kann für die Linie " })}<b>“{aktifAd}”</b>{t({ tr: " hattını yalnız ", en: " line, can only ", de: " nur " })}<b>{t({ tr: "görüntüler", en: "view", de: "ansehen" })}</b>{t({ tr: ", değiştiremez. Kapatınca erişim anında kesilir.", en: ", not change it. Access is cut immediately when turned off.", de: ", nicht ändern. Beim Deaktivieren wird der Zugriff sofort getrennt." })}
           </p>
         </div>
       ) : (
-        <p className="text-[0.7rem] leading-snug" style={{ color: brand.muted }}>
+        <p className="text-xs leading-snug" style={{ color: brand.muted }}>
           {t({ tr: "Açarsanız ", en: "If you turn it on, a ", de: "Wenn du es aktivierst, wird ein " })}<b>{t({ tr: "salt-okunur", en: "read-only", de: "schreibgeschützter" })}</b>{t({ tr: " bir link üretilir: linki verdiğiniz kişi hattı görüntüler ama değiştiremez. Rapor QR’ı da bu hatta bağlanır.", en: " link is created: whoever you give the link to can view the line but not change it. The report QR also links to this line.", de: " Link erstellt: wer den Link erhält, kann die Linie ansehen, aber nicht ändern. Auch der Bericht-QR-Code verweist auf diese Linie." })}
         </p>
       )}

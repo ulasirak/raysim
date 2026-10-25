@@ -283,7 +283,7 @@ export function Belgeler() {
                 <button type="button" onClick={() => patchMeta({ logo: "" })} className="text-xs underline" style={{ color: brand.red }}>{t({ tr: "Kaldır", en: "Remove", de: "Entfernen" })}</button>
               )}
             </div>
-            <p className="mt-1 text-[0.7rem]" style={{ color: brand.muted }}>{t({ tr: "PNG/JPG/SVG · otomatik küçültülür (kapak yüksekliği ~18 mm). Şeffaf arka plan için PNG önerilir.", en: "PNG/JPG/SVG · resized automatically (cover height ~18 mm). PNG recommended for a transparent background.", de: "PNG/JPG/SVG · wird automatisch verkleinert (Deckblatthöhe ~18 mm). PNG für transparenten Hintergrund empfohlen." })}</p>
+            <p className="mt-1 text-xs" style={{ color: brand.muted }}>{t({ tr: "PNG/JPG/SVG · otomatik küçültülür (kapak yüksekliği ~18 mm). Şeffaf arka plan için PNG önerilir.", en: "PNG/JPG/SVG · resized automatically (cover height ~18 mm). PNG recommended for a transparent background.", de: "PNG/JPG/SVG · wird automatisch verkleinert (Deckblatthöhe ~18 mm). PNG für transparenten Hintergrund empfohlen." })}</p>
           </div>
         </fieldset>
       </Panel>
@@ -356,7 +356,7 @@ export function Belgeler() {
                   style={on ? { background: brand.ink, color: "#fff", borderColor: brand.ink } : { background: "#fff", color: brand.inkSoft, borderColor: brand.border }}
                   title={on ? t({ tr: "Dâhil — çıkarmak için tıkla", en: "Included — click to remove", de: "Enthalten — zum Entfernen klicken" }) : t({ tr: "Hariç — eklemek için tıkla", en: "Excluded — click to add", de: "Ausgeschlossen — zum Hinzufügen klicken" })}>
                   <span>{on ? "✓ " : "＋ "}{dil === "en" ? RAPOR_BOLUM_AD[b].en : RAPOR_BOLUM_AD[b].tr}</span>
-                  <span className="ml-1.5 rounded px-1 py-0.5 text-[0.6rem] font-bold" style={{ background: on ? "rgba(255,255,255,0.22)" : CK.track, color: on ? "#fff" : brand.muted }}>+{RAPOR_BOLUM_KREDI[b]} kr</span>
+                  <span className="ml-1.5 rounded px-1 py-0.5 text-xs font-bold" style={{ background: on ? "rgba(255,255,255,0.22)" : CK.track, color: on ? "#fff" : brand.muted }}>+{RAPOR_BOLUM_KREDI[b]} kr</span>
                 </button>
               );
             })}

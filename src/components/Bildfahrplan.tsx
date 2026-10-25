@@ -158,8 +158,8 @@ export function Bildfahrplan({ loop, line, cakismalar = [] }: { loop: LoopVeri; 
         <button type="button" onClick={() => zoom(1.3)} className={dugme} style={{ background: brand.ink, color: "#fff" }} aria-label={t({ tr: "Yakınlaştır", en: "Zoom in", de: "Vergrößern" })}>+</button>
         <button type="button" onClick={() => zoom(1 / 1.3)} className={dugme} style={{ background: brand.ink, color: "#fff" }} aria-label={t({ tr: "Uzaklaştır", en: "Zoom out", de: "Verkleinern" })}>−</button>
         <button type="button" onClick={sifirla} className={dugme} style={{ border: `1px solid ${brand.border}`, color: brand.ink }}>{t({ tr: "Sıfırla", en: "Reset", de: "Zurücksetzen" })}</button>
-        <span className="mx-1 text-[0.65rem] tabular-nums" style={{ color: brand.muted }}>×{view.k.toFixed(1)}</span>
-        <span className="hidden text-[0.65rem] sm:inline" style={{ color: brand.muted }}>{t({ tr: "tekerlek = yakınlaş · sürükle = kaydır · tren üstüne gel = vurgula", en: "wheel = zoom · drag = pan · hover a train = highlight", de: "Rad = zoomen · ziehen = verschieben · Zug überfahren = hervorheben" })}</span>
+        <span className="mx-1 text-xs tabular-nums" style={{ color: brand.muted }}>×{view.k.toFixed(1)}</span>
+        <span className="hidden text-xs sm:inline" style={{ color: brand.muted }}>{t({ tr: "tekerlek = yakınlaş · sürükle = kaydır · tren üstüne gel = vurgula", en: "wheel = zoom · drag = pan · hover a train = highlight", de: "Rad = zoomen · ziehen = verschieben · Zug überfahren = hervorheben" })}</span>
         <span className="flex-1" />
         <button type="button" onClick={exportPng} className={dugme} style={{ border: `1px solid ${brand.border}`, color: brand.ink }}>{t({ tr: "PNG indir", en: "Download PNG", de: "PNG herunterladen" })}</button>
         <button type="button" onClick={exportSvg} className={dugme} style={{ border: `1px solid ${brand.border}`, color: brand.ink }}>{t({ tr: "SVG indir", en: "Download SVG", de: "SVG herunterladen" })}</button>

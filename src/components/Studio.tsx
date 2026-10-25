@@ -619,7 +619,7 @@ function StudioIc() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="text-xs font-bold uppercase tracking-wide" style={{ color: brand.inkSoft }}>{t({ tr: "Önerilen tramvay (ihtiyaç)", en: "Recommended trams (need)", de: "Empfohlene Straßenbahnen (Bedarf)" })}</div>
-              <div className="text-[0.62rem]" style={{ color: brand.muted }}>{t({ tr: "hedef sefer aralığın için gereken filo", en: "fleet needed for your target headway", de: "für Ihre Ziel-Zugfolgezeit benötigte Flotte" })}</div>
+              <div className="text-xs" style={{ color: brand.muted }}>{t({ tr: "hedef sefer aralığın için gereken filo", en: "fleet needed for your target headway", de: "für Ihre Ziel-Zugfolgezeit benötigte Flotte" })}</div>
               <div className="flex items-baseline gap-2">
                 <span className="text-4xl font-bold tabular-nums" style={{ color: brand.ink }}>{oneriTramvay}</span>
                 <span className="text-sm" style={{ color: brand.inkSoft }}>{t({ tr: "araç", en: "vehicles", de: "Fahrzeuge" })} · ⌈{t({ tr: "çevrim", en: "cycle", de: "Umlauf" })} {sure(maks.cevrimSuresi)} ÷ {t({ tr: "hedef", en: "target", de: "Ziel" })} {Math.round(hedefHeadwaySn)} s⌉{talepFilosu > 0 && talepFilosu >= oneriTramvay ? t({ tr: " · talep de bunu gerektiriyor", en: " · demand also requires this", de: " · auch die Nachfrage erfordert dies" }) : ""}</span>
@@ -634,7 +634,7 @@ function StudioIc() {
               : <>{t({ tr: "Öneri hedef headway kuralından", en: "Recommendation from the target headway rule", de: "Empfehlung aus der Ziel-Zugfolgezeit-Regel" })} ({Math.round(hedefHeadwaySn)} s = {t({ tr: "tasarım", en: "design", de: "Auslegung" })}). {t({ tr: "Talebe göre (tıkanma/dönüş ihtiyacı) kontrol için", en: "To check against demand (congestion/short-turn need)", de: "Zur Prüfung gegen die Nachfrage (Überlastung/Kehrbedarf)" })} <button type="button" className="font-semibold underline" style={{ color: brand.ink }} onClick={() => setTalepPopup(true)}>{t({ tr: "yolcu verisi gir", en: "enter passenger data", de: "Fahrgastdaten eingeben" })}</button>.</>}
           </div>
           {/* Önerilen (ihtiyaç) vs sürdürülebilir vs fiziksel tavan — ÜÇ ayrı kavram */}
-          <div className="mt-2 rounded border-l-2 pl-2 text-[0.7rem] leading-relaxed" style={{ borderColor: CK.good, color: brand.muted }}>
+          <div className="mt-2 rounded border-l-2 pl-2 text-xs leading-relaxed" style={{ borderColor: CK.good, color: brand.muted }}>
             {/* Her zaman görünür: sayılar + durum yargısı (kullanıcının kararı için gereken) */}
             <b style={{ color: brand.ink }}>{t({ tr: "Önerilen", en: "Recommended", de: "Empfohlen" })} {oneriTramvay} · {t({ tr: "sürdürülebilir", en: "sustainable", de: "nachhaltig" })} {maks.nSurdurulebilir} · {t({ tr: "fiziksel tavan", en: "physical ceiling", de: "physikalische Obergrenze" })} {maks.nTeorik}.</b>{" "}
             {oneriTramvay <= maks.nSurdurulebilir
@@ -663,7 +663,7 @@ function StudioIc() {
                 className="w-14 rounded border px-2 py-1 text-center text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
               <button type="button" onClick={() => setFilo(filoTek + 1)} className="h-7 w-7 rounded border font-semibold text-white" style={{ background: brand.ink, borderColor: brand.ink }}>+</button>
             </div>
-            <span className="mt-0.5 block text-[0.6rem]" style={{ color: filoOneriUyum ? "#16794C" : CK.amberInk }}>{filoOneriUyum ? t({ tr: "✓ öneriyle eşleşiyor", en: "✓ matches recommendation", de: "✓ entspricht der Empfehlung" }) : `${t({ tr: "öneri", en: "rec.", de: "Empf." })} ${oneriTramvay} · ${t({ tr: "fark", en: "diff", de: "Diff" })} ${filoTek - oneriTramvay > 0 ? "+" : ""}${filoTek - oneriTramvay}`}</span>
+            <span className="mt-0.5 block text-xs" style={{ color: filoOneriUyum ? "#16794C" : CK.amberInk }}>{filoOneriUyum ? t({ tr: "✓ öneriyle eşleşiyor", en: "✓ matches recommendation", de: "✓ entspricht der Empfehlung" }) : `${t({ tr: "öneri", en: "rec.", de: "Empf." })} ${oneriTramvay} · ${t({ tr: "fark", en: "diff", de: "Diff" })} ${filoTek - oneriTramvay > 0 ? "+" : ""}${filoTek - oneriTramvay}`}</span>
           </div>
           <Kpi etiket={t({ tr: "Ulaşılan sefer aralığı", en: "Achieved headway", de: "Erreichte Zugfolgezeit" })} deger={sure(ulasilanHeadwaySn)} alt={t({ tr: "çevrim ÷ filo · filo↑→aralık↓", en: "cycle ÷ fleet · fleet↑→headway↓", de: "Umlauf ÷ Flotte · Flotte↑→Zugfolgezeit↓" })} />
           <div>
@@ -673,7 +673,7 @@ function StudioIc() {
                 className="w-14 rounded border px-2 py-1 text-sm" style={{ borderColor: CK.amber, color: brand.ink }} />
               <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "dk", en: "min", de: "Min" })}</span>
             </div>
-            <span className="mt-0.5 block text-[0.6rem]" style={{ color: CK.amberInk }}>{t({ tr: `önerilen tramvayı DOĞRUDAN belirler (şu an ${Math.round(hedefHeadwaySn)} s)`, en: `DIRECTLY sets the recommended trams (now ${Math.round(hedefHeadwaySn)} s)`, de: `bestimmt DIREKT die empfohlenen Bahnen (jetzt ${Math.round(hedefHeadwaySn)} s)` })}</span>
+            <span className="mt-0.5 block text-xs" style={{ color: CK.amberInk }}>{t({ tr: `önerilen tramvayı DOĞRUDAN belirler (şu an ${Math.round(hedefHeadwaySn)} s)`, en: `DIRECTLY sets the recommended trams (now ${Math.round(hedefHeadwaySn)} s)`, de: `bestimmt DIREKT die empfohlenen Bahnen (jetzt ${Math.round(hedefHeadwaySn)} s)` })}</span>
           </div>
           {/* Terminal dönüş beklemesi — uçta bekleme; çevrim süresini (RTT) ve gereken filoyu besler */}
           <div>
@@ -683,7 +683,7 @@ function StudioIc() {
                 className="w-14 rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
               <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "dk", en: "min", de: "Min" })}</span>
             </div>
-            <span className="mt-0.5 block text-[0.6rem]" style={{ color: brand.muted }}>{t({ tr: "uçta bekleme → çevrime (RTT) eklenir", en: "wait at the terminal → added to the cycle (RTT)", de: "Warten am Endpunkt → zur Umlaufzeit (RTT) addiert" })}</span>
+            <span className="mt-0.5 block text-xs" style={{ color: brand.muted }}>{t({ tr: "uçta bekleme → çevrime (RTT) eklenir", en: "wait at the terminal → added to the cycle (RTT)", de: "Warten am Endpunkt → zur Umlaufzeit (RTT) addiert" })}</span>
           </div>
           <Kpi
             title={t({ tr: "Aynı anda bu hatta sığabilen EN FAZLA tramvay (darboğazın izin verdiği fiziksel üst sınır). Filon bu sayıyı aşamaz — aşarsa trenler kaçınılmaz kuyruklanır.", en: "The MAXIMUM trams that can fit on this line at once (the physical upper limit the bottleneck allows). Your fleet cannot exceed this — if it does, trains inevitably queue.", de: "Die MAXIMALE Anzahl Straßenbahnen, die gleichzeitig auf diese Linie passen (die vom Engpass erlaubte physikalische Obergrenze). Ihre Flotte kann dies nicht überschreiten — sonst stauen sich die Züge unvermeidlich." })}
@@ -709,7 +709,7 @@ function StudioIc() {
               📐 {t({ tr: "Tur süresi (RTT)", en: "Round-trip time (RTT)", de: "Umlaufzeit (RTT)" })} <b>{sure(maks.cevrimSuresi)}</b> ({t({ tr: "2×seyir + tüm durak dwell'leri + terminaller", en: "2×run + all stop dwells + terminals", de: "2×Fahrt + alle Haltezeiten + Terminals" })}). {headwayDk} {t({ tr: "dk sefer sıklığı için", en: "min headway requires", de: "Min Zugfolgezeit erfordert" })} <b>{t({ tr: "gereken tren =", en: "trains needed =", de: "erforderliche Züge =" })} {Math.ceil(maks.cevrimSuresi / Math.max(1, headwayDk * 60))}</b> (⌈RTT ÷ headway⌉) — <span style={{ color: brand.muted }}>{t({ tr: "seçtiğin sıklıkta çalışmak için hatta bulunması gereken tramvay: bir tren tam turu (RTT) tamamlayana dek arkasından kaç tren dolması gerektiği (tur süresi ÷ sefer aralığı).", en: "the trams that must be on the line to run at your chosen frequency: how many trains must follow before one completes a full round-trip (RTT) (round-trip time ÷ headway).", de: "die Straßenbahnen, die auf der Linie sein müssen, um in Ihrer gewählten Taktung zu fahren: wie viele Züge folgen müssen, bis einer einen vollen Umlauf (RTT) abschließt (Umlaufzeit ÷ Zugfolgezeit)." })}</span>
             </p>
             <NedenDetay className="mt-1" ozet={t({ tr: "çift hat & sinyal varsayımı", en: "double-track & signalling assumption", de: "Zweigleis- & Signalannahme" })}>
-              <p className="text-[0.65rem]" style={{ color: brand.muted }}>{t({ tr: "Hat çift hat (gidiş-dönüş) + sabit blok sinyal — tren dolu bloğa giremez (kırmızıda durur). Terminal dönüş beklemesi çevrime eklenir.", en: "Double-track (outbound/return) + fixed-block signalling — a train cannot enter an occupied block (it stops at red). The terminal turnaround wait is added to the cycle.", de: "Zweigleisig (Hin-/Rückfahrt) + Festblock-Signalisierung — ein Zug kann keinen belegten Block befahren (hält bei Rot). Die Wendezeit am Terminal wird zur Umlaufzeit addiert." })}</p>
+              <p className="text-xs" style={{ color: brand.muted }}>{t({ tr: "Hat çift hat (gidiş-dönüş) + sabit blok sinyal — tren dolu bloğa giremez (kırmızıda durur). Terminal dönüş beklemesi çevrime eklenir.", en: "Double-track (outbound/return) + fixed-block signalling — a train cannot enter an occupied block (it stops at red). The terminal turnaround wait is added to the cycle.", de: "Zweigleisig (Hin-/Rückfahrt) + Festblock-Signalisierung — ein Zug kann keinen belegten Block befahren (hält bei Rot). Die Wendezeit am Terminal wird zur Umlaufzeit addiert." })}</p>
             </NedenDetay>
           </div>
         )}
@@ -739,7 +739,7 @@ function StudioIc() {
                 const val = Math.max(0, Math.round((isletme.parklanmaDagilim || {})[k] ?? 0));
                 return (
                   <div key={i} className="w-28">
-                    <span className="text-[0.6rem]" style={{ color: brand.inkSoft }}><Ikon ad="park" size={12} className="mr-0.5 inline-block align-[-1px]" />{t({ tr: "Depo", en: "Depot", de: "Depot" })} @ {km(d.position)}</span>
+                    <span className="text-xs" style={{ color: brand.inkSoft }}><Ikon ad="park" size={12} className="mr-0.5 inline-block align-[-1px]" />{t({ tr: "Depo", en: "Depot", de: "Depot" })} @ {km(d.position)}</span>
                     <input type="number" min={0} max={99} value={val}
                       onChange={(e) => {
                         const v = Math.max(0, Math.round(parseFloat(e.target.value) || 0));
@@ -805,7 +805,7 @@ function StudioIc() {
           <details className="group mt-3 overflow-hidden rounded-md border" style={{ borderColor: brand.border }}>
             <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 text-xs font-semibold [&::-webkit-details-marker]:hidden" style={{ color: brand.ink, background: CK.track }}>
               <span>{t({ tr: "Gelişmiş: çekiş & direnç (özel araç)", en: "Advanced: traction & resistance (custom vehicle)", de: "Erweitert: Traktion & Widerstand (eigenes Fahrzeug)" })}</span>
-              <span className="text-[0.6rem] transition-transform duration-150 group-open:rotate-90" style={{ color: brand.muted }} aria-hidden="true">▸</span>
+              <span className="text-xs transition-transform duration-150 group-open:rotate-90" style={{ color: brand.muted }} aria-hidden="true">▸</span>
             </summary>
             <div className="border-t px-3 py-3" style={{ borderColor: brand.border }}>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
@@ -816,7 +816,7 @@ function StudioIc() {
                 <Num label="Davis B" suffix="N·s/m" step={5} value={round(stock.davisB)} onChange={(v) => patchStock({ davisB: Math.max(0, v) })} />
                 <Num label="Davis C" suffix="N·s²/m²" step={0.5} value={round(stock.davisC, 1)} onChange={(v) => patchStock({ davisC: Math.max(0, v) })} />
               </div>
-              <p className="mt-2 text-[0.65rem]" style={{ color: brand.muted }}>{t({ tr: "Çekiş, P/v (yüksek hız) ile kalkış kuvveti F₀ arasında sınırlanır; yuvarlanma/aero direnç R(v)=A+B·v+C·v². Motor bu değerleri birebir kullanır — hız profili, tur süresi (RTT) ve enerji buradan türer. Kesin datasheet varsa oradan gir.", en: "Traction is bounded by P/v (high speed) and the starting force F₀; rolling/aero resistance R(v)=A+B·v+C·v². The engine uses these verbatim — speed profile, round-trip time (RTT) and energy derive from them. Enter exact figures from a datasheet if you have one.", de: "Traktion ist begrenzt durch P/v (hohe Geschwindigkeit) und die Anfahrkraft F₀; Roll-/Luftwiderstand R(v)=A+B·v+C·v². Die Engine nutzt diese direkt — Geschwindigkeitsprofil, Umlaufzeit (RTT) und Energie leiten sich daraus ab. Geben Sie exakte Werte aus einem Datenblatt ein, falls vorhanden." })}</p>
+              <p className="mt-2 text-xs" style={{ color: brand.muted }}>{t({ tr: "Çekiş, P/v (yüksek hız) ile kalkış kuvveti F₀ arasında sınırlanır; yuvarlanma/aero direnç R(v)=A+B·v+C·v². Motor bu değerleri birebir kullanır — hız profili, tur süresi (RTT) ve enerji buradan türer. Kesin datasheet varsa oradan gir.", en: "Traction is bounded by P/v (high speed) and the starting force F₀; rolling/aero resistance R(v)=A+B·v+C·v². The engine uses these verbatim — speed profile, round-trip time (RTT) and energy derive from them. Enter exact figures from a datasheet if you have one.", de: "Traktion ist begrenzt durch P/v (hohe Geschwindigkeit) und die Anfahrkraft F₀; Roll-/Luftwiderstand R(v)=A+B·v+C·v². Die Engine nutzt diese direkt — Geschwindigkeitsprofil, Umlaufzeit (RTT) und Energie leiten sich daraus ab. Geben Sie exakte Werte aus einem Datenblatt ein, falls vorhanden." })}</p>
             </div>
           </details>
 
@@ -824,7 +824,7 @@ function StudioIc() {
           <div className="mt-3">
             <Durum tip={aracUyari.length === 0 ? "uygun" : "uyari"} metin={aracUyari.length === 0 ? t({ tr: "Araç parametreleri tutarlı — simülasyona hazır", en: "Vehicle parameters consistent — ready to simulate", de: "Fahrzeugparameter konsistent — simulationsbereit" }) : `${aracUyari.length} ${t({ tr: "uyarı", en: "warnings", de: "Warnungen" })}`} />
             {aracUyari.length > 0 && (
-              <ul className="mt-1.5 ml-4 list-disc text-[0.7rem]" style={{ color: CK.amberInk }}>
+              <ul className="mt-1.5 ml-4 list-disc text-xs" style={{ color: CK.amberInk }}>
                 {aracUyari.map((w, i) => <li key={i}>{t(w.ad)}</li>)}
               </ul>
             )}
@@ -842,7 +842,7 @@ function StudioIc() {
         <Panel katlanir ozet={t({ tr: "dwell = yolcu akışından (kapı/konfor)", en: "dwell = from passenger flow (door/comfort)", de: "Haltezeit = aus Fahrgastfluss (Tür/Komfort)" })} baslik={t({ tr: "Yolcu Dinamiği & Duruş Süresi", en: "Passenger Dynamics & Dwell Time", de: "Fahrgastdynamik & Haltezeit" })} aciklama={t({ tr: "İstasyon duruş süresi (dwell) keyfi değil, yolcu akışından hesaplanır: araç kapı sayısı/genişliği + konfor + istasyon başına inen/binen → yolcu akış süresi → dwell. Duraklarda inen/binen sayısını Ringler'de girersin; her durak ayrı hesaplanıp tur süresine (RTT) kümülatif eklenir.", en: "Station dwell time is not arbitrary; it is computed from passenger flow: vehicle door count/width + comfort + alightings/boardings per station → passenger flow time → dwell. You enter alightings/boardings per stop in Rings; each stop is computed separately and added cumulatively to the round-trip time (RTT).", de: "Die Haltezeit ist nicht willkürlich, sondern wird aus dem Fahrgastfluss berechnet: Türanzahl/-breite des Fahrzeugs + Komfort + Aus-/Einstiege je Station → Fahrgastflusszeit → Haltezeit. Aus-/Einstiege je Haltestelle geben Sie in Ringe ein; jede Haltestelle wird separat berechnet und kumulativ zur Umlaufzeit (RTT) addiert." })}>
           {/* Araç donanımı (kapı/genişlik/alan) SALT-OKUNUR — tek giriş noktası Çeken Araç.
               Burada dwell'i neyin belirlediğini göstermek için okunur; düzenleme oraya çapraz-ref. */}
-          <p className="mb-1 text-[0.7rem]" style={{ color: brand.muted }}>
+          <p className="mb-1 text-xs" style={{ color: brand.muted }}>
             {t({ tr: "Araç donanımı (salt-okunur, dwell'i besler) — düzenlemek için ", en: "Vehicle hardware (read-only, feeds dwell) — to edit, ", de: "Fahrzeughardware (schreibgeschützt, speist Haltezeit) — zum Bearbeiten " })}
             <a href="#ceken-arac" onClick={(e) => { e.preventDefault(); panelAcVeGit("ceken-arac"); }} className="font-semibold underline" style={{ color: brand.ink }}>{t({ tr: "Çeken Araç", en: "Traction Vehicle", de: "Triebfahrzeug" })}</a>.
           </p>
@@ -855,17 +855,17 @@ function StudioIc() {
             ]).map((f, i) => (
               <div key={i}>
                 <span className="field-label">{f.lbl}</span>
-                <div className="mt-1 rounded border px-2 py-1 text-sm tabular-nums" style={{ borderColor: brand.border, background: CK.track, color: brand.inkSoft }}>{f.val} <span className="text-[0.65rem]" style={{ color: brand.faint }}>{f.unit}</span></div>
-                <span className="text-[0.6rem]" style={{ color: brand.faint }}>{f.sub}</span>
+                <div className="mt-1 rounded border px-2 py-1 text-sm tabular-nums" style={{ borderColor: brand.border, background: CK.track, color: brand.inkSoft }}>{f.val} <span className="text-xs" style={{ color: brand.faint }}>{f.unit}</span></div>
+                <span className="text-xs" style={{ color: brand.faint }}>{f.sub}</span>
               </div>
             ))}
             <div><Num label={t({ tr: "Konfor indeksi", en: "Comfort index", de: "Komfortindex" })} suffix={t({ tr: "yolcu/m²", en: "pax/m²", de: "Fahrg./m²" })} step={0.5} value={isletme.konforIndeksi}
-              onChange={(v) => patchIsletme({ konforIndeksi: Math.max(0, v) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>{t({ tr: "ayakta yoğunluk tasarımı", en: "standing density design", de: "Stehdichte-Auslegung" })}</span></div>
+              onChange={(v) => patchIsletme({ konforIndeksi: Math.max(0, v) })} /><span className="text-xs" style={{ color: brand.faint }}>{t({ tr: "ayakta yoğunluk tasarımı", en: "standing density design", de: "Stehdichte-Auslegung" })}</span></div>
             <div><Num label={t({ tr: "Yolcu akış hızı", en: "Passenger flow rate", de: "Fahrgastflussrate" })} suffix={t({ tr: "yolcu/m·s", en: "pax/m·s", de: "Fahrg./m·s" })} step={0.1} value={isletme.yolcuAkisHizi}
-              onChange={(v) => patchIsletme({ yolcuAkisHizi: Math.max(0.1, v) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>{t({ tr: "kapı metresi başına akış (~1.2)", en: "flow per door metre (~1.2)", de: "Fluss je Türmeter (~1,2)" })}</span></div>
+              onChange={(v) => patchIsletme({ yolcuAkisHizi: Math.max(0.1, v) })} /><span className="text-xs" style={{ color: brand.faint }}>{t({ tr: "kapı metresi başına akış (~1.2)", en: "flow per door metre (~1.2)", de: "Fluss je Türmeter (~1,2)" })}</span></div>
             <div title={t({ tr: "Bir durakta yolcu az olsa bile en kısa duruş (alt sınır). TÜM duraklara uygulanır — burada değiştirince her durağın oto dwell'i bu tabana göre güncellenir.", en: "The shortest dwell even when a stop has few passengers (lower bound). Applied to ALL stops — changing it here updates every stop's auto dwell to this floor.", de: "Die kürzeste Haltezeit, selbst wenn eine Haltestelle wenige Fahrgäste hat (Untergrenze). Gilt für ALLE Haltestellen — eine Änderung hier aktualisiert die Auto-Haltezeit jeder Haltestelle auf diesen Sockel." })}>
               <Num label={t({ tr: "Min duruş süresi", en: "Min dwell time", de: "Min. Haltezeit" })} suffix="s" step={1} value={isletme.minDurusSuresi}
-              onChange={(v) => patchIsletme({ minDurusSuresi: Math.max(0, Math.round(v)) })} /><span className="text-[0.6rem]" style={{ color: brand.faint }}>{t({ tr: "tüm duraklara uygulanır — oto dwell alt sınırı", en: "applied to all stops — auto dwell lower bound", de: "gilt für alle Haltestellen — Untergrenze der Auto-Haltezeit" })}</span></div>
+              onChange={(v) => patchIsletme({ minDurusSuresi: Math.max(0, Math.round(v)) })} /><span className="text-xs" style={{ color: brand.faint }}>{t({ tr: "tüm duraklara uygulanır — oto dwell alt sınırı", en: "applied to all stops — auto dwell lower bound", de: "gilt für alle Haltestellen — Untergrenze der Auto-Haltezeit" })}</span></div>
           </div>
           <div className="rounded border-l-4 px-3 py-2 text-xs" style={{ background: CK.goodBgSoft, borderColor: brand.ink, color: brand.inkSoft }}>
             {t({ tr: "Net taban alanı", en: "Net floor area", de: "Netto-Bodenfläche" })} <b>{netTabanAlani(stock).toFixed(1)} m²</b> · {t({ tr: "maksimum yolcu kapasitesi", en: "maximum passenger capacity", de: "maximale Fahrgastkapazität" })} <b>{maxYolcuKapasitesi(stock, isletme.konforIndeksi)} {t({ tr: "yolcu", en: "passengers", de: "Fahrgäste" })}</b>.
@@ -910,28 +910,28 @@ function StudioIc() {
                 {t({ tr: "Çakışmasız çizelge", en: "Conflict-free schedule", de: "Konfliktfreier Fahrplan" })}
               </label>
             ) : (
-              <span className="rounded-md px-3 py-1 text-[0.7rem] font-semibold" style={{ background: CK.amberBg, color: CK.amberInk, border: `1px solid ${CK.amber}` }}
+              <span className="rounded-md px-3 py-1 text-xs font-semibold" style={{ background: CK.amberBg, color: CK.amberInk, border: `1px solid ${CK.amber}` }}
                 title={t({ tr: "Bu filoda tek-hat çakışması kalkış kaydırmasıyla giderilemiyor; Sistem Merkezi’ndeki çözücü çakışmasız maksimum filoyu gösterir.", en: "At this fleet the single-track conflict cannot be resolved by shifting departures; the solver in the System Centre shows the conflict-free maximum fleet.", de: "Bei dieser Flotte lässt sich der Eingleiskonflikt nicht durch Verschieben der Abfahrten auflösen; der Löser in der Systemzentrale zeigt die konfliktfreie Maximalflotte." })}>
                 ⚠ {t({ tr: "Çakışma bu filoda giderilemez", en: "Conflict cannot be resolved at this fleet", de: "Konflikt bei dieser Flotte nicht lösbar" })}
               </span>
             )
           )}
-          {gtfsMesaj && <span className="text-[0.7rem] font-medium" style={{ color: gtfsYukle === "hata" ? CK.red : CK.good }}>{gtfsMesaj}</span>}
+          {gtfsMesaj && <span className="text-xs font-medium" style={{ color: gtfsYukle === "hata" ? CK.red : CK.good }}>{gtfsMesaj}</span>}
           {agGorunum === "harita" && haritaTam && (
             (isletme.koordinatKaynak === "iceaktar" || isletme.koordinatYaklasik) ? (
-              <span className="rounded px-2 py-1 text-[0.7rem] font-semibold" style={{ background: CK.amberBg, color: CK.amberInk, border: `1px solid ${CK.amber}` }}
+              <span className="rounded px-2 py-1 text-xs font-semibold" style={{ background: CK.amberBg, color: CK.amberInk, border: `1px solid ${CK.amber}` }}
                 title={t({ tr: "Konumlar CAD güzergâh projesinden (alignment + kilometraj) üretilip OSM inşaat hattına hizalandı; ~150m demo hassasiyeti. OSM'e istasyonlar eklenince otomatik gerçek veriyle güncellenir.", en: "Positions were generated from the CAD alignment project (alignment + chainage) and aligned to the OSM construction line; ~150 m demo accuracy. When stations are added to OSM it updates automatically with real data.", de: "Die Positionen wurden aus dem CAD-Trassierungsprojekt (Alignment + Stationierung) erzeugt und an die OSM-Baulinie ausgerichtet; ~150 m Demo-Genauigkeit. Sobald Stationen zu OSM hinzugefügt werden, aktualisiert es sich automatisch mit echten Daten." })}>
                 ⚠ {t({ tr: "Kaynak: CAD/GTFS içe aktarımı — yaklaşık ±~150m", en: "Source: CAD/GTFS import — approx. ±~150 m", de: "Quelle: CAD/GTFS-Import — ca. ±~150 m" })}
               </span>
             ) : (
-              <span className="rounded px-2 py-1 text-[0.7rem] font-semibold" style={{ background: CK.goodBgSoft, color: CK.good, border: `1px solid ${CK.good}` }}
+              <span className="rounded px-2 py-1 text-xs font-semibold" style={{ background: CK.goodBgSoft, color: CK.good, border: `1px solid ${CK.good}` }}
                 title={t({ tr: "Durak koordinatları OpenStreetMap'ten gerçek node'lardan çekildi (~10m).", en: "Stop coordinates were fetched from real OpenStreetMap nodes (~10 m).", de: "Haltestellenkoordinaten wurden aus echten OpenStreetMap-Knoten geholt (~10 m)." })}>
                 ✓ {t({ tr: "Kaynak: OpenStreetMap gerçek verisi", en: "Source: real OpenStreetMap data", de: "Quelle: echte OpenStreetMap-Daten" })}
               </span>
             )
           )}
           {agGorunum === "sematik" && haritaTam && (
-            <span className="text-[0.7rem] font-medium" style={{ color: CK.good }}><Ikon ad="ampul" size={13} className="mr-1 inline-block align-[-2px]" />{t({ tr: "Bu hattın gerçek haritası hazır — üstteki", en: "The real map of this line is ready — view it with", de: "Die echte Karte dieser Linie ist bereit — ansehen mit" })} <b>{t({ tr: "“Harita”", en: "“Map”", de: "„Karte“" })}</b> {t({ tr: "ile gör.", en: "above.", de: "oben." })}</span>
+            <span className="text-xs font-medium" style={{ color: CK.good }}><Ikon ad="ampul" size={13} className="mr-1 inline-block align-[-2px]" />{t({ tr: "Bu hattın gerçek haritası hazır — üstteki", en: "The real map of this line is ready — view it with", de: "Die echte Karte dieser Linie ist bereit — ansehen mit" })} <b>{t({ tr: "“Harita”", en: "“Map”", de: "„Karte“" })}</b> {t({ tr: "ile gör.", en: "above.", de: "oben." })}</span>
           )}
         </div>
         {/* KAYNAK — İKİ AYRI YOL (koordinat yoksa): ① OSM'den çek (işleyen hatlar) ② CAD/GTFS içe aktar (OSM'de olmayan). */}
@@ -943,50 +943,50 @@ function StudioIc() {
             <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
               <div className="flex flex-col rounded-md border p-2.5" style={{ borderColor: brand.border, background: CK.goodBgSoft }}>
                 <div className="text-[0.74rem] font-bold" style={{ color: brand.ink }}>① <Ikon ad="kure" size={13} className="mx-0.5 inline-block align-[-2px]" />{t({ tr: "OpenStreetMap’ten çek", en: "Fetch from OpenStreetMap", de: "Aus OpenStreetMap holen" })}</div>
-                <div className="mt-0.5 text-[0.68rem] leading-snug" style={{ color: brand.muted }}>
+                <div className="mt-0.5 text-xs leading-snug" style={{ color: brand.muted }}>
                   <b>{t({ tr: "İşleyen / OSM’de kayıtlı", en: "Operating / OSM-registered", de: "In Betrieb / in OSM erfasst" })}</b> {t({ tr: "hatlar için. Durak koordinatı + gerçek kavisli hiza", en: "lines. Stop coordinates + real curved alignment arrive", de: "Linien. Haltestellenkoordinaten + echte kurvige Trassierung kommen" })} <b>{t({ tr: "otomatik", en: "automatically", de: "automatisch" })}</b> {t({ tr: "gelir (~10 m).", en: "(~10 m).", de: "(~10 m)." })}
                 </div>
-                <div className="mt-1 text-[0.68rem] font-semibold" style={{ color: agKoordSay > 0 ? CK.good : brand.muted }}>
+                <div className="mt-1 text-xs font-semibold" style={{ color: agKoordSay > 0 ? CK.good : brand.muted }}>
                   {agKoordSay}/{agIstasyonlar.length} {t({ tr: "durak OSM’de bulundu", en: "stops found in OSM", de: "Haltestellen in OSM gefunden" })}{agKoordSay > 0 && agKoordSay < agIstasyonlar.length ? t({ tr: " — kalanı OSM’de yok", en: " — the rest are not in OSM", de: " — der Rest ist nicht in OSM" }) : ""} · {t({ tr: "otomatik çekiliyor", en: "fetching automatically", de: "wird automatisch geholt" })}
                 </div>
                 <div className="mt-auto flex flex-wrap items-center gap-2" style={{ marginTop: "0.5rem" }}>
                   <button type="button" onClick={osmCek} disabled={gtfsYukle === "yukleniyor"}
-                    className="rounded px-2.5 py-1 text-[0.7rem] font-semibold text-white disabled:opacity-60" style={{ background: "#2E7D57" }}
+                    className="rounded px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-60" style={{ background: "#2E7D57" }}
                     title={t({ tr: "Hattın bölgesinden OpenStreetMap durak koordinatlarını + gerçek hattı çeker → projeye yazar.", en: "Fetches OpenStreetMap stop coordinates + the real line from the line's region → writes them to the project.", de: "Holt OpenStreetMap-Haltestellenkoordinaten + die echte Linie aus der Region der Linie → schreibt sie ins Projekt." })}>
                     {gtfsYukle === "yukleniyor" ? t({ tr: "⟳ OSM’den çekiliyor…", en: "⟳ Fetching from OSM…", de: "⟳ Wird aus OSM geholt…" }) : t({ tr: "⤓ OSM’den çek", en: "⤓ Fetch from OSM", de: "⤓ Aus OSM holen" })}
                   </button>
-                  <button type="button" onClick={() => setKoordAcik(true)} className="rounded px-2 py-1 text-[0.7rem] font-medium" style={{ border: `1px solid ${brand.border}`, color: brand.muted }}><Ikon ad="hedef" size={12} className="mr-0.5 inline-block align-[-1px]" />{t({ tr: "elle gir", en: "enter by hand", de: "manuell eingeben" })}</button>
+                  <button type="button" onClick={() => setKoordAcik(true)} className="rounded px-2 py-1 text-xs font-medium" style={{ border: `1px solid ${brand.border}`, color: brand.muted }}><Ikon ad="hedef" size={12} className="mr-0.5 inline-block align-[-1px]" />{t({ tr: "elle gir", en: "enter by hand", de: "manuell eingeben" })}</button>
                 </div>
               </div>
               <div className="flex flex-col rounded-md border p-2.5" style={{ borderColor: CK.amber, background: CK.amberBg }}>
                 <div className="text-[0.74rem] font-bold" style={{ color: CK.amberInk }}>② <Ikon ad="cetvel" size={13} className="mx-0.5 inline-block align-[-2px]" />{t({ tr: "CAD / GTFS içe aktar", en: "Import CAD / GTFS", de: "CAD / GTFS importieren" })}</div>
-                <div className="mt-0.5 text-[0.68rem] leading-snug" style={{ color: brand.inkSoft }}>
+                <div className="mt-0.5 text-xs leading-snug" style={{ color: brand.inkSoft }}>
                   <b>{t({ tr: "İnşaat halindeki / OSM’de OLMAYAN", en: "Under construction / NOT in OSM", de: "Im Bau / NICHT in OSM" })}</b> {t({ tr: "hatlar için. CAD güzergâh projenizden koordinat + geometri", en: "lines. Coordinates + geometry from your CAD alignment project are imported into", de: "Linien. Koordinaten + Geometrie aus Ihrem CAD-Trassierungsprojekt werden in" })} <b>{t({ tr: "projenize", en: "your project", de: "Ihr Projekt" })}</b> {t({ tr: "aktarılır (~150 m, kaynak koduna gömülü değil).", en: "imported (~150 m, not embedded in source code).", de: "importiert (~150 m, nicht im Quellcode eingebettet)." })}
                 </div>
                 {isletme.gtfsHazir ? (
                   <button type="button" onClick={gtfsIceAktar} disabled={gtfsYukle === "yukleniyor"}
-                    className="mt-auto self-start rounded px-2.5 py-1 text-[0.7rem] font-semibold text-white disabled:opacity-60" style={{ background: "#2E7D57", marginTop: "0.5rem" }}
+                    className="mt-auto self-start rounded px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-60" style={{ background: "#2E7D57", marginTop: "0.5rem" }}
                     title={t({ tr: "Bu hattın CAD güzergâhından üretilmiş GTFS'ini indirir → koordinat + geometriyi PROJENE yazar (makas/sinyal korunur).", en: "Downloads the GTFS generated from this line's CAD alignment → writes coordinates + geometry to YOUR project (turnouts/signals preserved).", de: "Lädt das aus der CAD-Trassierung dieser Linie erzeugte GTFS herunter → schreibt Koordinaten + Geometrie in IHR Projekt (Weichen/Signale bleiben erhalten)." })}>
                     {gtfsYukle === "yukleniyor" ? t({ tr: "⟳ İçe aktarılıyor…", en: "⟳ Importing…", de: "⟳ Wird importiert…" }) : t({ tr: "⬇ Bu hattın CAD verisini içe aktar", en: "⬇ Import this line's CAD data", de: "⬇ CAD-Daten dieser Linie importieren" })}
                   </button>
                 ) : (
-                  <Link href="/#ringler" className="mt-auto self-start rounded px-2.5 py-1 text-[0.7rem] font-semibold" style={{ border: `1px solid ${CK.amber}`, color: CK.amberInk, marginTop: "0.5rem" }}>
+                  <Link href="/#ringler" className="mt-auto self-start rounded px-2.5 py-1 text-xs font-semibold" style={{ border: `1px solid ${CK.amber}`, color: CK.amberInk, marginTop: "0.5rem" }}>
                     <Ikon ad="klasor" size={13} className="mr-1 inline-block align-[-2px]" />{t({ tr: "Ringler → Dosyadan İçe Aktar (GTFS / DXF)", en: "Rings → Import from File (GTFS / DXF)", de: "Ringe → Aus Datei importieren (GTFS / DXF)" })}
                   </Link>
                 )}
               </div>
             </div>
-            <div className="mt-1.5 text-[0.64rem]" style={{ color: brand.faint }}>
+            <div className="mt-1.5 text-xs" style={{ color: brand.faint }}>
               {t({ tr: "Sahte konum üretilmez — koordinat yalnız gerçek kaynaktan (OSM ya da CAD) gelir.", en: "No fake positions are generated — coordinates come only from a real source (OSM or CAD).", de: "Es werden keine falschen Positionen erzeugt — Koordinaten stammen nur aus einer echten Quelle (OSM oder CAD)." })}
               <b style={{ color: brand.muted }}> {t({ tr: "Bu iki buton hattını DEĞİŞTİRMEZ", en: "These two buttons do NOT change your line", de: "Diese zwei Schaltflächen ÄNDERN Ihre Linie NICHT" })}</b> — {t({ tr: "kurduğun durak/mesafe/makas/sinyal aynen kalır; yalnız duraklara", en: "the stops/distances/turnouts/signals you built stay as is; only", de: "die von Ihnen erstellten Haltestellen/Distanzen/Weichen/Signale bleiben unverändert; nur" })} <b>{t({ tr: "koordinat + harita hizası", en: "coordinates + map alignment", de: "Koordinaten + Kartenausrichtung" })}</b> {t({ tr: "eklenir. OSM eşleşmesi", en: "are added to the stops. OSM matching is", de: "werden den Haltestellen hinzugefügt. Die OSM-Zuordnung erfolgt" })} <b>{t({ tr: "durak ADINA", en: "by stop NAME", de: "nach Haltestellen-NAME" })}</b> {t({ tr: "göredir (adlar gerçek/OSM'de kayıtlı olmalı).", en: "(names must be real/registered in OSM).", de: "(Namen müssen echt/in OSM erfasst sein)." })}
             </div>
           </div>
         )}
         {agGorunum === "harita" && (
-          <div className="mb-3 rounded-lg border-l-4 px-3 py-2.5 text-[0.72rem] leading-relaxed" style={{ borderColor: brand.ink, background: CK.goodBgSoft, color: brand.inkSoft }}>
+          <div className="mb-3 rounded-lg border-l-4 px-3 py-2.5 text-xs leading-relaxed" style={{ borderColor: brand.ink, background: CK.goodBgSoft, color: brand.inkSoft }}>
             <div className="flex items-center justify-between gap-2">
               <span className="font-semibold" style={{ color: brand.ink }}>ℹ️ {t({ tr: "Var olan hat → OSM · yeni / inşaat hattı → CAD", en: "Existing line → OSM · new / under-construction line → CAD", de: "Bestehende Linie → OSM · neue / im Bau befindliche Linie → CAD" })}</span>
-              <button type="button" onClick={() => setHaritaBilgi((o) => !o)} className="shrink-0 text-[0.68rem] underline" style={{ color: brand.muted }}>{haritaBilgi ? t({ tr: "gizle", en: "hide", de: "ausblenden" }) : t({ tr: "detay", en: "detail", de: "Detail" })}</button>
+              <button type="button" onClick={() => setHaritaBilgi((o) => !o)} className="shrink-0 text-xs underline" style={{ color: brand.muted }}>{haritaBilgi ? t({ tr: "gizle", en: "hide", de: "ausblenden" }) : t({ tr: "detay", en: "detail", de: "Detail" })}</button>
             </div>
             {haritaBilgi && (
               <>
@@ -1138,9 +1138,9 @@ function StudioIc() {
                   const renk = b.tren === knockOn.hedefTren ? brand.ink : (b.ikincil > 3 ? CK.red : "#C3CAD2");
                   return (
                     <div key={b.tren} className="flex flex-1 flex-col items-center justify-end" title={`${b.tren + 1}. ${t({ tr: "tren", en: "train", de: "Zug" })}: ${b.tren === knockOn.hedefTren ? `${t({ tr: "birincil", en: "primary", de: "primär" })} ${b.birincil} s` : `knock-on ${b.ikincil} s`}`}>
-                      {v > 0 && <span className="text-[9px]" style={{ color: renk }}>{Math.round(v)}</span>}
+                      {v > 0 && <span className="text-xs" style={{ color: renk }}>{Math.round(v)}</span>}
                       <div style={{ height: `${(v / maxV) * 92}px`, width: "70%", background: renk, borderRadius: "2px 2px 0 0" }} />
-                      <span className="mt-0.5 text-[9px]" style={{ color: brand.muted }}>{b.tren + 1}</span>
+                      <span className="mt-0.5 text-xs" style={{ color: brand.muted }}>{b.tren + 1}</span>
                     </div>
                   );
                 })}
@@ -1375,7 +1375,7 @@ function MonteCarloGrafik({ mc }: { mc: MonteCarloResult }) {
           <text x={L + PW / 2} y={H - 5} textAnchor="middle" fontSize={9} fill={CK.muted}>{t({ tr: "varış gecikmesi →", en: "arrival delay →", de: "Ankunftsverspätung →" })}</text>
           <text x={L + PW} y={H - 5} textAnchor="end" fontSize={9} fill={CK.muted} style={{ fontVariantNumeric: "tabular-nums" }}>{sure(maxD)}</text>
         </svg>
-        <div className="mt-1 flex flex-wrap items-center gap-3 text-[0.65rem]" style={{ color: brand.muted }}>
+        <div className="mt-1 flex flex-wrap items-center gap-3 text-xs" style={{ color: brand.muted }}>
           <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm" style={{ background: CK.blue }} /> {t({ tr: "dakik (eşik altı)", en: "on time (below threshold)", de: "pünktlich (unter Schwelle)" })}</span>
           <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm" style={{ background: CK.red }} /> {t({ tr: "geç (eşik üstü)", en: "late (above threshold)", de: "verspätet (über Schwelle)" })}</span>
           <span>{t({ tr: "· çubuk = o gecikme aralığına düşen sefer oranı", en: "· bar = share of services in that delay band", de: "· Balken = Anteil der Fahrten in diesem Verspätungsbereich" })}</span>

@@ -30,7 +30,7 @@ export function TalepZinciri({ t, dolulukHedefi = 0.85 }: { t: Zincir; dolulukHe
   const ok = (etiket: string) => (
     <div className="flex flex-col items-center justify-center px-1" style={{ color: brand.muted }}>
       <div className="text-lg leading-none">→</div>
-      <div className="mt-0.5 text-center text-[10px] leading-tight" style={{ maxWidth: 90 }}>{etiket}</div>
+      <div className="mt-0.5 text-center text-xs leading-tight" style={{ maxWidth: 90 }}>{etiket}</div>
     </div>
   );
 

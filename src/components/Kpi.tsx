@@ -59,7 +59,7 @@ export function Kpi({
         {birim != null && <span className="ml-1 text-sm font-medium" style={{ color: brand.muted }}>{birim}</span>}
       </div>
       {alt != null && (
-        <span className="mt-0.5 block text-[0.65rem] leading-snug" style={{ color: ton === "danger" ? ds.status.danger : brand.muted }}>
+        <span className="mt-0.5 block text-xs leading-snug" style={{ color: ton === "danger" ? ds.status.danger : brand.muted }}>
           {alt}
         </span>
       )}
@@ -86,7 +86,7 @@ export function Durum({ tip, metin, className = "" }: { tip: "uygun" | "uyari" |
   const { t } = useDil();
   const d = DURUM_STIL[tip];
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.7rem] font-semibold ${className}`.trim()} style={{ background: d.bg, color: d.fg }}>
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${className}`.trim()} style={{ background: d.bg, color: d.fg }}>
       {d.ik} {metin ?? t(d.et)}
     </span>
   );

@@ -174,14 +174,14 @@ export function SistemMerkezi() {
                   <span style={{ color: brand.faint }}> (×{maks.kavsakDetay.faktor})</span>
                 </span>
               </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[0.72rem]" style={{ color: brand.inkSoft }}>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs" style={{ color: brand.inkSoft }}>
                 <span>{t({ tr: "tanzim ", en: "setup ", de: "Bildung " })}<b>{Math.round(maks.kavsakDetay.tSetup)} s</b></span>
                 <span>{t({ tr: "görme ", en: "sighting ", de: "Sicht " })}<b>{maks.kavsakDetay.tGorme} s</b></span>
                 <span>{t({ tr: "geçiş + ", en: "transit + ", de: "Durchfahrt + " })}<b>{Math.round(stock.length)} m</b>{t({ tr: " tren temizleme ", en: " train clearing ", de: " Zugräumung " })}<b>{Math.round(maks.kavsakDetay.tGecis)} s</b></span>
                 <span>{t({ tr: "release ", en: "release ", de: "Auflösung " })}<b>{Math.round(maks.kavsakDetay.tRelease)} s</b></span>
                 <span style={{ color: brand.muted }}>{t({ tr: "= tek geçiş ", en: "= single transit ", de: "= Einzeldurchfahrt " })}{Math.round(maks.kavsakDetay.tekGecis)} s</span>
               </div>
-              <div className="mt-1.5 text-[0.7rem]" style={{ color: brand.muted }}>
+              <div className="mt-1.5 text-xs" style={{ color: brand.muted }}>
                 {t({ tr: "Fouling bölgesi ", en: "The fouling zone ", de: "Der Gefahrraum " })}{Math.round(maks.kavsakDetay.foulUzunluk)}{t({ tr: " m (kısıt bölgesi + tren boyu) ", en: " m (constraint zone + train length) ", de: " m (Engpassbereich + Zuglänge) " })}{Math.round(maks.kavsakDetay.gecisHizi * 3.6)}{t({ tr: " km/h geçiş hızında temizlenir; karşı-yön varış+kalkış crossover'ı sırayla kullandığından ×", en: " km/h transit speed clears it; since the opposing-direction arrival+departure use the crossover in sequence, ×", de: " km/h Durchfahrtsgeschwindigkeit räumt ihn; da Ankunft+Abfahrt der Gegenrichtung den Crossover nacheinander nutzen, ×" })}{maks.kavsakDetay.faktor}{t({ tr: ". Uzun araç kavşağı daha uzun işgal eder.", en: ". A longer vehicle occupies the junction longer.", de: ". Ein längeres Fahrzeug belegt die Kreuzung länger." })}
               </div>
             </div>
@@ -232,12 +232,12 @@ export function SistemMerkezi() {
                       {parcalar.map(([v, c], j) => v > 0 && <div key={j} style={{ height: `${(v / b.toplam) * 100}%`, background: c }} />)}
                     </div>
                   </div>
-                  <span className="shrink-0 text-[0.55rem]" style={{ color: kritik ? kritikRenk : CK.faint }}>{b.i}</span>
+                  <span className="shrink-0 text-xs" style={{ color: kritik ? kritikRenk : CK.faint }}>{b.i}</span>
                 </div>
               );
             })}
           </div>
-          <div className="mt-1 flex flex-wrap gap-2 text-[0.6rem]" style={{ color: brand.muted }}>
+          <div className="mt-1 flex flex-wrap gap-2 text-xs" style={{ color: brand.muted }}>
             {BT_PARCA.map(([ad, c]) => (
               <span key={ad} className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: c }} />{ad}</span>
             ))}
@@ -267,8 +267,8 @@ export function SistemMerkezi() {
                       <span className="rounded px-1.5 py-0.5 font-mono font-semibold" style={{ background: kritik ? kritikRenk : CK.track, color: kritik ? "#fff" : brand.inkSoft }}>{tt({ tr: "Blok ", en: "Block ", de: "Block " })}{t.b.i}</span>
                       <span className="font-medium" style={{ color: brand.ink }}>{t.ad}</span>
                       <span className="font-mono" style={{ color: asiyor ? CK.red : brand.muted }}>{sure(t.b.toplam)}</span>
-                      {kritik && <span className="rounded px-1.5 py-0.5 text-[0.6rem] font-semibold" style={{ background: kritikRenk, color: "#fff" }}>{tt({ tr: "KRİTİK — min headway", en: "CRITICAL — min headway", de: "KRITISCH — Zugfolgezeit" })}</span>}
-                      {asiyor && !kritik && <span className="rounded px-1.5 py-0.5 text-[0.6rem] font-semibold" style={{ background: CK.amberBg, color: CK.amberInk }}>{tt({ tr: "hedefi aşıyor", en: "exceeds target", de: "überschreitet Ziel" })}</span>}
+                      {kritik && <span className="rounded px-1.5 py-0.5 text-xs font-semibold" style={{ background: kritikRenk, color: "#fff" }}>{tt({ tr: "KRİTİK — min headway", en: "CRITICAL — min headway", de: "KRITISCH — Zugfolgezeit" })}</span>}
+                      {asiyor && !kritik && <span className="rounded px-1.5 py-0.5 text-xs font-semibold" style={{ background: CK.amberBg, color: CK.amberInk }}>{tt({ tr: "hedefi aşıyor", en: "exceeds target", de: "überschreitet Ziel" })}</span>}
                       <a href={href} className="ml-auto rounded-md px-2.5 py-1 text-xs font-medium text-white transition hover:opacity-90" style={{ background: brand.ink }}>
                         {t.hedef === "ringler" ? tt({ tr: "→ Ringler'de düzelt", en: "→ Fix in Ringler", de: "→ In Ringler korrigieren" }) : tt({ tr: "→ Sefer'de düzelt", en: "→ Fix in Sefer", de: "→ In Sefer korrigieren" })}
                       </a>
@@ -317,7 +317,7 @@ export function SistemMerkezi() {
             <MiniStat etiket={t({ tr: "Önerilen filo (sürdürülebilir kapasite)", en: "Recommended fleet (sustainable capacity)", de: "Empfohlene Flotte (nachhaltige Kapazität)" })} deger={`${maks.nSurdurulebilir} araç`} vurgu={OK} />
           </div>
           <NedenDetay className="mt-1.5" ozet={t({ tr: "bu iki sayı neden farklı? (sürdürülebilir ↔ ihtiyaç)", en: "why do these two numbers differ? (sustainable ↔ need)", de: "warum unterscheiden sich diese zwei Zahlen? (nachhaltig ↔ Bedarf)" })}>
-            <div className="text-[0.68rem]" style={{ color: brand.muted }}>
+            <div className="text-xs" style={{ color: brand.muted }}>
               {t({ tr: "“Önerilen filo (sürdürülebilir)” = hattın toparlanma paylı, HER GÜN RAHAT çalışabileceği en çok araç (UIC 406 kapasite tavanının altında güvenli bölge). Sefer’deki “Önerilen tramvay (ihtiyaç)” ise senin HEDEF ARALIĞIN için gereken filodur — ikisi farklı kavramdır, eşit olmak zorunda değildir. ", en: "“Recommended fleet (sustainable)” = the most trams the line can run COMFORTABLY EVERY DAY with recovery margin (the safe zone below the UIC 406 capacity cap). The “Recommended trams (need)” on the Service page is the fleet required for YOUR TARGET HEADWAY — these are different concepts and need not be equal. ", de: "„Empfohlene Flotte (nachhaltig)“ = die meisten Straßenbahnen, die die Linie TÄGLICH KOMFORTABEL mit Erholungsreserve fahren kann (sicherer Bereich unter der UIC-406-Grenze). „Empfohlene Straßenbahnen (Bedarf)“ auf der Betriebsseite ist die für IHRE ZIEL-ZUGFOLGEZEIT erforderliche Flotte — verschiedene Begriffe, müssen nicht gleich sein. " })}{t({ tr: "Aynı temel → iki farklı karar: ", en: "Same base → two different decisions: ", de: "Dieselbe Grundlage → zwei verschiedene Entscheidungen: " })}<b style={{ color: "#2350B8" }}>{t({ tr: "Operasyonel", en: "Operational", de: "Betrieblich" })}</b>{t({ tr: " (istenen aralığı hangi filo verir) · ", en: " (which fleet delivers the desired headway) · ", de: " (welche Flotte die gewünschte Zugfolgezeit liefert) · " })}<b>{t({ tr: "Risk", en: "Risk", de: "Risiko" })}</b>{t({ tr: " (gecikmeye rağmen güvenilirlik+konfor için min filo).", en: " (min fleet for reliability+comfort despite delays).", de: " (Mindestflotte für Zuverlässigkeit+Komfort trotz Verzögerungen)." })}
             </div>
           </NedenDetay>

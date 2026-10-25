@@ -130,9 +130,9 @@ export function Tarife({ cevrimSn, headwaySn }: { cevrimSn: number; headwaySn: n
 function Ozet({ et, d, alt }: { et: string; d: string; alt: string }) {
   return (
     <div className="ds-card p-2.5">
-      <div className="text-[0.6rem] uppercase" style={{ color: brand.muted }}>{et}</div>
+      <div className="text-xs uppercase" style={{ color: brand.muted }}>{et}</div>
       <div className="text-lg font-bold tabular-nums" style={{ color: brand.ink }}>{d}</div>
-      <div className="text-[0.6rem]" style={{ color: brand.muted }}>{alt}</div>
+      <div className="text-xs" style={{ color: brand.muted }}>{alt}</div>
     </div>
   );
 }

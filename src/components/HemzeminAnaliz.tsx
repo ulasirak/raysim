@@ -79,14 +79,14 @@ export function HemzeminAnaliz({ rings, cfg, cevrimSn }: { rings: DurakArasiRing
                 <div style={{ width: `${(x.bekle / maxTot) * 100}%`, background: waitRenk }} title={`${t({ tr: "bekleme", en: "wait", de: "Wartezeit" })} ${Math.round(x.bekle)} s`} />
               </div>
               <span className="w-10 shrink-0 text-right tabular-nums" style={{ color: i === 0 ? CK.red : brand.ink, fontWeight: i === 0 ? 800 : 600 }}>{Math.round(toplam)}s</span>
-              {x.tsp && <span className="w-20 shrink-0 text-right text-[0.62rem] font-semibold" style={{ color: waitRenk }}>{TSP_AD[x.tsp]}</span>}
+              {x.tsp && <span className="w-20 shrink-0 text-right text-xs font-semibold" style={{ color: waitRenk }}>{TSP_AD[x.tsp]}</span>}
             </div>
           );
         })}
       </div>
 
       {/* Açıklama + lejant */}
-      <div className="mt-3 flex flex-col gap-1 text-[0.72rem]" style={{ color: brand.muted }}>
+      <div className="mt-3 flex flex-col gap-1 text-xs" style={{ color: brand.muted }}>
         <span>
           <span style={{ color: "#9AA7B2" }}>■</span> {t({ tr: "yavaşlama (≈ rampa hariç; gerçeği motor çevriminde)", en: "slowdown (≈ excl. ramp; true value in engine cycle)", de: "Verlangsamung (≈ ohne Rampe; echter Wert im Umlauf)" })} · {t({ tr: "bekleme rengi = TSP modu:", en: "wait colour = TSP mode:", de: "Wartezeitfarbe = TSP-Modus:" })}
           {" "}<span style={{ color: CK.blue }}>■</span> {TSP_AD.elle} · <span style={{ color: CK.red }}>■</span> {TSP_AD.yok} · <span style={{ color: CK.amber }}>■</span> {TSP_AD.pasif} · <span style={{ color: CK.good }}>■</span> {TSP_AD.aktif}

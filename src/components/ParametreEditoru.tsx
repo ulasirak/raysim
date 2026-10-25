@@ -98,10 +98,10 @@ export function ParametreEditoru() {
               <div key={m.key} className="flex items-center gap-3 rounded border p-2.5" style={{ borderColor: brand.border }}>
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium" style={{ color: brand.ink }}>{cevir(m.ad, AD_CEV)}</div>
-                  <div className="text-[0.7rem]" style={{ color: brand.muted }}>{cevir(m.etkiler, ETKI_CEV)}</div>
+                  <div className="text-xs" style={{ color: brand.muted }}>{cevir(m.etkiler, ETKI_CEV)}</div>
                   <div className="mt-1 flex flex-wrap gap-1">
-                    {m.moduller.map((mm) => (<span key={mm} className="rounded px-1.5 py-0.5 text-[0.6rem] font-medium" style={{ background: MODUL_RENK[mm] + "1A", color: MODUL_RENK[mm] }}>{mm}</span>))}
-                    <span className="rounded px-1.5 py-0.5 text-[0.6rem] font-mono" style={{ background: CK.track, color: brand.faint }}>{m.kaynak}</span>
+                    {m.moduller.map((mm) => (<span key={mm} className="rounded px-1.5 py-0.5 text-xs font-medium" style={{ background: MODUL_RENK[mm] + "1A", color: MODUL_RENK[mm] }}>{mm}</span>))}
+                    <span className="rounded px-1.5 py-0.5 text-xs font-mono" style={{ background: CK.track, color: brand.faint }}>{m.kaynak}</span>
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">

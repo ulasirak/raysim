@@ -105,7 +105,7 @@ export function CakismaCozumPaneli() {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr style={{ color: brand.muted }} className="text-left text-[0.68rem] uppercase tracking-wide">
+              <tr style={{ color: brand.muted }} className="text-left text-xs uppercase tracking-wide">
                 <th className="px-3 py-2 font-medium">{t({ tr: "Tren", en: "Train", de: "Zug" })}</th>
                 <th className="px-3 py-2 text-right font-medium">{t({ tr: "Eşit-aralık kalkış", en: "Even-spacing departure", de: "Gleichtakt-Abfahrt" })}</th>
                 <th className="px-3 py-2 text-right font-medium">{t({ tr: "Önerilen kalkış", en: "Suggested departure", de: "Empfohlene Abfahrt" })}</th>
@@ -137,7 +137,7 @@ export function CakismaCozumPaneli() {
           <Kpi etiket={t({ tr: "Çakışmasız maks filo", en: "Conflict-free max fleet", de: "Konfliktfreie max. Flotte" })} deger={maxFilo != null ? `${maxFilo}` : "—"} ton={maxFilo != null && maxFilo >= filo ? "success" : "danger"} boyut="lg"
             alt={t({ tr: "tek-hat kısıtı altında (block'tan ayrı)", en: "under the single-track constraint (separate from block)", de: "unter der Eingleis-Beschränkung (getrennt vom Block)" })} />
           <Kpi etiket={t({ tr: "Mevcut filo", en: "Current fleet", de: "Aktuelle Flotte" })} deger={`${filo}`} boyut="sm" alt={`${cak.spanlar.length} ${t({ tr: "tek-hat kesim", en: "single-track sections", de: "eingleisige Abschnitte" })}`} />
-          <p className="text-[0.68rem] leading-snug" style={{ color: brand.muted }}>
+          <p className="text-xs leading-snug" style={{ color: brand.muted }}>
             {t({ tr: "Kaydırma = eşit-aralık kalkışa göre öteleme. Tren 1 referans (0) sabit; diğerleri buna göre kaydırılır. Öneri salt çizelge; canlı sim değişmez.", en: "Shift = offset relative to the even-spacing departure. Train 1 is the reference (0) and fixed; the others are shifted against it. The suggestion is schedule-only; the live sim is unchanged.", de: "Verschiebung = Versatz gegenüber der Gleichtakt-Abfahrt. Zug 1 ist die Referenz (0) und fest; die übrigen werden dagegen verschoben. Der Vorschlag betrifft nur den Fahrplan; die Live-Simulation bleibt unverändert." })}
           </p>
         </div>

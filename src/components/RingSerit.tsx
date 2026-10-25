@@ -83,7 +83,7 @@ export function KisitSeridi({ ring, kisitlar, konumSuresi, onTasi, ekleTuru, onS
 
   return (
     <div className="mt-3 select-none">
-      <div className="mb-1 flex justify-between text-[0.62rem]" style={{ color: brand.faint }}>
+      <div className="mb-1 flex justify-between text-xs" style={{ color: brand.faint }}>
         <span>0 m · 0 s</span>
         <span>{ekleTuru ? t({ tr: "şeride tıkla → buraya ekle", en: "click the strip → add here", de: "auf den Streifen klicken → hier hinzufügen" }) : t({ tr: "noktayı sürükle → taşı", en: "drag the marker → move", de: "Markierung ziehen → verschieben" })}</span>
         <span>{Math.round(ring.uzunluk)} m · ≈{Math.round(konumSuresi(ring.uzunluk))} s</span>
@@ -99,7 +99,7 @@ export function KisitSeridi({ ring, kisitlar, konumSuresi, onTasi, ekleTuru, onS
         <SeritDurak sol={100} ad={ring.toAd} sag />
         {/* Boş şerit ipucu: sürüklenecek "nokta" = makas/geçit/tehlike; önce ＋ ile eklenir. */}
         {kisitlar.length === 0 && !ekleTuru && (
-          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-[0.62rem]" style={{ color: brand.faint }}>
+          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-xs" style={{ color: brand.faint }}>
             {t({ tr: "＋ makas / geçit / tehlike ekleyin, sonra sürükleyerek konumlandırın", en: "＋ add a switch / crossing / hazard, then drag to position", de: "＋ Weiche / Übergang / Gefahrenstelle hinzufügen, dann durch Ziehen positionieren" })}
           </span>
         )}
@@ -115,10 +115,10 @@ export function KisitSeridi({ ring, kisitlar, konumSuresi, onTasi, ekleTuru, onS
               className="absolute top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
               style={{ left: `${sol}%`, cursor: "grab" }}
             >
-              <span className="flex h-5 w-5 items-center justify-center rounded-full text-[0.7rem] text-white shadow" style={{ background: renk }}>
+              <span className="flex h-5 w-5 items-center justify-center rounded-full text-xs text-white shadow" style={{ background: renk }}>
                 {KISIT_IKON[k.tur]}
               </span>
-              <span className="mt-0.5 whitespace-nowrap font-mono text-[0.55rem]" style={{ color: renk }}>
+              <span className="mt-0.5 whitespace-nowrap font-mono text-xs" style={{ color: renk }}>
                 ≈{Math.round(konumSuresi(k.konum))}s
               </span>
             </button>
@@ -180,7 +180,7 @@ export function EkleFormu({ tur, konum: konum0, uzunluk, konumSuresi, sureKonumu
     <div className="mt-3 rounded-lg border-2 p-3" style={{ borderColor: brand.red, background: "#FDF6F7" }}>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-1">
         <span className="font-brand text-sm font-semibold" style={{ color: brand.ink }}>{baslik}</span>
-        <span className="text-[0.65rem]" style={{ color: brand.muted }}>{t({ tr: "süreler el kitabından (MAZ-VA-AKS-001) ön-dolu · ayarlayıp ekleyin", en: "times pre-filled from the manual (MAZ-VA-AKS-001) · adjust and add", de: "Zeiten aus dem Handbuch (MAZ-VA-AKS-001) vorausgefüllt · anpassen und hinzufügen" })}</span>
+        <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "süreler el kitabından (MAZ-VA-AKS-001) ön-dolu · ayarlayıp ekleyin", en: "times pre-filled from the manual (MAZ-VA-AKS-001) · adjust and add", de: "Zeiten aus dem Handbuch (MAZ-VA-AKS-001) vorausgefüllt · anpassen und hinzufügen" })}</span>
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Num label={t({ tr: "Konum", en: "Position", de: "Position" })} suffix="m" step={10} value={konum} onChange={(v) => setKonum(Math.max(0, Math.min(uzunluk, v)))} hata={konum < 0 || konum > uzunluk} />
@@ -208,7 +208,7 @@ export function EkleFormu({ tur, konum: konum0, uzunluk, konumSuresi, sureKonumu
                   </button>
                 ))}
               </div>
-              <span className="mt-0.5 block text-[0.6rem]" style={{ color: brand.muted }}>{t({ tr: "uç (dönüş) makasında turnback yolu belirler: S=1, X=2", en: "at the terminal (turnback) switch it sets the turnback paths: S=1, X=2", de: "an der Endstellen-(Wende-)Weiche bestimmt es die Wendewege: S=1, X=2" })}</span>
+              <span className="mt-0.5 block text-xs" style={{ color: brand.muted }}>{t({ tr: "uç (dönüş) makasında turnback yolu belirler: S=1, X=2", en: "at the terminal (turnback) switch it sets the turnback paths: S=1, X=2", de: "an der Endstellen-(Wende-)Weiche bestimmt es die Wendewege: S=1, X=2" })}</span>
             </label>
             <Num label={t({ tr: "Motor/adım süresi", en: "Motor/step time", de: "Motor-/Schrittzeit" })} suffix="s" step={1} value={adim} onChange={setAdim} />
             <Num label="Route release" suffix="s" step={1} value={release} onChange={setRelease} />
@@ -248,7 +248,7 @@ function SeritDurak({ sol, ad, sag = false }: { sol: number; ad: string; sag?: b
   return (
     <div className="absolute top-0 h-full w-0.5" style={{ left: `${sol}%`, transform: `translateX(${sag ? "-100%" : "0"})` }}>
       <span className="block h-full w-0.5" style={{ background: brand.ink }} />
-      <span className="absolute -bottom-4 whitespace-nowrap text-[0.55rem] font-medium"
+      <span className="absolute -bottom-4 whitespace-nowrap text-xs font-medium"
         style={{ color: brand.ink, ...(sag ? { right: 0 } : { left: 0 }) }}>◉ {ad}</span>
     </div>
   );

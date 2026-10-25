@@ -63,7 +63,7 @@ export function OdemeModal() {
               <a href={odemeUrlYedek} target="_blank" rel="noopener noreferrer" className="underline" style={{ color: brand.red }}>Yeni sekmede aç →</a>
             </div>
           )}
-          <p className="mt-3 text-center text-[0.7rem] leading-relaxed" style={{ color: brand.faint }}>
+          <p className="mt-3 text-center text-xs leading-relaxed" style={{ color: brand.faint }}>
             Kart bilgileri doğrudan iyzico&apos;da işlenir; RaySim kart bilgisi görmez.
             Vazgeçmek için “Vazgeç”e basın (ya da ESC) — sitede kalırsınız.
           </p>

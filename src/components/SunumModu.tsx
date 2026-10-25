@@ -162,7 +162,7 @@ function DilSecici({ dil, setDil, koyu }: { dil: Dil; setDil: (d: Dil) => void; 
     <div className="flex items-center gap-1 rounded-full p-0.5" style={{ background: koyu ? "#0A1826" : "#12314A" }}>
       {DILLER.map((d) => (
         <button key={d} type="button" onClick={() => setDil(d)}
-          className="rounded-full px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide transition"
+          className="rounded-full px-2 py-0.5 text-xs font-bold uppercase tracking-wide transition"
           style={dil === d ? { background: brand.gold, color: "#0C2233" } : { color: "#93A6B6" }}>{d}</button>
       ))}
     </div>
@@ -267,7 +267,7 @@ export function SunumModu() {
           <path d="M17 34 L21.5 13 M29 34 L24.5 13" stroke="#E7ECF1" strokeWidth="1.6" strokeLinecap="round" />
           <path d="M18.4 28 L27.6 28 M19.3 24 L26.7 24 M20 20.5 L26 20.5 M20.7 17.5 L25.3 17.5" stroke="#C8102E" strokeWidth="1.4" strokeLinecap="round" />
         </svg>
-        <div className="font-brand text-[0.72rem] font-bold tracking-[0.32em]" style={{ color: "#E7D9B0" }}>{m.faz}</div>
+        <div className="font-brand text-xs font-bold tracking-[0.32em]" style={{ color: "#E7D9B0" }}>{m.faz}</div>
         <h1 className="font-brand mt-3 text-5xl font-semibold tracking-tight text-white sm:text-6xl">{m.baslik}</h1>
         <p className="mt-5 max-w-2xl text-sm leading-relaxed sm:text-base" style={{ color: "#C4D2DE" }}>{m.anlatim}</p>
 
@@ -313,7 +313,7 @@ export function SunumModu() {
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-mono text-sm font-bold tabular-nums"
             style={{ background: brand.red, color: "#fff", boxShadow: `0 0 0 4px ${brand.red}33` }}>{a.no}</span>
           <div className="min-w-0">
-            <div className="font-brand text-[0.68rem] font-bold tracking-[0.2em]" style={{ color: "#E7D9B0" }}>
+            <div className="font-brand text-xs font-bold tracking-[0.2em]" style={{ color: "#E7D9B0" }}>
               {m.faz}<span className="ml-1 font-mono tracking-normal" style={{ color: "#7E93A6" }}>· {i + 1}/{TOPLAM}</span>
             </div>
             <div className="text-sm font-semibold text-white">{m.baslik}</div>

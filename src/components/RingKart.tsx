@@ -151,7 +151,7 @@ export function RingKart(p: KartProps) {
               <SubBaslik>{t({ tr: "Mesafe Köşeleri (worst/best = en kötü/en iyi)", en: "Distance corner cases (worst/best)", de: "Entfernungs-Grenzfälle (Worst/Best)" })}</SubBaslik>
               <div className="mb-2 text-xs" style={{ color: brand.muted }}>
                 <b style={{ color: brand.ink }}>{ring.fromAd} → {ring.toAd}</b> · nominal <b style={{ color: brand.ink }}>{Math.round(ring.uzunluk)} m</b>
-                <div className="mt-0.5 text-[0.65rem]" style={{ color: brand.faint }}>{t({ tr: "Ad · mesafe · hız · bekleme · parklanma → üstteki ", en: "Name · distance · speed · dwell · stabling → in the ", de: "Name · Entfernung · Geschwindigkeit · Haltezeit · Abstellung → im oberen " })}<b>“{t({ tr: "Duraklar & Mesafeler", en: "Stops & Distances", de: "Haltestellen & Entfernungen" })}”</b>{t({ tr: " panelinde. Burada yalnız worst/best köşeleri + kısıtlar.", en: " panel above. Here only the worst/best corner cases + constraints.", de: "-Panel. Hier nur die Worst/Best-Grenzfälle + Einschränkungen." })}</div>
+                <div className="mt-0.5 text-xs" style={{ color: brand.faint }}>{t({ tr: "Ad · mesafe · hız · bekleme · parklanma → üstteki ", en: "Name · distance · speed · dwell · stabling → in the ", de: "Name · Entfernung · Geschwindigkeit · Haltezeit · Abstellung → im oberen " })}<b>“{t({ tr: "Duraklar & Mesafeler", en: "Stops & Distances", de: "Haltestellen & Entfernungen" })}”</b>{t({ tr: " panelinde. Burada yalnız worst/best köşeleri + kısıtlar.", en: " panel above. Here only the worst/best corner cases + constraints.", de: "-Panel. Hier nur die Worst/Best-Grenzfälle + Einschränkungen." })}</div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <Num label={t({ tr: "Best-case (en iyi) mesafe", en: "Best-case distance", de: "Best-Case-Entfernung" })} suffix="m" step={50} value={ring.bestUzunluk} onChange={(v) => p.onPatch({ bestUzunluk: v })} />
@@ -183,7 +183,7 @@ export function RingKart(p: KartProps) {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <SubBaslik>{t({ tr: "Kısıtlar & Zaman/Mesafe Şeridi", en: "Constraints & Time/Distance Strip", de: "Einschränkungen & Zeit-/Weg-Streifen" })}</SubBaslik>
               {/* Şeride ekleme modu — bir tür seç, sonra şeride tıkla */}
-              <div className="flex flex-wrap gap-1 text-[0.7rem]">
+              <div className="flex flex-wrap gap-1 text-xs">
                 <SeritEkleBtn aktif={ekleTuru?.kind === "makas"} renk={SERI.makasBlok}
                   onClick={() => setEkleTuru((e) => (e?.kind === "makas" ? null : { kind: "makas", tip: "headway" }))}>{t({ tr: "＋ makas", en: "＋ switch", de: "＋ Weiche" })}</SeritEkleBtn>
                 <SeritEkleBtn aktif={ekleTuru?.kind === "hemzemin" && ekleTuru.tip === "yaya"} renk={SERI.duzBlok}
@@ -214,7 +214,7 @@ export function RingKart(p: KartProps) {
             {kisitlar.length === 0 ? (
               <p className="mt-6 text-xs" style={{ color: brand.faint }}>{t({ tr: "Ringde makas/hemzemin/tehlike kısıtı yok — kesintisiz seyir. Yukarıdan bir tür seçip şeride tıklayarak ekleyin.", en: "No switch/level-crossing/hazard constraint in this section — uninterrupted run. Select a type above and click the strip to add.", de: "Keine Weichen-/Bahnübergang-/Gefahren-Einschränkung in diesem Abschnitt — durchgehende Fahrt. Oben einen Typ wählen und auf den Streifen klicken zum Hinzufügen." })}</p>
             ) : (
-              <div className="mt-6 flex flex-wrap items-center gap-1 text-[0.7rem]">
+              <div className="mt-6 flex flex-wrap items-center gap-1 text-xs">
                 <KisitRozet tur="durak" ad={ring.fromAd} konum={0} />
                 {kisitlar.map((k, i) => (
                   <span key={k.id} className="flex items-center gap-1">
@@ -306,7 +306,7 @@ export function RingKart(p: KartProps) {
               <div className="flex flex-col gap-2">
                 {ring.hemzeminler.map((h) => (
                   <div key={h.id} className="flex flex-wrap items-center gap-2 rounded border p-2" style={{ borderColor: brand.border }}>
-                    <span className="rounded px-1.5 py-0.5 text-[0.65rem] font-medium" style={{ background: h.tip === "yaya" ? "#EAF2FB" : "#FBF0EA", color: brand.inkSoft }}>{h.tip}</span>
+                    <span className="rounded px-1.5 py-0.5 text-xs font-medium" style={{ background: h.tip === "yaya" ? "#EAF2FB" : "#FBF0EA", color: brand.inkSoft }}>{h.tip}</span>
                     <input value={h.ad} placeholder={t({ tr: "ad", en: "name", de: "Name" })} onChange={(e) => p.onHzPatch(h.id, { ad: e.target.value })}
                       className="min-w-0 flex-1 rounded border px-1.5 py-1 text-xs" style={{ borderColor: brand.border, color: brand.ink }} />
                     <div className="w-20"><Num label={t({ tr: "Konum", en: "Position", de: "Position" })} suffix="m" step={10} value={h.konum} onChange={(v) => p.onHzPatch(h.id, { konum: v })} hata={h.konum < 0 || h.konum > ring.uzunluk} /></div>
@@ -316,7 +316,7 @@ export function RingKart(p: KartProps) {
                       const mod: TspSeviye = h.tsp ?? "elle";
                       return (
                         <>
-                          <label className="flex flex-col text-[0.58rem]" style={{ color: brand.faint }}>
+                          <label className="flex flex-col text-xs" style={{ color: brand.faint }}>
                             <span>{t({ tr: "Sinyal önceliği", en: "Signal priority", de: "Signalpriorität" })}</span>
                             <select value={mod} onChange={(e) => { const v = e.target.value as TspSeviye; const patch: Partial<DurakArasiRing["hemzeminler"][number]> = { tsp: v }; if (v !== "elle" && !h.sinyalDevri) { patch.sinyalDevri = 90; patch.yesilSure = 45; } p.onHzPatch(h.id, patch); }}
                               className="mt-0.5 rounded border px-1 py-1 text-xs" style={{ borderColor: brand.border, color: brand.ink }}>
@@ -332,7 +332,7 @@ export function RingKart(p: KartProps) {
                             <>
                               <div className="w-16"><Num label={t({ tr: "Devir C", en: "Cycle C", de: "Umlauf C" })} suffix="s" step={5} value={Math.round(h.sinyalDevri ?? 90)} onChange={(v) => p.onHzPatch(h.id, { sinyalDevri: Math.max(1, Math.round(v)) })} /></div>
                               <div className="w-16"><Num label={t({ tr: "Yeşil (tram)", en: "Green (tram)", de: "Grün (Tram)" })} suffix="s" step={5} value={Math.round(h.yesilSure ?? 45)} onChange={(v) => p.onHzPatch(h.id, { yesilSure: Math.max(0, Math.round(v)) })} /></div>
-                              <span className="self-end pb-1 text-[0.68rem]" style={{ color: brand.inkSoft }}>→ <b>{hemzeminBeklemeSn(h)} s</b> {t({ tr: "bekleme", en: "wait", de: "Wartezeit" })}</span>
+                              <span className="self-end pb-1 text-xs" style={{ color: brand.inkSoft }}>→ <b>{hemzeminBeklemeSn(h)} s</b> {t({ tr: "bekleme", en: "wait", de: "Wartezeit" })}</span>
                             </>
                           )}
                         </>
@@ -348,7 +348,7 @@ export function RingKart(p: KartProps) {
           {/* Tehlike / acil frenleme noktaları — nadir; katlanır (varsayılan kapalı, sayı rozetli) */}
           <details className="group mt-4 border-t pt-3" style={{ borderColor: brand.border }}>
             <summary className="mb-2 flex cursor-pointer select-none items-center justify-between">
-              <span className="flex items-center gap-1.5"><SubBaslik>{t({ tr: "Tehlike / Acil Frenleme Noktaları", en: "Hazard / Emergency Braking Points", de: "Gefahren- / Notbremspunkte" })}</SubBaslik>{ring.tehlikeNoktalari.length > 0 && <span className="rounded-full px-1.5 py-0.5 text-[0.6rem] font-bold leading-none" style={{ background: brand.ink, color: "#fff" }}>{ring.tehlikeNoktalari.length}</span>}<span className="text-[0.65rem]" style={{ color: brand.faint }}>{t({ tr: "▸ aç/kapa", en: "▸ toggle", de: "▸ auf/zu" })}</span></span>
+              <span className="flex items-center gap-1.5"><SubBaslik>{t({ tr: "Tehlike / Acil Frenleme Noktaları", en: "Hazard / Emergency Braking Points", de: "Gefahren- / Notbremspunkte" })}</SubBaslik>{ring.tehlikeNoktalari.length > 0 && <span className="rounded-full px-1.5 py-0.5 text-xs font-bold leading-none" style={{ background: brand.ink, color: "#fff" }}>{ring.tehlikeNoktalari.length}</span>}<span className="text-xs" style={{ color: brand.faint }}>{t({ tr: "▸ aç/kapa", en: "▸ toggle", de: "▸ auf/zu" })}</span></span>
               <button onClick={(e) => { e.preventDefault(); p.onTnEkle(); const d = (e.currentTarget as HTMLElement).closest("details"); if (d) d.open = true; }} title={HIZLI_EKLE_IPUCU} className="rounded px-2 py-1 text-xs font-medium" style={{ background: CK.track, color: brand.inkSoft }}>{t({ tr: "＋ ekle", en: "＋ add", de: "＋ hinzufügen" })}</button>
             </summary>
             {ring.tehlikeNoktalari.length === 0 ? (
@@ -377,7 +377,7 @@ export function RingKart(p: KartProps) {
               <div className="flex items-center gap-2">
                 <SubBaslik>{t({ tr: "Kurplar (Kavisler)", en: "Curves", de: "Bögen" })}</SubBaslik>
                 <button type="button" onClick={() => setKurpBilgi((v) => !v)}
-                  className="rounded-full border px-1.5 text-[0.7rem] font-bold leading-5"
+                  className="rounded-full border px-1.5 text-xs font-bold leading-5"
                   style={kurpBilgi ? { background: brand.ink, color: "#fff", borderColor: brand.ink } : { borderColor: brand.border, color: brand.inkSoft }}
                   title={t({ tr: "Kurp hızı ile fren/ivme nasıl bağlanır?", en: "How is curve speed linked to braking/acceleration?", de: "Wie hängt die Bogengeschwindigkeit mit Bremsung/Beschleunigung zusammen?" })}>{t({ tr: "ⓘ nasıl çalışır?", en: "ⓘ how does it work?", de: "ⓘ wie funktioniert es?" })}</button>
               </div>
@@ -439,7 +439,7 @@ export function RingKart(p: KartProps) {
                   return (
                     <div key={k.id} className="rounded border p-2" style={{ borderColor: brand.border }}>
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded px-1.5 py-0.5 text-[0.65rem] font-medium" style={{ background: "#F0EBF7", color: "#5B4184" }}>{t({ tr: "kurp", en: "curve", de: "Bogen" })}</span>
+                        <span className="rounded px-1.5 py-0.5 text-xs font-medium" style={{ background: "#F0EBF7", color: "#5B4184" }}>{t({ tr: "kurp", en: "curve", de: "Bogen" })}</span>
                         <input value={k.ad} placeholder={t({ tr: "ad", en: "name", de: "Name" })} onChange={(e) => p.onKurpPatch(k.id, { ad: e.target.value })}
                           className="w-24 rounded border px-1.5 py-1 text-xs" style={{ borderColor: brand.border, color: brand.ink }} />
                         <div className="w-20"><Num label={t({ tr: "Konum", en: "Position", de: "Position" })} suffix="m" step={10} value={k.konum} onChange={(v) => p.onKurpPatch(k.id, { konum: v })} hata={k.konum < 0 || k.konum > ring.uzunluk} /></div>
@@ -447,7 +447,7 @@ export function RingKart(p: KartProps) {
                           const mutlak = (p.ringBasiKm ?? 0) + Math.max(0, Math.min(ring.uzunluk, k.konum));
                           const kmStr = `${Math.floor(mutlak / 1000)}+${String(Math.round(mutlak % 1000)).padStart(3, "0")}`;
                           return (
-                            <span className="rounded px-2 py-1 text-[0.7rem] leading-tight" style={{ background: "#EEF1F6", color: brand.inkSoft }}
+                            <span className="rounded px-2 py-1 text-xs leading-tight" style={{ background: "#EEF1F6", color: brand.inkSoft }}
                               title={t({ tr: "Kurbun hat başından mutlak kilometrajı ve üst duraktan mesafesi — iki istasyon ARASINDAKİ konum", en: "The curve's absolute chainage from the line start and its distance from the upper stop — position BETWEEN two stations", de: "Die absolute Kilometrierung des Bogens ab Streckenanfang und seine Entfernung zur oberen Haltestelle — Position ZWISCHEN zwei Stationen" })}>
                               <Ikon ad="konum" size={12} className="mr-0.5 inline-block align-[-1px]" />km {kmStr} · <b>{ring.fromAd}</b>+{Math.round(k.konum)}m
                             </span>
@@ -465,16 +465,16 @@ export function RingKart(p: KartProps) {
                           {t({ tr: "yanal", en: "lateral", de: "quer" })} {aYanal.toFixed(2)} m/s²{asim ? " ⚠" : kalabalik ? ` · ${t({ tr: "kalabalıkta", en: "when crowded", de: "bei Andrang" })} ≤ ${vKalabalik} km/h${dolText}` : ""}
                         </span>
                         <button type="button" onClick={() => setKurpOlcu((s) => (s[k.id] ? (() => { const n = { ...s }; delete n[k.id]; return n; })() : { ...s, [k.id]: { C: 0, M: 0 } }))}
-                          className="rounded border px-2 py-1 text-[0.7rem] font-medium" style={{ borderColor: brand.border, color: brand.inkSoft }} title={t({ tr: "Pafta/haritadan ölçüyle yarıçap hesapla", en: "Compute radius from a plan/map measurement", de: "Radius aus einer Plan-/Kartenmessung berechnen" })}>{t({ tr: "◠ ölçüden R", en: "◠ R from measurement", de: "◠ R aus Messung" })}</button>
+                          className="rounded border px-2 py-1 text-xs font-medium" style={{ borderColor: brand.border, color: brand.inkSoft }} title={t({ tr: "Pafta/haritadan ölçüyle yarıçap hesapla", en: "Compute radius from a plan/map measurement", de: "Radius aus einer Plan-/Kartenmessung berechnen" })}>{t({ tr: "◠ ölçüden R", en: "◠ R from measurement", de: "◠ R aus Messung" })}</button>
                         <button onClick={() => p.onKurpPatch(k.id, manuel ? { hizManuel: undefined } : { hizManuel: vHesap })}
-                          className="rounded border px-2 py-1 text-[0.7rem] font-medium" style={{ borderColor: brand.border, color: brand.inkSoft }}>
+                          className="rounded border px-2 py-1 text-xs font-medium" style={{ borderColor: brand.border, color: brand.inkSoft }}>
                           {manuel ? t({ tr: "↺ yarıçaptan", en: "↺ from radius", de: "↺ aus Radius" }) : t({ tr: "✎ hızı elle gir", en: "✎ enter speed manually", de: "✎ Geschwindigkeit manuell eingeben" })}
                         </button>
                         <button onClick={() => p.onKurpSil(k.id)} className="rounded px-1.5 py-1 text-xs transition hover:bg-red-50" style={{ color: brand.red }}><Ikon ad="cop" size={14} /></button>
                       </div>
                       {olcu && (
                         <div className="mt-2 flex flex-wrap items-end gap-2 rounded p-2" style={{ background: "#F7F9FA" }}>
-                          <span className="text-[0.7rem]" style={{ color: brand.muted }}>{t({ tr: "Pafta/harita ölçüsü → R = C²/(8·M):", en: "Plan/map measurement → R = C²/(8·M):", de: "Plan-/Kartenmessung → R = C²/(8·M):" })}</span>
+                          <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "Pafta/harita ölçüsü → R = C²/(8·M):", en: "Plan/map measurement → R = C²/(8·M):", de: "Plan-/Kartenmessung → R = C²/(8·M):" })}</span>
                           <div className="w-24"><Num label={t({ tr: "Kiriş C", en: "Chord C", de: "Sehne C" })} suffix="m" step={1} value={olcu.C} onChange={(v) => setKurpOlcu((s) => ({ ...s, [k.id]: { ...s[k.id], C: Math.max(0, v) } }))} /></div>
                           <div className="w-24"><Num label={t({ tr: "Orta dikme M", en: "Mid-ordinate M", de: "Pfeilhöhe M" })} suffix="m" step={0.1} value={olcu.M} onChange={(v) => setKurpOlcu((s) => ({ ...s, [k.id]: { ...s[k.id], M: Math.max(0, v) } }))} /></div>
                           <span className="rounded px-2 py-1 text-xs font-semibold" style={{ background: "#EEF1F6", color: brand.ink }}>R ≈ {olcu.C > 0 && olcu.M > 0 ? Math.round(yaricapKirisVersine(olcu.C, olcu.M)) : "—"} m</span>
@@ -494,8 +494,8 @@ export function RingKart(p: KartProps) {
           <details className="mt-4 border-t pt-3" style={{ borderColor: brand.border }}>
             <summary className="mb-2 flex cursor-pointer select-none items-center gap-1.5">
               <SubBaslik>{t({ tr: "Sinyal Lambaları", en: "Signal Lamps", de: "Signale" })}</SubBaslik>
-              {(ring.sinyaller ?? []).length > 0 && <span className="rounded-full px-1.5 py-0.5 text-[0.6rem] font-bold leading-none" style={{ background: brand.ink, color: "#fff" }}>{(ring.sinyaller ?? []).length}</span>}
-              <span className="text-[0.65rem]" style={{ color: brand.faint }}>{t({ tr: "▸ aç/kapa", en: "▸ toggle", de: "▸ auf/zu" })}</span>
+              {(ring.sinyaller ?? []).length > 0 && <span className="rounded-full px-1.5 py-0.5 text-xs font-bold leading-none" style={{ background: brand.ink, color: "#fff" }}>{(ring.sinyaller ?? []).length}</span>}
+              <span className="text-xs" style={{ color: brand.faint }}>{t({ tr: "▸ aç/kapa", en: "▸ toggle", de: "▸ auf/zu" })}</span>
             </summary>
             <p className="mb-2 text-xs" style={{ color: brand.muted }}>
               {dil === "en" ? (
@@ -557,13 +557,13 @@ export function RingKart(p: KartProps) {
                   return (
                     <div key={s.id} className="rounded border p-2" style={{ borderColor: konumHatali ? brand.red : s.tersIsletme ? brand.ink : brand.border }}>
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded px-1.5 py-0.5 text-[0.65rem] font-semibold" style={{ background: s.tersIsletme ? CK.goodBgSoft : "#F1F5F9", color: brand.inkSoft }}>
+                        <span className="rounded px-1.5 py-0.5 text-xs font-semibold" style={{ background: s.tersIsletme ? CK.goodBgSoft : "#F1F5F9", color: brand.inkSoft }}>
                           {s.yon === "giden" ? t({ tr: "▶ Giden", en: "▶ Outbound", de: "▶ Hinfahrt" }) : t({ tr: "◀ Gelen", en: "◀ Inbound", de: "◀ Rückfahrt" })} · {s.tersIsletme ? t({ tr: "TERS İŞLETME", en: "REVERSE RUNNING", de: "GEGENGLEISBETRIEB" }) : t({ tr: "düz", en: "plain", de: "normal" })}
                         </span>
                         <input value={s.ad} placeholder={t({ tr: "ad (ör. S1)", en: "name (e.g. S1)", de: "Name (z. B. S1)" })} onChange={(e) => p.onSinyalPatch(s.id, { ad: e.target.value })}
                           className="min-w-0 flex-1 rounded border px-1.5 py-1 text-xs" style={{ borderColor: brand.border, color: brand.ink }} />
-                        <button type="button" onClick={() => p.onSinyalPatch(s.id, { yon: s.yon === "giden" ? "gelen" : "giden" })} className="rounded border px-1.5 py-1 text-[0.65rem]" style={{ borderColor: brand.border, color: brand.inkSoft }}>{t({ tr: "yön çevir", en: "flip direction", de: "Richtung umkehren" })}</button>
-                        <button type="button" onClick={() => p.onSinyalPatch(s.id, { tersIsletme: !s.tersIsletme })} className="rounded border px-1.5 py-1 text-[0.65rem]" style={{ borderColor: s.tersIsletme ? brand.ink : brand.border, color: brand.inkSoft }}>{t({ tr: "ters işletme amaçlı mı", en: "for reverse running?", de: "für Gegengleisbetrieb?" })}</button>
+                        <button type="button" onClick={() => p.onSinyalPatch(s.id, { yon: s.yon === "giden" ? "gelen" : "giden" })} className="rounded border px-1.5 py-1 text-xs" style={{ borderColor: brand.border, color: brand.inkSoft }}>{t({ tr: "yön çevir", en: "flip direction", de: "Richtung umkehren" })}</button>
+                        <button type="button" onClick={() => p.onSinyalPatch(s.id, { tersIsletme: !s.tersIsletme })} className="rounded border px-1.5 py-1 text-xs" style={{ borderColor: s.tersIsletme ? brand.ink : brand.border, color: brand.inkSoft }}>{t({ tr: "ters işletme amaçlı mı", en: "for reverse running?", de: "für Gegengleisbetrieb?" })}</button>
                         <button type="button" onClick={() => p.onSinyalSil(s.id)} className="rounded px-1.5 py-1 text-xs" style={{ color: brand.red }}><Ikon ad="cop" size={14} /></button>
                       </div>
                       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">

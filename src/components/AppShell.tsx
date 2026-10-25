@@ -29,7 +29,7 @@ function DilAnahtari() {
     <div className="flex items-center gap-0.5 rounded-full border px-0.5 py-0.5" style={{ borderColor: "rgba(255,255,255,0.25)" }} role="group" aria-label="Dil / Language / Sprache">
       {(["tr", "en", "de"] as Dil[]).map((d) => (
         <button key={d} type="button" onClick={() => setDil(d)} title={DIL_ADI[d]} aria-pressed={dil === d}
-          className="rounded-full px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide transition"
+          className="rounded-full px-2 py-0.5 text-xs font-bold uppercase tracking-wide transition"
           style={dil === d ? { background: "#A8842C", color: "#0C2233" } : { color: "#B9C6D2" }}>{d}</button>
       ))}
     </div>
@@ -309,7 +309,7 @@ function Govde({ children }: { children: React.ReactNode }) {
                   <a href={href} title={`${t(m.ad)} — ${t(m.rol)}`} className="group flex w-full flex-col items-center">
                     {/* İstasyon nokrası — numara; rayı örtmek için dolu zemin */}
                     <span
-                      className="relative z-10 flex h-[22px] w-[22px] items-center justify-center rounded-full border font-mono text-[0.68rem] font-semibold tabular-nums transition-all duration-200 group-hover:scale-110"
+                      className="relative z-10 flex h-[22px] w-[22px] items-center justify-center rounded-full border font-mono text-xs font-semibold tabular-nums transition-all duration-200 group-hover:scale-110"
                       style={nokra}
                     >
                       {i + 1}
@@ -321,7 +321,7 @@ function Govde({ children }: { children: React.ReactNode }) {
                       {t(m.ad)}
                     </span>
                     <span
-                      className={`text-[0.6rem] leading-snug transition-all ${kompakt ? "mt-0 h-0 overflow-hidden opacity-0" : "mt-0.5 opacity-100"}`}
+                      className={`text-xs leading-snug transition-all ${kompakt ? "mt-0 h-0 overflow-hidden opacity-0" : "mt-0.5 opacity-100"}`}
                       style={{ color: on ? "#E7A9B2" : "#8193A3" }}
                     >
                       {t(m.rol)}
@@ -348,7 +348,7 @@ function Govde({ children }: { children: React.ReactNode }) {
                 style={{ background: on ? brand.red : "#0F2B40", border: `1px solid ${on ? brand.red : "#1E3A50"}` }}
               >
                 <span
-                  className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border font-mono text-[0.6rem] font-semibold tabular-nums"
+                  className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border font-mono text-xs font-semibold tabular-nums"
                   style={
                     on
                       ? { background: "#ffffff22", borderColor: "#ffffff55", color: "#fff" }
@@ -360,10 +360,10 @@ function Govde({ children }: { children: React.ReactNode }) {
                   {i + 1}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[0.72rem] font-medium" style={{ color: on ? "#fff" : "#C7D2DC" }}>
+                  <span className="block truncate text-xs font-medium" style={{ color: on ? "#fff" : "#C7D2DC" }}>
                     {t(m.ad)}
                   </span>
-                  <span className={`block truncate text-[0.62rem] transition-all ${kompakt ? "h-0 overflow-hidden opacity-0" : "opacity-100"}`} style={{ color: on ? "#ffffffd0" : "#8193A3" }}>
+                  <span className={`block truncate text-xs transition-all ${kompakt ? "h-0 overflow-hidden opacity-0" : "opacity-100"}`} style={{ color: on ? "#ffffffd0" : "#8193A3" }}>
                     {t(m.rol)}
                   </span>
                 </span>
@@ -408,7 +408,7 @@ function Govde({ children }: { children: React.ReactNode }) {
       <footer className="border-t-2" style={{ background: "#0C2233", borderColor: "#C8102E" }}>
         <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-5 px-6 py-6 sm:grid-cols-3">
           {/* Sol: OpenTrack ile ilişki — işbirliği/doğrulama beyanı (canlı entegre iddiası YOK) */}
-          <div className="text-center text-[0.7rem] leading-relaxed text-slate-300 sm:text-left">
+          <div className="text-center text-xs leading-relaxed text-slate-300 sm:text-left">
             <span className="text-slate-100">OpenTrack</span>{" "}
             {t({
               tr: "ile işbirliğiyle doğrulanmış; blocking-time · Sperrzeitentreppe · UIC 406 metodolojisine dayanan bağımsız çekirdek.",
@@ -429,7 +429,7 @@ function Govde({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* Sağ: künye */}
-          <div className="text-center text-[0.7rem] leading-relaxed text-slate-300 sm:text-right">
+          <div className="text-center text-xs leading-relaxed text-slate-300 sm:text-right">
             {t({ tr: "Demiryolu Ağı Simülasyon Sistemi", en: "Railway Network Simulation System", de: "Bahnnetz-Simulationssystem" })}
             <br />
             <span className="text-slate-400">{t({ tr: "Sinyalizasyon · Kapasite · Dokümantasyon", en: "Signalling · Capacity · Documentation", de: "Signaltechnik · Kapazität · Dokumentation" })}</span>

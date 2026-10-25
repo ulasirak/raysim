@@ -400,15 +400,15 @@ export function RingEditor() {
                 <div key={`durak-${i}`}>
                   {/* Durak satırı */}
                   <div className="flex items-center gap-2 rounded border px-2 py-1.5" style={{ borderColor: brand.border, background: "#FBFCFD" }}>
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[0.6rem] font-semibold text-white" style={{ background: brand.ink }}>{i + 1}</span>
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white" style={{ background: brand.ink }}>{i + 1}</span>
                     <input value={d.ad} onChange={(e) => setRings((rs) => durakAdiDegistir(rs, i, e.target.value))}
                       className="min-w-0 flex-1 rounded border px-2 py-1 text-sm" style={{ borderColor: brand.border, color: brand.ink }} />
                     <span className="shrink-0 font-mono text-xs" style={{ color: brand.faint }} title={t({ tr: "Hat başından uzaklık", en: "Distance from line start", de: "Entfernung vom Streckenanfang" })}>{km(d.konum)} km</span>
                     {i > 0 && (
                       <div className="flex shrink-0 items-center gap-1" title={t({ tr: "Bu durakta toplam bekleme (dwell) = kapı aç + yolcu + kapı kapa (aşağıdan düzenle)", en: "Total dwell at this stop = door open + passengers + door close (edit below)", de: "Gesamte Haltezeit an dieser Haltestelle = Tür auf + Fahrgäste + Tür zu (unten bearbeiten)" })}>
-                        <span className="text-[0.65rem] font-medium" style={{ color: brand.inkSoft }}>{t({ tr: "bekleme", en: "dwell", de: "Haltezeit" })}</span>
+                        <span className="text-xs font-medium" style={{ color: brand.inkSoft }}>{t({ tr: "bekleme", en: "dwell", de: "Haltezeit" })}</span>
                         <span className="text-xs font-semibold" style={{ color: rings[i - 1].dwellOto ? CK.good : brand.ink }}>{Math.round(etkinDwell(rings[i - 1]))}</span>
-                        <span className="text-[0.65rem]" style={{ color: brand.muted }}>sn{rings[i - 1].dwellOto ? t({ tr: " (oto)", en: " (auto)", de: " (auto)" }) : ""}</span>
+                        <span className="text-xs" style={{ color: brand.muted }}>sn{rings[i - 1].dwellOto ? t({ tr: " (oto)", en: " (auto)", de: " (auto)" }) : ""}</span>
                       </div>
                     )}
                     {duraklar.length > 2 ? (
@@ -417,7 +417,7 @@ export function RingEditor() {
                     ) : (<span className="w-6 shrink-0" />)}
                   </div>
                   {/* Durak bekleme bileşenleri (dwell = kapı aç + yolcu + kapı kapa) + kalkış ölü zamanı */}
-                  <div className="ml-6 flex flex-wrap items-center gap-x-3 gap-y-1 py-0.5 pl-2 text-[0.7rem]" style={{ color: brand.muted }}>
+                  <div className="ml-6 flex flex-wrap items-center gap-x-3 gap-y-1 py-0.5 pl-2 text-xs" style={{ color: brand.muted }}>
                     {i > 0 && (() => {
                       const r = rings[i - 1];
                       const oto = !!r.dwellOto;
@@ -443,7 +443,7 @@ export function RingEditor() {
                                   onChange={(e) => patch(r.id, { binenYolcu: Math.max(0, parseFloat(e.target.value) || 0) })}
                                   className="w-12 rounded border px-1 py-0.5 text-right" style={{ borderColor: brand.border, color: brand.ink }} /></span>
                               <span title={t({ tr: "Yolcu akışından hesaplanan bölüm", en: "Portion computed from passenger flow", de: "Aus dem Fahrgastfluss berechneter Anteil" })} style={{ color: CK.good }}>{t({ tr: "yolcu", en: "passengers", de: "Fahrgäste" })} {Math.round(yolcuHesap)}s ✓</span>
-                              <span className="basis-full rounded border-l-2 py-0.5 pl-2 text-[0.66rem] leading-snug" style={{ borderColor: CK.good, background: CK.goodBgSoft, color: brand.inkSoft }}>
+                              <span className="basis-full rounded border-l-2 py-0.5 pl-2 text-xs leading-snug" style={{ borderColor: CK.good, background: CK.goodBgSoft, color: brand.inkSoft }}>
                                 <b>oto dwell</b>: bekleme yolcudan hesaplanır → kapı aç {Math.round(dwellBilesen(r).ac)}s + yolcu [(inen+binen) ÷ (kapı {stock.kapiSayisi ?? 4} × genişlik {stock.kapiGenisligi ?? 1.3}m × akış {isletme.yolcuAkisHizi})] + kapı kapa {Math.round(dwellBilesen(r).kapa)}s; en az {isletme.minDurusSuresi}s. Şu an yolcu {Math.round(yolcuHesap)}s → toplam <b>{Math.round(etkinDwell(r))}s</b>.
                               </span>
                             </>
@@ -572,7 +572,7 @@ export function RingEditor() {
       {rings.length > 0 && (
         <div className="mt-8 mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b-2 pb-2" style={{ borderColor: brand.ink }}>
           <span className="font-brand text-lg font-semibold" style={{ color: brand.ink }}>{t({ tr: "Ring Editörü", en: "Section Editor", de: "Abschnitts-Editor" })}</span>
-          <span className="rounded-full px-2 py-0.5 text-[0.65rem] font-semibold" style={{ background: CK.badBgSoft, color: brand.red }}>{rings.length} {t({ tr: "hücre", en: "cells", de: "Zellen" })}</span>
+          <span className="rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: CK.badBgSoft, color: brand.red }}>{rings.length} {t({ tr: "hücre", en: "cells", de: "Zellen" })}</span>
           <span className="text-xs" style={{ color: brand.muted }}>{t({ tr: "— her durak-arası hücrenin ileri şartları: worst/best köşeleri · makas · hemzemin · tehlike. Yukarıda kurduğun zinciri burada detaylandır.", en: "— the advanced conditions of each inter-stop cell: worst/best corner cases · switch · level crossing · hazard. Detail the chain you built above here.", de: "— die erweiterten Bedingungen jeder Abschnittszelle: Worst/Best-Grenzfälle · Weiche · Bahnübergang · Gefahr. Detaillieren Sie hier die oben aufgebaute Kette." })}</span>
         </div>
       )}
@@ -660,7 +660,7 @@ export function RingEditor() {
                       <Kucuk>{tt({ tr: "terminalin fiziksel dönüş biçimi", en: "the terminal's physical turnback form", de: "die physische Wendeform der Endstelle" })}</Kucuk>
                     </label>
                     <NedenDetay ozet={tt({ tr: "seçilen dönüş tipi ne demek?", en: "what does the selected turnback type mean?", de: "Was bedeutet der gewählte Wendetyp?" })}>
-                      <p className="rounded border-l-2 py-1 pl-2 text-[0.68rem] leading-relaxed" style={{ borderColor: t.tip === "dongu" ? CK.good : CK.amber, background: t.tip === "dongu" ? CK.goodBg : CK.amberBg, color: brand.inkSoft }}>
+                      <p className="rounded border-l-2 py-1 pl-2 text-xs leading-relaxed" style={{ borderColor: t.tip === "dongu" ? CK.good : CK.amber, background: t.tip === "dongu" ? CK.goodBg : CK.amberBg, color: brand.inkSoft }}>
                         {tt(DONUS_TIP_ACIKLAMA[t.tip])}
                       </p>
                     </NedenDetay>
@@ -671,7 +671,7 @@ export function RingEditor() {
                         <div className="mt-0.5 flex gap-1">
                           {([[false, tt({ tr: "çift yön (toplam)", en: "both directions (total)", de: "beide Richtungen (gesamt)" })], [true, tt({ tr: "tek yön (yön başına)", en: "single direction (per direction)", de: "eine Richtung (je Richtung)" })]] as const).map(([ty, ad]) => (
                             <button key={String(ty)} type="button" onClick={() => patchTerminal(uc, { peronTekYon: ty })}
-                              className="rounded border px-1.5 py-0.5 text-[0.6rem] font-medium"
+                              className="rounded border px-1.5 py-0.5 text-xs font-medium"
                               style={(!!t.peronTekYon === ty) ? { background: brand.ink, color: "#fff", borderColor: brand.ink } : { borderColor: brand.border, color: brand.inkSoft }}>
                               {ad}
                             </button>
@@ -772,7 +772,7 @@ export function RingEditor() {
                   </div>
                 </div>
                 <NedenDetay ozet={t({ tr: "teorik ↔ sürdürülebilir farkı nedir?", en: "theoretical ↔ sustainable — what differs?", de: "theoretisch ↔ nachhaltig — Unterschied?" })}>
-                  <p className="text-[0.7rem]" style={{ color: brand.muted }}>
+                  <p className="text-xs" style={{ color: brand.muted }}>
                     <b>{t({ tr: "Teorik maksimum", en: "Theoretical maximum", de: "Theoretisches Maximum" })}</b>{t({ tr: ": darboğazın izin verdiği fiziksel tavan (sıfır pay). ", en: ": the physical ceiling the bottleneck allows (zero margin). ", de: ": die physische Obergrenze, die der Engpass zulässt (kein Spielraum). " })}<b>{t({ tr: "Sürdürülebilir", en: "Sustainable", de: "Nachhaltig" })}</b>{t({ tr: ": UIC 406 doluluk tavanıyla (blok başına ~%60–75 kullanım) her gün güvenle çalıştırılabilen sayı — küçük gecikmeler zincirlemesin, toparlanma payı kalsın diye teorikten düşüktür (gerçek işletme bunu hedefler).", en: ": the number that can be run safely every day under the UIC 406 occupancy ceiling (~60–75% utilization per block) — lower than the theoretical value so that small delays don't cascade and a recovery margin remains (real operation targets this).", de: ": die Zahl, die unter der UIC-406-Belegungsgrenze (~60–75 % Auslastung pro Block) täglich sicher gefahren werden kann — niedriger als der theoretische Wert, damit kleine Verspätungen sich nicht fortpflanzen und eine Erholungsreserve bleibt (der reale Betrieb strebt dies an)." })}
                   </p>
                 </NedenDetay>
@@ -781,7 +781,7 @@ export function RingEditor() {
                   <span style={{ color: brand.faint }}> · {t({ tr: "aynı sayı Sefer'de de görünür (tek kaynak); tam kısıt & blocking-time dökümü ", en: "the same number also appears under Service (single source); full constraint & blocking-time breakdown in ", de: "dieselbe Zahl erscheint auch unter Betrieb (eine Quelle); vollständige Einschränkungs- & Blocking-Time-Aufschlüsselung in " })}<Link href="/#sistem" className="underline">{t({ tr: "Sistem Merkezi", en: "System Center", de: "Systemzentrale" })}</Link>{t({ tr: "'nde.", en: ".", de: "." })}</span>
                 </p>
                 {subeler.length > 0 && (
-                  <p className="mt-1.5 rounded border-l-2 px-2 py-1 text-[0.7rem]" style={{ borderColor: brand.red, background: CK.badBgSoft, color: brand.inkSoft }}>
+                  <p className="mt-1.5 rounded border-l-2 px-2 py-1 text-xs" style={{ borderColor: brand.red, background: CK.badBgSoft, color: brand.inkSoft }}>
                     ◆ {t({ tr: "Bu değer ANA HATTA aittir — her şube ayrımındaki kavşak makası (turnout) darboğaza KATILIR. Bir şubenin kendi rota kapasitesi için ", en: "This value is for the MAIN LINE — the junction turnout at each branch divergence IS included in the bottleneck. For a branch's own route capacity, ", de: "Dieser Wert gilt für die HAUPTSTRECKE — die Weiche an jeder Abzweigung IST im Engpass enthalten. Für die Routenkapazität einer Abzweigung " })}<Link href="/#sefer" className="underline">{t({ tr: "Sefer'de şubeyi seç", en: "select the branch under Service", de: "wählen Sie die Abzweigung unter Betrieb" })}</Link>{t({ tr: ".", en: ".", de: "." })}
                   </p>
                 )}

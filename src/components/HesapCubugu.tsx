@@ -197,7 +197,7 @@ export function HesapKontrolleri() {
             <div className="border-b px-3 py-2" style={{ borderColor: brand.border }}>
               <div className="field-label" style={{ color: brand.faint }}>{t({ tr: "HESAP", en: "ACCOUNT", de: "KONTO" })}</div>
               <div style={{ color: brand.ink }}>{user.email}</div>
-              <div className="mt-0.5 text-[0.7rem]" style={{ color: kotaDoldu ? brand.red : brand.muted }}>
+              <div className="mt-0.5 text-xs" style={{ color: kotaDoldu ? brand.red : brand.muted }}>
                 {kota === null ? `${projeler.length} ${t({ tr: "hat", en: "lines", de: "Linien" })} · ${t({ tr: "sınırsız", en: "unlimited", de: "unbegrenzt" })}` : `${projeler.length}/${kota} ${t({ tr: "hat", en: "lines", de: "Linien" })}`}
                 {"  ·  "}
                 <span style={{ color: bakiye === 0 ? brand.red : brand.muted }}>
@@ -219,12 +219,12 @@ export function HesapKontrolleri() {
                       className="relative rounded border px-2 py-1 text-xs font-medium transition hover:bg-slate-50"
                       style={{ borderColor: brand.border, color: brand.ink }}>
                       <span style={{ color: brand.faint }}>{p.ad}</span> · {p.kredi} kredi<span style={{ color: brand.muted }}> · {p.tl}₺</span>
-                      {indirimYuzde > 0 && <span className="ml-1 rounded px-1 text-[0.6rem] font-semibold" style={{ background: CK.goodBg, color: CK.good }}>%{indirimYuzde}</span>}
+                      {indirimYuzde > 0 && <span className="ml-1 rounded px-1 text-xs font-semibold" style={{ background: CK.goodBg, color: CK.good }}>%{indirimYuzde}</span>}
                     </button>
                   );
                 })}
               </div>
-              {odemeHata && <div className="mt-1 text-[0.7rem]" style={{ color: brand.red }}>{odemeHata}</div>}
+              {odemeHata && <div className="mt-1 text-xs" style={{ color: brand.red }}>{odemeHata}</div>}
             </div>
 
             {/* Kredi geçmişi — satın alma + harcama hareketleri (denetim) */}
@@ -235,9 +235,9 @@ export function HesapKontrolleri() {
               {gecmisAcik && (
                 <div className="max-h-40 overflow-auto px-3 pb-2">
                   {hareketler.length === 0 ? (
-                    <div className="text-[0.7rem]" style={{ color: brand.muted }}>{t({ tr: "Henüz hareket yok.", en: "No transactions yet.", de: "Noch keine Buchungen." })}</div>
+                    <div className="text-xs" style={{ color: brand.muted }}>{t({ tr: "Henüz hareket yok.", en: "No transactions yet.", de: "Noch keine Buchungen." })}</div>
                   ) : hareketler.map((h) => (
-                    <div key={h.id} className="flex items-center justify-between border-t py-1 text-[0.72rem]"
+                    <div key={h.id} className="flex items-center justify-between border-t py-1 text-xs"
                       style={{ borderColor: brand.border }}>
                       <span style={{ color: brand.inkSoft }}>{hareketAdi(h.tur)}</span>
                       <span className="font-medium tabular-nums"
@@ -350,7 +350,7 @@ function MenuOge({ ad, alt, onClick, tehlike = false }: { ad: string; alt: strin
   return (
     <button onClick={onClick} className="block w-full px-3 py-2 text-left transition hover:bg-slate-50">
       <span className="font-medium" style={{ color: tehlike ? brand.red : brand.ink }}>{ad}</span>
-      <span className="mt-0.5 block text-[0.7rem] leading-snug" style={{ color: brand.muted }}>{alt}</span>
+      <span className="mt-0.5 block text-xs leading-snug" style={{ color: brand.muted }}>{alt}</span>
     </button>
   );
 }

@@ -1021,7 +1021,7 @@ export function LiveNetwork({
               const sureSn = Math.round(geriMesafe / Math.max(1, vTers));
               const mesgul = mesgulKavsaklar.some((mk) => Math.abs(mk.pos - karar.makasPos) <= KAVSAK_W);
               return (
-                <div className="mt-2 rounded-md border px-2.5 py-2 text-[0.72rem] leading-relaxed" style={{ borderColor: brand.border, background: CK.track, color: brand.inkSoft }}>
+                <div className="mt-2 rounded-md border px-2.5 py-2 text-xs leading-relaxed" style={{ borderColor: brand.border, background: CK.track, color: brand.inkSoft }}>
                   <div>
                     {karar.crossover === "x"
                       ? <><b>{tt({ tr: "X-makas (scissors):", en: "X-switch (scissors):", de: "X-Weiche (scissors):" })}</b> {tt({ tr: "iki bağımsız hareket — varış ve kalkış ayrı bacakta, ardışık iki tren daha sık dönebilir.", en: "two independent movements — arrival and departure on separate legs, two consecutive trains can turn more frequently.", de: "zwei unabhängige Bewegungen — Ankunft und Abfahrt auf getrennten Schenkeln, zwei aufeinanderfolgende Züge können häufiger wenden." })}</>

@@ -169,7 +169,7 @@ export function CanliAgSayfa() {
         style={{ borderColor: brand.border, background: "rgba(255,255,255,0.9)" }}>
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold" style={{ color: brand.ink }}>{hatAdiTemiz(p.hatAdi || p.projeAdi || t({ tr: "Canlı Ağ Simülasyonu", en: "Live Network Simulation", de: "Live-Netz-Simulation" }))}</div>
-          <div className="text-[11px]" style={{ color: brand.muted }}>{t({ tr: "Canlı Ağ Simülasyonu", en: "Live Network Simulation", de: "Live-Netz-Simulation" })} · {p.filo} {t({ tr: "tramvay", en: "trams", de: "Straßenbahnen" })}</div>
+          <div className="text-xs" style={{ color: brand.muted }}>{t({ tr: "Canlı Ağ Simülasyonu", en: "Live Network Simulation", de: "Live-Netz-Simulation" })} · {p.filo} {t({ tr: "tramvay", en: "trams", de: "Straßenbahnen" })}</div>
         </div>
         <button type="button" onClick={() => setAcikLegend((v) => !v)}
           className="shrink-0 rounded-md px-3 py-1.5 text-xs font-semibold text-white" style={{ background: brand.ink }}>
@@ -203,7 +203,7 @@ export function CanliAgSayfa() {
           Mobil okunurluk (SVG'yi yatay kaydırma) LiveNetwork'ün KENDİ içinde çözülür —
           böylece yalnız şema kayar, oynat/hız/zaman çubuğu tam genişlik kalır. */}
       <div className="px-2 py-3 sm:px-4">
-        <div className="mb-1 text-center text-[11px] sm:hidden" style={{ color: brand.muted }}>
+        <div className="mb-1 text-center text-xs sm:hidden" style={{ color: brand.muted }}>
           {t({ tr: "şemayı yana kaydırabilirsin →", en: "you can scroll the diagram sideways →", de: "Sie können das Schema seitlich scrollen →" })}
         </div>
         {/* Blok tıklaması AÇIK: arıza artık döngü İÇİNDE ele alınıyor (motor değişmez,

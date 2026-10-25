@@ -128,7 +128,7 @@ export function KararDestekPaneli() {
                 ? `${t({ tr: "ulaşılan aralık", en: "achieved interval", de: "erreichtes Intervall" })} ${sure(hedef.ulasilanHeadwaySn)} ${t({ tr: "(≤ hedef) · kapasite", en: "(≤ target) · capacity", de: "(≤ Ziel) · Kapazität" })} ${hedef.kapasiteFilo}`
                 : `${t({ tr: "KAPASİTE AŞILDI:", en: "CAPACITY EXCEEDED:", de: "KAPAZITÄT ÜBERSCHRITTEN:" })} ${hedef.filo} > ${t({ tr: "duvar", en: "wall", de: "Grenze" })} ${hedef.kapasiteFilo}. ${t({ tr: "Bu aralık fiziksel olarak sağlanamaz.", en: "This interval is physically unachievable.", de: "Dieses Intervall ist physikalisch nicht erreichbar." })}`} />
             {hedef.uygun && (
-              <div className="mt-2 flex items-center gap-2 border-t pt-2 text-[0.7rem]" style={{ borderColor: `${CK.good}44` }}>
+              <div className="mt-2 flex items-center gap-2 border-t pt-2 text-xs" style={{ borderColor: `${CK.good}44` }}>
                 <span style={{ color: brand.muted }}>{t({ tr: "UIC 406 kapasite kullanımı (seçilen filo)", en: "UIC 406 capacity utilisation (selected fleet)", de: "UIC-406-Kapazitätsauslastung (gewählte Flotte)" })}</span>
                 <div className="h-1.5 flex-1 overflow-hidden rounded-full" style={{ background: CK.track }}>
                   <div style={{ width: `${uicDol}%`, height: "100%", background: uicDol > 85 ? CK.amber : CK.good }} />
@@ -139,7 +139,7 @@ export function KararDestekPaneli() {
           </div>
           {/* Taban kapasite sayıları (önerilen · duvar · çevrim · min aralık) üstteki
               ortak "Filo & Kapasite kararı" kutusunda — burada tekrar edilmez (tek kaynak). */}
-          <p className="text-[0.68rem] leading-snug" style={{ color: brand.muted }}>
+          <p className="text-xs leading-snug" style={{ color: brand.muted }}>
             {t({ tr: "Önerilen filo · kapasite duvarı · çevrim · min aralık → yukarıdaki “Filo & Kapasite kararı” kutusunda. Hedef aralık ne kadar küçükse gereken filo o kadar artar; kapasite duvarını aşan hedef sağlanamaz.", en: "Recommended fleet · capacity wall · cycle · min interval → in the “Fleet & Capacity decision” box above. The smaller the target interval, the larger the required fleet; a target beyond the capacity wall cannot be met.", de: "Empfohlene Flotte · Kapazitätsgrenze · Umlauf · Mindestintervall → im Kasten „Flotten- & Kapazitätsentscheidung“ oben. Je kleiner das Zielintervall, desto größer die erforderliche Flotte; ein Ziel jenseits der Kapazitätsgrenze ist nicht erreichbar." })}
           </p>
         </div>

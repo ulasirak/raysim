@@ -54,7 +54,7 @@ export function DogrulamaPaneli() {
         {KUTU.map((k, i) => (
           <div key={i} className="rounded-lg border px-3 py-3 text-center" style={{ borderColor: brand.border, background: brand.paper }}>
             <div className="text-2xl font-bold tabular-nums" style={{ color: k.renk }}>{k.deger}</div>
-            <div className="mt-0.5 text-[0.7rem] font-medium" style={{ color: brand.muted }}>{k.ad}</div>
+            <div className="mt-0.5 text-xs font-medium" style={{ color: brand.muted }}>{k.ad}</div>
           </div>
         ))}
       </div>
