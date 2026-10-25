@@ -1,6 +1,19 @@
 @import "tailwindcss";
 /* raysim tek-sayfa hub — metro-hattı navigasyonu (bkz. AppShell) */
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   TİPOGRAFİ ÖLÇEĞİ — tasarım sistemiyle (ds.type) hizalı, tek kaynaktan.
+   Tailwind'in text-xs/text-sm jetonları okunur ds ölçeğine çekildi: ikincil
+   metin 13px, gövde 15px. Başlıklar (text-lg 18px / h2 22px …) ile uyumlu,
+   dengeli bir kademe: 13 → 15 → 16 → 18. "Küçücük font" kalmaz, her yer okunur.
+   ───────────────────────────────────────────────────────────────────────────── */
+@theme {
+  --text-xs: 0.8125rem;        /* 13px — alt-metin / ipucu / etiket-yanı */
+  --text-xs--line-height: 1.5;
+  --text-sm: 0.9375rem;        /* 15px — gövde / açıklama (ds body) */
+  --text-sm--line-height: 1.55;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    KURUMSAL TASARIM SİSTEMİ — CSS değişken katmanı (tek kaynak: src/lib/anaray/brand.ts)
    Renk paleti + tipografi ölçeği + boşluk ritmi + köşe/gölge + hareket burada
