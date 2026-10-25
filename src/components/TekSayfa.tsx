@@ -17,6 +17,8 @@
 // denedik: donmayı azaltıyordu ama placeholder yükseklikleri gerçek yüksekliklerle
 // uyuşmadığı için ankor yanlış bölüme kayıyordu — ankor sağlamlığı öncelikli.)
 
+import { useEffect } from "react";
+
 import { Studio } from "@/components/Studio";
 import { RingEditor } from "@/components/RingEditor";
 import { SistemMerkezi } from "@/components/SistemMerkezi";
@@ -25,6 +27,33 @@ import { Karsilastirma } from "@/components/Karsilastirma";
 import { SaltOkunurKalkan } from "@/components/SaltOkunurKalkan";
 import { HataSiniri } from "@/components/HataSiniri";
 import { brand } from "@/lib/anaray/brand";
+import { panelAcVeGit } from "@/lib/anaray/panelGezinme";
+
+/**
+ * Global ankor yönlendirici: sayfa #slug ile açıldığında (QR/derin bağlantı/eski
+ * rota yönlendirmesi/bookmark) ya da sayfa-içi düz `<a href="#x">` tıklamasında,
+ * hedef GİZLİYSE (CSS-sekmesi içinde ya da kapalı <details>) `panelAcVeGit` ile
+ * sekmeyi/çekmeceyi açıp kaydırır. Üst-düzey bölümlere (scroll-mt ile zaten doğru
+ * kayan) dokunmaz — orada panelAcVeGit'in "ilk <details>'i aç" yan etkisi istenmez.
+ * Not: Next <Link> hash gezinmesi history API kullanır ve `hashchange` TETİKLEMEZ;
+ * sayfa-içi sekme hedefli Link'ler ayrıca kendi onClick'inde panelAcVeGit çağırır.
+ */
+function useAnkorYonlendirici() {
+  useEffect(() => {
+    const git = () => {
+      const h = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+      if (!h) return;
+      const el = document.getElementById(h);
+      if (!el) return;
+      const gizli = el.closest("[data-t]") || (el.matches("details") && !(el as HTMLDetailsElement).open);
+      if (gizli) panelAcVeGit(h);
+    };
+    // İlk yük: content-visibility bölümleri yerleşsin diye bir tık bekle.
+    const t = window.setTimeout(git, 140);
+    window.addEventListener("hashchange", git);
+    return () => { window.clearTimeout(t); window.removeEventListener("hashchange", git); };
+  }, []);
+}
 
 /** Bölüm ankorları — AppShell navigasyonu ve scroll-spy ile ORTAK kaynak. */
 // SIRA = veri akışı (girdi → analiz → çıktı). Kullanıcı yukarıdan aşağı, 5 faz:
@@ -63,6 +92,7 @@ function FazBasligi({ ad, modul, not }: { ad: string; modul: string; not: string
 }
 
 export function TekSayfa() {
+  useAnkorYonlendirici();
   return (
     <SaltOkunurKalkan>
       <div>

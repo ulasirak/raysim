@@ -4,5 +4,7 @@ import { redirect } from "next/navigation";
 // render edilir. Bu eski/yetim rota yalnız geriye dönük link uyumluluğu için durur ve
 // kullanıcıyı Sefer bölümüne yönlendirir (mükerrer bağımsız sayfa kaldırıldı).
 export default function TersIsletmePage() {
-  redirect("/#sefer");
+  // #tersisletme Studio içinde sf-sekme 2'dedir; ana sayfadaki global ankor
+  // yönlendirici (TekSayfa) sekmeyi açıp içeriğe kaydırır → eski link tam yerine düşer.
+  redirect("/#tersisletme");
 }

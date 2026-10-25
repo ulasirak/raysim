@@ -229,8 +229,10 @@ function StudioIc() {
   useEffect(() => {
     if (!simHazir || typeof window === "undefined") return;
     if (window.location.hash !== "#canli" && !otoOynat) return;
-    const el = document.getElementById("canli");
-    if (el) { const t = setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "start" }), 350); return () => clearTimeout(t); }
+    // Canlı sim CSS-sekmesi 2'dedir (varsayılan sekme 1) → panelAcVeGit sekmeyi
+    // AÇIP kaydırır; düz scrollIntoView gizli (display:none) panelde iş görmezdi.
+    const t = setTimeout(() => panelAcVeGit("canli"), 350);
+    return () => clearTimeout(t);
   }, [simHazir, otoOynat]);
   // Parklanma dizilimi (elle) — parkAnahtar/parkToplam/parkDiziliVar yukarıda (filodan
   // ÖNCE) tanımlı. parkDizili = geçerli bir elle dizilim var mı?
@@ -545,7 +547,7 @@ function StudioIc() {
             <div className="text-sm font-bold" style={{ color: brand.ink }}>{t({ tr: "Talebe göre öneri için yolcu verisi gerekli", en: "Passenger data required for demand-based recommendation", de: "Für die nachfragebasierte Empfehlung sind Fahrgastdaten erforderlich" })}</div>
             <p className="mt-2 text-xs" style={{ color: brand.inkSoft }}>{t({ tr: "Tıkanma, dönüş ihtiyacı ve talep-filosu", en: "Congestion, short-turn need and demand fleet", de: "Überlastung, Kehrbedarf und Nachfrage-Flotte" })} <b>{t({ tr: "tahmin edilmez", en: "are not estimated", de: "werden nicht geschätzt" })}</b> — {t({ tr: "gerçek yolcu sayılarını girmelisin. Şu bölümlerde giriş yap:", en: "you must enter real passenger counts. Enter them in these sections:", de: "Sie müssen echte Fahrgastzahlen eingeben. Geben Sie sie in diesen Bereichen ein:" })}</p>
             <ul className="mt-2 ml-4 list-disc text-xs" style={{ color: brand.inkSoft }}>
-              <li><Link href="/#tersisletme" className="font-semibold underline" style={{ color: brand.ink }}>{t({ tr: "Ters İşletme → “Her İstasyon”", en: "Reverse running → “Each station”", de: "Kehrbetrieb → „Jede Station“" })}</Link> {t({ tr: "sekmesinde her durağa iniş/biniş gir.", en: "tab: enter boardings/alightings for each stop.", de: "Registerkarte: Ein-/Ausstiege je Haltestelle eingeben." })}</li>
+              <li><a href="#tersisletme" onClick={(e) => { e.preventDefault(); panelAcVeGit("tersisletme", brand.ink); }} className="font-semibold underline" style={{ color: brand.ink }}>{t({ tr: "Ters İşletme → “Her İstasyon”", en: "Reverse running → “Each station”", de: "Kehrbetrieb → „Jede Station“" })}</a> {t({ tr: "sekmesinde her durağa iniş/biniş gir.", en: "tab: enter boardings/alightings for each stop.", de: "Registerkarte: Ein-/Ausstiege je Haltestelle eingeben." })}</li>
               <li>{t({ tr: "Sonra bu panele dön — öneri ve tıkanma talebe göre güncellenir.", en: "Then return to this panel — the recommendation and congestion update per demand.", de: "Kehren Sie dann zu diesem Panel zurück — Empfehlung und Überlastung aktualisieren sich nach der Nachfrage." })}</li>
             </ul>
             <div className="mt-3 text-right"><button type="button" onClick={() => setTalepPopup(false)} className="rounded px-3 py-1.5 text-xs font-semibold text-white" style={{ background: brand.ink }}>{t({ tr: "Anladım", en: "Got it", de: "Verstanden" })}</button></div>
@@ -1249,7 +1251,7 @@ function StudioIc() {
             {tersRapor.makaslar.filter((m) => m.kisaDonusOnerilir).slice(0, 3).map((m, i) => (
               <div key={`m${i}`} style={{ color: brand.muted }}>⟲ <b>{m.ad}</b> {t({ tr: "kısa dönüş adayı", en: "short-turn candidate", de: "Kehre-Kandidat" })} (%{m.kisaDonusYuzde}).{m.crossover === "x" ? "" : t({ tr: " S makas — ters işletme sinyali gerekebilir.", en: " S turnout — a reverse-running signal may be needed.", de: " S-Weiche — ein Kehrbetriebssignal kann nötig sein." })}</div>
             ))}
-            <div className="mt-1"><Link href="/#tersisletme" className="underline" style={{ color: brand.ink }}>→ {t({ tr: "Ters İşletme'de detaylı analiz", en: "Detailed analysis in Reverse Running", de: "Detailanalyse im Kehrbetrieb" })}</Link></div>
+            <div className="mt-1"><a href="#tersisletme" onClick={(e) => { e.preventDefault(); panelAcVeGit("tersisletme", brand.ink); }} className="underline" style={{ color: brand.ink }}>→ {t({ tr: "Ters İşletme'de detaylı analiz", en: "Detailed analysis in Reverse Running", de: "Detailanalyse im Kehrbetrieb" })}</a></div>
           </div>
         )}
       </Panel>
